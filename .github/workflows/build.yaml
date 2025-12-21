@@ -1,0 +1,29 @@
+name: Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  FRONTEND_DIR: ./nextjs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set frontend directory
+        run: echo "FRONTEND_DIR=./nextjs" >> $GITHUB_ENV
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "yarn"
+          cache-dependency-path: "${{ env.FRONTEND_DIR }}/yarn.lock"
+      - name: Install dependencies
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn install --frozen-lockfile
+      - name: Build project
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn build
