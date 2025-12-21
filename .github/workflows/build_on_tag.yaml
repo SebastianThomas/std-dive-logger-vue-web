@@ -1,0 +1,16 @@
+name: Build on Tag and Deploy Staging
+on:
+  push:
+    tags: [v*]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [staging]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set frontend directory
+        run: echo "FRONTEND_DIR=nextjs" > $GITHUB_ENV
+      - name: Build with Dockerfile
+        run: sh ./build-frontend.sh
