@@ -7,6 +7,7 @@ on:
 
 env:
   FRONTEND_DIR: ./nextjs
+  LINT_ENABLED: false
 
 jobs:
   build:
@@ -27,3 +28,7 @@ jobs:
       - name: Build project
         working-directory: ${{ env.FRONTEND_DIR }}
         run: yarn build
+      - name: Lint project
+        if: ${{ env.LINT_ENABLED }}
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn lint
