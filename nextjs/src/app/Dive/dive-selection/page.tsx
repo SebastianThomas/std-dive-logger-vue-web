@@ -28,7 +28,7 @@ const DiveSelection: React.FC = () => {
       <main className="flex relative w-full h-full">
         <div className={`bg-sky-100 text-black flex`}>
           <div className="flex-1 p-4">
-            <div className="h-1/3 min-h-[200px] pb-4 flex">
+            <div className="h-1/3 min-h-50 pb-4 flex">
               <div className="w-full h-full pb-4 pr-2">
                 <DiveSearch
                   page_nr={pageNumber}

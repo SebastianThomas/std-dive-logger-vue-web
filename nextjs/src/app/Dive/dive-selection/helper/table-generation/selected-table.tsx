@@ -22,7 +22,7 @@ export default function SelectedTable({
   // print the table
   return (
     <article className="bg-white border-2 rounded-lg flex flex-col h-full overflow-hidden w-full">
-      <header className="h-[40px] bg-sky-500 flex justify-center items-center border-b-2 flex-shrink-0">
+      <header className="h-10 bg-sky-500 flex justify-center items-center border-b-2 shrink-0">
         <h1 className={`text-black text-[20px] font-bold`}>Selected dives</h1>
       </header>
       <main className="overflow-y-auto flex-1 min-h-0">

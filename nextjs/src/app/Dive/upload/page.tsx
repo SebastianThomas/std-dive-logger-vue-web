@@ -73,11 +73,12 @@ export default function UploadDivePage() {
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                   {/* Dive Number */}
                   <div className="flex flex-col rounded-lg">
-                    <label>Dive Number</label>
+                    <label htmlFor="dive-number">Dive Number</label>
                     <input
                       type="number"
                       className="pl-3 rounded-lg"
                       placeholder="Enter dive number"
+                      id="dive-number"
                       value={diveNumber ?? ""}
                       onChange={(e) => setDiveNumber(Number(e.target.value))}
                       required
@@ -86,11 +87,12 @@ export default function UploadDivePage() {
 
                   {/* Identifier */}
                   <div className="flex flex-col rounded-lg">
-                    <label>Dive Name</label>
+                    <label htmlFor="dive-name">Dive Name</label>
                     <input
                       type="text"
                       className="pl-3 rounded-lg"
                       placeholder="Enter Name"
+                      id="dive-name"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                     />
@@ -98,7 +100,7 @@ export default function UploadDivePage() {
 
                   {/* Dive Site ID */}
                   <div className="flex flex-col rounded-lg">
-                    <label>Dive Site ID</label>
+                    <label htmlFor="site-id">Dive Site ID</label>
                     <div className="flex items-center gap-2 mb-2">
                       <CreateDiveSite
                         onCreated={(site) => {
@@ -110,6 +112,7 @@ export default function UploadDivePage() {
                       type="number"
                       className="pl-3 rounded-lg"
                       placeholder="Enter dive site"
+                      id="site-id"
                       value={siteId ?? ""}
                       onChange={(e) => setSiteId(Number(e.target.value))}
                     />
@@ -117,9 +120,10 @@ export default function UploadDivePage() {
 
                   {/* File Input */}
                   <div className="flex flex-col gap-1">
-                    <label className="font-medium">Dive File</label>
+                    <label className="font-medium" htmlFor="file-input">Dive File</label>
 
-                    <div
+                    <button
+                      type="button"
                       className="border-2 border-dashed border-sky-300 bg-sky-50 rounded-2xl 
                p-6 text-center cursor-pointer shadow-sm transition 
                hover:bg-sky-100 hover:border-sky-400"
@@ -156,7 +160,7 @@ export default function UploadDivePage() {
                       <p className="text-xs text-gray-500 mt-1">
                         Supported file types: Any
                       </p>
-                    </div>
+                    </button>
 
                     {/* Hidden file input */}
                     <input

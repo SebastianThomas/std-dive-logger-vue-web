@@ -13,7 +13,7 @@ type Step1Props = {
     setData: (updater: (prev: Step1Props["data"]) => Step1Props["data"]) => void;
 };
 
-export default function EditDivePage({ data, setData }: Step1Props) {
+export default function EditDivePage({ data, setData }: Readonly<Step1Props>) {
     const [showMap, setShowMap] = useState(false);
     const [buddyInput, setBuddyInput] = useState("");
 
@@ -62,21 +62,23 @@ export default function EditDivePage({ data, setData }: Step1Props) {
             <div>
                 <h2 className="text-xl font-semibold mb-4">Step 1: Dive Info</h2>
                 <form>
-                    <label className="block mb-2">Dive Number</label>
+                    <label htmlFor="dive-number" className="block mb-2">Dive Number</label>
                     <input
                         type="number"
                         className="w-full p-2 border rounded mb-4"
                         value={data.diveNumber ?? ""}
+                        id="dive-number"
                         onChange={(e) => handleDiveNumberChange(Number(e.target.value))}
                         placeholder="Enter dive number"
                         required
                     />
 
-                    <label className="block mb-2">Dive Name</label>
+                    <label htmlFor="dive-name" className="block mb-2">Dive Name</label>
                     <input
                         type="text"
                         className="w-full p-2 border rounded mb-4"
                         value={data.diveName ?? ""}
+                        id="dive-name"
                         onChange={(e) => handleDiveNameChange(e.target.value)}
                         placeholder="Enter name of your dive"
                         required
@@ -84,12 +86,13 @@ export default function EditDivePage({ data, setData }: Step1Props) {
 
                     {/* Location */}
                     <div className="mb-4">
-                        <label className="block mb-2">Location</label>
+                        <label htmlFor="site-name" className="block mb-2">Location</label>
                         <div className="flex gap-2 items-end">
                             <input
                                 type="text"
                                 className="w-full p-2 border rounded"
                                 placeholder="Location Name"
+                                id="site-name"
                                 value={data.diveSite?.name ?? ""}
                                 onChange={(e) =>
                                     handleDiveSiteChange(e.target.value, data.diveSite?.latitude ?? 0, data.diveSite?.longitude ?? 0)
@@ -111,7 +114,7 @@ export default function EditDivePage({ data, setData }: Step1Props) {
                     </div>
 
                     {/* Dive Buddies - tag input */}
-                    <label className="block mb-2">Dive Buddies</label>
+                    <label htmlFor="buddies" className="block mb-2">Dive Buddies</label>
                     <div className="flex flex-wrap gap-2 mb-4">
                         {(data.diveBuddies || []).map(b => (
                             <span
@@ -133,6 +136,7 @@ export default function EditDivePage({ data, setData }: Step1Props) {
                             className="flex-1 p-2 border rounded"
                             placeholder="Enter a buddy and press Enter"
                             value={buddyInput}
+                            id="buddies"
                             onChange={(e) => setBuddyInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                         />
@@ -144,10 +148,10 @@ export default function EditDivePage({ data, setData }: Step1Props) {
             {/* Map Modal */}
             {showMap && (
                 <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                    <div className="w-[90vw] h-[90vh] bg-white rounded shadow-lg relative overflow-hidden z-[1000]">
+                    <div className="w-[90vw] h-[90vh] bg-white rounded shadow-lg relative overflow-hidden z-1000">
                         {/* Close Button */}
                         <button
-                            className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded shadow-md z-[2000]"
+                            className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded shadow-md z-2000"
                             onClick={() => setShowMap(false)}
                         >
                             Close

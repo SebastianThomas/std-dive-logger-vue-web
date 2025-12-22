@@ -38,11 +38,11 @@ export default function MapDisplay({
     sites = [],
     center,
     zoom
-}: {
+}: Readonly<{
     sites: SiteWithDives[];
     center?: [number, number]; // optional center
     zoom?: number;             // optional zoom
-}) {
+}>) {
     const router = useRouter();
     const [mapView, setMapView] = usePersistentMapView(
         "map-picker-view",

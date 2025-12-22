@@ -121,7 +121,7 @@ export default function MapPickerModal({
 
         {/* CONFIRM ACTION */}
         {selected && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000]">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-1000">
             <button
               className="px-6 py-3 bg-green-600 text-white rounded-xl shadow-lg"
               onClick={() => onSelect(selected)}

@@ -1,7 +1,7 @@
 "use client";
 
 import MissingDiveSite from "@/components/dive/create/site/missingDiveSite";
-import UploadDiveFile from "@/components/dive/create/uploadfile";
+import UploadDiveFile from "@/components/dive/create/UploadDiveFile";
 import { BasicLayout } from "@/components/globals/basic_layout";
 import useApi from "@/hooks/useApi";
 import { DiveWithoutProfiles } from "@/types/dive";
@@ -81,7 +81,7 @@ export default function FastDiveUpload() {
     }
     return (
         <BasicLayout page_name="Upload Dive Files">
-            <div className="w-full min-h-screen bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed min-h-[calc(100vh-64px)]">
+            <div className="w-full bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed min-h-[calc(100vh-64px)]">
                 <main
                     className="flex-1 relative flex justify-center items-start pt-10 px-6 md:px-10">
                     <div className="max-w-3xl w-full bg-white p-6 rounded-lg shadow-lg">

@@ -16,7 +16,7 @@ type Step3Props = {
     submitData: () => void;
 };
 
-export default function CreateDiveStep3Page({ prevStep, data, submitData }: Step3Props) {
+export default function CreateDiveStep3Page({ prevStep, data, submitData }: Readonly<Step3Props>) {
     const router = useRouter();
 
     return (
@@ -46,8 +46,8 @@ export default function CreateDiveStep3Page({ prevStep, data, submitData }: Step
                     <strong>Files Uploaded:</strong>
                     {data.files && data.files.length > 0 ? (
                         <ul className="ml-4 list-disc">
-                            {data.files.map((file, idx) => (
-                                <li key={idx}>{file.name}</li>
+                            {data.files.map(file => (
+                                <li key={file.name + file.size}>{file.name}</li>
                             ))}
                         </ul>
                     ) : (

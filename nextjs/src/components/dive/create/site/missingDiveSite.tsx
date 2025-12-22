@@ -91,12 +91,14 @@ export default function MissingDiveSite({
 
           {/* SITE NAME */}
           <div className="mb-4">
-            <label className="block mb-1 font-medium">
+            <label htmlFor="site-name" className="block mb-1 font-medium">
               Dive site name
             </label>
             <input
               className="border rounded-lg p-2 w-full"
               value={siteName}
+              id="site-name"
+              name="site-name"
               onChange={(e) => setSiteName(e.target.value)}
             />
           </div>

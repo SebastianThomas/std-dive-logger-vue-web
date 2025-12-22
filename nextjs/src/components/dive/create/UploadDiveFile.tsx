@@ -11,7 +11,7 @@ type Step2Props = {
     mode?: "create" | "edit";
 };
 
-export default function CreateDiveStep2Page({ nextStep, prevStep, data, setData, mode }: Step2Props) {
+export default function UploadDiveFile({ nextStep, prevStep, data, setData, mode }: Readonly<Step2Props>) {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -36,7 +36,8 @@ export default function CreateDiveStep2Page({ nextStep, prevStep, data, setData,
             <h2 className="text-xl font-semibold mb-4">Upload Dive Files</h2>
 
             <div className="flex flex-col gap-2">
-                <div
+                <button
+                    type="button"
                     className="border-2 border-dashed border-sky-300 bg-sky-50 rounded-2xl 
                      p-6 text-center cursor-pointer shadow-sm transition 
                      hover:bg-sky-100 hover:border-sky-400 py-10"
@@ -62,7 +63,7 @@ export default function CreateDiveStep2Page({ nextStep, prevStep, data, setData,
                         )}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">Supported file types: Any</p>
-                </div>
+                </button>
 
                 <input
                     type="file"
@@ -75,7 +76,7 @@ export default function CreateDiveStep2Page({ nextStep, prevStep, data, setData,
                 {files.length > 0 && (
                     <ul className="mt-2">
                         {files.map((file, index) => (
-                            <li key={index} className="flex justify-between items-center py-1 px-2 border rounded mb-1">
+                            <li key={file.size + file.name} className="flex justify-between items-center py-1 px-2 border rounded mb-1">
                                 <span className="truncate">{file.name}</span>
                                 <button
                                     type="button"

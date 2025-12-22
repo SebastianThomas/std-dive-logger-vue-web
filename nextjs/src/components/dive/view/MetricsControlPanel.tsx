@@ -26,7 +26,7 @@ export function MetricsControlPanel({
   onToggleSegments,
 }: Readonly<MetricsControlPanelProps>) {
   return (
-    <div className="mb-5 p-3 sm:p-4 border border-gray-300 rounded-lg bg-gray-50 shadow-lg w-full max-w-[1000px] mx-auto">
+    <div className="mb-5 p-3 sm:p-4 border border-gray-300 rounded-lg bg-gray-50 shadow-lg w-full max-w-250 mx-auto">
       <div className="flex flex-wrap gap-x-6 gap-y-3 items-center">
         {/* Metrics checkboxes */}
         <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
@@ -56,7 +56,7 @@ export function MetricsControlPanel({
         </div>
 
         {/* Axis selectors */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-[520px] md:mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-130 md:mx-auto">
 
           {/* Left Axis */}
           <div className="grid grid-cols-[auto_minmax(160px,1fr)] gap-x-3 items-center">

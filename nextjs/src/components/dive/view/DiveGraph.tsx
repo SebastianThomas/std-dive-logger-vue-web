@@ -113,7 +113,7 @@ export function LinePlot({
 
   // Responsive dimensions
   useEffect(() => {
-    const w = globalThis || window;
+    const w = globalThis;
     const updateDimensions = () => {
 
       if (!svgContainerRef.current) return;
