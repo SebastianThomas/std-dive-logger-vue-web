@@ -112,7 +112,7 @@ export default function UploadDiveFile({ nextStep, prevStep, data, setData, mode
 
                         <button
                             type="button"
-                            onClick={() => router.push('/Dive/upload')}
+                            onClick={() => router.push('/dive/upload')}
                             className="bg-red-500 text-white px-4 py-2 rounded"
                         >
                             Quit

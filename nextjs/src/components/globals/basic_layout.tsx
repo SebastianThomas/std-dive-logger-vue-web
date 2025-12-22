@@ -180,13 +180,13 @@ export function BasicLayout({
             icon="search"
             text="Search Dives"
             isVisible={isVisible}
-            action={() => router.push("/Dive/dive-selection")}
+            action={() => router.push("/dive/dive-selection")}
           />
           <MenuItem
             icon="pen-to-square"
             text="Upload Dive"
             isVisible={isVisible}
-            action={() => router.push("/Dive/create")}
+            action={() => router.push("/dive/create")}
           />
           <MenuItem
             icon="user-group"

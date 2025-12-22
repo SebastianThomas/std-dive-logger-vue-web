@@ -89,7 +89,7 @@ export default function MapDisplay({
                                                 <span>{id}</span>
                                                 <button
                                                     className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                                                    onClick={() => router.push(`/Dive/view/${id}`)}
+                                                    onClick={() => router.push(`/dive/view/${id}`)}
                                                 >
                                                     View Dive
                                                 </button>
