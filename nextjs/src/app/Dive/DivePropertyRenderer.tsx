@@ -2,7 +2,7 @@ import type { DiveWithoutProfiles } from '@/types/dive'
 import Image from 'next/image'
 import { JSX } from 'react'
 
-export const renderer: Record<keyof DiveWithoutProfiles, (row: DiveWithoutProfiles) => JSX.Element> = {
+export const DivePropertyRenderer: Record<keyof DiveWithoutProfiles, (row: DiveWithoutProfiles) => JSX.Element> = {
   id: (row: DiveWithoutProfiles) => <span>{row.id}</span>,
   number: (row: DiveWithoutProfiles) => <span>{row.number}</span>,
   customIdentifier: (row: DiveWithoutProfiles) => <span>{row.customIdentifier}</span>,

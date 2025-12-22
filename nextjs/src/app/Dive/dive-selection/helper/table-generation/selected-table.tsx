@@ -1,4 +1,4 @@
-import { renderer } from "@/app/dive/renderer";
+import { DivePropertyRenderer } from "@/app/dive/DivePropertyRenderer";
 import type { SetState } from '@/types/abbreviations';
 import {
   ALL_PARAMS_MAP,
@@ -87,7 +87,7 @@ function ShowTable({
                 key={rowIndex + "selected-body"}
                 className={`cursor-pointer transition-colors bg-white hover:bg-gray-50`}
               >
-                {(Object.entries(renderer) as ([keyof DiveWithoutProfiles, (row: DiveWithoutProfiles) => JSX.Element])[]).map(([key, value]) =>
+                {(Object.entries(DivePropertyRenderer) as ([keyof DiveWithoutProfiles, (row: DiveWithoutProfiles) => JSX.Element])[]).map(([key, value]) =>
                   columnSelected(key) && (
                     <td key={row.id + String(key)} className={tableElement}>
                       {value(row)}

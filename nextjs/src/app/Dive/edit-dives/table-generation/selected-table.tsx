@@ -1,4 +1,4 @@
-import { renderer } from "@/app/dive/renderer";
+import { DivePropertyRenderer } from "@/app/dive/DivePropertyRenderer";
 import type { SetState } from "@/types/abbreviations";
 import { ALL_PARAMS_MAP, type DiveWithoutProfiles } from "@/types/dive";
 import { JSX } from "react";
@@ -87,7 +87,7 @@ function ShowTable({
                   }`}
               >
                 {(
-                  Object.entries(renderer) as [
+                  Object.entries(DivePropertyRenderer) as [
                     keyof DiveWithoutProfiles,
                     (row: DiveWithoutProfiles) => JSX.Element,
                   ][]
