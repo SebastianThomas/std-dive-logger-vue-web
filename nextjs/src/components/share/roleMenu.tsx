@@ -4,13 +4,13 @@ import { useState } from "react";
 const ROLES = ["ADMIN", "MEMBER"];
 
 type Props = {
-  userId: string;
+  userId: number;
   currentRole: string;
-  changeRole: (userId: string, role: string) => void;
+  changeRole: (userId: number, role: string) => void;
   disabled: boolean
 };
 
-export function RoleMenu({ userId, currentRole, changeRole, disabled }: Props) {
+export function RoleMenu({ userId, currentRole, changeRole, disabled }: Readonly<Props>) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 

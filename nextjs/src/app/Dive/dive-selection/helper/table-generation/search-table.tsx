@@ -1,8 +1,10 @@
-import { renderer } from '@/app/Dive/renderer';
+import { renderer } from '@/app/dive/renderer';
 import SharePopover from '@/components/share/sharePopover';
 import useApi from "@/hooks/useApi";
 import type { SetState } from '@/types/abbreviations';
 import { ALL_PARAMS_MAP, type DiveWithoutProfiles, type PagedResult } from '@/types/dive';
+import { User } from '@/types/share';
+import { AxiosResponse } from 'axios';
 import { useRouter } from "next/navigation";
 import { JSX, useEffect, useState } from "react";
 
@@ -42,16 +44,14 @@ export default function SearchTable({
   // get new dives when page number updates
   useEffect(() => {
     async function getData() {
-      const response = (searchValue === "") ?
+      const response: AxiosResponse<PagedResult<DiveWithoutProfiles>> = (searchValue === "") ?
         await getWithToken(`/v1/dives?page=${page_nr - 1}&includeReader=${viewShared}`) :
         await getWithToken(`/v1/dives/search?page=${page_nr - 1}&query=${searchValue}`)
-      const data: PagedResult<DiveWithoutProfiles> = response.data;
-
-      setFullTable(data.result);
-      setNumberOfPages(data.totalPages);
+      setFullTable(response.data.result);
+      setNumberOfPages(response.data.totalPages);
     }
     getData();
-  }, [page_nr, viewShared]);
+  }, [page_nr, viewShared, getWithToken, searchValue, setFullTable, setNumberOfPages]);
 
   // build table
   return (
@@ -91,14 +91,14 @@ function ShowTable({
   useEffect(() => {
     const fetchUserId = async () => {
       try {
-        const res = await getWithToken("/v1/users/");
+        const res = await getWithToken<User>("/v1/users/");
         setMyUserId(res.data.id);
       } catch (err) {
         console.error("Failed to fetch user ID", err);
       }
     };
     fetchUserId();
-  }, []);
+  }, [getWithToken]);
 
   const router = useRouter();
 
@@ -163,11 +163,11 @@ function ShowTable({
                     </td>
                   )
                 )}
-                <td className="border border-gray-400 px-2 py-1 text-center text-center" onClick={() => router.push(`/Dive/view/${table[rowIndex].id}`)}>
+                <td className="border border-gray-400 px-2 py-1 text-center" onClick={() => router.push(`/Dive/view/${table[rowIndex].id}`)}>
                   Visualize dive <i className="fa-solid fa-chart-line ml-2"></i>
                 </td>
                 {row.user.id === myUserId ?
-                  <td className="border border-gray-400 px-2 py-1 text-center text-center" onClick={(e) => handleShareClick(row.id, e)}>
+                  <td className="border border-gray-400 px-2 py-1 text-center" onClick={(e) => handleShareClick(row.id, e)}>
                     Share dive <i className="fa-solid fa-share-nodes ml-2"></i>
                   </td>
                   :

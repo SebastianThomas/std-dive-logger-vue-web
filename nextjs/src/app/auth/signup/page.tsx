@@ -1,7 +1,7 @@
 "use client";
 
-import { BasicLayout } from "@/app/helper/basic_layout";
-import { resolveUrl } from "@/app/helper/url/resolveUrl";
+import { BasicLayout } from "@/components/globals/basic_layout";
+import { resolveUrl } from "@/components/globals/url/resolveUrl";
 import "@fortawesome/fontawesome-free/css/all.css";
 import { useRouter } from "next/navigation";
 import { FormEvent } from 'react';

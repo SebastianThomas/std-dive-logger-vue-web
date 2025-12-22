@@ -1,5 +1,5 @@
 "use client";
-import { BasicLayout } from "@/app/helper/basic_layout";
+import { BasicLayout } from "@/components/globals/basic_layout";
 import useApi from "@/hooks/useApi";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
@@ -26,7 +26,7 @@ export default function CreateMapViewPage() {
 
     async function fetchDives() {
       try {
-        const res = await getWithToken("/v1/dives/sites");
+        const res = await getWithToken<SiteWithDives[]>("/v1/dives/sites");
         setSites(res.data);
       } catch (err) {
         console.error(err);

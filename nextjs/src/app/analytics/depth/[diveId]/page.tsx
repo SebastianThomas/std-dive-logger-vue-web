@@ -1,10 +1,11 @@
 "use client";
 
-import { BasicLayout } from "@/app/helper/basic_layout";
+import { BasicLayout } from "@/components/globals/basic_layout";
 import useApi from "@/hooks/useApi";
+import { Dive, DiveDepthVariance } from "@/types/dive";
 import { JsonViewer } from "@textea/json-viewer";
 import axios from "axios";
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useState } from "react";
 
 export default function AnalyticsDepth({
   params,
@@ -18,13 +19,15 @@ export default function AnalyticsDepth({
     id: number;
     customIdentifier: string;
   } | null>(null);
-  const [analytics, setAnalytics] = useState(null);
+  const [analytics, setAnalytics] = useState<DiveDepthVariance[] | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
       const [dive, analytics] = await Promise.all([
-        getWithToken(`/v1/dives/${diveId}`),
-        getWithToken(`/v1/dives/analytics/depth-variance?id=${diveId}`),
+        getWithToken<Dive>(`/v1/dives/${diveId}`),
+        getWithToken<DiveDepthVariance[]>(
+          `/v1/dives/analytics/depth-variance?id=${diveId}`
+        ),
       ]);
       setDive(dive.data);
       setAnalytics(analytics.data);
@@ -36,10 +39,7 @@ export default function AnalyticsDepth({
       }
     }
   }, [diveId, setDive, setAnalytics, getWithToken]);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  fetchData();
 
   return (
     <BasicLayout page_name="Depth Analytics">

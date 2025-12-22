@@ -1,10 +1,11 @@
 "use client";
 
-import { BasicLayout } from "@/app/helper/basic_layout";
+import { BasicLayout } from "@/components/globals/basic_layout";
 import "@fortawesome/fontawesome-free/css/all.css";
 import axios from "axios";
+import Image from "next/image";
 import { useEffect, useState } from "react";
-import { resolveUrl } from "./helper/url/resolveUrl";
+import { resolveUrl } from "../components/globals/url/resolveUrl";
 
 interface FeatureCardProps {
   image: string;
@@ -38,13 +39,9 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
   description,
 }) => {
   return (
-    <div className="w-full sm:min-w-[300px] sm:max-w-[350px] md:min-w-[400px] md:max-w-[420px] bg-white rounded-xl shadow-lg p-6 sm:p-8 flex-shrink-0">
+    <div className="w-full sm:min-w-75 sm:max-w-87.5 md:min-w-100 md:max-w-105 bg-white rounded-xl shadow-lg p-6 sm:p-8 shrink-0">
       <div className="w-full h-40 sm:h-44 md:h-48 overflow-hidden rounded-md mb-4">
-        <img
-          src={image}
-          alt={title}
-          className="w-full h-full object-cover"
-        />
+        <Image src={image} alt={title} className="w-full h-full object-cover" />
       </div>
       <h3 className="text-lg font-semibold mb-2 text-gray-600">{title}</h3>
       <p className="text-gray-600 text-sm">{description}</p>
@@ -68,13 +65,15 @@ const LandingPage: React.FC = () => {
         description: `There are ${userCount} users signed up, having logged ${diveCount} dives.`,
         image: "/images/stats.jpeg",
       };
-      const newFeatures = [...features];
-      if (features.length >= initialFeatures.length) {
-        newFeatures[initialFeatures.length] = newFeature;
-      } else {
-        newFeatures.push(newFeature);
-      }
-      setFeatures(newFeatures);
+      setFeatures((features) => {
+        const newFeatures = [...features];
+        if (features.length >= initialFeatures.length) {
+          newFeatures[initialFeatures.length] = newFeature;
+        } else {
+          newFeatures.push(newFeature);
+        }
+        return newFeatures;
+      });
     })();
   }, []);
 

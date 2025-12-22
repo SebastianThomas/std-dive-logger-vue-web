@@ -1,34 +1,31 @@
 "use client"
 
-import { toast } from "react-toastify";
-import { useRouter } from "next/navigation"
-import { BasicLayout } from "../helper/basic_layout";
 import useApi from "@/hooks/useApi";
+import { User } from "@/types/share";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
+import { BasicLayout } from "../../components/globals/basic_layout";
 
 export default function UserProfile() {
     const { getWithToken, postWithToken } = useApi();
     const router = useRouter();
     const [user, setUser] = useState<{ id: number; name: string } | null>(null);
-    const [loading, setLoading] = useState(true);
     const [showDeregisterModal, setShowDeregisterModal] = useState(false);
-
 
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const res = await getWithToken('/v1/users/');
+                const res = await getWithToken<User>('/v1/users/');
                 setUser(res.data);
             } catch (err) {
                 console.error(err);
                 toast.error("Failed to load user profile");
-            } finally {
-                setLoading(false);
             }
         };
 
         fetchUser();
-    }, []);
+    }, [getWithToken]);
     async function handleDeregister() {
         try {
             const res = await postWithToken('/api/auth/deregister');

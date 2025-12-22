@@ -1,10 +1,10 @@
-import { renderer } from "@/app/Dive/renderer";
+import { renderer } from "@/app/dive/renderer";
 import type { SetState } from '@/types/abbreviations';
 import {
   ALL_PARAMS_MAP,
   type DiveWithoutProfiles
 } from '@/types/dive';
-import { JSX } from 'react'
+import { JSX } from 'react';
 
 /*
  *   creating table:

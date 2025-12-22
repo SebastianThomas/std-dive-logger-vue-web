@@ -1,4 +1,5 @@
-import type { BuddyDive, DiveWithoutProfiles } from '@/types/dive'
+import type { DiveWithoutProfiles } from '@/types/dive'
+import Image from 'next/image'
 import { JSX } from 'react'
 
 export const renderer: Record<keyof DiveWithoutProfiles, (row: DiveWithoutProfiles) => JSX.Element> = {
@@ -6,21 +7,22 @@ export const renderer: Record<keyof DiveWithoutProfiles, (row: DiveWithoutProfil
   number: (row: DiveWithoutProfiles) => <span>{row.number}</span>,
   customIdentifier: (row: DiveWithoutProfiles) => <span>{row.customIdentifier}</span>,
   previewImage: (row: DiveWithoutProfiles) =>
-    <img
+    <Image
       src={row.previewImage}
       alt={`Preview of dive ${row.id}`}
     />,
   site: (row: DiveWithoutProfiles) => <span>{row.site.name + " (" + row.site.latitude + "°N," + row.site.longitude + "°E)"}</span>,
   buddiesDives: (row: DiveWithoutProfiles) =>
     <span>
-      {row.buddiesDives.map((bd: BuddyDive, j) =>
-        <div key={j + "buddy-dive"}>{bd.buddy.name + " (id:" + bd.buddy.id + ")"}</div>
+      {row.buddiesDives.map(({ buddy }, j) =>
+        // TODO: Implement route to diveId
+        <div key={j + "buddy-dive"}> {buddy.name}</div>
       )}
-    </span>,
+    </span >,
   namedBuddies: (row: DiveWithoutProfiles) =>
     <span>
-      {row.buddiesDives.map((bd: BuddyDive, j) =>
-        <div key={j + "name"}>{bd.buddy.name}</div>
+      {row.namedBuddies.map((name, j) =>
+        <div key={j + "name"}>{name}</div>
       )}
     </span>,
   user: (row) => <span>{row.user.name}</span>

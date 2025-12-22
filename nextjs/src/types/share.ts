@@ -1,3 +1,7 @@
+export type User = { id: number; name: string };
+
+export type Group = { id: number; name: string };
+
 export type GroupMember = {
     group: {
         id: number,
@@ -6,14 +10,19 @@ export type GroupMember = {
     role: GroupRole
 };
 
-type GroupRole = "MEMBER" | "ADMIN" | "REQUESTED" | "DENIED";
+type InGroupRole = "MEMBER" | "ADMIN";
+type GroupRole = InGroupRole | "REQUESTED" | "DENIED";
 
-export type User = {
-    id: string;
-    name: string;
-    role: "ADMIN" | "MEMBER";
+export type UserWithRole = User & {
+    role: InGroupRole;
 }
-export type SimpleUser = {
-    id: string;
-    name: string;
-}
+
+export type GroupRequest = {
+    user: UserWithRole,
+    current: GroupRole,
+};
+
+export type GroupWithMembers = Group & {
+    admins: User[],
+    members: User[],
+};

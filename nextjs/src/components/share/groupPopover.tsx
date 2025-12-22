@@ -1,12 +1,11 @@
 "use client";
-import { Popover, TextField, Box, Button } from "@mui/material";
-import { useState } from "react";
+import { Box, Button, Popover, TextField } from "@mui/material";
 import AutocompleteInput from "../autocompleteInput";
 
 type GroupPopoverProps = {
     anchorEl: HTMLButtonElement | null;
     onClose: () => void;
-    onSubmit: (groupName: string) => Promise<Boolean>;
+    onSubmit: (groupName: string) => Promise<boolean>;
     label: string;
     type: "new" | "join";
 };
@@ -18,7 +17,7 @@ export default function GroupPopover({
     onSubmit,
     label,
     type
-}: GroupPopoverProps) {
+}: Readonly<GroupPopoverProps>) {
     const open = Boolean(anchorEl);
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -33,7 +32,7 @@ export default function GroupPopover({
             if (res) {
                 onClose();
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
         }
     }

@@ -1,7 +1,7 @@
 "use client";
 
-import { BasicLayout } from "@/app/helper/basic_layout";
-import { resolveUrl } from "@/app/helper/url/resolveUrl";
+import { BasicLayout } from "@/components/globals/basic_layout";
+import { resolveUrl } from "@/components/globals/url/resolveUrl";
 import { useAuth } from "@/context/AuthContext";
 import "@fortawesome/fontawesome-free/css/all.css";
 import axios, { AxiosResponse } from "axios";
@@ -49,7 +49,7 @@ export default function Login() {
         }
       })();
     }
-  }, [magicToken])
+  }, [magicToken, login, redirectAfterLogin])
 
   useEffect(() => {
     if (auth) {

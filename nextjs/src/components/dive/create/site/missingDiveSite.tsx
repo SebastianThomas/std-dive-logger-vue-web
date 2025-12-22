@@ -1,21 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import useApi from "@/hooks/useApi";
 import FullMapPicker from "@/components/mapPickerModal";
-
-export type DiveSiteResponse = {
-  id: number;
-  name: string;
-  latitude: number;
-  longitude: number;
-};
+import useApi from "@/hooks/useApi";
+import { DiveSite } from "@/types/dive";
+import { useEffect, useState } from "react";
 
 type CreateDiveSiteProps = {
   open: boolean;
   initialName?: string;
   onClose: () => void;
-  onCreated: (site: DiveSiteResponse) => void;
+  onCreated: (site: DiveSite) => void;
 };
 
 export default function MissingDiveSite({
@@ -23,7 +17,7 @@ export default function MissingDiveSite({
   initialName,
   onClose,
   onCreated,
-}: CreateDiveSiteProps) {
+}: Readonly<CreateDiveSiteProps>) {
   const { postWithToken } = useApi();
 
   const [siteName, setSiteName] = useState("");
@@ -67,7 +61,7 @@ export default function MissingDiveSite({
         lon,
       };
 
-      const res = await postWithToken(
+      const res = await postWithToken<DiveSite>(
         "/v1/dives/sites",
         JSON.stringify(body),
         { headers: { "Content-Type": "application/json" } },

@@ -1,51 +1,57 @@
-import type { SetState } from '@/types/abbreviations';
-import type { PagedResult, DiveWithoutProfiles } from '@/types/dive';
 import useApi from "@/hooks/useApi";
+import type { SetState } from "@/types/abbreviations";
+import type { DiveWithoutProfiles, PagedResult } from "@/types/dive";
+import { ALL_PARAMS_MAP, params } from "@/types/dive";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ALL_PARAMS_MAP, params } from '@/types/dive';
 
 /*
  *    Introduce ability to hide selected dives for page understandability
  */
 function ViewSelectedDives({
   viewSelectedDives,
-  toggleView
+  toggleView,
 }: Readonly<{
   viewSelectedDives: boolean;
   toggleView: SetState<boolean>;
 }>) {
   return (
     <div className="h-1/3 p-1 flex justify-center items-center">
-      <div className="w-full h-full border-2 rounded-lg bg-sky-200 flex justify-center items-center cursor-pointer hover:bg-sky-300" onClick={() => toggleView(!viewSelectedDives)}>
-        {(viewSelectedDives) ? "Hide selected dives" : "View selected dives"}
-      </div>
+      <button
+        className="w-full h-full border-2 rounded-lg bg-sky-200 flex justify-center items-center cursor-pointer hover:bg-sky-300"
+        onClick={() => toggleView(!viewSelectedDives)}
+      >
+        {viewSelectedDives ? "Hide selected dives" : "View selected dives"}
+      </button>
     </div>
   );
 }
 
-/* 
+/*
  *    Traverse to the dive editing page
  *        * first store the selected dives in the local storage to retrieve them upon arrival
  */
 function EditSelectedDives({
   selectedDives,
-  displayedItems
+  displayedItems,
 }: Readonly<{
   selectedDives: DiveWithoutProfiles[];
   displayedItems: (keyof DiveWithoutProfiles)[];
 }>) {
   const router = useRouter();
   function handlePageChange() {
-    router.push(`/Dive/edit-dives?items=${displayedItems.join(',')}&dives=${selectedDives.map(d => d.id).join(',')}`);
-  };
+    router.push(
+      `/Dive/edit-dives?items=${displayedItems.join(",")}&dives=${selectedDives.map((d) => d.id).join(",")}`
+    );
+  }
   return (
     <div className="h-1/3 p-1 flex justify-center items-center">
-      <div
+      <button
         className="w-full h-full border-2 rounded-lg bg-sky-200 flex justify-center items-center cursor-pointer hover:bg-sky-300"
-        onClick={() => handlePageChange()}>
+        onClick={() => handlePageChange()}
+      >
         Edit selected dives <i className="fa-solid fa-pen-to-square ml-2"></i>
-      </div>
+      </button>
     </div>
   );
 }
@@ -56,7 +62,7 @@ function EditSelectedDives({
 function EditPageNumber({
   page_nr,
   setPageNumber,
-  numberOfPages
+  numberOfPages,
 }: Readonly<{
   page_nr: number;
   setPageNumber: SetState<number>;
@@ -79,9 +85,15 @@ function EditPageNumber({
   return (
     <div className="h-1/3 p-1 flex justify-center items-center">
       <div className="w-full h-full flex justify-center items-center">
-        <i className="fa-solid fa-angle-left mr-2 cursor-pointer" onClick={() => decrementNumber()}></i>
+        <i
+          className="fa-solid fa-angle-left mr-2 cursor-pointer"
+          onClick={() => decrementNumber()}
+        ></i>
         Page {numberOfPages > 0 ? page_nr : 0}/{numberOfPages}
-        <i className="fa-solid fa-angle-right ml-2 cursor-pointer" onClick={() => incrementNumber()}></i>
+        <i
+          className="fa-solid fa-angle-right ml-2 cursor-pointer"
+          onClick={() => incrementNumber()}
+        ></i>
       </div>
     </div>
   );
@@ -100,7 +112,7 @@ function PageNavigation({
   viewSelectedDives,
   toggleView,
   selectedDives,
-  displayedItems
+  displayedItems,
 }: Readonly<{
   page_nr: number;
   setPageNumber: SetState<number>;
@@ -111,8 +123,8 @@ function PageNavigation({
   displayedItems: (keyof DiveWithoutProfiles)[];
 }>) {
   return (
-    <article className="bg-white border-2 rounded-lg flex flex-col h-full overflow-hidden min-h-[180px] min-w-[200px]">
-      <header className="h-[40px] bg-sky-500 flex justify-center items-center border-b-2 flex-shrink-0">
+    <article className="bg-white border-2 rounded-lg flex flex-col h-full overflow-hidden min-h-45 min-w-50">
+      <header className="h-10 bg-sky-500 flex justify-center items-center border-b-2 shrink-0">
         <h1 className={`text-black text-[20px] font-bold`}>Navigation</h1>
       </header>
       <main className="overflow-y-auto flex-1 min-h-0">
@@ -136,10 +148,7 @@ function PageNavigation({
   );
 }
 
-function sortByDiveOrder<T extends string>(
-  arr: T[],
-  order: readonly T[]
-): T[] {
+function sortByDiveOrder<T extends string>(arr: T[], order: readonly T[]): T[] {
   const index = new Map(order.map((key, i) => [key, i]));
   return [...arr].sort((a, b) => {
     const ia = index.get(a) ?? 0;
@@ -164,7 +173,7 @@ const DIVE_KEY_ORDER: (keyof DiveWithoutProfiles)[] = [
  */
 export function ParameterSelection({
   displayedItems,
-  setItems
+  setItems,
 }: Readonly<{
   displayedItems: (keyof DiveWithoutProfiles)[];
   setItems: SetState<(keyof DiveWithoutProfiles)[]>;
@@ -172,9 +181,9 @@ export function ParameterSelection({
   // toggle the parameters in the list between clicked and unclicked
   const toggleParam = (param: keyof DiveWithoutProfiles) => {
     if (displayedItems.includes(param)) {
-      setItems(displayedItems.filter(p => p !== param));
+      setItems(displayedItems.filter((p) => p !== param));
     } else {
-      setItems(prev => sortByDiveOrder([...prev, param], DIVE_KEY_ORDER));
+      setItems((prev) => sortByDiveOrder([...prev, param], DIVE_KEY_ORDER));
     }
   };
   // display the parameter list
@@ -182,16 +191,16 @@ export function ParameterSelection({
     <div className="overflow-y-auto flex-1">
       <div className="space-y-0">
         {params.map((param: keyof DiveWithoutProfiles, index: number) => (
-          <div key={index}>
-            <div
+          <div key={param}>
+            <button
               className={`p-3 cursor-pointer transition-colors ${displayedItems.includes(param)
-                ? 'bg-sky-200 hover:bg-sky-300'
-                : 'bg-gray-200 hover:bg-gray-300'
+                  ? "bg-sky-200 hover:bg-sky-300"
+                  : "bg-gray-200 hover:bg-gray-300"
                 }`}
               onClick={() => toggleParam(param)}
             >
               <p className="font-medium">{ALL_PARAMS_MAP[param]}</p>
-            </div>
+            </button>
             {index < params.length - 1 && (
               <div className="border-b border-gray-400"></div>
             )}
@@ -207,7 +216,7 @@ export function ParameterSelection({
  */
 export function SortingSelection({
   sortingParameter,
-  setParameter
+  setParameter,
 }: Readonly<{
   sortingParameter: keyof DiveWithoutProfiles;
   setParameter: SetState<keyof DiveWithoutProfiles>;
@@ -218,15 +227,15 @@ export function SortingSelection({
       <div className="space-y-0">
         {params.map((param: keyof DiveWithoutProfiles, index: number) => (
           <div key={param}>
-            <div
-              className={`p-3 cursor-pointer transition-colors ${(sortingParameter === param)
-                ? 'bg-sky-200 hover:bg-sky-300'
-                : 'bg-gray-200 hover:bg-gray-300'
+            <button
+              className={`p-3 cursor-pointer transition-colors ${sortingParameter === param
+                  ? "bg-sky-200 hover:bg-sky-300"
+                  : "bg-gray-200 hover:bg-gray-300"
                 }`}
               onClick={() => setParameter(param)}
             >
-              <p className="font-medium">{ALL_PARAMS_MAP[param]}</p>
-            </div>
+              {ALL_PARAMS_MAP[param]}
+            </button>
             {index < params.length - 1 && (
               <div className="border-b border-gray-400"></div>
             )}
@@ -242,7 +251,7 @@ function SearchProperty({
   setPageNumber,
   setNumberOfPages,
   searchValue,
-  setSearchValue
+  setSearchValue,
 }: Readonly<{
   setFullTable: SetState<DiveWithoutProfiles[]>;
   setPageNumber: SetState<number>;
@@ -253,8 +262,10 @@ function SearchProperty({
   const { getWithToken } = useApi();
 
   const handleApply = async () => {
-    const response = await getWithToken(`/v1/dives/search?query=${searchValue}`);
-    const data: PagedResult<DiveWithoutProfiles> = response.data;
+    const response = await getWithToken<PagedResult<DiveWithoutProfiles>>(
+      `/v1/dives/search?query=${searchValue}`
+    );
+    const data = response.data;
     setFullTable(data.result);
     setPageNumber(1);
     setNumberOfPages(data.totalPages);
@@ -309,7 +320,7 @@ function SearchBar({
   setPageNumber,
   setNumberOfPages,
   searchValue,
-  setSearchValue
+  setSearchValue,
 }: Readonly<{
   displayedItems: (keyof DiveWithoutProfiles)[];
   setItems: SetState<(keyof DiveWithoutProfiles)[]>;
@@ -320,41 +331,43 @@ function SearchBar({
   setSearchValue: SetState<string>;
 }>) {
   const options = [
-    { id: 'parameters', label: 'Parameter Selection' },
-    { id: 'search', label: 'Search Property' },
+    { id: "parameters", label: "Parameter Selection" },
+    { id: "search", label: "Search Property" },
   ] as const;
-  type optionId = typeof options[number]['id'];
+  type OptionId = (typeof options)[number]["id"];
 
   // hook to distinguish between the three possible situations
-  const [selectedOption, setSelectedOption] = useState<optionId>('parameters');
+  const [selectedOption, setSelectedOption] = useState<OptionId>("parameters");
 
   return (
-    <article className="bg-white border-2 rounded-lg flex flex-col h-full overflow-hidden min-h-[180px] min-w-[220px]">
-      <header className="h-[40px] bg-sky-500 flex justify-center items-center border-b-2 flex-shrink-0">
+    <article className="bg-white border-2 rounded-lg flex flex-col h-full overflow-hidden min-h-45 min-w-55">
+      <header className="h-10 bg-sky-500 flex justify-center items-center border-b-2 shrink-0">
         <h1 className={`text-black text-[20px] font-bold`}>Search dives</h1>
       </header>
       <main className="overflow-y-auto flex flex-1">
-        <div className="w-1/4 h-full border-r-2 border-gray-300 min-w-[100px]">
+        <div className="w-1/4 h-full border-r-2 border-gray-300 min-w-25">
           {options.map((option) => (
-            <div
+            <button
               key={option.id}
               className={`p-4 h-1/2 cursor-pointer transition-colors border-b border-gray-200 flex items-center ${selectedOption === option.id
-                ? 'bg-sky-200 hover:bg-sky-300'
-                : 'bg-white hover:bg-gray-100'
+                  ? "bg-sky-200 hover:bg-sky-300"
+                  : "bg-white hover:bg-gray-100"
                 }`}
-              onClick={() => setSelectedOption(option.id as optionId)}
+              onClick={() => setSelectedOption(option.id)}
             >
-              <p className="font-medium">{option.label}</p>
-            </div>
+              {option.label}
+            </button>
           ))}
         </div>
 
         <div className="w-3/4 h-full overflow-hidden flex flex-col">
-          {selectedOption === 'parameters' && (
+          {selectedOption === "parameters" && (
             <div className="flex flex-1 min-h-0 h-full">
               <div className="hidden lg:block lg:w-1/2 p-4 h-full">
                 <h2 className="text-xl font-bold mb-4">Parameter Selection</h2>
-                <p className="text-gray-600">Select which parameters to display in your search results.</p>
+                <p className="text-gray-600">
+                  Select which parameters to display in your search results.
+                </p>
               </div>
               <div className="w-full lg:w-1/2 flex flex-col min-h-0 lg:mr-4 h-full">
                 <ParameterSelection
@@ -365,7 +378,7 @@ function SearchBar({
             </div>
           )}
 
-          {selectedOption === 'search' &&
+          {selectedOption === "search" && (
             <SearchProperty
               setFullTable={setFullTable}
               setPageNumber={setPageNumber}
@@ -373,15 +386,12 @@ function SearchBar({
               searchValue={searchValue}
               setSearchValue={setSearchValue}
             />
-          }
+          )}
         </div>
       </main>
     </article>
   );
 }
-
-
-
 
 /*
  *    creates the search and navigation bars
@@ -398,7 +408,7 @@ export default function DiveSearch({
   setFullTable,
   setNumberOfPages,
   searchValue,
-  setSearchValue
+  setSearchValue,
 }: Readonly<{
   page_nr: number;
   setPageNumber: SetState<number>;

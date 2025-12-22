@@ -1,10 +1,11 @@
-"use client"
+"use client";
 
-import { resolveUrl } from "@/app/helper/url/resolveUrl";
+import { resolveUrl } from "@/components/globals/url/resolveUrl";
 import { useAuth } from "@/context/AuthContext";
 import { useWindowWidth } from "@/hooks/useWindowWidth";
 import "@fortawesome/fontawesome-free/css/all.css";
 import axios from "axios";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 // title of every web page
@@ -20,9 +21,19 @@ function MenuItem({
   isVisible: boolean;
   action: () => void;
 }>) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      action();
+    }
+  };
+
   return (
     <div
+      role="menuitem"
+      tabIndex={0}
       onClick={action}
+      onKeyDown={handleKeyDown}
       className="flex items-center gap-4 px-4 py-2 hover:bg-sky-600 cursor-pointer transition-all duration-300"
     >
       <i className={`fa fa-${icon} text-white text-lg`}></i>
@@ -92,7 +103,8 @@ export function BasicLayout({
   const showTitle = windowWidth >= SM_BREAKPOINT;
 
   return (
-    <div className="grid min-h-screen w-full transition-all duration-300"
+    <div
+      className="grid min-h-screen w-full transition-all duration-300"
       style={{
         gridTemplateRows: `${headerHeight}px calc((100vh -  ${headerHeight}px))`,
         gridTemplateColumns: `${sidebarWidth}px calc((100vw - ${sidebarWidth}px))`,
@@ -100,11 +112,15 @@ export function BasicLayout({
           "header header"
           "sidebar main"
         `,
-      }}>
+      }}
+    >
       {/* Header */}
-      <header style={{ gridArea: "header" }} className=" col-span-2 bg-sky-500 shadow-md px-4 sm:px-8 flex items-center justify-between z-20">
+      <header
+        style={{ gridArea: "header" }}
+        className=" col-span-2 bg-sky-500 shadow-md px-4 sm:px-8 flex items-center justify-between z-20"
+      >
         <div className="flex items-center">
-          <img
+          <Image
             src="/images/logo1.png"
             alt="Logo"
             className="h-18 w-auto transition-all duration-300"
@@ -143,7 +159,7 @@ export function BasicLayout({
         </div>
       </header>
       {/* Sidebar */}
-      {auth.loggedIn ?
+      {auth.loggedIn ? (
         <aside
           className="bg-sky-500 flex flex-col transition-all duration-300"
           style={{ width: sidebarWidth, gridArea: "sidebar" }}
@@ -176,13 +192,17 @@ export function BasicLayout({
             icon="user-group"
             text="Groups"
             isVisible={isVisible}
-            action={() => { router.push("/share/overview") }}
+            action={() => {
+              router.push("/share/overview");
+            }}
           />
           <MenuItem
             icon="user-pen"
             text="Profile"
             isVisible={isVisible}
-            action={() => { router.push("/profile") }}
+            action={() => {
+              router.push("/profile");
+            }}
           />
           <MenuItem
             icon="map"
@@ -191,9 +211,9 @@ export function BasicLayout({
             action={() => router.push("/map/createView")}
           />
         </aside>
-        :
+      ) : (
         <div></div>
-      }
+      )}
       {/* Main content */}
       <main
         className="transition-all duration-300 overflow-auto min-h-full min-w-full"

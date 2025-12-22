@@ -1,10 +1,11 @@
 "use client";
 
-import { resolveAutocompleteUrl } from '@/app/helper/url/resolveUrl';
-import Autocomplete from '@mui/material/Autocomplete';
-import TextField from '@mui/material/TextField';
-import axios from 'axios';
-import { useState, useRef } from 'react';
+import { resolveAutocompleteUrl } from "@/components/globals/url/resolveUrl";
+import debounce from "@/utils/debounce";
+import Autocomplete from "@mui/material/Autocomplete";
+import TextField from "@mui/material/TextField";
+import axios from "axios";
+import { useRef, useState } from "react";
 
 type AutocompleteInputProps = {
   suburl: string;
@@ -16,13 +17,18 @@ type AutocompleteInputProps = {
 type User = {
   id: number;
   name: string;
-}
+};
 
-export default function AutocompleteInput({ suburl, name, label, multiple = false }: AutocompleteInputProps) {
+export default function AutocompleteInput({
+  suburl,
+  name,
+  label,
+  multiple = false,
+}: Readonly<AutocompleteInputProps>) {
   const [options, setOptions] = useState<readonly User[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
-  const [selectedOptions, setSelectedOptions] = useState<null | readonly User[]>([])
+  const [selectedOptions, setSelectedOptions] = useState<null | User[]>([]);
 
   async function handleInputChange(
     event: React.SyntheticEvent<Element, Event> | undefined,
@@ -44,40 +50,29 @@ export default function AutocompleteInput({ suburl, name, label, multiple = fals
     value: readonly User[] | User | null
   ) {
     if (value !== null && !Array.isArray(value)) {
-      let valueArr = [value];
-      setSelectedOptions(valueArr as readonly User[]);
+      const valueArr = [value];
+      setSelectedOptions(valueArr as User[]);
       return;
     }
-    setSelectedOptions(value as readonly User[]);
-  }
-
-  function debounce<T extends (...args: any[]) => any>(func: T, delay: number) {
-    let timeout: ReturnType<typeof setTimeout>;
-
-    return (...args: Parameters<T>) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), delay);
-    };
+    setSelectedOptions(value as User[]);
   }
 
   const debouncedFetch = useRef(
-    debounce(async (value: string) => {
+    debounce<string, void, (arg0: string) => void>(async (value: string) => {
       const users = await axios
         .get(resolveAutocompleteUrl(`v1/autocomplete/${suburl}?query=${value}`))
-        .then(res => {
+        .then((res) => {
           if (suburl == "user" || suburl == "site") {
             return res.data.result;
           } else {
-            return res.data
+            return res.data;
           }
-        }
-        );
+        });
 
       setOptions(users);
       setLoading(false);
     }, 300)
   );
-
 
   return (
     <>
@@ -94,16 +89,11 @@ export default function AutocompleteInput({ suburl, name, label, multiple = fals
           <TextField {...params} label={label} name="not used"></TextField>
         )}
       />
-      {selectedOptions !== null && Array.isArray(selectedOptions) &&
+      {selectedOptions !== null &&
+        Array.isArray(selectedOptions) &&
         selectedOptions.map((option, index) => (
-          <input
-            key={index}
-            type="hidden"
-            name={name}
-            value={option.id}
-          />
-        ))
-      }
+          <input key={index + '-selected-option-autocomplete'} type="hidden" name={name} value={option.id} />
+        ))}
     </>
   );
 }

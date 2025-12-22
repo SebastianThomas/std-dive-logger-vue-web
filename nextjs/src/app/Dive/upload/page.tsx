@@ -1,6 +1,6 @@
 "use client";
-import CreateDiveSite from "@/app/diveSite/create/page";
-import { BasicLayout } from "@/app/helper/basic_layout";
+import CreateDiveSite from "@/app/dive/site/create/page";
+import { BasicLayout } from "@/components/globals/basic_layout";
 import useApi from "@/hooks/useApi";
 import "@fortawesome/fontawesome-free/css/all.css";
 import { useRef, useState } from "react";

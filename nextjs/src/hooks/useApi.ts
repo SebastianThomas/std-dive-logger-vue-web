@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from "axios";
-import { refreshAccessToken } from "../app/helper/auth/refreshToken";
-import { resolveUrl } from "../app/helper/url/resolveUrl";
+import { refreshAccessToken } from "../components/globals/auth/refreshToken";
+import { resolveUrl } from "../components/globals/url/resolveUrl";
 import { useAuth } from "../context/AuthContext";
 
 // Extend this if required, TSLint does not like any
@@ -14,6 +14,7 @@ export function useApi() {
         token?: string
     ): AxiosRequestConfig => {
         const headers: Record<string, string> = {};
+        init ??= {};
 
         if (auth.loggedIn) {
             headers["Authorization"] = `Bearer ${auth.accessToken}`;
@@ -23,7 +24,7 @@ export function useApi() {
         }
 
         return {
-            ...(init || {}),
+            ...init,
             headers: {
                 ...(init?.headers),
                 ...headers,
@@ -52,12 +53,12 @@ export function useApi() {
     /**
      * requestWithRetry rewritten for axios
      */
-    async function requestWithRetry(
+    async function requestWithRetry<T = unknown, D = unknown, H = object>(
         resolvedUrl: string,
         method: string,
         init: AxiosRequestConfig | undefined,
         body?: BodyType
-    ): Promise<AxiosResponse> {
+    ): Promise<AxiosResponse<T, D, H>> {
         const token = auth.loggedIn && auth.accessToken || await refresh();
         if (!token) {
             throw new Error("Refreshing failed or another refresh request is outstanding.")
@@ -73,10 +74,7 @@ export function useApi() {
         try {
             return await axios(firstConfig);
         } catch (err: unknown) {
-            if (!(axios.isAxiosError(err))) {
-                throw err;
-            }
-            if (err.response?.status !== 401) {
+            if (!(axios.isAxiosError(err)) || err.response?.status !== 401) {
                 throw err;
             }
 
@@ -93,29 +91,29 @@ export function useApi() {
 
             try {
                 return await axios(retryConfig);
-            } catch (err2: unknown) {
-                if (!(err2 instanceof AxiosError)) {
-                    throw err2;
+            } catch (err: unknown) {
+                if (!(err instanceof AxiosError)) {
+                    throw err;
                 }
-                if ("respone" in err2 && err2?.response?.status !== 401) {
-                    throw new Error('unauthorized')
+                if (err.response?.status === 401) {
+                    throw new Error('Unauthorized')
                 }
-                throw err2;
+                throw err;
             }
         }
     }
 
-    const getWithToken = async (url: string, init?: AxiosRequestConfig) => {
+    const getWithToken = async <T = unknown, H = unknown>(url: string, init?: AxiosRequestConfig) => {
         const resolved = resolveUrl(url);
-        return requestWithRetry(resolved, "GET", init);
+        return requestWithRetry<T, undefined, H>(resolved, "GET", init);
     };
 
-    const deleteWithToken = async (url: string, body?: BodyType, init?: AxiosRequestConfig) => {
+    const deleteWithToken = async <T = unknown, D = object, H = unknown>(url: string, body?: BodyType, init?: AxiosRequestConfig) => {
         const resolved = resolveUrl(url);
-        return requestWithRetry(resolved, "DELETE", init, body);
+        return requestWithRetry<T, D, H>(resolved, "DELETE", init, body);
     };
 
-    const postWithToken = async (
+    const postWithToken = async <T = unknown, D = object, H = unknown>(
         url: string,
         body?: BodyType,
         init?: AxiosRequestConfig,
@@ -125,7 +123,7 @@ export function useApi() {
         const contentTypeHeader =
             contentType === null ? {} : { "Content-Type": contentType };
 
-        const headers: AxiosHeaders = {
+        const headers = {
             ...contentTypeHeader,
             ...(init?.headers),
         } as AxiosHeaders;
@@ -136,10 +134,10 @@ export function useApi() {
 
         const initWithJson: AxiosRequestConfig = { ...init, headers };
 
-        return requestWithRetry(resolved, "POST", initWithJson, payload);
+        return requestWithRetry<T, H, D>(resolved, "POST", initWithJson, payload);
     };
 
-    const putWithToken = async (
+    const putWithToken = async <T = unknown, D = object, H = unknown>(
         url: string,
         body?: BodyType,
         init?: AxiosRequestConfig
@@ -158,7 +156,7 @@ export function useApi() {
         const payload =
             body && typeof body === "object" ? JSON.stringify(body) : body;
 
-        return requestWithRetry(resolved, "PUT", initWithJson, payload);
+        return requestWithRetry<T, H, D>(resolved, "PUT", initWithJson, payload);
     };
 
     return { getWithToken, postWithToken, putWithToken, refresh, deleteWithToken };

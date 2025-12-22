@@ -2,7 +2,7 @@
 
 import EditDivePage from "@/components/dive/create/diveinformationform";
 import useApi from "@/hooks/useApi";
-import type { DiveSite } from "@/types/dive";
+import type { Dive, DiveSite } from "@/types/dive";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -40,7 +40,7 @@ export default function EditDive({ diveId, onClose }: Readonly<EditDiveProps>) {
   useEffect(() => {
     const fetchDive = async () => {
       try {
-        const res = await getWithToken(`/v1/dives/${diveId}`);
+        const res = await getWithToken<Dive>(`/v1/dives/${diveId}`);
         const dive = res.data;
 
         setFormData({
@@ -58,7 +58,7 @@ export default function EditDive({ diveId, onClose }: Readonly<EditDiveProps>) {
       }
     };
     fetchDive();
-  }, [diveId]);
+  }, [diveId, getWithToken]);
 
   const handleSubmit = async () => {
     const { step1, originalSite } = formData;
@@ -72,9 +72,10 @@ export default function EditDive({ diveId, onClose }: Readonly<EditDiveProps>) {
       // Check for existing sites
       let existingSites: DiveSite[] = [];
       try {
-        const res = await getWithToken(`/v1/dives/sites/location?lat=${lat}&lon=${lon}`);
+        const res = await getWithToken<DiveSite[]>(`/v1/dives/sites/location?lat=${lat}&lon=${lon}`);
         existingSites = res.data;
       } catch (err) {
+        console.error(err);
         toast.error("Failed to check for existing dive site.");
         return;
       }
@@ -99,7 +100,7 @@ export default function EditDive({ diveId, onClose }: Readonly<EditDiveProps>) {
             lat,
             lon,
           };
-          const createdSite = await postWithToken("/v1/dives/sites", newSiteData);
+          const createdSite = await postWithToken<DiveSite>("/v1/dives/sites", newSiteData);
           const returned = createdSite.data;
           if (!returned.id) {
             toast.error("Created dive site has no ID.");
@@ -112,6 +113,7 @@ export default function EditDive({ diveId, onClose }: Readonly<EditDiveProps>) {
             longitude: returned.longitude,
           };
         } catch (err) {
+          console.error(err);
           toast.error("Failed to create new dive site.");
           return;
         }
@@ -123,7 +125,7 @@ export default function EditDive({ diveId, onClose }: Readonly<EditDiveProps>) {
         latitude: originalSite.latitude,
         longitude: originalSite.longitude,
       };
-    };
+    }
 
     if (!sitePayload) {
       toast.error("Dive site information is missing.");
@@ -150,6 +152,7 @@ export default function EditDive({ diveId, onClose }: Readonly<EditDiveProps>) {
       toast.success("Dive updated successfully!");
       onClose();
     } catch (err) {
+      console.error(err);
       toast.error("Failed to update dive.");
     }
   };

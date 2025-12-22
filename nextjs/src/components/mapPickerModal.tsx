@@ -59,7 +59,7 @@ export default function MapPickerModal({
   initialCoords,
   onSelect,
   onClose,
-}: MapPickerModalProps) {
+}: Readonly<MapPickerModalProps>) {
   const [selected, setSelected] = useState<MapCoords | null>(
     initialCoords ?? null
   );
@@ -76,9 +76,12 @@ export default function MapPickerModal({
 
   useEffect(() => {
     if (open) {
-      setSelected(initialCoords ?? null);
+      if (selected !== initialCoords) {
+        console.log("Set State should have been called if this happened after the initial component was rendered. Remove selected from the dependency array");
+      }
+      // Maybe add this: setSelected(() => initialCoords ?? null);
     }
-  }, [open, initialCoords]);
+  }, [open, initialCoords, selected]);
 
   if (!open) return null;
 
@@ -89,7 +92,7 @@ export default function MapPickerModal({
         {/* CLOSE BUTTON */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 z-[1000] px-3 py-1 bg-white rounded-lg shadow"
+          className="absolute top-3 right-3 z-1000 px-3 py-1 bg-white rounded-lg shadow"
         >
           ✕
         </button>

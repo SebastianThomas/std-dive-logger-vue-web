@@ -1,17 +1,18 @@
 "use client";
 
-import { BasicLayout } from "@/app/helper/basic_layout";
+import { BasicLayout } from "@/components/globals/basic_layout";
+import GroupPopover from "@/components/share/groupPopover";
+import useApi from "@/hooks/useApi";
+import { PagedResult } from "@/types/dive";
+import { GroupMember } from "@/types/share";
+import EditIcon from '@mui/icons-material/Edit';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import GroupJoinIcon from '@mui/icons-material/Login';
-import ScubaIcon from '@mui/icons-material/ScubaDiving';
-import EditIcon from '@mui/icons-material/Edit';
-import { useState, useEffect } from "react";
-import useApi from "@/hooks/useApi";
-import { IconButton, Button, Tooltip, Popover } from "@mui/material";
-import GroupPopover from "@/components/share/groupPopover";
-import { toast } from "react-toastify";
+import { Button, IconButton, Tooltip } from "@mui/material";
+import axios from "axios";
 import { useRouter } from "next/navigation";
-import { GroupMember } from "@/types/share"
+import { useState } from "react";
+import { toast } from "react-toastify";
 
 export default function GroupOverview() {
     const [groups, setGroups] = useState<GroupMember[]>([]);
@@ -27,12 +28,16 @@ export default function GroupOverview() {
 
     async function joinGroup(groupName: string): Promise<boolean> {
         try {
-            const res = await postWithToken((`/v1/groups/${groupName}/join`), {}, {}, "application/json");
-            console.log(res.data);
+            await postWithToken((`/v1/groups/${groupName}/join`), {}, {}, "application/json");
             toast.success("joined successfully!");
             fetchGroups();
             return true;
-        } catch (err: any) {
+        } catch (err: unknown) {
+            if (!axios.isAxiosError(err)) {
+                console.error(err);
+                toast.error('Could not join group');
+                return false;
+            }
             const backendMessage: string = err.response?.data?.detail
             if (backendMessage?.includes("already requested")) {
                 toast.error("You already requested to be a member of this group.");
@@ -46,11 +51,16 @@ export default function GroupOverview() {
 
     async function addGroup(groupName: string): Promise<boolean> {
         try {
-            const res = await postWithToken(("/v1/groups"), { name: groupName }, {}, "application/json");
+            await postWithToken(("/v1/groups"), { name: groupName }, {}, "application/json");
             toast.success("Group created successfully!");
             fetchGroups();
             return true;
-        } catch (err: any) {
+        } catch (err: unknown) {
+            if (!axios.isAxiosError(err)) {
+                console.error(err);
+                toast.error('Could not join group');
+                return false;
+            }
             const backendMessage: string = err.response?.data?.detail
             if (backendMessage?.includes("A group with this name already exists.")) {
                 toast.error("A group with this name already exists.");
@@ -62,25 +72,18 @@ export default function GroupOverview() {
         }
     }
 
-    function showDive(id: number) {
-        //TODO: push to Dives of this Group
-        console.log("showDive of group with id: ", id)
-    }
     function editGroup(id: number) {
         router.push(`/share/${id}/edit`);
     }
 
     async function fetchGroups() {
         try {
-            const res = await getWithToken('/v1/groups')
+            const res = await getWithToken<PagedResult<GroupMember>>('/v1/groups')
             setGroups(res.data.result)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err)
         }
     }
-    useEffect(() => {
-        fetchGroups();
-    }, []);
 
     return (
         <BasicLayout page_name={""} >

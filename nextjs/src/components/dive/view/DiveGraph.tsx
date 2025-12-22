@@ -21,7 +21,7 @@ import {
 } from "@/types/dive";
 import { JsonViewer } from "@textea/json-viewer";
 import * as d3 from "d3";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DataPoint,
   DEFAULT_METRIC_CONFIGS,
@@ -113,12 +113,15 @@ export function LinePlot({
 
   // Responsive dimensions
   useEffect(() => {
+    const w = globalThis || window;
     const updateDimensions = () => {
+
       if (!svgContainerRef.current) return;
 
       const containerWidth = svgContainerRef.current.offsetWidth || 640;
+      console.log(`Container Width: ${svgContainerRef.current.offsetWidth}`)
       const viewportHeight =
-        typeof window !== "undefined" ? window.innerHeight : 800;
+        w == undefined ? 800 : w.innerHeight;
 
       const width = Math.min(containerWidth, 1500);
       let height: number;
@@ -129,7 +132,6 @@ export function LinePlot({
           break;
 
         case "fullscreen":
-          // relative to screen height
           height = Math.max(
             300,
             Math.floor(viewportHeight * 0.7)
@@ -145,10 +147,10 @@ export function LinePlot({
 
     updateDimensions();
 
-    if (typeof window === "undefined") return;
+    if (w == undefined) return;
 
     const observer =
-      typeof window.ResizeObserver === "function" && svgContainerRef.current
+      typeof w.ResizeObserver === "function" && svgContainerRef.current
         ? new ResizeObserver(updateDimensions)
         : null;
 
@@ -188,12 +190,12 @@ export function LinePlot({
 
   data.sort((a, b) => a.time - b.time);
 
-  const metricHasData = (metric: MetricType): boolean => {
+  const metricHasData = useCallback((metric: MetricType): boolean => {
     return data.some((d) => {
       const value = d[metric as keyof DataPoint];
       return value !== undefined && value !== null && value !== "";
     });
-  };
+  }, [data]);
 
   const getTemperatureLabel = () => {
     if (data.length > 0) {
@@ -281,7 +283,7 @@ export function LinePlot({
     } finally {
       configLoadedRef.current = true;
     }
-  }, [data.length]);
+  }, [data.length, metricHasData]);
 
   // Persist configuration
   useEffect(() => {
@@ -572,7 +574,7 @@ export function LinePlot({
         Math.abs(curr.time - timeValue) < Math.abs(prev.time - timeValue)
           ? curr
           : prev
-      );
+        , data[0]);
 
       setTooltip({
         x: touch.clientX,
@@ -630,7 +632,7 @@ export function LinePlot({
       Math.abs(curr.time - timeValue) < Math.abs(prev.time - timeValue)
         ? curr
         : prev
-    );
+      , data[0]);
 
     // Find which segment this time falls into
     const currentSegment = segmentRanges.find(
@@ -688,7 +690,7 @@ export function LinePlot({
 
       <div
         ref={svgContainerRef}
-        className="flex-1 w-full max-w-[600px] mx-auto"
+        className={`flex-1 w-full mx-auto ${variant === "fullscreen" ? "min-w-[80%]" : "max-w-150"}`}
       >
         <svg width={width} height={height} className="w-full h-auto">
           <g ref={gx} transform={`translate(0,${height - marginBottom})`} />
@@ -728,7 +730,7 @@ export function LinePlot({
           {showSegments &&
             segmentRanges.map((seg, idx) => (
               <rect
-                key={`segment-${idx}`}
+                key={`segment-` + idx}
                 id={`segment-${idx}`}
                 x={x(seg.start)}
                 y={marginTop}

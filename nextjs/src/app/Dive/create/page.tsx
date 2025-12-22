@@ -1,9 +1,10 @@
 "use client";
 
-import { BasicLayout } from "@/app/helper/basic_layout";
 import MissingDiveSite from "@/components/dive/create/site/missingDiveSite";
 import UploadDiveFile from "@/components/dive/create/uploadfile";
+import { BasicLayout } from "@/components/globals/basic_layout";
 import useApi from "@/hooks/useApi";
+import { DiveWithoutProfiles } from "@/types/dive";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -31,8 +32,8 @@ export default function FastDiveUpload() {
             const bodyBlob = new Blob([JSON.stringify(body)], { type: "application/json" });
             formDataObj.append("uploadBody", bodyBlob);
             files.forEach((file) => formDataObj.append("file", file));
-            const res = await postWithToken("/v1/dives/upload", formDataObj, {}, null);
-            toast.success("Upload complete!", { autoClose: 2000 });
+            const res = await postWithToken<DiveWithoutProfiles[]>("/v1/dives/upload", formDataObj, {}, null);
+            toast.success("Upload complete!", { autoClose: 3000 });
             const dive = res.data?.[0];
 
             if (!dive?.id) {
@@ -116,6 +117,7 @@ export default function FastDiveUpload() {
                         onClose={() => setShowCreateSite(false)}
                         onCreated={async (site) => {
                             setShowCreateSite(false);
+                            toast.info(`Successfully created site ${site.name}, retrying upload...`)
                             await handleSubmit();
                         }}
                     />

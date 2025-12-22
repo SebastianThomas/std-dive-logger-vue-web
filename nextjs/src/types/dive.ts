@@ -1,3 +1,4 @@
+import { User } from "./share";
 
 export type PagedResult<T> = {
   pageSize: number;
@@ -82,17 +83,20 @@ export type DiveProfile = {
 
 export type Dive = {
   id: number;
-  user: { id: number, name: string }
+  user: { id: number; name: string };
   number: number;
   customIdentifier: string;
   previewImage: string;
   site: DiveSite;
   profiles: DiveProfile[];
-  buddiesDives: any[];
+  buddiesDives: {
+    buddy: User;
+    diveId: number;
+  }[];
   namedBuddies: string[];
 };
 
-export type DiveWithoutProfiles = Omit<Dive, 'profiles'>;
+export type DiveWithoutProfiles = Omit<Dive, "profiles">;
 
 export type DiveProfileWithoutMeasurements = {
   id: number;
@@ -121,8 +125,31 @@ export type DiveProfileSegmentWithId = {
   segment: DiveProfileSegment;
 };
 
-export type ParamsMap = { [K in keyof DiveWithoutProfiles]: string }
-export type FilteredParamsMap = Partial<ParamsMap>
+export type DiveDepthVarianceStats = {
+  version: number;
+  avgDepth: number;
+  maxDepth: number;
+  minDepth: number;
+  deviationAvg: number;
+  deviationVariance: number;
+  deviation01p: number;
+  deviation10p: number;
+  deviationMedian: number;
+  deviation90p: number;
+  deviationMax: number;
+};
+
+export type DiveDepthVariance = {
+  diveId: number;
+  profileId: number;
+  profileSegmentId: number;
+  startIdx: number;
+  lastIdx: number;
+  stats: DiveDepthVarianceStats;
+};
+
+export type ParamsMap = { [K in keyof DiveWithoutProfiles]: string };
+export type FilteredParamsMap = Partial<ParamsMap>;
 
 export const ALL_PARAMS_MAP: ParamsMap = {
   id: "ID",
@@ -133,19 +160,21 @@ export const ALL_PARAMS_MAP: ParamsMap = {
   buddiesDives: "Buddy Dives",
   namedBuddies: "Buddies",
   user: "Diver",
-} as const
+} as const;
 
-export const params: (keyof DiveWithoutProfiles)[] = Object.keys(ALL_PARAMS_MAP) as (keyof DiveWithoutProfiles)[]
+export const params: (keyof DiveWithoutProfiles)[] = Object.keys(
+  ALL_PARAMS_MAP
+) as (keyof DiveWithoutProfiles)[];
 
 type Buddy = {
   id: number;
   name: string;
-}
+};
 
 export type BuddyDive = {
   buddy: Buddy;
   diveId: number;
-}
+};
 
 export type DiveSite = {
   id?: number;
@@ -153,4 +182,3 @@ export type DiveSite = {
   latitude: number;
   longitude: number;
 };
-

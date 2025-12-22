@@ -1,7 +1,7 @@
 "use client";
 
+import { BasicLayout } from "@/components/globals/basic_layout";
 import type { DiveWithoutProfiles } from '@/types/dive';
-import { BasicLayout } from "@/app/helper/basic_layout";
 import "@fortawesome/fontawesome-free/css/all.css";
 import { useState } from "react";
 import DiveSearch from "./helper/dive-search";

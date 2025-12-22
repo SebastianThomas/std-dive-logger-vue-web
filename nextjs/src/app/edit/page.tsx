@@ -1,7 +1,7 @@
 "use client";
 
 import "@fortawesome/fontawesome-free/css/all.css";
-import { BasicLayout } from "./../helper/basic_layout";
+import { BasicLayout } from "../../components/globals/basic_layout";
 
 export default function Home() {
   return (

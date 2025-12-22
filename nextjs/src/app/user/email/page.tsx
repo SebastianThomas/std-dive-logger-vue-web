@@ -1,5 +1,5 @@
 "use client";
-import { resolveUrl } from "@/app/helper/url/resolveUrl";
+import { resolveUrl } from "@/components/globals/url/resolveUrl";
 import axios, { isAxiosError } from "axios";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -26,7 +26,7 @@ export default function ConfirmEmail() {
                 }
             });
         }
-    }, [token]);
+    }, [token, router]);
 
 
     return <div>
