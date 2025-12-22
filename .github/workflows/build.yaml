@@ -25,10 +25,10 @@ jobs:
       - name: Install dependencies
         working-directory: ${{ env.FRONTEND_DIR }}
         run: yarn install --frozen-lockfile
-      - name: Build project
-        working-directory: ${{ env.FRONTEND_DIR }}
-        run: yarn build
       - name: Lint project
         if: ${{ env.LINT_ENABLED  == 'true'}}
         working-directory: ${{ env.FRONTEND_DIR }}
         run: yarn lint
+      - name: Build project
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn build
