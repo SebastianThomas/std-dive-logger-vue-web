@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-set -euo pipefail
+
+# Enable strict mode; fall back gracefully if not running under bash
+if [ -n "${BASH_VERSION:-}" ]; then
+    set -euo pipefail
+else
+    set -eu
+fi
 
 IMAGE="sthomasch/std-dive-logger-web"
 PLATFORM="${PLATFORM:-linux/amd64}"
