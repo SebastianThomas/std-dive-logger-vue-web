@@ -10,6 +10,8 @@ export const DivePropertyRenderer: Record<keyof DiveWithoutProfiles, (row: DiveW
     <Image
       src={row.previewImage}
       alt={`Preview of dive ${row.id}`}
+      width={100}
+      height={40}
     />,
   site: (row: DiveWithoutProfiles) => <span>{row.site.name + " (" + row.site.latitude + "°N," + row.site.longitude + "°E)"}</span>,
   buddiesDives: (row: DiveWithoutProfiles) =>

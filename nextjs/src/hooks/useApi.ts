@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from "axios";
+import { useCallback, useMemo } from "react";
 import { refreshAccessToken } from "../components/globals/auth/refreshToken";
 import { resolveUrl } from "../components/globals/url/resolveUrl";
 import { useAuth } from "../context/AuthContext";
@@ -9,12 +10,12 @@ export type BodyType = object | string | number;
 export function useApi() {
     const { auth, login, logout, setRefreshing } = useAuth();
 
-    const withToken = (
+    const withToken = useCallback((
         init?: AxiosRequestConfig,
         token?: string
     ): AxiosRequestConfig => {
         const headers: Record<string, string> = {};
-        init ??= {};
+        const baseInit = init ?? {};
 
         if (auth.loggedIn) {
             headers["Authorization"] = `Bearer ${auth.accessToken}`;
@@ -24,15 +25,15 @@ export function useApi() {
         }
 
         return {
-            ...init,
+            ...baseInit,
             headers: {
-                ...(init?.headers),
+                ...(baseInit.headers),
                 ...headers,
             },
         };
-    };
+    }, [auth]);
 
-    const refresh = async (): Promise<string> => {
+    const refresh = useCallback(async (): Promise<string> => {
         while (auth.refreshing) {
             // wait
             await new Promise(resolve => setTimeout(resolve, 50));
@@ -47,13 +48,13 @@ export function useApi() {
             return token;
         }
         logout();
-        throw new Error("Could not refresh, please log in again.");
-    };
+        throw new Error("Could not refresh, please log in again.")
+    }, [auth, login, logout, setRefreshing]);
 
     /**
      * requestWithRetry rewritten for axios
      */
-    async function requestWithRetry<T = unknown, D = unknown, H = object>(
+    const requestWithRetry = useCallback(async function <T = unknown, D = unknown, H = object>(
         resolvedUrl: string,
         method: string,
         init: AxiosRequestConfig | undefined,
@@ -101,19 +102,19 @@ export function useApi() {
                 throw err;
             }
         }
-    }
+    }, [auth, refresh, withToken]);
 
-    const getWithToken = async <T = unknown, H = unknown>(url: string, init?: AxiosRequestConfig) => {
+    const getWithToken = useCallback(async <T = unknown, H = unknown>(url: string, init?: AxiosRequestConfig) => {
         const resolved = resolveUrl(url);
         return requestWithRetry<T, undefined, H>(resolved, "GET", init);
-    };
+    }, [requestWithRetry]);
 
-    const deleteWithToken = async <T = unknown, D = object, H = unknown>(url: string, body?: BodyType, init?: AxiosRequestConfig) => {
+    const deleteWithToken = useCallback(async <T = unknown, D = object, H = unknown>(url: string, body?: BodyType, init?: AxiosRequestConfig) => {
         const resolved = resolveUrl(url);
         return requestWithRetry<T, D, H>(resolved, "DELETE", init, body);
-    };
+    }, [requestWithRetry]);
 
-    const postWithToken = async <T = unknown, D = object, H = unknown>(
+    const postWithToken = useCallback(async <T = unknown, D = object, H = unknown>(
         url: string,
         body?: BodyType,
         init?: AxiosRequestConfig,
@@ -135,9 +136,9 @@ export function useApi() {
         const initWithJson: AxiosRequestConfig = { ...init, headers };
 
         return requestWithRetry<T, H, D>(resolved, "POST", initWithJson, payload);
-    };
+    }, [requestWithRetry]);
 
-    const putWithToken = async <T = unknown, D = object, H = unknown>(
+    const putWithToken = useCallback(async <T = unknown, D = object, H = unknown>(
         url: string,
         body?: BodyType,
         init?: AxiosRequestConfig
@@ -157,9 +158,9 @@ export function useApi() {
             body && typeof body === "object" ? JSON.stringify(body) : body;
 
         return requestWithRetry<T, H, D>(resolved, "PUT", initWithJson, payload);
-    };
+    }, [requestWithRetry]);
 
-    return { getWithToken, postWithToken, putWithToken, refresh, deleteWithToken };
+    return useMemo(() => ({ getWithToken, postWithToken, putWithToken, refresh, deleteWithToken }), [deleteWithToken, getWithToken, postWithToken, putWithToken, refresh]);
 }
 
 export default useApi;

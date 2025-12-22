@@ -10,7 +10,7 @@ import { User } from "@/types/share";
 import { isDefined } from "@/utils/arrays";
 import { parseISODuration, showDuration } from "@/utils/timeUtils";
 import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 // ------------------------
 // Small summary card component
@@ -44,15 +44,22 @@ function ViewContent({ diveId }: { diveId: number }) {
   const [myDives, setMyDives] = useState<DiveWithoutProfiles[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Prevent repeated fetches when state changes elsewhere
+  const lastFetchedDiveId = useRef<number | null>(null);
+  const hasFetchedUser = useRef(false);
+  const lastFetchedUserIdForDives = useRef<number | null>(null);
+
   // ---------------- Fetch dive ----------------
   useEffect(() => {
     if (auth.refreshing || !auth.loggedIn) return;
+    if (lastFetchedDiveId.current === diveId) return;
 
     const fetchDive = async () => {
       try {
         setLoading(true);
         const res = await getWithToken<Dive>(`/v1/dives/${diveId}`);
         setDive(res.data);
+        lastFetchedDiveId.current = diveId;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch dive");
       } finally {
@@ -60,36 +67,42 @@ function ViewContent({ diveId }: { diveId: number }) {
       }
     };
     fetchDive();
-  }, [diveId, auth, getWithToken]);
+  }, [diveId, auth.loggedIn, auth.refreshing, getWithToken]);
 
   // ---------------- Fetch current user ID ----------------
   useEffect(() => {
+    if (auth.refreshing || !auth.loggedIn) return;
+    if (hasFetchedUser.current) return;
+
     const fetchUserId = async () => {
       try {
         const res = await getWithToken<User>("/v1/users/");
         setMyUserId(res.data.id);
+        hasFetchedUser.current = true;
       } catch (err) {
         console.error("Failed to fetch user ID", err);
       }
     };
     fetchUserId();
-  }, [getWithToken]);
+  }, [auth.loggedIn, auth.refreshing, getWithToken]);
 
   // ---------------- Fetch my dives ----------------
   useEffect(() => {
     const fetchMyDives = async () => {
-      if (myUserId === null) return;
+      if (myUserId === null || auth.refreshing || !auth.loggedIn) return;
+      if (lastFetchedUserIdForDives.current === myUserId) return;
       try {
         const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(
           "/v1/dives?page=0&sortCol=NUMBER&sortDirection=ASCENDING"
         );
         setMyDives(res.data.result); // store for client-side search
+        lastFetchedUserIdForDives.current = myUserId;
       } catch (err) {
         console.error("Failed to fetch my dives", err);
       }
     };
     fetchMyDives();
-  }, [myUserId, getWithToken]);
+  }, [auth.loggedIn, auth.refreshing, myUserId, getWithToken]);
 
   // ---------------- Delete ----------------
   const handleDelete = async () => {
@@ -121,7 +134,7 @@ function ViewContent({ diveId }: { diveId: number }) {
 
   // ---------------- Handle Escape for graph ----------------
   useEffect(() => {
-    const w = globalThis || window;
+    const w = globalThis;
     if (!graphOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {

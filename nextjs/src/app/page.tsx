@@ -41,7 +41,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
   return (
     <div className="w-full sm:min-w-75 sm:max-w-87.5 md:min-w-100 md:max-w-105 bg-white rounded-xl shadow-lg p-6 sm:p-8 shrink-0">
       <div className="w-full h-40 sm:h-44 md:h-48 overflow-hidden rounded-md mb-4">
-        <Image src={image} alt={title} className="w-full h-full object-cover" />
+        <Image src={image} alt={title} className="w-full h-full object-cover" width={356} height={192} />
       </div>
       <h3 className="text-lg font-semibold mb-2 text-gray-600">{title}</h3>
       <p className="text-gray-600 text-sm">{description}</p>

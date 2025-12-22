@@ -123,6 +123,8 @@ export function BasicLayout({
           <Image
             src="/images/logo1.png"
             alt="Logo"
+            width="72"
+            height="72"
             className="h-18 w-auto transition-all duration-300"
             onClick={() => router.push("/")}
           />
