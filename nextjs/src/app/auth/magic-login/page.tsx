@@ -5,6 +5,7 @@ import { resolveUrl } from "@/components/globals/url/resolveUrl";
 import { useAuth } from "@/context/AuthContext";
 import "@fortawesome/fontawesome-free/css/all.css";
 import axios from "axios";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { toast } from "react-toastify";
@@ -94,12 +95,11 @@ export default function Login() {
                         </form>
 
                         <div className="mt-4 text-center">
-                            <button
-                                onClick={() => router.push('/auth/login')}
-                                className="text-sky-600 hover:underline"
-                            >
-                                Use your password
-                            </button>
+                            <Link href="/auth/login">
+                                <button className="text-sky-600 hover:underline">
+                                    Use your password
+                                </button>
+                            </Link>
                         </div>
                     </article>
                 </main>

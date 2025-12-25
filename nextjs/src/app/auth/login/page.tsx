@@ -5,6 +5,7 @@ import { resolveUrl } from "@/components/globals/url/resolveUrl";
 import { useAuth } from "@/context/AuthContext";
 import "@fortawesome/fontawesome-free/css/all.css";
 import axios, { AxiosResponse } from "axios";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { toast } from "react-toastify";
@@ -138,12 +139,11 @@ export default function Login() {
             </form>
 
             <div className="mt-4 text-center">
-              <button
-                onClick={() => router.push('/auth/magic-login')}
-                className="text-sky-600 hover:underline"
-              >
-                Use Magic Link Login
-              </button>
+              <Link href="/auth/magic-login">
+                <button className="text-sky-600 hover:underline">
+                  Use Magic Link Login
+                </button>
+              </Link>
             </div>
           </article>
         </main>

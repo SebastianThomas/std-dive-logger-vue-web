@@ -6,6 +6,7 @@ import { useWindowWidth } from "@/hooks/useWindowWidth";
 import "@fortawesome/fontawesome-free/css/all.css";
 import axios from "axios";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 // title of every web page
@@ -14,12 +15,12 @@ function MenuItem({
   icon,
   text,
   isVisible,
-  action,
+  action = () => { },
 }: Readonly<{
   icon: string;
   text: string;
   isVisible: boolean;
-  action: () => void;
+  action?: () => void;
 }>) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -120,19 +121,20 @@ export function BasicLayout({
         className=" col-span-2 bg-sky-500 shadow-md px-4 sm:px-8 flex items-center justify-between z-20"
       >
         <div className="flex items-center">
-          <Image
-            src="/images/logo1.png"
-            alt="Logo"
-            width="72"
-            height="72"
-            className="h-18 w-auto transition-all duration-300"
-            onClick={() => router.push("/")}
-          />
-          {showTitle && (
-            <h1 className="text-lg sm:text-xl font-bold text-white ml-4">
-              Dive Together Log {page_name}
-            </h1>
-          )}
+          <Link href="/">
+            <Image
+              src="/images/logo1.png"
+              alt="Logo"
+              width="72"
+              height="72"
+              className="h-18 w-auto transition-all duration-300"
+            />
+            {showTitle && (
+              <h1 className="text-lg sm:text-xl font-bold text-white ml-4">
+                Dive Together Log {page_name}
+              </h1>
+            )}
+          </Link>
         </div>
         <div className="flex space-x-2 sm:space-x-3">
           {auth.loggedIn ? (
@@ -144,18 +146,20 @@ export function BasicLayout({
             </button>
           ) : (
             <>
-              <button
-                className="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-blue-700 transition-colors"
-                onClick={() => router.push("/auth/signup")}
-              >
-                Sign Up
-              </button>
-              <button
-                className="bg-gray-200 text-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-gray-300 transition-colors"
-                onClick={() => router.push("/auth/login")}
-              >
-                Sign In
-              </button>
+              <Link href="/auth/signup">
+                <button
+                  className="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-blue-700 transition-colors"
+                >
+                  Sign Up
+                </button>
+              </Link>
+              <Link href="/auth/login">
+                <button
+                  className="bg-gray-200 text-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-gray-300 transition-colors"
+                >
+                  Sign In
+                </button>
+              </Link>
             </>
           )}
         </div>
@@ -172,46 +176,48 @@ export function BasicLayout({
             isVisible={isVisible}
             action={toggleSidebar}
           />
-          <MenuItem
-            icon="home"
-            text="Home"
-            isVisible={isVisible}
-            action={() => router.push("/")}
-          />
-          <MenuItem
-            icon="search"
-            text="Search Dives"
-            isVisible={isVisible}
-            action={() => router.push("/dive/dive-selection")}
-          />
-          <MenuItem
-            icon="pen-to-square"
-            text="Upload Dive"
-            isVisible={isVisible}
-            action={() => router.push("/dive/create")}
-          />
-          <MenuItem
-            icon="user-group"
-            text="Groups"
-            isVisible={isVisible}
-            action={() => {
-              router.push("/share/overview");
-            }}
-          />
-          <MenuItem
-            icon="user-pen"
-            text="Profile"
-            isVisible={isVisible}
-            action={() => {
-              router.push("/profile");
-            }}
-          />
-          <MenuItem
-            icon="map"
-            text="Dive Sites"
-            isVisible={isVisible}
-            action={() => router.push("/map/createView")}
-          />
+          <Link href="/">
+            <MenuItem
+              icon="home"
+              text="Home"
+              isVisible={isVisible}
+            />
+          </Link>
+          <Link href="/dive/dive-selection">
+            <MenuItem
+              icon="search"
+              text="Search Dives"
+              isVisible={isVisible}
+            />
+          </Link>
+          <Link href="/dive/create">
+            <MenuItem
+              icon="pen-to-square"
+              text="Upload Dive"
+              isVisible={isVisible}
+            />
+          </Link>
+          <Link href="/share/overview">
+            <MenuItem
+              icon="user-group"
+              text="Groups"
+              isVisible={isVisible}
+            />
+          </Link>
+          <Link href="/profile">
+            <MenuItem
+              icon="user-pen"
+              text="Profile"
+              isVisible={isVisible}
+            />
+          </Link>
+          <Link href="/map/createView">
+            <MenuItem
+              icon="map"
+              text="Dive Sites"
+              isVisible={isVisible}
+            />
+          </Link>
         </aside>
       ) : (
         <div></div>

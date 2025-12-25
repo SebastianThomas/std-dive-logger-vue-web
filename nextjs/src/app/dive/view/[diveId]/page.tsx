@@ -9,6 +9,7 @@ import { Dive, DiveWithoutProfiles, PagedResult } from "@/types/dive";
 import { User } from "@/types/share";
 import { isDefined } from "@/utils/arrays";
 import { parseISODuration, showDuration } from "@/utils/timeUtils";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
@@ -208,12 +209,13 @@ function ViewContent({ diveId }: { diveId: number }) {
               <div className="flex gap-2">
                 {isMine ? (
                   <>
-                    <button
-                      className="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700"
-                      onClick={() => router.push(`/dive/edit/${dive.id}`)}
-                    >
-                      Edit Dive
-                    </button>
+                    <Link href={`/dive/edit/${dive.id}`}>
+                      <button
+                        className="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700"
+                      >
+                        Edit Dive
+                      </button>
+                    </Link>
                     <button
                       className="bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
                       onClick={() => setShowDeleteModal(true)}
@@ -444,12 +446,13 @@ function ViewContent({ diveId }: { diveId: number }) {
                           className="flex items-center gap-1"
                         >
                           <span className="font-medium">{buddy.name}</span>
-                          <button
-                            onClick={() => router.push(`/dive/${diveId}`)}
-                            className="text-blue-600 hover:underline text-xs"
-                          >
-                            {buddy.name}’s dive
-                          </button>
+                          <Link href={`/dive/${diveId}`}>
+                            <button
+                              className="text-blue-600 hover:underline text-xs"
+                            >
+                              {buddy.name}’s dive
+                            </button>
+                          </Link>
                         </li>
                       ))}
                     </ul>

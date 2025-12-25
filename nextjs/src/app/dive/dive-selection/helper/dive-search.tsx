@@ -2,7 +2,7 @@ import useApi from "@/hooks/useApi";
 import type { SetState } from "@/types/abbreviations";
 import type { DiveWithoutProfiles, PagedResult } from "@/types/dive";
 import { ALL_PARAMS_MAP, params } from "@/types/dive";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 
 /*
@@ -38,20 +38,15 @@ function EditSelectedDives({
   selectedDives: DiveWithoutProfiles[];
   displayedItems: (keyof DiveWithoutProfiles)[];
 }>) {
-  const router = useRouter();
-  function handlePageChange() {
-    router.push(
-      `/dive/edit-dives?items=${displayedItems.join(",")}&dives=${selectedDives.map((d) => d.id).join(",")}`
-    );
-  }
+  const url = `/dive/edit-dives?items=${displayedItems.join(",")}&dives=${selectedDives.map((d) => d.id).join(",")}`;
+
   return (
     <div className="h-1/3 p-1 flex justify-center items-center">
-      <button
-        className="w-full h-full border-2 rounded-lg bg-sky-200 flex justify-center items-center cursor-pointer hover:bg-sky-300"
-        onClick={() => handlePageChange()}
-      >
-        Edit selected dives <i className="fa-solid fa-pen-to-square ml-2"></i>
-      </button>
+      <Link href={url}>
+        <button className="w-full h-full border-2 rounded-lg bg-sky-200 flex justify-center items-center cursor-pointer hover:bg-sky-300">
+          Edit selected dives <i className="fa-solid fa-pen-to-square ml-2"></i>
+        </button>
+      </Link>
     </div>
   );
 }
@@ -202,8 +197,8 @@ export function ParameterSelection({
           <div key={param}>
             <button
               className={`p-3 cursor-pointer transition-colors ${displayedItems.includes(param)
-                ? "bg-sky-200 hover:bg-sky-300"
-                : "bg-gray-200 hover:bg-gray-300"
+                  ? "bg-sky-200 hover:bg-sky-300"
+                  : "bg-gray-200 hover:bg-gray-300"
                 }`}
               onClick={() => toggleParam(param)}
             >
@@ -237,8 +232,8 @@ export function SortingSelection({
           <div key={param}>
             <button
               className={`p-3 cursor-pointer transition-colors ${sortingParameter === param
-                ? "bg-sky-200 hover:bg-sky-300"
-                : "bg-gray-200 hover:bg-gray-300"
+                  ? "bg-sky-200 hover:bg-sky-300"
+                  : "bg-gray-200 hover:bg-gray-300"
                 }`}
               onClick={() => setParameter(param)}
             >
@@ -358,8 +353,8 @@ function SearchBar({
             <button
               key={option.id}
               className={`p-4 h-1/2 cursor-pointer transition-colors border-b border-gray-200 flex items-center ${selectedOption === option.id
-                ? "bg-sky-200 hover:bg-sky-300"
-                : "bg-white hover:bg-gray-100"
+                  ? "bg-sky-200 hover:bg-sky-300"
+                  : "bg-white hover:bg-gray-100"
                 }`}
               onClick={() => setSelectedOption(option.id)}
             >

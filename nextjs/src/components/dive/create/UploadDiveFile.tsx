@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useRef, useState } from "react";
 
 type Step2Props = {
@@ -12,7 +12,6 @@ type Step2Props = {
 };
 
 export default function UploadDiveFile({ nextStep, prevStep, data, setData, mode }: Readonly<Step2Props>) {
-    const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     // Local UI state: array of files
@@ -110,13 +109,14 @@ export default function UploadDiveFile({ nextStep, prevStep, data, setData, mode
                             Submit Changes
                         </button>
 
-                        <button
-                            type="button"
-                            onClick={() => router.push('/dive/upload')}
-                            className="bg-red-500 text-white px-4 py-2 rounded"
-                        >
-                            Quit
-                        </button>
+                        <Link href="/dive/upload">
+                            <button
+                                type="button"
+                                className="bg-red-500 text-white px-4 py-2 rounded"
+                            >
+                                Quit
+                            </button>
+                        </Link>
                     </>
                 )}
             </div>

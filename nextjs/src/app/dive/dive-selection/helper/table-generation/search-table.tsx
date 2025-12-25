@@ -5,7 +5,7 @@ import type { SetState } from '@/types/abbreviations';
 import { ALL_PARAMS_MAP, type DiveWithoutProfiles, type PagedResult } from '@/types/dive';
 import { User } from '@/types/share';
 import { AxiosResponse } from 'axios';
-import { useRouter } from "next/navigation";
+import Link from 'next/link';
 import { JSX, useEffect, useState } from "react";
 
 
@@ -100,8 +100,6 @@ function ShowTable({
     fetchUserId();
   }, [getWithToken]);
 
-  const router = useRouter();
-
   // when row clicked, toggle dive selection for that specific dive
   const handleRowClick = (rowIndex: number) => {
     const row = table[rowIndex];
@@ -163,8 +161,8 @@ function ShowTable({
                     </td>
                   )
                 )}
-                <td className="border border-gray-400 px-2 py-1 text-center" onClick={() => router.push(`/dive/view/${table[rowIndex].id}`)}>
-                  Visualize dive <i className="fa-solid fa-chart-line ml-2"></i>
+                <td className="border border-gray-400 px-2 py-1 text-center">
+                  <Link href={`/dive/view/${table[rowIndex].id}`}>Visualize dive <i className="fa-solid fa-chart-line ml-2"></i></Link>
                 </td>
                 {row.user.id === myUserId ?
                   <td className="border border-gray-400 px-2 py-1 text-center" onClick={(e) => handleShareClick(row.id, e)}>

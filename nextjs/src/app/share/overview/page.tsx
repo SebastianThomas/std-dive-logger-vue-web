@@ -10,6 +10,7 @@ import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import GroupJoinIcon from '@mui/icons-material/Login';
 import { Button, IconButton, Tooltip } from "@mui/material";
 import axios from "axios";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
@@ -72,10 +73,6 @@ export default function GroupOverview() {
         }
     }
 
-    function editGroup(id: number) {
-        router.push(`/share/${id}/edit`);
-    }
-
     async function fetchGroups() {
         try {
             const res = await getWithToken<PagedResult<GroupMember>>('/v1/groups')
@@ -113,17 +110,22 @@ export default function GroupOverview() {
                                         <p className="text-sm text-gray-500">{agroup.role}</p>
                                     </div>
                                     <div>
-                                        {/* SHOW as soon as Backend is ready
+
                                         <Tooltip title="show dives">
-                                            <IconButton aria-label="show dives" onClick={() => showDive(agroup.group.id)} >
-                                                <ScubaIcon />
-                                            </IconButton>
+                                            {/* TODO: Add this route and fix icon */}
+                                            <Link href={`/dives/group/${agroup.group.id}`}>
+                                                <IconButton aria-label="show dives" >
+                                                    {/* <ScubaIcon /> */}
+                                                </IconButton>
+                                            </Link>
                                         </Tooltip>
-                                        */}
+
                                         <Tooltip title="edit group">
-                                            <IconButton aria-label="edit group" onClick={() => editGroup(agroup.group.id)}>
-                                                <EditIcon />
-                                            </IconButton>
+                                            <Link href={`/share/${agroup.group.id}/edit`}>
+                                                <IconButton aria-label="edit group">
+                                                    <EditIcon />
+                                                </IconButton>
+                                            </Link>
                                         </Tooltip>
                                     </div>
                                 </li>

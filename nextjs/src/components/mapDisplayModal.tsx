@@ -3,7 +3,7 @@ import { usePersistentMapView } from "@/hooks/mapViewState";
 import "@/lib/leafletIcon";
 import type { MapViewState } from "@/types/mapTypes";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useRef } from "react";
 import { MapViewTracker } from "./mapViewState";
 const MapContainer = dynamic(() =>
@@ -43,7 +43,6 @@ export default function MapDisplay({
     center?: [number, number]; // optional center
     zoom?: number;             // optional zoom
 }>) {
-    const router = useRouter();
     const [mapView, setMapView] = usePersistentMapView(
         "map-picker-view",
         { lat: 46, lon: 8, zoom: 5 }
@@ -87,12 +86,13 @@ export default function MapDisplay({
                                         {diveIds.map(id => (
                                             <li key={id} className="flex items-center justify-between">
                                                 <span>{id}</span>
-                                                <button
-                                                    className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                                                    onClick={() => router.push(`/dive/view/${id}`)}
-                                                >
-                                                    View Dive
-                                                </button>
+                                                <Link href={`/dive/view/${id}`}>
+                                                    <button
+                                                        className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                                                    >
+                                                        View Dive
+                                                    </button>
+                                                </Link>
                                             </li>
                                         ))}
                                     </ul>
