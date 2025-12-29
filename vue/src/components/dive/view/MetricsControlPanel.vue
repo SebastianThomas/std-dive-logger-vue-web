@@ -1,11 +1,12 @@
 <template>
   <div
-    class="mb-4 p-3 md:p-4 border border-gray-300 rounded-lg bg-gray-50 shadow-sm w-full max-w-250 mx-auto"
+    class="mb-4 p-3 md:p-4 border rounded-lg shadow-sm w-full max-w-250 mx-auto"
+    :style="{ backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', borderColor: 'rgba(209,213,219,0.8)' }"
   >
     <div class="flex flex-wrap gap-4 items-center">
       <!-- Metrics toggles -->
       <div class="flex flex-wrap gap-3 items-center">
-        <span class="text-sm font-semibold text-gray-800">Metrics:</span>
+        <span class="text-sm font-semibold" :style="{ color: 'var(--foreground)' }">Metrics:</span>
         <label class="flex items-center gap-1.5 cursor-pointer">
           <input type="checkbox" checked disabled class="w-4 h-4" />
           <span class="font-bold text-sm" style="color: #2563eb">Depth</span>
@@ -15,6 +16,8 @@
             type="checkbox"
             class="w-4 h-4"
             :checked="showTemp"
+            :disabled="disableTemp"
+            :title="disableTemp ? 'No temperature data' : ''"
             @change="$emit('update:showTemp', !showTemp)"
           />
           <span class="font-bold text-sm" style="color: #ef4444">Temperature</span>
@@ -32,31 +35,133 @@
           <input
             type="checkbox"
             class="w-4 h-4"
-            :checked="showGrid"
-            @change="$emit('update:showGrid', !showGrid)"
+            :checked="showNdl"
+            :disabled="disableNdl"
+            :title="disableNdl ? 'No NDL data' : ''"
+            @change="$emit('update:showNdl', !showNdl)"
           />
-          <span class="text-sm text-gray-700">Grid</span>
+          <span class="font-bold text-sm" style="color: #7c3aed">NDL</span>
         </label>
-      </div>
-
-      <!-- Unported metrics notice -->
-      <div class="flex flex-wrap gap-2 text-xs text-gray-500">
-        <span class="font-semibold">Coming soon:</span>
-        <span>OTUs</span>
-        <span>CNS</span>
-        <span>NDL</span>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showOtu"
+            :disabled="disableOtu"
+            :title="disableOtu ? 'No OTU data' : ''"
+            @change="$emit('update:showOtu', !showOtu)"
+          />
+          <span class="font-bold text-sm" style="color: #ec4899">OTUs</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showCns"
+            :disabled="disableCns"
+            :title="disableCns ? 'No CNS data' : ''"
+            @change="$emit('update:showCns', !showCns)"
+          />
+          <span class="font-bold text-sm" style="color: #fbbf24">CNS</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showGf"
+            :disabled="disableGf"
+            :title="disableGf ? 'No GF99 data' : ''"
+            @change="$emit('update:showGf', !showGf)"
+          />
+          <span class="font-bold text-sm" style="color: #8b5cf6">GF99</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showRmv"
+            :disabled="disableRmv"
+            :title="disableRmv ? 'No RMV data' : ''"
+            @change="$emit('update:showRmv', !showRmv)"
+          />
+          <span class="font-bold text-sm" style="color: #14b8a6">RMV</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showGasO2"
+            :disabled="disableGasO2"
+            :title="disableGasO2 ? 'No Gas O₂ data' : ''"
+            @change="$emit('update:showGasO2', !showGasO2)"
+          />
+          <span class="font-bold text-sm" style="color: #06b6d4">Gas O₂</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showGasN2"
+            :disabled="disableGasN2"
+            :title="disableGasN2 ? 'No Gas N₂ data' : ''"
+            @change="$emit('update:showGasN2', !showGasN2)"
+          />
+          <span class="font-bold text-sm" style="color: #84cc16">Gas N₂</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showGasHe"
+            :disabled="disableGasHe"
+            :title="disableGasHe ? 'No Gas He data' : ''"
+            @change="$emit('update:showGasHe', !showGasHe)"
+          />
+          <span class="font-bold text-sm" style="color: #f97316">Gas He</span>
+        </label>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{ showTemp: boolean; showSegments: boolean; showGrid: boolean }>()
+defineProps<{
+  showTemp: boolean
+  showSegments: boolean
+  showNdl: boolean
+  showOtu: boolean
+  showCns: boolean
+  showGf: boolean
+  showRmv: boolean
+  showGasO2: boolean
+  showGasN2: boolean
+  showGasHe: boolean
+  disableTemp?: boolean
+  disableNdl?: boolean
+  disableOtu?: boolean
+  disableCns?: boolean
+  disableGf?: boolean
+  disableRmv?: boolean
+  disableGasO2?: boolean
+  disableGasN2?: boolean
+  disableGasHe?: boolean
+}>()
 defineEmits<{
   'update:showTemp': []
   'update:showSegments': []
-  'update:showGrid': []
+  'update:showNdl': []
+  'update:showOtu': []
+  'update:showCns': []
+  'update:showGf': []
+  'update:showRmv': []
+  'update:showGasO2': []
+  'update:showGasN2': []
+  'update:showGasHe': []
 }>()
 </script>
 
-<style scoped></style>
+<style scoped>
+label input:disabled + span {
+  opacity: 0.5;
+}
+</style>

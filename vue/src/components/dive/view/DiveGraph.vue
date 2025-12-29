@@ -6,6 +6,40 @@
     >
       Reset Zoom
     </button>
+    <!-- Axis selectors and labels -->
+    <div class="absolute top-2 left-2 z-10 flex items-center gap-2 text-xs"
+         :style="{ color: 'var(--foreground)' }">
+      <span>Left:</span>
+            <select v-model="leftAxisMetric" class="border rounded px-1 py-0.5"
+              :style="{ backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', borderColor: 'rgba(209,213,219,0.8)' }">
+        <option value="depth">Depth</option>
+        <option value="temp">Temp</option>
+        <option value="ndl">NDL</option>
+        <option value="otu">OTUs</option>
+        <option value="cns">CNS</option>
+        <option value="gf">GF99</option>
+        <option value="rmv">RMV</option>
+        <option value="gasO2">Gas O₂</option>
+        <option value="gasN2">Gas N₂</option>
+        <option value="gasHe">Gas He</option>
+      </select>
+    </div>
+    <div class="absolute top-2 right-24 z-10 flex items-center gap-2 text-xs"
+         :style="{ color: 'var(--foreground)' }">
+      <span>Right:</span>
+            <select v-model="rightAxisMetric" class="border rounded px-1 py-0.5"
+              :style="{ backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', borderColor: 'rgba(209,213,219,0.8)' }">
+        <option value="temp">Temp</option>
+        <option value="ndl">NDL</option>
+        <option value="otu">OTUs</option>
+        <option value="cns">CNS</option>
+        <option value="gf">GF99</option>
+        <option value="rmv">RMV</option>
+        <option value="gasO2">Gas O₂</option>
+        <option value="gasN2">Gas N₂</option>
+        <option value="gasHe">Gas He</option>
+      </select>
+    </div>
     <!-- Tooltip -->
     <div
       v-if="tooltip"
@@ -16,6 +50,13 @@
       <div>Depth: {{ tooltip.depth.toFixed(1) }} m</div>
       <div v-if="tooltip.temp !== undefined">Temp: {{ tooltip.temp.toFixed(1) }} °C</div>
       <div v-if="tooltip.ndl">NDL: {{ tooltip.ndl }}</div>
+      <div v-if="tooltip.otu !== undefined">OTUs: {{ tooltip.otu.toFixed(1) }}</div>
+      <div v-if="tooltip.cns !== undefined">CNS: {{ tooltip.cns.toFixed(1) }}%</div>
+      <div v-if="tooltip.gf !== undefined">GF99: {{ tooltip.gf.toFixed(1) }}%</div>
+      <div v-if="tooltip.rmv !== undefined">RMV: {{ tooltip.rmv.toFixed(1) }} L/min</div>
+      <div v-if="tooltip.gasO2 !== undefined">Gas O₂: {{ tooltip.gasO2.toFixed(1) }}%</div>
+      <div v-if="tooltip.gasN2 !== undefined">Gas N₂: {{ tooltip.gasN2.toFixed(1) }}%</div>
+      <div v-if="tooltip.gasHe !== undefined">Gas He: {{ tooltip.gasHe.toFixed(1) }}%</div>
     </div>
   </div>
 </template>
@@ -43,6 +84,14 @@ type Props = {
   showTemp?: boolean
   showSegments?: boolean
   showGrid?: boolean
+  showNdl?: boolean
+  showOtu?: boolean
+  showCns?: boolean
+  showGf?: boolean
+  showRmv?: boolean
+  showGasO2?: boolean
+  showGasN2?: boolean
+  showGasHe?: boolean
 }
 
 const props = defineProps<Props>()
@@ -54,9 +103,21 @@ const margin = { top: 10, right: 36, bottom: 24, left: 40 }
 const innerWidth = computed(() => Math.max(10, width.value - margin.left - margin.right))
 const innerHeight = computed(() => Math.max(10, height.value - margin.top - margin.bottom))
 
-const tooltip = ref<{ timeDisplay: string; depth: number; temp?: number; ndl?: string } | null>(
-  null,
-)
+const tooltip = ref<
+  {
+    timeDisplay: string
+    depth: number
+    temp?: number
+    ndl?: string
+    otu?: number
+    cns?: number
+    gf?: number
+    rmv?: number
+    gasO2?: number
+    gasN2?: number
+    gasHe?: number
+  } | null
+>(null)
 const tooltipLeft = ref(0)
 const tooltipTop = ref(0)
 
@@ -65,7 +126,7 @@ const gSel = ref<any | null>(null)
 const axes = {
   x: ref<any | null>(null),
   yDepth: ref<any | null>(null),
-  yTemp: ref<any | null>(null),
+  yAux: ref<any | null>(null),
 }
 const grid = {
   x: ref<any | null>(null),
@@ -74,25 +135,47 @@ const grid = {
 const depthScale = ref<any | null>(null)
 const timeScale = ref<any | null>(null)
 const tempScale = ref<any | null>(null)
+const ndlScale = ref<any | null>(null)
+const otuScale = ref<any | null>(null)
+const cnsScale = ref<any | null>(null)
+const gfScale = ref<any | null>(null)
+const rmvScale = ref<any | null>(null)
+const gasScale = ref<any | null>(null)
 const timeScaleBase = ref<any | null>(null)
 const depthScaleBase = ref<any | null>(null)
 const depthLine = ref<any | null>(null)
 const tempLine = ref<any | null>(null)
+const ndlLine = ref<any | null>(null)
+const otuLine = ref<any | null>(null)
+const cnsLine = ref<any | null>(null)
+const gfLine = ref<any | null>(null)
+const rmvLine = ref<any | null>(null)
+const gasO2Line = ref<any | null>(null)
+const gasN2Line = ref<any | null>(null)
+const gasHeLine = ref<any | null>(null)
 const hoverOverlay = ref<any | null>(null)
 const focusCircle = ref<any | null>(null)
 const segmentsData = ref<DiveProfileSegmentWithId[] | null>(null)
 const segmentsLayer = ref<any | null>(null)
 const zoomBehavior = ref<any | null>(null)
 const { getWithToken } = useApi()
+const leftAxisMetric = ref<'depth' | 'temp' | 'ndl' | 'otu' | 'cns' | 'gf' | 'rmv' | 'gasO2' | 'gasN2' | 'gasHe'>('depth')
+const rightAxisMetric = ref<'temp' | 'ndl' | 'otu' | 'cns' | 'gf' | 'rmv' | 'gasO2' | 'gasN2' | 'gasHe'>('temp')
+
+let ro: ResizeObserver | null = null
+
+function updateSize() {
+  if (!container.value) return
+  const rect = container.value.getBoundingClientRect()
+  width.value = Math.max(300, Math.floor(rect.width))
+  height.value = Math.max(200, Math.floor(rect.height))
+}
 
 function setupScales() {
   const ms = props.profile.measurements
   if (!ms.length) return
   const tValues = ms.map((m) => m.measurement.time)
   const dValues = ms.map((m) => m.measurement.depth)
-  const tempValues = ms
-    .map((m) => m.measurement.temperature?.value)
-    .filter((v): v is number => v !== undefined)
 
   const tmin = Math.min(...tValues)
   const tmax = Math.max(...tValues)
@@ -104,29 +187,70 @@ function setupScales() {
   // Depth increases downwards
   depthScaleBase.value = scaleLinear().domain([dmin, dmax]).range([innerHeight.value, 0])
   depthScale.value = depthScaleBase.value.copy()
-  if (props.showTemp && tempValues.length) {
-    const tminC = Math.min(...tempValues)
-    const tmaxC = Math.max(...tempValues)
-    tempScale.value = scaleLinear().domain([tminC, tmaxC]).range([innerHeight.value, 0])
-  } else {
-    tempScale.value = null
-  }
+
+  // Independent domains per metric to keep lines static regardless of toggle state
+  const temperatureValues = ms
+    .map((m) => m.measurement.temperature?.value)
+    .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
+  const tempExtent =
+    temperatureValues.length && Math.max(...temperatureValues) !== Math.min(...temperatureValues)
+      ? [Math.min(...temperatureValues), Math.max(...temperatureValues)]
+      : [0, 40]
+
+  const otuValues = ms
+    .map((m) => m.measurement.o2Tox)
+    .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
+  const otuMax = Math.max(100, otuValues.length ? Math.max(...otuValues) : 0)
+
+  const cnsValues = ms
+    .map((m) => m.measurement.cns)
+    .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
+  const cnsMax = Math.max(100, cnsValues.length ? Math.max(...cnsValues) : 0)
+
+  const gfValues = ms
+    .map((m) => m.measurement.n2)
+    .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
+  const gfMax = Math.max(100, gfValues.length ? Math.max(...gfValues) : 0)
+
+  const rmvValues = ms
+    .map((m) => m.measurement.rmvLiters)
+    .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
+  const rmvMax = Math.max(80, rmvValues.length ? Math.max(...rmvValues) : 0)
+
+  const gasValues = ms
+    .map((m) => m.measurement.gas)
+    .filter((g): g is { o2: number; n2: number; he: number } => !!g)
+    .flatMap((g) => [g.o2 * 100, g.n2 * 100, g.he * 100])
+  const gasMax = Math.max(100, gasValues.length ? Math.max(...gasValues) : 0)
+
   depthLine.value = line()
     .x((d: [number, number]) => (timeScale.value ? timeScale.value(d[0]) : 0))
     .y((d: [number, number]) => (depthScale.value ? depthScale.value(d[1]) : 0))
-  tempLine.value = line()
-    .x((d: [number, number]) => (timeScale.value ? timeScale.value(d[0]) : 0))
-    .y((d: [number, number]) => (tempScale.value ? tempScale.value(d[1]) : 0))
+
+  const makeMetricLine = (scale: any) =>
+    line()
+      .x((d: [number, number]) => (timeScale.value ? timeScale.value(d[0]) : 0))
+      .y((d: [number, number]) => (scale ? scale(d[1]) : 0))
+
+  tempScale.value = scaleLinear().domain(tempExtent).range([innerHeight.value, 0])
+  ndlScale.value = scaleLinear().domain([0, 100]).range([innerHeight.value, 0])
+  otuScale.value = scaleLinear().domain([0, otuMax * 1.05]).range([innerHeight.value, 0])
+  cnsScale.value = scaleLinear().domain([0, cnsMax * 1.05]).range([innerHeight.value, 0])
+  gfScale.value = scaleLinear().domain([0, gfMax * 1.05]).range([innerHeight.value, 0])
+  rmvScale.value = scaleLinear().domain([0, rmvMax * 1.05]).range([innerHeight.value, 0])
+  gasScale.value = scaleLinear().domain([0, gasMax]).range([innerHeight.value, 0])
+
+  tempLine.value = makeMetricLine(tempScale.value)
+  ndlLine.value = makeMetricLine(ndlScale.value)
+  otuLine.value = makeMetricLine(otuScale.value)
+  cnsLine.value = makeMetricLine(cnsScale.value)
+  gfLine.value = makeMetricLine(gfScale.value)
+  rmvLine.value = makeMetricLine(rmvScale.value)
+  gasO2Line.value = makeMetricLine(gasScale.value)
+  gasN2Line.value = makeMetricLine(gasScale.value)
+  gasHeLine.value = makeMetricLine(gasScale.value)
 }
 
-function updateSize() {
-  if (!container.value) return
-  const rect = container.value.getBoundingClientRect()
-  width.value = Math.max(300, Math.floor(rect.width))
-  height.value = Math.max(200, Math.floor(rect.height))
-}
-
-let ro: ResizeObserver | null = null
 onMounted(async () => {
   updateSize()
   initSvg()
@@ -149,7 +273,20 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => [props.profile, props.showTemp, props.showSegments],
+  () => [
+    props.profile,
+    props.showTemp,
+    props.showSegments,
+    props.showGrid,
+    props.showNdl,
+    props.showOtu,
+    props.showCns,
+    props.showGf,
+    props.showRmv,
+    props.showGasO2,
+    props.showGasN2,
+    props.showGasHe,
+  ],
   async () => {
     setupScales()
     renderAll()
@@ -176,7 +313,7 @@ function initSvg() {
   g.append('rect')
     .attr('width', innerWidth.value)
     .attr('height', innerHeight.value)
-    .attr('fill', '#fff')
+    .attr('fill', 'var(--card-bg, #ffffff)')
 
   // Gridlines
   grid.y.value = g.append('g').attr('class', 'grid-y')
@@ -187,10 +324,10 @@ function initSvg() {
 
   // Axes
   axes.yDepth.value = g.append('g').attr('transform', `translate(0,0)`).attr('class', 'y-depth')
-  axes.yTemp.value = g
+  axes.yAux.value = g
     .append('g')
     .attr('transform', `translate(${innerWidth.value},0)`) // right side
-    .attr('class', 'y-temp')
+    .attr('class', 'y-aux')
   axes.x.value = g
     .append('g')
     .attr('transform', `translate(0,${innerHeight.value})`)
@@ -208,6 +345,14 @@ function initSvg() {
     .attr('stroke', '#ef4444')
     .attr('stroke-width', 1.5)
     .attr('opacity', props.showTemp ? 1 : 0)
+  g.append('path').attr('class', 'line-ndl').attr('fill', 'none').attr('stroke', '#7c3aed').attr('stroke-width', 1.2).attr('opacity', 0.7)
+  g.append('path').attr('class', 'line-otu').attr('fill', 'none').attr('stroke', '#ec4899').attr('stroke-width', 1.2).attr('opacity', 0.7)
+  g.append('path').attr('class', 'line-cns').attr('fill', 'none').attr('stroke', '#fbbf24').attr('stroke-width', 1.2).attr('opacity', 0.7)
+  g.append('path').attr('class', 'line-gf').attr('fill', 'none').attr('stroke', '#8b5cf6').attr('stroke-width', 1.2).attr('opacity', 0.7)
+  g.append('path').attr('class', 'line-rmv').attr('fill', 'none').attr('stroke', '#14b8a6').attr('stroke-width', 1.2).attr('opacity', 0.7)
+  g.append('path').attr('class', 'line-gas-o2').attr('fill', 'none').attr('stroke', '#06b6d4').attr('stroke-width', 1.2).attr('opacity', 0.7)
+  g.append('path').attr('class', 'line-gas-n2').attr('fill', 'none').attr('stroke', '#84cc16').attr('stroke-width', 1.2).attr('opacity', 0.7)
+  g.append('path').attr('class', 'line-gas-he').attr('fill', 'none').attr('stroke', '#f97316').attr('stroke-width', 1.2).attr('opacity', 0.7)
 
   // Hover overlay
   focusCircle.value = g
@@ -254,7 +399,14 @@ function renderAll() {
       formatTimeDisplay(Number(t), props.profile.start),
     ),
   )
-  axes.yDepth.value?.call(axisLeft(depthScale.value).tickFormat((d: any) => `${Number(d)} m`))
+  const leftScale = getScaleFor(leftAxisMetric.value)
+  const rightScale = getScaleFor(rightAxisMetric.value)
+  if (leftScale) {
+    axes.yDepth.value?.call(axisLeft(leftScale).tickFormat((d: any) => formatAxisTick(leftAxisMetric.value, Number(d))))
+  }
+  if (rightScale) {
+    axes.yAux.value?.call(axisRight(rightScale).tickFormat((d: any) => formatAxisTick(rightAxisMetric.value, Number(d))))
+  }
   // Gridlines (optional)
   if (props.showGrid ?? true) {
     grid.x.value?.call(
@@ -275,27 +427,117 @@ function renderAll() {
     grid.x.value?.selectAll('*').remove()
     grid.y.value?.selectAll('*').remove()
   }
-  if (props.showTemp && tempScale.value) {
-    axes.yTemp.value?.call(axisRight(tempScale.value).tickFormat((d: any) => `${Number(d)} °C`))
-    svgSel.value?.select('.line-temp').attr('opacity', 1)
-  } else {
-    svgSel.value?.select('.line-temp').attr('opacity', 0)
+  const depthPts: [number, number][] = ms.map((m) => [m.measurement.time, m.measurement.depth])
+  gSel.value.select('.line-depth').datum(depthPts).attr('d', depthLine.value(depthPts) ?? '')
+
+  const drawMetric = (
+    selector: string,
+    points: [number, number][],
+    lineGen: any,
+    show: boolean,
+  ) => {
+    const path = gSel.value?.select(selector)
+    if (!path) return
+    if (show && points.length && lineGen) {
+      path.datum(points).attr('d', lineGen(points) ?? '').attr('opacity', 1)
+    } else {
+      path.attr('opacity', 0).attr('d', '')
+    }
   }
 
-  // Lines
-  const depthPts: [number, number][] = ms.map((m) => [m.measurement.time, m.measurement.depth])
-  gSel.value
-    .select('.line-depth')
-    .datum(depthPts)
-    .attr('d', depthLine.value(depthPts) ?? '')
-  if (props.showTemp && tempScale.value && tempLine.value) {
-    const tempPts: [number, number][] = ms
-      .filter((m) => m.measurement.temperature?.value !== undefined)
-      .map((m) => [m.measurement.time, m.measurement.temperature!.value])
-    gSel.value
-      .select('.line-temp')
-      .datum(tempPts)
-      .attr('d', tempLine.value(tempPts) ?? '')
+  const tempPts: [number, number][] = ms
+    .filter((m) => m.measurement.temperature?.value !== undefined)
+    .map((m) => [m.measurement.time, m.measurement.temperature!.value])
+  drawMetric('.line-temp', tempPts, tempLine.value, props.showTemp)
+
+  const ndlPts: [number, number][] = ms
+    .filter((m) => m.measurement.ndl)
+    .map((m) => [m.measurement.time, parseIsoMinutes(m.measurement.ndl)])
+  drawMetric('.line-ndl', ndlPts, ndlLine.value, props.showNdl)
+
+  const otuPts: [number, number][] = ms
+    .filter((m) => m.measurement.o2Tox !== undefined)
+    .map((m) => [m.measurement.time, m.measurement.o2Tox!])
+  drawMetric('.line-otu', otuPts, otuLine.value, props.showOtu)
+
+  const cnsPts: [number, number][] = ms
+    .filter((m) => m.measurement.cns !== undefined)
+    .map((m) => [m.measurement.time, m.measurement.cns!])
+  drawMetric('.line-cns', cnsPts, cnsLine.value, props.showCns)
+
+  const gfPts: [number, number][] = ms
+    .filter((m) => m.measurement.n2 !== undefined)
+    .map((m) => [m.measurement.time, m.measurement.n2!])
+  drawMetric('.line-gf', gfPts, gfLine.value, props.showGf)
+
+  const rmvPts: [number, number][] = ms
+    .filter((m) => m.measurement.rmvLiters !== undefined)
+    .map((m) => [m.measurement.time, m.measurement.rmvLiters!])
+  drawMetric('.line-rmv', rmvPts, rmvLine.value, props.showRmv)
+
+  const gasO2Pts: [number, number][] = ms
+    .filter((m) => m.measurement.gas?.o2 !== undefined)
+    .map((m) => [m.measurement.time, m.measurement.gas!.o2 * 100])
+  drawMetric('.line-gas-o2', gasO2Pts, gasO2Line.value, props.showGasO2)
+
+  const gasN2Pts: [number, number][] = ms
+    .filter((m) => m.measurement.gas?.n2 !== undefined)
+    .map((m) => [m.measurement.time, m.measurement.gas!.n2 * 100])
+  drawMetric('.line-gas-n2', gasN2Pts, gasN2Line.value, props.showGasN2)
+
+  const gasHePts: [number, number][] = ms
+    .filter((m) => m.measurement.gas?.he !== undefined)
+    .map((m) => [m.measurement.time, m.measurement.gas!.he * 100])
+  drawMetric('.line-gas-he', gasHePts, gasHeLine.value, props.showGasHe)
+}
+
+function getScaleFor(metric: string) {
+  switch (metric) {
+    case 'depth':
+      return depthScale.value
+    case 'temp':
+      return tempScale.value
+    case 'ndl':
+      return ndlScale.value
+    case 'otu':
+      return otuScale.value
+    case 'cns':
+      return cnsScale.value
+    case 'gf':
+      return gfScale.value
+    case 'rmv':
+      return rmvScale.value
+    case 'gasO2':
+    case 'gasN2':
+    case 'gasHe':
+      return gasScale.value
+    default:
+      return null
+  }
+}
+
+function formatAxisTick(metric: string, v: number): string {
+  switch (metric) {
+    case 'depth':
+      return `${v} m`
+    case 'temp':
+      return `${v.toFixed(1)} °C`
+    case 'ndl':
+      return `${v}`
+    case 'otu':
+      return `${v}`
+    case 'cns':
+      return `${v}%`
+    case 'gf':
+      return `${v}%`
+    case 'rmv':
+      return `${v.toFixed(1)}`
+    case 'gasO2':
+    case 'gasN2':
+    case 'gasHe':
+      return `${v}%`
+    default:
+      return `${v}`
   }
 }
 
@@ -375,6 +617,13 @@ function onMouseMoveD3(event: MouseEvent) {
     depth: m.measurement.depth,
     temp: m.measurement.temperature?.value,
     ndl: m.measurement.ndl,
+    otu: m.measurement.o2Tox,
+    cns: m.measurement.cns,
+    gf: m.measurement.n2,
+    rmv: m.measurement.rmvLiters,
+    gasO2: m.measurement.gas?.o2 !== undefined ? m.measurement.gas.o2 * 100 : undefined,
+    gasN2: m.measurement.gas?.n2 !== undefined ? m.measurement.gas.n2 * 100 : undefined,
+    gasHe: m.measurement.gas?.he !== undefined ? m.measurement.gas.he * 100 : undefined,
   }
   const tipX = cx + margin.left + 8
   const tipY = cy + margin.top - 8
@@ -391,6 +640,7 @@ function pointerInG(event: MouseEvent): [number, number] {
 }
 
 function onMouseLeave() {
+  if (!container.value) return
   focusCircle.value?.style('display', 'none')
   tooltip.value = null
 }
@@ -407,13 +657,39 @@ function resetZoom() {
 }
 
 function formatTimeDisplay(t: number, start: number) {
-  // If t looks like an epoch ms, show relative seconds; otherwise show as-is
-  const dt = Math.abs(t - start)
-  if (dt > 1000) {
-    const secs = Math.round(dt / 1000)
-    return `+${secs}s`
+  // Display as s, mm:ss, or hh:mm(:ss) relative to profile start
+  const dtMs = Math.max(0, Math.abs(t - start))
+  const totalSeconds = Math.round(dtMs / 1000)
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`
   }
-  return `${t}`
+  const seconds = totalSeconds % 60
+  const totalMinutes = Math.floor(totalSeconds / 60)
+  if (totalMinutes < 60) {
+    const mm = String(totalMinutes).padStart(2, '0')
+    const ss = String(seconds).padStart(2, '0')
+    return `${mm}:${ss}`
+  }
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  const hh = String(hours).padStart(2, '0')
+  const mm = String(minutes).padStart(2, '0')
+  if (seconds > 0) {
+    const ss = String(seconds).padStart(2, '0')
+    return `${hh}:${mm}:${ss}`
+  }
+  return `${hh}:${mm}`
+}
+
+function parseIsoMinutes(ndl: string) {
+  if (!ndl) return 0
+  const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/u
+  const match = regex.exec(ndl)
+  if (!match) return 0
+  const hours = Number.parseInt(match[1] ?? '0', 10)
+  const minutes = Number.parseInt(match[2] ?? '0', 10)
+  const seconds = Number.parseInt(match[3] ?? '0', 10)
+  return hours * 60 + minutes + seconds / 60
 }
 </script>
 
