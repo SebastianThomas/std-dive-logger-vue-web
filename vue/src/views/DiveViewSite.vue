@@ -1,0 +1,359 @@
+<template>
+  <div
+    class="bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed flex justify-center items-start pt-20 px-6 md:px-10"
+    :style="{ minHeight: 'calc(100vh - 80px)' }"
+  >
+    <div v-if="graphOpen" class="fixed inset-0 z-50 bg-gray-900 p-2">
+      <button
+        @click="graphOpen = false"
+        class="absolute top-3 right-3 z-10 px-3 py-1.5 bg-blue-600 backdrop-blur rounded-lg shadow text-sm text-white hover:bg-blue-900"
+      >
+        Collapse
+      </button>
+      <div class="w-full h-full bg-white rounded-xl shadow-md overflow-hidden flex flex-col">
+        <MetricsControlPanel
+          v-if="firstProfile"
+          class="px-3 pt-3"
+          v-model:show-temp="showTemp"
+          v-model:show-segments="showSegments"
+          v-model:show-grid="showGrid"
+        />
+        <div class="flex-1">
+          <DiveGraph
+            v-if="firstProfile"
+            :profile="firstProfile"
+            :dive-id="diveId"
+            :show-temp="showTemp"
+            :show-segments="showSegments"
+            :show-grid="showGrid"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="!loading && dive" class="space-y-6 md:space-y-8">
+      <!-- Header -->
+      <div class="bg-white rounded-xl shadow-md p-4 md:p-6 flex flex-col">
+        <div class="flex justify-between items-center mb-2">
+          <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
+          <div class="flex gap-2">
+            <RouterLink v-if="isMine" :to="{ name: 'DiveEdit', params: { diveId: dive.id } }">
+              <button class="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
+                Edit Dive
+              </button>
+            </RouterLink>
+            <button
+              v-if="isMine"
+              @click="showDeleteModal = true"
+              class="bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
+            >
+              Delete
+            </button>
+            <button
+              v-else
+              @click="showLinkModal = true"
+              class="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
+            >
+              Link Dive
+            </button>
+          </div>
+        </div>
+        <p class="text-gray-500 text-sm">
+          {{ dive.site.name }} ·
+          {{
+            firstProfile?.start ? new Date(firstProfile.start).toLocaleString() : 'No start date'
+          }}
+        </p>
+      </div>
+
+      <!-- Delete Modal -->
+      <div
+        v-if="showDeleteModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      >
+        <div class="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md">
+          <h2 class="text-lg font-semibold mb-4 text-gray-800">Confirm Delete</h2>
+          <p class="text-gray-600 mb-6">
+            Are you sure you want to delete dive #{{ dive.number }}? This action cannot be undone.
+          </p>
+          <div class="flex justify-end gap-3">
+            <button
+              @click="showDeleteModal = false"
+              class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              @click="handleDelete"
+              class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Link Modal -->
+      <div
+        v-if="showLinkModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      >
+        <div class="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-lg max-h-[80vh] overflow-auto">
+          <h2 class="text-lg font-semibold mb-4 text-gray-800">Link a Dive</h2>
+          <input
+            v-model="searchTerm"
+            type="text"
+            placeholder="Search my dives..."
+            class="w-full p-2 mb-4 border rounded"
+          />
+          <ul class="space-y-2">
+            <li
+              v-for="d in filteredMyDives"
+              :key="d.id"
+              class="flex justify-between items-center bg-gray-50 p-2 rounded hover:bg-gray-100"
+            >
+              <div>
+                <p class="text-sm font-medium">{{ d.customIdentifier }}</p>
+                <p class="text-xs text-gray-500">
+                  #{{ d.number }} · {{ d.site.name }} ·
+                  {{ new Date(d.site.name).toLocaleDateString() }}
+                </p>
+              </div>
+              <button
+                @click="handleLinkDive(d.id)"
+                class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
+              >
+                Link
+              </button>
+            </li>
+            <li v-if="filteredMyDives.length === 0" class="text-sm text-gray-400">
+              No dives found
+            </li>
+          </ul>
+          <div class="flex justify-end mt-4">
+            <button
+              @click="showLinkModal = false"
+              class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="flex flex-col md:flex-row gap-6">
+        <!-- Map -->
+        <div class="w-full md:w-1/5 h-50 rounded-lg overflow-hidden shadow-sm border">
+          <mapDisplayModal
+            :sites="[
+              {
+                site: {
+                  id: dive.site.id!,
+                  ...dive.site,
+                },
+                diveIds: [dive.id],
+              },
+            ]"
+            :center="[dive.site.latitude, dive.site.longitude]"
+            :zoom="13"
+          />
+        </div>
+
+        <!-- Dive Info -->
+        <div class="w-full md:w-4/5 flex flex-col gap-6">
+          <!-- Summary Cards -->
+          <section
+            v-if="firstProfile && summary"
+            class="flex flex-wrap justify-center gap-4 md:gap-6 mb-4"
+          >
+            <div
+              class="bg-white bg-opacity-90 rounded-xl shadow-md px-3 py-2 flex flex-col items-center min-w-30"
+            >
+              <p class="text-xs text-gray-500">Max Depth</p>
+              <p class="font-semibold text-gray-700 text-sm">{{ summary.maxDepth }} m</p>
+            </div>
+            <div
+              class="bg-white bg-opacity-90 rounded-xl shadow-md px-3 py-2 flex flex-col items-center min-w-30"
+            >
+              <p class="text-xs text-gray-500">Avg Depth</p>
+              <p class="font-semibold text-gray-700 text-sm">
+                {{ summary.averageDepth?.toFixed(2) }} m
+              </p>
+            </div>
+          </section>
+
+          <!-- Details Grid -->
+          <div class="grid md:grid-cols-3 gap-4">
+            <div class="bg-white rounded-xl shadow-md p-4">
+              <h2 class="font-semibold mb-2 text-gray-700 text-sm">Gases</h2>
+              <ul class="text-xs text-gray-600 space-y-1">
+                <li>O₂ 21% · He 0% · N₂ 79%</li>
+              </ul>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4">
+              <h2 class="font-semibold mb-2 text-gray-700 text-sm">Dive Computer</h2>
+              <p class="text-xs text-gray-600">
+                {{ firstProfile?.diveComputer.manufacturer.name }} —
+                {{ firstProfile?.diveComputer.customIdentifier }}
+              </p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4">
+              <h2 class="font-semibold mb-2 text-gray-700 text-sm">Buddies</h2>
+              <p
+                v-if="!dive.namedBuddies.length && !dive.buddiesDives?.length"
+                class="text-xs text-gray-400"
+              >
+                No buddies recorded
+              </p>
+              <ul v-else class="text-xs text-gray-600 space-y-1">
+                <li v-for="name in dive.namedBuddies" :key="`named-${name}`">{{ name }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dive Profile Graph -->
+      <div class="w-full flex justify-center mt-6">
+        <div class="bg-white rounded-xl shadow-md w-full max-w-150 flex flex-col">
+          <div class="flex justify-between items-center p-4">
+            <h2 class="font-semibold text-gray-700 text-sm">Dive Profile</h2>
+            <button @click="graphOpen = true" class="text-sm text-blue-600 hover:underline">
+              Expand
+            </button>
+          </div>
+          <MetricsControlPanel
+            v-if="firstProfile"
+            class="px-4"
+            v-model:show-temp="showTemp"
+            v-model:show-segments="showSegments"
+            v-model:show-grid="showGrid"
+          />
+          <div class="flex-1 h-75">
+            <DiveGraph
+              v-if="firstProfile"
+              :profile="firstProfile"
+              :dive-id="diveId"
+              :show-temp="showTemp"
+              :show-segments="showSegments"
+              :show-grid="showGrid"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="loading" class="text-center py-20">Loading...</div>
+    <div v-else-if="error" class="text-center py-20 text-red-500">Error: {{ error }}</div>
+    <div v-else class="text-center py-20">No dive found</div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { toast } from 'vue-sonner'
+import { useApi } from '@/composables/useApi'
+import DiveSiteMap from '@/components/DiveSiteMap.vue'
+import DiveGraph from '@/components/dive/view/DiveGraph.vue'
+import MetricsControlPanel from '@/components/dive/view/MetricsControlPanel.vue'
+import type { Dive, DiveWithoutProfiles, PagedResult } from '@/lib/types/dive'
+import type { User } from '@/lib/types/share'
+
+const router = useRouter()
+const route = useRoute()
+const { getWithToken, deleteWithToken, postWithToken } = useApi()
+
+const diveId = computed(() => Number(route.params.diveId))
+const dive = ref<Dive | null>(null)
+const loading = ref(true)
+const error = ref<string | null>(null)
+const graphOpen = ref(false)
+const showTemp = ref(true)
+const showSegments = ref(true)
+const showGrid = ref(true)
+const showDeleteModal = ref(false)
+const showLinkModal = ref(false)
+const myUserId = ref<number | null>(null)
+const myDives = ref<DiveWithoutProfiles[]>([])
+const searchTerm = ref('')
+
+const firstProfile = computed(() => dive.value?.profiles?.[0])
+const summary = computed(() => firstProfile.value?.summary)
+const isMine = computed(() => dive.value?.user.id === myUserId.value)
+
+const filteredMyDives = computed(() =>
+  // TODO: Use backend to filter for dives at site with search term instead
+  myDives.value.filter(
+    (d) =>
+      d.customIdentifier.toLowerCase().includes(searchTerm.value.toLowerCase()) ||
+      d.number.toString().includes(searchTerm.value) ||
+      d.site.name.toLowerCase().includes(searchTerm.value.toLowerCase()),
+  ),
+)
+
+const fetchDive = async () => {
+  try {
+    loading.value = true
+    const res = await getWithToken<Dive>(`/v1/dives/${diveId.value}`)
+    dive.value = res.data
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to fetch dive'
+  } finally {
+    loading.value = false
+  }
+}
+
+const fetchUserId = async () => {
+  try {
+    const res = await getWithToken<User>('/v1/users/')
+    myUserId.value = res.data.id
+  } catch (err) {
+    console.error('Failed to fetch user ID', err)
+  }
+}
+
+const fetchMyDives = async () => {
+  try {
+    const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(
+      '/v1/dives?page=0&sortCol=NUMBER&sortDirection=ASCENDING',
+    )
+    myDives.value = res.data.result
+  } catch (err) {
+    console.error('Failed to fetch my dives', err)
+  }
+}
+
+const handleDelete = async () => {
+  if (!dive.value) return
+  try {
+    await deleteWithToken(`/v1/dives/${diveId.value}`)
+    toast.success('Dive deleted successfully')
+    router.push({ name: 'Home' })
+  } catch (err) {
+    console.error('Delete failed', err)
+    toast.error('Failed to delete dive')
+  }
+}
+
+const handleLinkDive = async (buddyDiveId: number) => {
+  if (!dive.value) return
+  try {
+    await postWithToken(`/v1/dives/${diveId.value}/link?buddyDiveId=${buddyDiveId}`, {})
+    toast.success('Dive linked successfully')
+    showLinkModal.value = false
+  } catch (err) {
+    console.error('Link failed', err)
+    toast.error('Failed to link dive')
+  }
+}
+
+onMounted(() => {
+  fetchDive()
+  fetchUserId()
+  fetchMyDives()
+})
+
+watch(() => diveId.value, fetchDive)
+</script>

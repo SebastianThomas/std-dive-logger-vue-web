@@ -17,13 +17,20 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "axios": "^1.13.2",
+    "d3": "^7.9.0",
+    "leaflet": "^1.9.4",
     "pinia": "^3.0.4",
     "vue": "^3.5.26",
-    "vue-router": "^4.6.4"
+    "vue-router": "^4.6.4",
+    "vue-sonner": "^2.0.9"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
     "@tsconfig/node24": "^24.0.3",
+    "@types/d3": "^7.4.3",
     "@types/jsdom": "^27.0.0",
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^24.10.4",
     "@vitejs/plugin-vue": "^6.0.3",
     "@vitest/eslint-plugin": "^1.6.4",
@@ -39,6 +46,7 @@
     "prettier": "3.7.4",
     "typescript": "~5.9.3",
     "vite": "^7.3.0",
+    "vite-plugin-mkcert": "^1.17.9",
     "vite-plugin-vue-devtools": "^8.0.5",
     "vitest": "^4.0.16",
     "vue-tsc": "^3.2.1"

@@ -1,0 +1,179 @@
+import type { User } from './share'
+
+export type PagedResult<T> = {
+  pageSize: number
+  totalPages: number
+  result: T[]
+}
+
+export type DiveComputer = {
+  id: number
+  manufacturer: {
+    id: number
+    name: string
+  }
+  serialNumber: string
+  customIdentifier: string
+}
+
+export type Deco = {
+  type: string
+  depth: number
+  seconds: number
+}
+
+export type Gas = {
+  o2: number
+  n2: number
+  he: number
+  size?: {
+    unit: 'LITER' | 'CUFT'
+    value: number
+  }
+  content?: {
+    unit: 'BAR' | 'PSI'
+    value: number
+  }
+  description?: string
+}
+
+export type DiveMeasurement = {
+  time: number
+  temperature: { value: number; unit: 'CELSIUS' | 'KELVIN' }
+  depth: number
+  ndl: string
+  deco: Deco[]
+  gas?: Gas
+  rmvLiters?: number
+  n2?: number
+  o2Tox?: number
+  cns?: number
+}
+
+export type DiveMeasurementWithId = {
+  id: number
+  measurement: DiveMeasurement
+}
+
+export type DiveProfileSummary = {
+  start: number
+  end: number
+  averageDepth: number
+  maxDepth: number
+  surfaceInterval?: string
+  bottomTime: string
+  descentTime?: string
+  ascentTime?: string
+  avgAscentRate?: number
+  startN2?: number
+  endN2?: number
+  o2Toxicity?: number
+  startCNS?: number
+  endCNS?: number
+}
+
+export type DiveProfile = {
+  id: number
+  diveComputer: DiveComputer
+  start: number
+  end: number
+  measurements: DiveMeasurementWithId[]
+  summary: DiveProfileSummary
+}
+
+export type Dive = {
+  id: number
+  user: { id: number; name: string }
+  number: number
+  customIdentifier: string
+  previewImage: string
+  site: DiveSite
+  profiles: DiveProfile[]
+  buddiesDives: {
+    buddy: User
+    diveId: number
+  }[]
+  namedBuddies: string[]
+}
+
+export type DiveWithoutProfiles = Omit<Dive, 'profiles'>
+
+export type DiveProfileWithoutMeasurements = {
+  id: number
+  diveComputer: DiveComputer
+  start: number
+  end: number
+  summary: DiveProfileSummary
+}
+
+export type DiveProfileSegmentType = 'SURFACE' | 'DESCENT' | 'HOLD_LEVEL' | 'ASCENT' | 'UNKNOWN'
+
+export type DiveProfileSegment = {
+  profile: DiveProfileWithoutMeasurements
+  firstMeasurementIdx: number
+  type: DiveProfileSegmentType
+  measurements?: DiveMeasurementWithId[]
+}
+
+export type DiveProfileSegmentWithId = {
+  id: number
+  segment: DiveProfileSegment
+}
+
+export type DiveDepthVarianceStats = {
+  version: number
+  avgDepth: number
+  maxDepth: number
+  minDepth: number
+  deviationAvg: number
+  deviationVariance: number
+  deviation01p: number
+  deviation10p: number
+  deviationMedian: number
+  deviation90p: number
+  deviationMax: number
+}
+
+export type DiveDepthVariance = {
+  diveId: number
+  profileId: number
+  profileSegmentId: number
+  startIdx: number
+  lastIdx: number
+  stats: DiveDepthVarianceStats
+}
+
+export type ParamsMap = { [K in keyof DiveWithoutProfiles]: string }
+export type FilteredParamsMap = Partial<ParamsMap>
+
+export const ALL_PARAMS_MAP: ParamsMap = {
+  id: 'ID',
+  number: '#',
+  customIdentifier: 'Name',
+  previewImage: 'Preview Image',
+  site: 'Dive Site',
+  buddiesDives: 'Buddy Dives',
+  namedBuddies: 'Buddies',
+  user: 'Diver',
+} as const
+
+export const params: (keyof DiveWithoutProfiles)[] = Object.keys(
+  ALL_PARAMS_MAP,
+) as (keyof DiveWithoutProfiles)[]
+
+type Buddy = {
+  id: number
+  name: string
+}
+
+export type BuddyDive = {
+  buddy: Buddy
+  diveId: number
+}
+
+export type DiveSite = {
+  id?: number
+  name: string
+  latitude: number
+  longitude: number
+}
