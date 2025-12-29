@@ -1,5 +1,15 @@
 <template>
   <div class="w-full">
+    <div class="flex justify-end px-4 mb-2">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs"
+           :style="{ backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', borderColor: 'rgba(209,213,219,0.8)' }">
+        <span class="opacity-80">Analytics:</span>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox" class="w-4 h-4" :checked="showSegments" @change="showSegments = !showSegments" />
+          <span>Segments</span>
+        </label>
+      </div>
+    </div>
     <MetricsControlPanel
       class="px-4 mb-2"
       v-model:show-temp="showTemp"
@@ -21,6 +31,7 @@
       :disable-gas-o2="!hasGasO2"
       :disable-gas-n2="!hasGasN2"
       :disable-gas-he="!hasGasHe"
+      :show-segments-toggle="false"
     />
     <div class="relative h-75">
       <label class="inline-grid-toggle">

@@ -2,6 +2,16 @@
   <div class="graph-modal-overlay">
     <div class="graph-modal-card">
       <button class="close-btn" @click="emit('close')">Close</button>
+      <div class="flex justify-end">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs mt-2 mr-3"
+             :style="{ backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', borderColor: 'rgba(209,213,219,0.8)' }">
+          <span class="opacity-80">Analytics:</span>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" class="w-4 h-4" :checked="showSegments" @change="emit('update:showSegments', !showSegments)" />
+            <span>Segments</span>
+          </label>
+        </div>
+      </div>
       <MetricsControlPanel
         class="px-3 pt-3"
         v-model:show-temp="showTempLocal"
@@ -23,6 +33,7 @@
         :disable-gas-o2="!hasGasO2"
         :disable-gas-n2="!hasGasN2"
         :disable-gas-he="!hasGasHe"
+        :show-segments-toggle="false"
       />
       <div class="graph-area">
         <label class="graph-grid-toggle">
