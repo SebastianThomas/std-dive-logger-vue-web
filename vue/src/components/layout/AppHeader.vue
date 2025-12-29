@@ -14,7 +14,13 @@
         </h1>
       </router-link>
     </div>
-    <div class="flex space-x-2 sm:space-x-3">
+    <div class="flex items-center space-x-2 sm:space-x-3">
+      <button
+        class="bg-gray-200 text-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-gray-300 transition-colors"
+        @click="$emit('toggle-theme')"
+      >
+        {{ themeLabel }}
+      </button>
       <button
         v-if="authStore.isLoggedIn"
         class="bg-red-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-red-600 transition-colors"
@@ -48,14 +54,16 @@ import { useAuthStore } from '@/stores/auth'
 interface Props {
   showTitle: boolean
   pageName: string
+  themeLabel: string
 }
 
-const { pageName, showTitle } = defineProps<Props>()
+const { pageName, showTitle, themeLabel } = defineProps<Props>()
 
 const authStore = useAuthStore()
 
 const emit = defineEmits<{
   logout: []
+  'toggle-theme': []
 }>()
 
 const handleLogout = () => {

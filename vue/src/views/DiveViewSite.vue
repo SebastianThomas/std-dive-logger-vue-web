@@ -1,39 +1,40 @@
 <template>
   <div
-    class="bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed flex justify-center items-start pt-20 px-6 md:px-10"
+    class="dive-view-shell bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed flex justify-center items-start pt-20 px-6 md:px-10"
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
-    <div v-if="graphOpen" class="fixed inset-0 z-50 bg-gray-900 p-2">
-      <button
-        @click="graphOpen = false"
-        class="absolute top-3 right-3 z-10 px-3 py-1.5 bg-blue-600 backdrop-blur rounded-lg shadow text-sm text-white hover:bg-blue-900"
-      >
-        Collapse
-      </button>
-      <div class="w-full h-full bg-white rounded-xl shadow-md overflow-hidden flex flex-col">
-        <MetricsControlPanel
-          v-if="firstProfile"
-          class="px-3 pt-3"
-          v-model:show-temp="showTemp"
-          v-model:show-segments="showSegments"
-          v-model:show-grid="showGrid"
-        />
-        <div class="flex-1">
-          <DiveGraph
-            v-if="firstProfile"
-            :profile="firstProfile"
-            :dive-id="diveId"
-            :show-temp="showTemp"
-            :show-segments="showSegments"
-            :show-grid="showGrid"
-          />
-        </div>
-      </div>
-    </div>
+    <DiveGraphModal
+      v-if="graphOpen && firstProfile"
+      :profile="firstProfile"
+      :dive-id="diveId"
+      :show-temp="showTemp"
+      :show-segments="showSegments"
+      :show-grid="showGrid"
+      :show-ndl="showNdl"
+      :show-otu="showOtu"
+      :show-cns="showCns"
+      :show-gf="showGf"
+      :show-rmv="showRmv"
+      :show-gas-o2="showGasO2"
+      :show-gas-n2="showGasN2"
+      :show-gas-he="showGasHe"
+      @close="graphOpen = false"
+      @update:show-temp="showTemp = $event"
+      @update:show-segments="showSegments = $event"
+      @update:show-grid="showGrid = $event"
+      @update:show-ndl="showNdl = $event"
+      @update:show-otu="showOtu = $event"
+      @update:show-cns="showCns = $event"
+      @update:show-gf="showGf = $event"
+      @update:show-rmv="showRmv = $event"
+      @update:show-gas-o2="showGasO2 = $event"
+      @update:show-gas-n2="showGasN2 = $event"
+      @update:show-gas-he="showGasHe = $event"
+    />
 
     <div v-else-if="!loading && dive" class="space-y-6 md:space-y-8">
       <!-- Header -->
-      <div class="bg-white rounded-xl shadow-md p-4 md:p-6 flex flex-col">
+      <div class="dive-card bg-white rounded-xl shadow-md p-4 md:p-6 flex flex-col">
         <div class="flex justify-between items-center mb-2">
           <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
           <div class="flex gap-2">
@@ -71,7 +72,7 @@
         v-if="showDeleteModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       >
-        <div class="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md">
+        <div class="dive-card bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md">
           <h2 class="text-lg font-semibold mb-4 text-gray-800">Confirm Delete</h2>
           <p class="text-gray-600 mb-6">
             Are you sure you want to delete dive #{{ dive.number }}? This action cannot be undone.
@@ -98,7 +99,7 @@
         v-if="showLinkModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       >
-        <div class="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-lg max-h-[80vh] overflow-auto">
+        <div class="dive-card bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-lg max-h-[80vh] overflow-auto">
           <h2 class="text-lg font-semibold mb-4 text-gray-800">Link a Dive</h2>
           <input
             v-model="searchTerm"
@@ -145,7 +146,7 @@
       <div class="flex flex-col md:flex-row gap-6">
         <!-- Map -->
         <div class="w-full md:w-1/5 h-50 rounded-lg overflow-hidden shadow-sm border">
-          <mapDisplayModal
+          <DiveSiteMap
             :sites="[
               {
                 site: {
@@ -168,38 +169,38 @@
             class="flex flex-wrap justify-center gap-4 md:gap-6 mb-4"
           >
             <div
-              class="bg-white bg-opacity-90 rounded-xl shadow-md px-3 py-2 flex flex-col items-center min-w-30"
+              class="dive-card bg-white bg-opacity-90 rounded-xl shadow-md px-3 py-2 flex flex-col items-center min-w-30"
             >
-              <p class="text-xs text-gray-500">Max Depth</p>
-              <p class="font-semibold text-gray-700 text-sm">{{ summary.maxDepth }} m</p>
+              <p class="text-xs" :style="{ color: 'var(--foreground)', opacity: 0.8 }">Max Depth</p>
+              <p class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">{{ summary.maxDepth?.toFixed(1) }} m</p>
             </div>
             <div
-              class="bg-white bg-opacity-90 rounded-xl shadow-md px-3 py-2 flex flex-col items-center min-w-30"
+              class="dive-card bg-white bg-opacity-90 rounded-xl shadow-md px-3 py-2 flex flex-col items-center min-w-30"
             >
-              <p class="text-xs text-gray-500">Avg Depth</p>
-              <p class="font-semibold text-gray-700 text-sm">
-                {{ summary.averageDepth?.toFixed(2) }} m
+              <p class="text-xs" :style="{ color: 'var(--foreground)', opacity: 0.8 }">Avg Depth</p>
+              <p class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
+                {{ summary.averageDepth?.toFixed(1) }} m
               </p>
             </div>
           </section>
 
           <!-- Details Grid -->
           <div class="grid md:grid-cols-3 gap-4">
-            <div class="bg-white rounded-xl shadow-md p-4">
-              <h2 class="font-semibold mb-2 text-gray-700 text-sm">Gases</h2>
+            <div class="dive-card bg-white rounded-xl shadow-md p-4">
+              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">Gases</h2>
               <ul class="text-xs text-gray-600 space-y-1">
                 <li>O₂ 21% · He 0% · N₂ 79%</li>
               </ul>
             </div>
-            <div class="bg-white rounded-xl shadow-md p-4">
-              <h2 class="font-semibold mb-2 text-gray-700 text-sm">Dive Computer</h2>
+            <div class="dive-card bg-white rounded-xl shadow-md p-4">
+              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">Dive Computer</h2>
               <p class="text-xs text-gray-600">
                 {{ firstProfile?.diveComputer.manufacturer.name }} —
                 {{ firstProfile?.diveComputer.customIdentifier }}
               </p>
             </div>
-            <div class="bg-white rounded-xl shadow-md p-4">
-              <h2 class="font-semibold mb-2 text-gray-700 text-sm">Buddies</h2>
+            <div class="dive-card bg-white rounded-xl shadow-md p-4">
+              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">Buddies</h2>
               <p
                 v-if="!dive.namedBuddies.length && !dive.buddiesDives?.length"
                 class="text-xs text-gray-400"
@@ -216,30 +217,14 @@
 
       <!-- Dive Profile Graph -->
       <div class="w-full flex justify-center mt-6">
-        <div class="bg-white rounded-xl shadow-md w-full max-w-150 flex flex-col">
+        <div class="dive-card bg-white rounded-xl shadow-md w-full max-w-150 flex flex-col">
           <div class="flex justify-between items-center p-4">
-            <h2 class="font-semibold text-gray-700 text-sm">Dive Profile</h2>
+            <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">Dive Profile</h2>
             <button @click="graphOpen = true" class="text-sm text-blue-600 hover:underline">
               Expand
             </button>
           </div>
-          <MetricsControlPanel
-            v-if="firstProfile"
-            class="px-4"
-            v-model:show-temp="showTemp"
-            v-model:show-segments="showSegments"
-            v-model:show-grid="showGrid"
-          />
-          <div class="flex-1 h-75">
-            <DiveGraph
-              v-if="firstProfile"
-              :profile="firstProfile"
-              :dive-id="diveId"
-              :show-temp="showTemp"
-              :show-segments="showSegments"
-              :show-grid="showGrid"
-            />
-          </div>
+          <ViewDiveProfile v-if="firstProfile" :profile="firstProfile" :dive-id="diveId" />
         </div>
       </div>
     </div>
@@ -256,8 +241,10 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
-import DiveGraph from '@/components/dive/view/DiveGraph.vue'
-import MetricsControlPanel from '@/components/dive/view/MetricsControlPanel.vue'
+import ViewDiveProfile from '@/components/dive/view/ViewDiveProfile.vue'
+import DiveGraphModal from '@/components/dive/view/DiveGraphModal.vue'
+import { useDiveGraphStore } from '@/stores/diveGraph'
+import { storeToRefs } from 'pinia'
 import type { Dive, DiveWithoutProfiles, PagedResult } from '@/lib/types/dive'
 import type { User } from '@/lib/types/share'
 
@@ -270,14 +257,26 @@ const dive = ref<Dive | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const graphOpen = ref(false)
-const showTemp = ref(true)
-const showSegments = ref(true)
-const showGrid = ref(true)
 const showDeleteModal = ref(false)
 const showLinkModal = ref(false)
 const myUserId = ref<number | null>(null)
 const myDives = ref<DiveWithoutProfiles[]>([])
 const searchTerm = ref('')
+
+const graphStore = useDiveGraphStore()
+const {
+  showTemp,
+  showSegments,
+  showGrid,
+  showNdl,
+  showOtu,
+  showCns,
+  showGf,
+  showRmv,
+  showGasO2,
+  showGasN2,
+  showGasHe,
+} = storeToRefs(graphStore)
 
 const firstProfile = computed(() => dive.value?.profiles?.[0])
 const summary = computed(() => firstProfile.value?.summary)
@@ -357,3 +356,18 @@ onMounted(() => {
 
 watch(() => diveId.value, fetchDive)
 </script>
+
+<style scoped>
+.dive-view-shell {
+  background-color: var(--surface-bg);
+}
+
+.dive-card {
+  background-color: var(--card-bg);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme='dark'] .dive-card {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+</style>

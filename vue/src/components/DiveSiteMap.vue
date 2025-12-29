@@ -138,4 +138,15 @@ watch(() => props.sites, updateMarkers, { deep: true })
   margin: 8px;
   font-size: 12px;
 }
+
+:deep(.leaflet-popup-content-wrapper) {
+  background-color: var(--card-bg);
+  color: var(--foreground);
+  border: 1px solid rgba(209, 213, 219, 0.25);
+}
+
+:deep(.leaflet-popup-tip) {
+  background-color: var(--card-bg);
+  border: 1px solid rgba(209, 213, 219, 0.25);
+}
 </style>

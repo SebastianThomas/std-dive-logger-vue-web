@@ -7,7 +7,13 @@
       gridTemplateColumns: `${sidebarWidth}px calc(100vw - ${sidebarWidth}px)`,
     }"
   >
-    <AppHeader :show-title="showTitle" :page-name="pageName" @logout="handleLogout" />
+    <AppHeader
+      :show-title="showTitle"
+      :page-name="pageName"
+      :theme-label="themeLabel"
+      @logout="handleLogout"
+      @toggle-theme="toggleTheme"
+    />
 
     <AppSidebar
       :is-visible="isVisible"
@@ -55,6 +61,12 @@ const windowWidth = ref(window.innerWidth)
 const isVisible = ref(true)
 const sidebarWidth = ref<0 | 50 | 130>(0)
 const showTitle = computed(() => windowWidth.value >= SM_BREAKPOINT)
+const themePreference = ref<'system' | 'light' | 'dark'>('system')
+const themeLabel = computed(() => {
+  if (themePreference.value === 'system') return 'Theme: System'
+  if (themePreference.value === 'light') return 'Theme: Light'
+  return 'Theme: Dark'
+})
 
 // Methods
 const handleLogout = async () => {
@@ -73,6 +85,25 @@ const handleLogout = async () => {
 
 const toggleSidebar = () => {
   isVisible.value = !isVisible.value
+}
+
+const applyTheme = () => {
+  const root = document.documentElement
+  if (themePreference.value === 'system') {
+    root.removeAttribute('data-theme')
+  } else {
+    root.setAttribute('data-theme', themePreference.value)
+  }
+  localStorage.setItem('theme-preference', themePreference.value)
+}
+
+const toggleTheme = () => {
+  const order: Array<'system' | 'light' | 'dark'> = ['system', 'light', 'dark']
+  const idx = order.indexOf(themePreference.value)
+  const nextIndex = idx === -1 ? 0 : (idx + 1) % order.length
+  const nextPref = order[nextIndex] ?? 'system'
+  themePreference.value = nextPref
+  applyTheme()
 }
 
 const handleResize = () => {
@@ -98,6 +129,16 @@ watch(
 // Lifecycle hooks
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+
+  const storedTheme = localStorage.getItem('theme-preference') as
+    | 'system'
+    | 'light'
+    | 'dark'
+    | null
+  if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system') {
+    themePreference.value = storedTheme
+  }
+  applyTheme()
 
   // Initial auth check and token refresh
   authStore.tryInitialLogin()
