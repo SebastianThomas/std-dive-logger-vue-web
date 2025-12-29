@@ -6,7 +6,7 @@ if (typeof window !== 'undefined') {
   delete L.Icon.Default.prototype._getIconUrl
 
   L.Icon.Default.mergeOptions({
-    iconUrl: '/leaflet/marker-icon.png',
+    iconUrl: '/leaflet/marker-icon-taucher.png',
     iconRetinaUrl: '/leaflet/marker-icon-taucher.png',
     shadowUrl: '/leaflet/marker-shadow.png',
     iconSize: [40, 50],

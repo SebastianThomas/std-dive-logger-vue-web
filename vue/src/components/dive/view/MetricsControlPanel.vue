@@ -22,14 +22,14 @@
           />
           <span class="font-bold text-sm" style="color: #ef4444">Temperature</span>
         </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
+        <label v-if="showSegmentsToggle !== false" class="flex items-center gap-1.5 cursor-pointer">
           <input
             type="checkbox"
             class="w-4 h-4"
             :checked="showSegments"
             @change="$emit('update:showSegments', !showSegments)"
           />
-          <span class="font-semibold text-sm text-gray-700">Segments</span>
+          <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">Segments</span>
         </label>
         <label class="flex items-center gap-1.5 cursor-pointer">
           <input
@@ -145,6 +145,7 @@ defineProps<{
   disableGasO2?: boolean
   disableGasN2?: boolean
   disableGasHe?: boolean
+  showSegmentsToggle?: boolean
 }>()
 defineEmits<{
   'update:showTemp': []
