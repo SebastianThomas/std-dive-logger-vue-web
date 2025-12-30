@@ -68,17 +68,17 @@
       <div>Depth: {{ tooltip.depth.toFixed(1) }} m</div>
       <div v-if="tooltip.temp !== undefined">Temp: {{ tooltip.temp.toFixed(1) }} °C</div>
       <div v-if="tooltip.ndl">NDL: {{ tooltip.ndl }}</div>
-      <div v-if="tooltip.otu !== undefined">OTUs: {{ tooltip.otu.toFixed(1) }}</div>
-      <div v-if="tooltip.cns !== undefined">CNS: {{ tooltip.cns.toFixed(1) }}%</div>
-      <div v-if="tooltip.gf !== undefined">GF99: {{ tooltip.gf.toFixed(1) }}%</div>
-      <div v-if="tooltip.rmv !== undefined">RMV: {{ tooltip.rmv.toFixed(1) }} L/min</div>
+      <div v-if="tooltip.otu !== undefined">OTUs: {{ tooltip.otu.toFixed(0) }}</div>
+      <div v-if="tooltip.cns !== undefined">CNS: {{ tooltip.cns.toFixed(0) }}%</div>
+      <div v-if="tooltip.gf !== undefined">GF99: {{ tooltip.gf.toFixed(0) }}%</div>
+      <div v-if="tooltip.rmv !== undefined">RMV: {{ tooltip.rmv.toFixed(0) }} L/min</div>
       <div v-if="tooltip.gasO2 !== undefined && tooltip.gasHe !== undefined" class="group relative">
         <div>Gas: {{ tooltip.gasO2.toFixed(0) }}/{{ tooltip.gasHe.toFixed(0) }}</div>
         <div
           class="absolute left-full ml-2 top-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
         >
-          O₂: {{ tooltip.gasO2.toFixed(1) }}%, N₂: {{ tooltip.gasN2?.toFixed(1) }}%, He:
-          {{ tooltip.gasHe.toFixed(1) }}%
+          O₂: {{ tooltip.gasO2.toFixed(0) }}%, N₂: {{ tooltip.gasN2?.toFixed(0) }}%, He:
+          {{ tooltip.gasHe.toFixed(0) }}%
         </div>
       </div>
       <div v-if="tooltip.segmentType" class="mt-1 pt-1 border-t border-gray-300">
