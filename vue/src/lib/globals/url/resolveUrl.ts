@@ -23,11 +23,11 @@ export function resolveUrl(path: string, baseUrl: string = BASE_URL || ''): stri
   const protocolIdx = joined.indexOf('://')
   if (protocolIdx >= 0) {
     const proto = joined.slice(0, protocolIdx + 3)
-    const rest = joined.slice(protocolIdx + 3).replaceAll('//', '/')
+    const rest = joined.slice(protocolIdx + 3).replace(/\/\//g, '/')
     return proto + rest
   }
 
-  return joined.replaceAll('//', '/')
+  return joined.replace(/\/\//g, '/')
 }
 
 export function resolveAutocompleteUrl(path: string): string {

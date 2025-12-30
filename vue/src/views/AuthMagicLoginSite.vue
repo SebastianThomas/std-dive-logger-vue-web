@@ -64,7 +64,7 @@ const redirectAfterLogin = () => {
 onMounted(async () => {
   // Already logged in? Redirect to 'from' and warn.
   const maybeRedirect = () => {
-    if (!authStore.isRefreshing.value && authStore.isLoggedIn.value) {
+    if (!authStore.isRefreshing && authStore.isLoggedIn) {
       const from = (route.query.from as string) || '/'
       toast.warning('You are already signed in.')
       router.replace(from)
@@ -73,9 +73,9 @@ onMounted(async () => {
     return false
   }
   if (!maybeRedirect()) {
-    if (authStore.isRefreshing.value) {
+    if (authStore.isRefreshing) {
       const stop = watch(
-        () => authStore.isRefreshing.value,
+        () => authStore.isRefreshing,
         (val) => {
           if (!val) {
             stop()
