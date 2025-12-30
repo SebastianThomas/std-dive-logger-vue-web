@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 env:
-  FRONTEND_DIR: ./nextjs
+  FRONTEND_DIR: ./vue
   LINT_ENABLED: true
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set frontend directory
-        run: echo "FRONTEND_DIR=./nextjs" >> $GITHUB_ENV
+        run: echo "FRONTEND_DIR=./vue" >> $GITHUB_ENV
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -29,6 +29,9 @@ jobs:
         if: ${{ env.LINT_ENABLED  == 'true'}}
         working-directory: ${{ env.FRONTEND_DIR }}
         run: yarn lint
+      - name: Run unit tests
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn test:ci
       - name: Build project
         working-directory: ${{ env.FRONTEND_DIR }}
         run: yarn build

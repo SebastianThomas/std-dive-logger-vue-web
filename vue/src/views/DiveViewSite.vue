@@ -119,8 +119,12 @@
               <div>
                 <p class="text-sm font-medium">{{ d.customIdentifier }}</p>
                 <p class="text-xs text-gray-500">
-                  #{{ d.number }} · {{ d.site.name }} ·
-                  {{ new Date(d.site.name).toLocaleDateString() }}
+                  #{{ d.number }} · {{ dive.site.name }} ·
+                  {{
+                    firstProfile?.start
+                      ? new Date(firstProfile.start).toLocaleString()
+                      : 'No start date'
+                  }}
                 </p>
               </div>
               <button

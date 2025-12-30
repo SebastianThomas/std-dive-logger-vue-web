@@ -68,7 +68,9 @@
                   </span>
                 </p>
 
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Supported file types: Any</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Supported file types: Any
+                </p>
               </button>
 
               <!-- Hidden file input -->

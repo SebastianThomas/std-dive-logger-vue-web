@@ -34,7 +34,7 @@ const initialFeatures: FeatureCardProps[] = [
     image: '/images/group.jpg',
     title: 'Share your dives',
     description:
-      'Share your dives with friends and diving groups. Wether it is planning your next trip or just showing off your favorite dives, this app overs easy and secure sharing of your logs.',
+      'Share your dives with friends and diving groups. Whether it is planning your next trip or just showing off your favorite dives, this app offers easy and secure sharing of your logs.',
   },
   {
     image: '/images/merge.png',

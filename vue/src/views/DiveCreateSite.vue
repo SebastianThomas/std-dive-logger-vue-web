@@ -27,7 +27,10 @@
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Multiple files supported</p>
           </button>
           <input ref="fileInputRef" type="file" class="hidden" multiple @change="onFileInput" />
-          <ul v-if="files.length" class="text-sm text-gray-700 dark:text-gray-300 list-disc pl-5 space-y-1">
+          <ul
+            v-if="files.length"
+            class="text-sm text-gray-700 dark:text-gray-300 list-disc pl-5 space-y-1"
+          >
             <li v-for="f in files" :key="f.name">{{ f.name }}</li>
           </ul>
         </div>
