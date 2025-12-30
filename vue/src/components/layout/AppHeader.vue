@@ -13,7 +13,7 @@
     <div class="flex items-center space-x-2 sm:space-x-3">
       <button
         class="theme-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300"
-        @click="$emit('toggle-theme')"
+        @click="themeStore.toggleTheme()"
         :title="themeLabel"
       >
         <i :class="themeIcon" class="text-lg sm:text-xl"></i>
@@ -48,24 +48,28 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 
 interface Props {
   showTitle: boolean
   pageName: string
-  themeLabel: string
 }
 
-const { pageName, showTitle, themeLabel } = defineProps<Props>()
+const { pageName, showTitle } = defineProps<Props>()
 
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 
 const themeIcon = computed(() => {
-  return themeLabel.includes('Dark') ? 'fas fa-moon' : 'fas fa-sun'
+  return themeStore.theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun'
+})
+
+const themeLabel = computed(() => {
+  return themeStore.theme === 'dark' ? 'Theme: Dark' : 'Theme: Light'
 })
 
 const emit = defineEmits<{
   logout: []
-  'toggle-theme': []
 }>()
 
 const handleLogout = () => {

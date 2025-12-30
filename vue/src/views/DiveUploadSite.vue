@@ -179,5 +179,6 @@ const handleSubmit = async () => {
 
 :deep(input[type='number']) {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 </style>

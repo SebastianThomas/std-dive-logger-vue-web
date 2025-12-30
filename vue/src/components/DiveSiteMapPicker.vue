@@ -8,6 +8,7 @@
 import { ref, onMounted, watch } from 'vue'
 import L from 'leaflet'
 import { usePersistentMapView } from '@/composables/mapViewState'
+import { useThemeStore } from '@/stores/theme'
 import '@/lib/map/leafletIcon'
 import 'leaflet/dist/leaflet.css'
 
@@ -29,6 +30,8 @@ const emit = defineEmits<{
 const mapContainer = ref<HTMLElement | null>(null)
 const mapInstance = ref<L.Map | null>(null)
 const markerInstance = ref<L.Marker | null>(null)
+const tileLayer = ref<L.TileLayer | null>(null)
+const themeStore = useThemeStore()
 
 const [mapView, setMapView] = usePersistentMapView('map-picker-view', {
   lat: 46,
@@ -72,10 +75,7 @@ onMounted(() => {
   mapInstance.value = map
 
   // Add tile layer
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19,
-  }).addTo(map)
+  updateTileLayer()
 
   // Add click handler
   map.on('click', (e: L.LeafletMouseEvent) => {
@@ -93,6 +93,29 @@ onMounted(() => {
   }
 })
 
+const updateTileLayer = () => {
+  if (!mapInstance.value) return
+
+  // Remove old tile layer if it exists
+  if (tileLayer.value) {
+    tileLayer.value.remove()
+  }
+
+  // Add new tile layer based on current theme
+  const isDark = themeStore.theme === 'dark'
+  const tileUrl = isDark
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+  const attribution = isDark
+    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    : '&copy; OpenStreetMap contributors'
+
+  tileLayer.value = L.tileLayer(tileUrl, {
+    attribution,
+    maxZoom: 19,
+  }).addTo(mapInstance.value as L.Map)
+}
+
 // Watch for prop changes to update marker
 watch(
   () => props.initialCoords,
@@ -103,6 +126,8 @@ watch(
     }
   },
 )
+
+watch(() => themeStore.theme, updateTileLayer)
 </script>
 
 <style scoped>
