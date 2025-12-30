@@ -12,10 +12,11 @@
     </div>
     <div class="flex items-center space-x-2 sm:space-x-3">
       <button
-        class="theme-button px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base transition-colors"
+        class="theme-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300"
         @click="$emit('toggle-theme')"
+        :title="themeLabel"
       >
-        {{ themeLabel }}
+        <i :class="themeIcon" class="text-lg sm:text-xl"></i>
       </button>
       <button
         v-if="authStore.isLoggedIn"
@@ -45,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 interface Props {
@@ -56,6 +58,10 @@ interface Props {
 const { pageName, showTitle, themeLabel } = defineProps<Props>()
 
 const authStore = useAuthStore()
+
+const themeIcon = computed(() => {
+  return themeLabel.includes('Dark') ? 'fas fa-moon' : 'fas fa-sun'
+})
 
 const emit = defineEmits<{
   logout: []
