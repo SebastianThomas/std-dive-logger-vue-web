@@ -7,11 +7,7 @@
       gridTemplateColumns: `${sidebarWidth}px calc(100vw - ${sidebarWidth}px)`,
     }"
   >
-    <AppHeader
-      :show-title="showTitle"
-      :page-name="pageName"
-      @logout="handleLogout"
-    />
+    <AppHeader :show-title="showTitle" :page-name="pageName" @logout="handleLogout" />
 
     <AppSidebar
       :is-visible="isVisible"

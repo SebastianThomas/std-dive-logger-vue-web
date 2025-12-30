@@ -15,7 +15,7 @@
       </div>
 
       <div v-else-if="analytics" class="space-y-4">
-        <VueJsonPretty :value="analytics" />
+        <VueJsonPretty :data="analytics" />
       </div>
 
       <div v-else class="text-center py-12">
