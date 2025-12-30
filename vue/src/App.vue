@@ -61,9 +61,8 @@ const windowWidth = ref(window.innerWidth)
 const isVisible = ref(true)
 const sidebarWidth = ref<0 | 50 | 130>(0)
 const showTitle = computed(() => windowWidth.value >= SM_BREAKPOINT)
-const themePreference = ref<'system' | 'light' | 'dark'>('system')
+const themePreference = ref<'light' | 'dark'>('light')
 const themeLabel = computed(() => {
-  if (themePreference.value === 'system') return 'Theme: System'
   if (themePreference.value === 'light') return 'Theme: Light'
   return 'Theme: Dark'
 })
@@ -89,20 +88,12 @@ const toggleSidebar = () => {
 
 const applyTheme = () => {
   const root = document.documentElement
-  if (themePreference.value === 'system') {
-    root.removeAttribute('data-theme')
-  } else {
-    root.setAttribute('data-theme', themePreference.value)
-  }
+  root.setAttribute('data-theme', themePreference.value)
   localStorage.setItem('theme-preference', themePreference.value)
 }
 
 const toggleTheme = () => {
-  const order: Array<'system' | 'light' | 'dark'> = ['system', 'light', 'dark']
-  const idx = order.indexOf(themePreference.value)
-  const nextIndex = idx === -1 ? 0 : (idx + 1) % order.length
-  const nextPref = order[nextIndex] ?? 'system'
-  themePreference.value = nextPref
+  themePreference.value = themePreference.value === 'light' ? 'dark' : 'light'
   applyTheme()
 }
 
@@ -130,9 +121,13 @@ watch(
 onMounted(() => {
   window.addEventListener('resize', handleResize)
 
-  const storedTheme = localStorage.getItem('theme-preference') as 'system' | 'light' | 'dark' | null
-  if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system') {
+  const storedTheme = localStorage.getItem('theme-preference') as 'light' | 'dark' | null
+  if (storedTheme === 'light' || storedTheme === 'dark') {
     themePreference.value = storedTheme
+  } else {
+    // First visit: detect system preference
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    themePreference.value = prefersDark ? 'dark' : 'light'
   }
   applyTheme()
 

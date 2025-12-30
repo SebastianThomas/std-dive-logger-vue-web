@@ -54,21 +54,21 @@
 
               <button
                 type="button"
-                class="border-2 border-dashed border-sky-300 bg-sky-50 rounded-2xl p-6 text-center cursor-pointer shadow-sm transition hover:bg-sky-100 hover:border-sky-400"
+                class="border-2 border-dashed border-sky-300 bg-sky-50 dark:bg-sky-900 dark:border-sky-600 rounded-2xl p-6 text-center cursor-pointer shadow-sm transition hover:bg-sky-100 dark:hover:bg-sky-800 hover:border-sky-400 dark:hover:border-sky-500"
                 @click="fileInputRef?.click()"
                 @dragover.prevent
                 @drop.prevent="handleDrop"
               >
-                <div class="text-sky-500 text-4xl mb-2">☁️📤</div>
+                <div class="text-sky-500 dark:text-sky-400 text-4xl mb-2">☁️📤</div>
 
-                <p class="text-gray-700">
+                <p class="text-gray-700 dark:text-gray-200">
                   <span v-if="file" class="font-semibold">{{ file.name }}</span>
                   <span v-else>
                     <span class="font-semibold">Click to upload</span> or drag & drop
                   </span>
                 </p>
 
-                <p class="text-xs text-gray-500 mt-1">Supported file types: Any</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Supported file types: Any</p>
               </button>
 
               <!-- Hidden file input -->

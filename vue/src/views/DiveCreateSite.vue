@@ -10,24 +10,24 @@
           <label class="font-medium">Files</label>
           <button
             type="button"
-            class="border-2 border-dashed border-sky-300 bg-sky-50 rounded-xl p-6 text-center cursor-pointer hover:bg-sky-100 hover:border-sky-400"
+            class="border-2 border-dashed border-sky-300 bg-sky-50 dark:bg-sky-900 dark:border-sky-600 rounded-xl p-6 text-center cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-800 hover:border-sky-400 dark:hover:border-sky-500"
             @click="fileInputRef?.click()"
             @dragover.prevent
             @drop.prevent="handleDrop"
           >
-            <div class="text-sky-500 text-4xl mb-2">
+            <div class="text-sky-500 dark:text-sky-400 text-4xl mb-2">
               <i class="fas fa-cloud-upload-alt"></i>
             </div>
-            <p class="text-gray-700">
+            <p class="text-gray-700 dark:text-gray-200">
               <span v-if="files.length" class="font-semibold"
                 >{{ files.length }} file(s) selected</span
               >
               <span v-else><span class="font-semibold">Click to upload</span> or drag & drop</span>
             </p>
-            <p class="text-xs text-gray-500 mt-1">Multiple files supported</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Multiple files supported</p>
           </button>
           <input ref="fileInputRef" type="file" class="hidden" multiple @change="onFileInput" />
-          <ul v-if="files.length" class="text-sm text-gray-700 list-disc pl-5 space-y-1">
+          <ul v-if="files.length" class="text-sm text-gray-700 dark:text-gray-300 list-disc pl-5 space-y-1">
             <li v-for="f in files" :key="f.name">{{ f.name }}</li>
           </ul>
         </div>
