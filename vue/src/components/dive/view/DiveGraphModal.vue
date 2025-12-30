@@ -5,7 +5,6 @@
       <DiveGraphView
         :profile="profile"
         :dive-id="diveId"
-        :show-segments-toggle="false"
         :show-grid-toggle="true"
       />
     </div>
