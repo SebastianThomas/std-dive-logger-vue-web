@@ -105,12 +105,18 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
   const requiresAuth = to.matched.some((r) => r.meta?.requiresAuth)
 
-  if (requiresAuth && !auth.isLoggedIn) {
-    return { name: 'AuthLogin', query: { from: to.fullPath } }
+  if (requiresAuth) {
+    if (!auth.isInitialCheckDone) {
+      await auth.waitForInitialCheck()
+    }
+
+    if (!auth.isLoggedIn) {
+      return { name: 'AuthLogin', query: { from: to.fullPath } }
+    }
   }
 })
 

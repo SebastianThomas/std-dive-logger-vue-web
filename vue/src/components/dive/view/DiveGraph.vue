@@ -54,9 +54,22 @@
       <div v-if="tooltip.cns !== undefined">CNS: {{ tooltip.cns.toFixed(1) }}%</div>
       <div v-if="tooltip.gf !== undefined">GF99: {{ tooltip.gf.toFixed(1) }}%</div>
       <div v-if="tooltip.rmv !== undefined">RMV: {{ tooltip.rmv.toFixed(1) }} L/min</div>
-      <div v-if="tooltip.gasO2 !== undefined">Gas O₂: {{ tooltip.gasO2.toFixed(1) }}%</div>
-      <div v-if="tooltip.gasN2 !== undefined">Gas N₂: {{ tooltip.gasN2.toFixed(1) }}%</div>
-      <div v-if="tooltip.gasHe !== undefined">Gas He: {{ tooltip.gasHe.toFixed(1) }}%</div>
+      <div v-if="tooltip.gasO2 !== undefined && tooltip.gasHe !== undefined" class="group relative">
+        <div>Gas: {{ tooltip.gasO2.toFixed(0) }}/{{ tooltip.gasHe.toFixed(0) }}</div>
+        <div class="absolute left-full ml-2 top-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          O₂: {{ tooltip.gasO2.toFixed(1) }}%, N₂: {{ tooltip.gasN2?.toFixed(1) }}%, He: {{ tooltip.gasHe.toFixed(1) }}%
+        </div>
+      </div>
+      <div v-if="tooltip.segmentType" class="mt-1 pt-1 border-t border-gray-300">
+        Segment: {{ tooltip.segmentType }}
+      </div>
+    </div>
+    <!-- Zoom hint overlay -->
+    <div
+      v-if="showZoomHint"
+      class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/75 text-white px-4 py-2 rounded-lg text-sm font-medium pointer-events-none z-20"
+    >
+      Ctrl+Scroll to zoom in the graph
     </div>
   </div>
 </template>
@@ -116,10 +129,13 @@ const tooltip = ref<
     gasO2?: number
     gasN2?: number
     gasHe?: number
+    segmentType?: string
   } | null
 >(null)
 const tooltipLeft = ref(0)
 const tooltipTop = ref(0)
+const showZoomHint = ref(false)
+let zoomHintTimer: ReturnType<typeof setTimeout> | null = null
 
 const svgSel = ref<any | null>(null)
 const gSel = ref<any | null>(null)
@@ -155,8 +171,10 @@ const gasN2Line = ref<any | null>(null)
 const gasHeLine = ref<any | null>(null)
 const hoverOverlay = ref<any | null>(null)
 const focusCircle = ref<any | null>(null)
+const crosshairLine = ref<any | null>(null)
 const segmentsData = ref<DiveProfileSegmentWithId[] | null>(null)
 const segmentsLayer = ref<any | null>(null)
+const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
 const zoomBehavior = ref<any | null>(null)
 const { getWithToken } = useApi()
 const leftAxisMetric = ref<'depth' | 'temp' | 'ndl' | 'otu' | 'cns' | 'gf' | 'rmv' | 'gasO2' | 'gasN2' | 'gasHe'>('depth')
@@ -184,8 +202,8 @@ function setupScales() {
 
   timeScaleBase.value = scaleLinear().domain([tmin, tmax]).range([0, innerWidth.value])
   timeScale.value = timeScaleBase.value.copy()
-  // Depth increases downwards
-  depthScaleBase.value = scaleLinear().domain([dmin, dmax]).range([innerHeight.value, 0])
+  // Depth increases downwards (invert range so 0 is at top, max depth at bottom)
+  depthScaleBase.value = scaleLinear().domain([dmin, dmax]).range([0, innerHeight.value])
   depthScale.value = depthScaleBase.value.copy()
 
   // Independent domains per metric to keep lines static regardless of toggle state
@@ -270,6 +288,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (ro && container.value) ro.unobserve(container.value)
+  if (zoomHintTimer) clearTimeout(zoomHintTimer)
 })
 
 watch(
@@ -308,12 +327,14 @@ function initSvg() {
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
   gSel.value = g
 
-  // Layers: segments under, lines over
-  segmentsLayer.value = g.append('g').attr('class', 'segments')
+  // Background rect (for contrast)
   g.append('rect')
     .attr('width', innerWidth.value)
     .attr('height', innerHeight.value)
     .attr('fill', 'var(--card-bg, #ffffff)')
+  
+  // Layers: segments above background, lines over segments
+  segmentsLayer.value = g.append('g').attr('class', 'segments')
 
   // Gridlines
   grid.y.value = g.append('g').attr('class', 'grid-y')
@@ -355,12 +376,23 @@ function initSvg() {
   g.append('path').attr('class', 'line-gas-he').attr('fill', 'none').attr('stroke', '#f97316').attr('stroke-width', 1.2).attr('opacity', 0.7)
 
   // Hover overlay
+  // Vertical crosshair line
+  crosshairLine.value = g
+    .append('line')
+    .attr('class', 'crosshair-line')
+    .attr('stroke', '#ef4444')
+    .attr('stroke-width', 1)
+    .attr('stroke-dasharray', '4,2')
+    .attr('y1', 0)
+    .attr('y2', innerHeight.value)
+    .style('display', 'none')
+  
   focusCircle.value = g
     .append('circle')
-    .attr('r', 3)
+    .attr('r', 5)
     .attr('fill', '#ef4444')
     .attr('stroke', '#fff')
-    .attr('stroke-width', 1)
+    .attr('stroke-width', 2)
     .style('display', 'none')
   hoverOverlay.value = g
     .append('rect')
@@ -370,18 +402,34 @@ function initSvg() {
     .on('mousemove', onMouseMoveD3)
     .on('mouseleave', onMouseLeave)
 
-  // Zoom & pan on the SVG
+  // Zoom & pan on the SVG (X-axis only, requires Ctrl)
   const z = zoom()
     .scaleExtent([1, 20])
     .translateExtent([
       [0, 0],
       [width.value, height.value],
     ])
+    .filter((event: any) => {
+      // Only allow zoom/pan with Ctrl key pressed
+      if (event.type === 'wheel' && !event.ctrlKey) {
+        // Show hint when user tries to zoom without Ctrl
+        if (!showZoomHint.value) {
+          showZoomHint.value = true
+          if (zoomHintTimer) clearTimeout(zoomHintTimer)
+          zoomHintTimer = setTimeout(() => {
+            showZoomHint.value = false
+          }, 2000)
+        }
+        return false
+      }
+      return !event.button && event.type !== 'dblclick'
+    })
     .on('zoom', (event: any) => {
       if (!timeScaleBase.value || !depthScaleBase.value) return
       const t = event.transform
+      // Only rescale X (time), keep Y (depth) unchanged
       timeScale.value = t.rescaleX(timeScaleBase.value)
-      depthScale.value = t.rescaleY(depthScaleBase.value)
+      depthScale.value = depthScaleBase.value.copy()
       renderAll()
       renderSegments()
     })
@@ -542,42 +590,90 @@ function formatAxisTick(metric: string, v: number): string {
 }
 
 async function maybeFetchSegments() {
-  if (!props.showSegments) return
+  if (!props.showSegments) {
+    segmentsData.value = null
+    return
+  }
+  
+  // Check cache first
+  if (segmentsCache.has(props.diveId)) {
+    segmentsData.value = segmentsCache.get(props.diveId) ?? null
+    return
+  }
+  
+  // Fetch from API
   try {
     const res = await getWithToken<DiveProfileSegmentWithId[]>(
-      `/v1/dives/${props.diveId}/profiles/${props.profile.id}/segments`,
+      `/v1/dives/analytics/segments?id=${props.diveId}`,
     )
+    segmentsCache.set(props.diveId, res.data)
     segmentsData.value = res.data
-  } catch {
-    // non-fatal
+  } catch (err) {
+    console.error('Failed to fetch segments:', err)
     segmentsData.value = null
   }
 }
 
 function renderSegments() {
-  if (!segmentsLayer.value || !segmentsData.value || !timeScale.value) return
+  if (!segmentsLayer.value || !timeScale.value) return
+  
+  // Clear segments if not showing or no data
+  if (!props.showSegments || !segmentsData.value) {
+    segmentsLayer.value.selectAll('rect').remove()
+    return
+  }
+  
   const ms = props.profile.measurements
   const getTimeAtIdx = (idx: number) =>
     ms[Math.min(Math.max(idx, 0), ms.length - 1)]!.measurement.time
-  const rects = segmentsLayer.value.selectAll('rect').data(segmentsData.value)
-  rects
-    .join('rect')
-    .attr('x', (s: DiveProfileSegmentWithId) =>
-      timeScale.value!(getTimeAtIdx(s.segment.firstMeasurementIdx)),
-    )
-    .attr('y', 0)
-    .attr('width', (s: DiveProfileSegmentWithId, i: number, arr: DiveProfileSegmentWithId[]) => {
-      const next = arr[i + 1]
-      const endTime = next
-        ? getTimeAtIdx(next.segment.firstMeasurementIdx)
-        : ms[ms.length - 1]?.measurement.time
-      const startTime = getTimeAtIdx(s.segment.firstMeasurementIdx)
-      const w = timeScale.value!(endTime) - timeScale.value!(startTime)
-      return Math.max(0, w)
-    })
-    .attr('height', innerHeight.value)
-    .attr('fill', (s: DiveProfileSegmentWithId) => segmentColor(s.segment.type))
-    .attr('opacity', 0.08)
+  
+  // Filter out any undefined or malformed segments
+  const validSegments = segmentsData.value.filter(
+    (s) => s && s.segment && typeof s.segment.firstMeasurementIdx === 'number'
+  )
+  
+  const h = innerHeight.value
+  
+  // Clear old rectangles first
+  segmentsLayer.value.selectAll('rect').remove()
+  
+  // Create new rectangles for each segment with proper width
+  validSegments.forEach((s, i) => {
+    if (!s?.segment || typeof s.segment.firstMeasurementIdx !== 'number') return
+    
+    const startTime = getTimeAtIdx(s.segment.firstMeasurementIdx)
+    const startX = timeScale.value!(startTime)
+    
+    // Calculate end time for this segment
+    let endTime: number
+    if (i < validSegments.length - 1) {
+      const nextSegment = validSegments[i + 1]
+      if (nextSegment?.segment && typeof nextSegment.segment.firstMeasurementIdx === 'number') {
+        endTime = getTimeAtIdx(nextSegment.segment.firstMeasurementIdx)
+      } else {
+        endTime = ms[ms.length - 1]?.measurement.time ?? startTime
+      }
+    } else {
+      // Last segment extends to end of measurements
+      endTime = ms[ms.length - 1]?.measurement.time ?? startTime
+    }
+    
+    const endX = timeScale.value!(endTime)
+    const width = Math.max(0, endX - startX)
+    
+    segmentsLayer.value
+      .append('rect')
+      .attr('x', startX)
+      .attr('y', 0)
+      .attr('width', width)
+      .attr('height', h)
+      .attr('fill', segmentColor(s.segment.type || ''))
+      .attr('opacity', 0.3)
+      .attr('stroke', segmentColor(s.segment.type || ''))
+      .attr('stroke-width', 1.5)
+      .attr('stroke-opacity', 0.5)
+      .style('pointer-events', 'none')
+  })
 }
 
 function segmentColor(type: string) {
@@ -595,6 +691,37 @@ function segmentColor(type: string) {
   }
 }
 
+function segmentTypeName(type: string) {
+  switch (type) {
+    case 'DESCENT':
+      return 'Descent'
+    case 'HOLD_LEVEL':
+      return 'Hold Level'
+    case 'ASCENT':
+      return 'Ascent'
+    case 'SURFACE':
+      return 'Surface'
+    default:
+      return type
+  }
+}
+
+function findSegmentAtIndex(idx: number): string | undefined {
+  if (!props.showSegments || !segmentsData.value) return undefined
+  
+  const segment = segmentsData.value.find((s, i, arr) => {
+    if (!s?.segment || typeof s.segment.firstMeasurementIdx !== 'number') return false
+    const start = s.segment.firstMeasurementIdx
+    const next = arr[i + 1]
+    const end = next?.segment && typeof next.segment.firstMeasurementIdx === 'number'
+      ? next.segment.firstMeasurementIdx
+      : props.profile.measurements.length
+    return idx >= start && idx < end
+  })
+  
+  return segment?.segment?.type ? segmentTypeName(segment.segment.type) : undefined
+}
+
 function onMouseMoveD3(event: MouseEvent) {
   if (!timeScale.value || !depthScale.value || !gSel.value) return
   const [mx, my] = pointerInG(event)
@@ -610,6 +737,11 @@ function onMouseMoveD3(event: MouseEvent) {
 
   const cx = timeScale.value(m.measurement.time)
   const cy = depthScale.value(m.measurement.depth)
+  
+  // Show crosshair line at cursor x position
+  crosshairLine.value?.attr('x1', cx).attr('x2', cx).style('display', null)
+  
+  // Show focus circle at data point
   focusCircle.value?.attr('cx', cx).attr('cy', cy).style('display', null)
 
   tooltip.value = {
@@ -624,12 +756,15 @@ function onMouseMoveD3(event: MouseEvent) {
     gasO2: m.measurement.gas?.o2 !== undefined ? m.measurement.gas.o2 * 100 : undefined,
     gasN2: m.measurement.gas?.n2 !== undefined ? m.measurement.gas.n2 * 100 : undefined,
     gasHe: m.measurement.gas?.he !== undefined ? m.measurement.gas.he * 100 : undefined,
+    segmentType: findSegmentAtIndex(idx),
   }
+  
+  // Position tooltip: use mouse Y position instead of data point Y position
   const tipX = cx + margin.left + 8
-  const tipY = cy + margin.top - 8
+  const mouseY = event.clientY - container.value!.getBoundingClientRect().top
   const bounds = container.value!.getBoundingClientRect()
   tooltipLeft.value = Math.min(bounds.width - 160, Math.max(0, tipX))
-  tooltipTop.value = Math.min(bounds.height - 80, Math.max(0, tipY))
+  tooltipTop.value = Math.min(bounds.height - 80, Math.max(0, mouseY - 40))
 }
 
 function pointerInG(event: MouseEvent): [number, number] {
@@ -642,6 +777,7 @@ function pointerInG(event: MouseEvent): [number, number] {
 function onMouseLeave() {
   if (!container.value) return
   focusCircle.value?.style('display', 'none')
+  crosshairLine.value?.style('display', 'none')
   tooltip.value = null
 }
 

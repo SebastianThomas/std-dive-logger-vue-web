@@ -99,7 +99,9 @@
         v-if="showLinkModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       >
-        <div class="dive-card bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-lg max-h-[80vh] overflow-auto">
+        <div
+          class="dive-card bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-lg max-h-[80vh] overflow-auto"
+        >
           <h2 class="text-lg font-semibold mb-4 text-gray-800">Link a Dive</h2>
           <input
             v-model="searchTerm"
@@ -172,7 +174,9 @@
               class="dive-card bg-white bg-opacity-90 rounded-xl shadow-md px-3 py-2 flex flex-col items-center min-w-30"
             >
               <p class="text-xs" :style="{ color: 'var(--foreground)', opacity: 0.8 }">Max Depth</p>
-              <p class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">{{ summary.maxDepth?.toFixed(1) }} m</p>
+              <p class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
+                {{ summary.maxDepth?.toFixed(1) }} m
+              </p>
             </div>
             <div
               class="dive-card bg-white bg-opacity-90 rounded-xl shadow-md px-3 py-2 flex flex-col items-center min-w-30"
@@ -187,20 +191,29 @@
           <!-- Details Grid -->
           <div class="grid md:grid-cols-3 gap-4">
             <div class="dive-card bg-white rounded-xl shadow-md p-4">
-              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">Gases</h2>
+              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">
+                Gases
+              </h2>
               <ul class="text-xs text-gray-600 space-y-1">
-                <li>O₂ 21% · He 0% · N₂ 79%</li>
+                <li v-for="gas in allGases" :key="`${gas.o2}/${gas.he}/${gas.n2}`">
+                  <GasDisplay :gas="gas" :show-details="showGasDetails" />
+                </li>
+                <li v-if="allGases.size === 0" class="text-gray-400">No gas data</li>
               </ul>
             </div>
             <div class="dive-card bg-white rounded-xl shadow-md p-4">
-              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">Dive Computer</h2>
+              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">
+                Dive Computer
+              </h2>
               <p class="text-xs text-gray-600">
                 {{ firstProfile?.diveComputer.manufacturer.name }} —
                 {{ firstProfile?.diveComputer.customIdentifier }}
               </p>
             </div>
             <div class="dive-card bg-white rounded-xl shadow-md p-4">
-              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">Buddies</h2>
+              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">
+                Buddies
+              </h2>
               <p
                 v-if="!dive.namedBuddies.length && !dive.buddiesDives?.length"
                 class="text-xs text-gray-400"
@@ -219,7 +232,9 @@
       <div class="w-full flex justify-center mt-6">
         <div class="dive-card bg-white rounded-xl shadow-md w-full max-w-150 flex flex-col">
           <div class="flex justify-between items-center p-4">
-            <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">Dive Profile</h2>
+            <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
+              Dive Profile
+            </h2>
             <button @click="graphOpen = true" class="text-sm text-blue-600 hover:underline">
               Expand
             </button>
@@ -243,9 +258,10 @@ import { useApi } from '@/composables/useApi'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import ViewDiveProfile from '@/components/dive/view/ViewDiveProfile.vue'
 import DiveGraphModal from '@/components/dive/view/DiveGraphModal.vue'
+import GasDisplay from '@/components/dive/view/GasDisplay.vue'
 import { useDiveGraphStore } from '@/stores/diveGraph'
 import { storeToRefs } from 'pinia'
-import type { Dive, DiveWithoutProfiles, PagedResult } from '@/lib/types/dive'
+import type { Dive, DiveWithoutProfiles, Gas, PagedResult } from '@/lib/types/dive'
 import type { User } from '@/lib/types/share'
 
 const router = useRouter()
@@ -281,6 +297,16 @@ const {
 const firstProfile = computed(() => dive.value?.profiles?.[0])
 const summary = computed(() => firstProfile.value?.summary)
 const isMine = computed(() => dive.value?.user.id === myUserId.value)
+
+// Extract all unique gas mixes from measurements
+const allGases = computed(() => {
+  if (!firstProfile.value?.measurements) {
+    return new Set<Gas>()
+  }
+  return new Set(firstProfile.value.measurements.map((m) => m.measurement.gas).filter(Boolean).map(m => m!))
+})
+
+const showGasDetails = computed(() => allGases.value.size <= 3)
 
 const filteredMyDives = computed(() =>
   // TODO: Use backend to filter for dives at site with search term instead
