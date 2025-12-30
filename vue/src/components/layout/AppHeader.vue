@@ -1,6 +1,6 @@
 <template>
   <header
-    class="col-span-2 bg-sky-500 shadow-md px-4 sm:px-8 flex items-center justify-between z-20 grid-header"
+    class="col-span-2 header-bg shadow-md px-4 sm:px-8 flex items-center justify-between z-20 grid-header"
   >
     <div class="flex items-center">
       <router-link :to="{ name: 'Home' }" class="flex items-center">
@@ -16,7 +16,7 @@
     </div>
     <div class="flex items-center space-x-2 sm:space-x-3">
       <button
-        class="bg-gray-200 text-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-gray-300 transition-colors"
+        class="theme-button px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base transition-colors"
         @click="$emit('toggle-theme')"
       >
         {{ themeLabel }}
@@ -70,3 +70,79 @@ const handleLogout = () => {
   emit('logout')
 }
 </script>
+
+<style scoped>
+.header-bg {
+  background-color: #0c4a6e;
+}
+
+[data-theme='light'] .header-bg {
+  background-color: #0284c7;
+}
+
+[data-theme='dark'] .header-bg {
+  background-color: #0c4a6e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .header-bg {
+    background-color: #0c4a6e;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .header-bg {
+    background-color: #0284c7;
+  }
+}
+
+/* Theme button */
+.theme-button {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.theme-button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme='light'] .theme-button {
+  background-color: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+[data-theme='light'] .theme-button:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme='dark'] .theme-button {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+[data-theme='dark'] .theme-button:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .theme-button {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+  }
+  
+  :root:not([data-theme]) .theme-button:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .theme-button {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: white;
+  }
+  
+  :root:not([data-theme]) .theme-button:hover {
+    background-color: rgba(255, 255, 255, 0.4);
+  }
+}
+</style>

@@ -1,7 +1,7 @@
 <template>
   <aside
     v-if="authStore.isLoggedIn"
-    class="bg-sky-500 flex flex-col transition-all duration-300 grid-sidebar"
+    class="sidebar-bg flex flex-col transition-all duration-300 grid-sidebar"
     :style="{ width: `${sidebarWidth}px` }"
   >
     <MenuItem icon="bars" text="Collapse" :is-visible="isVisible" @action="toggleSidebar" />
@@ -48,3 +48,29 @@ const toggleSidebar = () => {
   emit('toggleSidebar')
 }
 </script>
+
+<style scoped>
+.sidebar-bg {
+  background-color: #0c4a6e;
+}
+
+[data-theme='light'] .sidebar-bg {
+  background-color: #0284c7;
+}
+
+[data-theme='dark'] .sidebar-bg {
+  background-color: #0c4a6e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .sidebar-bg {
+    background-color: #0c4a6e;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .sidebar-bg {
+    background-color: #0284c7;
+  }
+}
+</style>
