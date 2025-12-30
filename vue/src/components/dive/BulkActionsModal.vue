@@ -47,9 +47,9 @@
         </div>
 
         <!-- Bulk Delete -->
-        <div class="border border-red-300 rounded-lg p-4 bg-red-50">
-          <h3 class="font-semibold text-red-800 mb-2">Delete Selected</h3>
-          <p class="text-sm text-gray-700 mb-3">
+        <div class="border border-red-300 dark:border-red-700 rounded-lg p-4 bg-red-50 dark:bg-red-950">
+          <h3 class="font-semibold text-red-800 dark:text-red-200 mb-2">Delete Selected</h3>
+          <p class="text-sm text-gray-700 dark:text-gray-200 mb-3">
             Permanently delete {{ selectedCount }} dive(s). This action cannot be undone.
           </p>
           <button
@@ -95,11 +95,42 @@
         </div>
       </div>
     </div>
+
+    <!-- Second Delete Confirmation Modal -->
+    <div
+      v-if="showSecondDeleteConfirm"
+      class="fixed inset-0 z-70 flex items-center justify-center bg-black/70"
+      @click.self="showSecondDeleteConfirm = false"
+    >
+      <div class="dive-card bg-white rounded-xl shadow-lg p-6 w-full max-w-sm border-2 border-red-500">
+        <h3 class="text-lg font-bold text-red-700 mb-3">⚠️ Final Confirmation</h3>
+        <p class="text-sm text-gray-700 mb-4">
+          This is your last chance to cancel. You are about to permanently delete {{ selectedCount }} dive(s).
+        </p>
+        <p class="text-sm font-semibold text-red-600 mb-6">
+          This action is irreversible!
+        </p>
+        <div class="flex gap-3 justify-end">
+          <button
+            @click="showSecondDeleteConfirm = false"
+            class="px-4 py-2 border rounded-lg hover:bg-gray-100"
+          >
+            Cancel
+          </button>
+          <button
+            @click="confirmBulkDelete"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
+          >
+            Yes, Delete Permanently
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import type { DiveWithoutProfiles } from '@/lib/types/dive'
@@ -118,8 +149,30 @@ const { deleteWithToken, postWithToken } = useApi()
 
 const primaryDiveId = ref<number | null>(null)
 const showDeleteConfirm = ref(false)
+const showSecondDeleteConfirm = ref(false)
 
 const selectedCount = computed(() => props.selectedDives.length)
+
+// Handle Escape key to close modal
+const handleEscape = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    if (showSecondDeleteConfirm.value) {
+      showSecondDeleteConfirm.value = false
+    } else if (showDeleteConfirm.value) {
+      showDeleteConfirm.value = false
+    } else if (props.open) {
+      emit('close')
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleEscape)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscape)
+})
 
 const handleMerge = async () => {
   if (!primaryDiveId.value || selectedCount.value !== 2) {
@@ -142,12 +195,18 @@ const handleMerge = async () => {
 }
 
 const handleBulkDelete = async () => {
+  // Close first confirmation and show second confirmation
+  showDeleteConfirm.value = false
+  showSecondDeleteConfirm.value = true
+}
+
+const confirmBulkDelete = async () => {
   const ids = props.selectedDives.map((d) => d.id)
 
   try {
     await Promise.all(ids.map((id) => deleteWithToken(`/v1/dives/${id}`)))
     toast.success(`Successfully deleted ${ids.length} dive(s)`)
-    showDeleteConfirm.value = false
+    showSecondDeleteConfirm.value = false
     emit('refresh')
     emit('close')
   } catch (err) {

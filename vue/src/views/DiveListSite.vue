@@ -72,6 +72,7 @@
                 :key="col.key"
                 :class="[
                   'border border-gray-400 px-3 py-2 text-left',
+                  col.width,
                   col.sortable && !searchQuery.trim() ? 'cursor-pointer hover:bg-blue-300' : '',
                   !col.sortable || searchQuery.trim() ? 'cursor-default opacity-60' : '',
                 ]"
@@ -95,7 +96,11 @@
               :key="dive.id"
               :class="[
                 'cursor-pointer transition-colors',
-                selectedIds.includes(dive.id) ? 'bg-sky-100 hover:bg-sky-200' : 'hover:bg-gray-50',
+                selectedIds.includes(dive.id)
+                  ? 'bg-sky-100 hover:bg-sky-200 dark:bg-sky-900 dark:hover:bg-sky-800 border-l-4 border-l-sky-500 dark:border-l-sky-400'
+                  : dive.user.id !== myUserId
+                    ? 'bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-800',
               ]"
               @click="onRowClick(dive.id)"
             >
@@ -108,18 +113,17 @@
                   class="cursor-pointer"
                 />
               </td>
-              <td class="border border-gray-400 px-3 py-2">{{ dive.number }}</td>
-              <td class="border border-gray-400 px-3 py-2">
+              <td class="border border-gray-400 px-3 py-2 w-16">{{ dive.number }}</td>
+              <td class="border border-gray-400 px-1 py-1 w-24 flex justify-center">
+                <DiveSitePreview :dive="dive" @preview-regenerated="handlePreviewRegenerated" />
+              </td>
+              <td class="border border-gray-400 px-3 py-2 w-40">
                 {{ dive.customIdentifier || '-' }}
               </td>
-              <td class="border border-gray-400 px-3 py-2">
+              <td class="border border-gray-400 px-3 py-2 min-w-48">
                 {{ dive.site?.name || 'Unknown' }}
-                <span class="text-gray-500 text-sm">
-                  ({{ dive.site?.latitude?.toFixed(2) }}°N,
-                  {{ dive.site?.longitude?.toFixed(2) }}°E)
-                </span>
               </td>
-              <td class="border border-gray-400 px-3 py-2">{{ dive.user?.name || 'Unknown' }}</td>
+              <td class="border border-gray-400 px-3 py-2 w-32">{{ dive.user.id === myUserId ? 'You' : dive.user?.name || 'Unknown' }}</td>
             </tr>
             <tr v-if="!dives.length && !isLoading">
               <td colspan="5" class="border border-gray-400 px-3 py-4 text-center text-gray-500">
@@ -183,35 +187,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '../composables/useApi'
 import BulkActionsModal from '@/components/dive/BulkActionsModal.vue'
+import DiveSitePreview from '@/components/DiveSitePreview.vue'
 import type { DiveWithoutProfiles, PagedResult } from '../lib/types/dive'
 import debounce from '../lib/utils/debounce'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
 
 const router = useRouter()
+const route = useRoute()
 const { getWithToken } = useApi()
 
 // State
 const dives = ref<DiveWithoutProfiles[]>([])
 const status = ref('')
 const isLoading = ref(false)
+const myUserId = ref<number | null>(null)
 
-// Pagination
-const currentPage = ref(1)
+// Initialize state from URL query params
+const currentPage = ref(Number(route.query.page) || 1)
 const totalPages = ref(0)
 const pageSize = ref(20)
 
-// Search and filters
-const searchQuery = ref('')
-const viewShared = ref(false)
+const searchQuery = ref((route.query.search as string) || '')
+const viewShared = ref(route.query.shared === 'true')
 
-// Sorting
-const sortColumn = ref<SortColumn>('NUMBER')
-const sortDirection = ref<SortDirection>('DESCENDING')
+const sortColumn = ref<SortColumn>((route.query.sortCol as SortColumn) || 'NUMBER')
+const sortDirection = ref<SortDirection>((route.query.sortDir as SortDirection) || 'DESCENDING')
 
 // Column definitions with server mapping
 const columns: {
@@ -219,11 +224,13 @@ const columns: {
   label: string
   serverCol: SortColumn | null
   sortable: boolean
+  width?: string
 }[] = [
-  { key: 'number', label: 'Number', serverCol: 'NUMBER', sortable: true },
-  { key: 'customIdentifier', label: 'Custom ID', serverCol: 'CUSTOM_IDENTIFIER', sortable: true },
+  { key: 'number', label: '#', serverCol: 'NUMBER', sortable: true, width: 'w-16' },
+  { key: 'site', label: 'Profile', serverCol: null, sortable: false, width: 'w-24' },
+  { key: 'customIdentifier', label: 'Custom ID', serverCol: 'CUSTOM_IDENTIFIER', sortable: true, width: 'w-40' },
   { key: 'site', label: 'Site', serverCol: null, sortable: false },
-  { key: 'user', label: 'Diver', serverCol: null, sortable: false },
+  { key: 'user', label: 'Diver', serverCol: null, sortable: false, width: 'w-32' },
 ]
 
 // Computed
@@ -258,6 +265,15 @@ const visiblePages = computed(() => {
 })
 
 // Functions
+const fetchUserId = async () => {
+  try {
+    const res = await getWithToken<{ id: number }>('/v1/users/')
+    myUserId.value = res.data.id
+  } catch (err) {
+    console.error('Failed to fetch user ID', err)
+  }
+}
+
 const fetchDives = async () => {
   isLoading.value = true
   status.value = ''
@@ -290,13 +306,11 @@ const fetchDives = async () => {
 
 const handleSearch = debounce(() => {
   currentPage.value = 1
-  fetchDives()
 }, 300)
 
 const toggleSharedDives = () => {
   viewShared.value = !viewShared.value
   currentPage.value = 1
-  fetchDives()
 }
 
 const sortBy = (serverCol: SortColumn | null) => {
@@ -315,6 +329,9 @@ const sortBy = (serverCol: SortColumn | null) => {
     sortColumn.value = serverCol
     sortDirection.value = 'ASCENDING'
   }
+
+  // Reset to first page
+  currentPage.value = 1
 }
 
 // Selection via checkbox only
@@ -347,6 +364,14 @@ const clearSelection = () => {
   selectedIds.value = []
 }
 
+const handlePreviewRegenerated = (updatedDive: DiveWithoutProfiles) => {
+  // Find and replace the dive in the array by ID
+  const index = dives.value.findIndex((d) => d.id === updatedDive.id)
+  if (index !== -1) {
+    dives.value[index] = updatedDive
+  }
+}
+
 const openBulkActions = () => {
   if (selectedIds.value.length === 0) {
     toast.error('No dives selected')
@@ -373,14 +398,32 @@ const onRowClick = (diveId: number) => {
 const goToPage = (page: number) => {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
-  fetchDives()
+}
+
+// Sync state to URL query params
+const updateUrlQuery = () => {
+  router.replace({
+    query: {
+      page: currentPage.value > 1 ? String(currentPage.value) : undefined,
+      search: searchQuery.value || undefined,
+      shared: viewShared.value ? 'true' : undefined,
+      sortCol: sortColumn.value !== 'NUMBER' ? sortColumn.value : undefined,
+      sortDir: sortDirection.value !== 'DESCENDING' ? sortDirection.value : undefined,
+    },
+  })
 }
 
 // Watchers
-watch(currentPage, fetchDives)
+watch([currentPage, searchQuery, viewShared, sortColumn, sortDirection], () => {
+  updateUrlQuery()
+  fetchDives()
+})
 
 // Initial load
-fetchDives()
+onMounted(() => {
+  fetchUserId()
+  fetchDives()
+})
 </script>
 
 <style scoped></style>
