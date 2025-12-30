@@ -14,8 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set frontend directory
-        run: echo "FRONTEND_DIR=./vue" >> $GITHUB_ENV
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -34,4 +32,4 @@ jobs:
         run: yarn test:ci
       - name: Build project
         working-directory: ${{ env.FRONTEND_DIR }}
-        run: yarn build
+        run: yarn build --mode staging

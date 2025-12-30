@@ -2,11 +2,13 @@
 FROM node:25-slim AS builder
 WORKDIR /app
 
+ARG BUILD_MODE=production
+
 COPY ./vue/package.json ./vue/yarn.lock ./
 RUN yarn install
 
 COPY ./vue ./
-RUN yarn build
+RUN yarn build --mode $BUILD_MODE
 
 # ---------- runner ----------
 FROM nginx:alpine
