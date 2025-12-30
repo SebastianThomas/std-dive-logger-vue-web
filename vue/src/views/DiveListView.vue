@@ -117,7 +117,7 @@
               <td class="border border-gray-400 px-1 py-1 w-24 flex justify-center">
                 <DiveSitePreview :dive="dive" @preview-regenerated="handlePreviewRegenerated" />
               </td>
-              <td class="border border-gray-400 px-3 py-2 max-w-lg break-words">
+              <td class="border border-gray-400 px-3 py-2 max-w-lg wrap-break-word">
                 {{ dive.customIdentifier || '-' }}
               </td>
               <td class="border border-gray-400 px-3 py-2 min-w-48">
