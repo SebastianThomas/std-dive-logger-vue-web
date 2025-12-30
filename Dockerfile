@@ -2,22 +2,22 @@
 FROM node:25-slim AS builder
 WORKDIR /app
 
-COPY ./nextjs/package.json ./nextjs/yarn.lock ./
+COPY ./vue/package.json ./vue/yarn.lock ./
 RUN yarn install
 
-COPY ./nextjs ./
-COPY ./nextjs/.env.staging .env.local
+COPY ./vue ./
 RUN yarn build
 
 # ---------- runner ----------
-FROM node:25-slim AS runner
+FROM nginx:alpine
 WORKDIR /app
-ENV NODE_ENV=production
 
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/yarn.lock ./yarn.lock
-RUN yarn install --production && yarn cache clean
+# Copy built Vue app
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-CMD ["yarn", "start"]
+# Copy nginx config for SPA routing
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
