@@ -123,7 +123,9 @@
               <td class="border border-gray-400 px-3 py-2 min-w-48">
                 {{ dive.site?.name || 'Unknown' }}
               </td>
-              <td class="border border-gray-400 px-3 py-2 w-32">{{ dive.user.id === myUserId ? 'You' : dive.user?.name || 'Unknown' }}</td>
+              <td class="border border-gray-400 px-3 py-2 w-32">
+                {{ dive.user.id === myUserId ? 'You' : dive.user?.name || 'Unknown' }}
+              </td>
             </tr>
             <tr v-if="!dives.length && !isLoading">
               <td colspan="5" class="border border-gray-400 px-3 py-4 text-center text-gray-500">
@@ -228,7 +230,13 @@ const columns: {
 }[] = [
   { key: 'number', label: '#', serverCol: 'NUMBER', sortable: true, width: 'w-16' },
   { key: 'site', label: 'Profile', serverCol: null, sortable: false, width: 'w-24' },
-  { key: 'customIdentifier', label: 'Custom ID', serverCol: 'CUSTOM_IDENTIFIER', sortable: true, width: 'w-40' },
+  {
+    key: 'customIdentifier',
+    label: 'Custom ID',
+    serverCol: 'CUSTOM_IDENTIFIER',
+    sortable: true,
+    width: 'w-40',
+  },
   { key: 'site', label: 'Site', serverCol: null, sortable: false },
   { key: 'user', label: 'Diver', serverCol: null, sortable: false, width: 'w-32' },
 ]

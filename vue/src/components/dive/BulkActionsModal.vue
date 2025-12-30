@@ -47,7 +47,9 @@
         </div>
 
         <!-- Bulk Delete -->
-        <div class="border border-red-300 dark:border-red-700 rounded-lg p-4 bg-red-50 dark:bg-red-950">
+        <div
+          class="border border-red-300 dark:border-red-700 rounded-lg p-4 bg-red-50 dark:bg-red-950"
+        >
           <h3 class="font-semibold text-red-800 dark:text-red-200 mb-2">Delete Selected</h3>
           <p class="text-sm text-gray-700 dark:text-gray-200 mb-3">
             Permanently delete {{ selectedCount }} dive(s). This action cannot be undone.
@@ -102,14 +104,15 @@
       class="fixed inset-0 z-70 flex items-center justify-center bg-black/70"
       @click.self="showSecondDeleteConfirm = false"
     >
-      <div class="dive-card bg-white rounded-xl shadow-lg p-6 w-full max-w-sm border-2 border-red-500">
+      <div
+        class="dive-card bg-white rounded-xl shadow-lg p-6 w-full max-w-sm border-2 border-red-500"
+      >
         <h3 class="text-lg font-bold text-red-700 mb-3">⚠️ Final Confirmation</h3>
         <p class="text-sm text-gray-700 mb-4">
-          This is your last chance to cancel. You are about to permanently delete {{ selectedCount }} dive(s).
+          This is your last chance to cancel. You are about to permanently delete
+          {{ selectedCount }} dive(s).
         </p>
-        <p class="text-sm font-semibold text-red-600 mb-6">
-          This action is irreversible!
-        </p>
+        <p class="text-sm font-semibold text-red-600 mb-6">This action is irreversible!</p>
         <div class="flex gap-3 justify-end">
           <button
             @click="showSecondDeleteConfirm = false"
