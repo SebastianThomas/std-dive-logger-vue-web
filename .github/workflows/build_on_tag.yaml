@@ -12,7 +12,9 @@ jobs:
         environment: [staging]
     steps:
       - uses: actions/checkout@v5
-      - name: Login to DockerHub
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Login to DockerHub 
         uses: docker/login-action@v3
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
