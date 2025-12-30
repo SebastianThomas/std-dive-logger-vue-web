@@ -169,54 +169,29 @@
         <!-- Dive Info -->
         <div class="w-full md:w-4/5 flex flex-col gap-6">
           <!-- Summary Cards -->
-          <section
-            v-if="firstProfile && summary"
-            class="flex flex-wrap justify-center gap-4 md:gap-6 mb-4"
-          >
-            <div
-              class="dive-card bg-white bg-opacity-90 rounded-xl shadow-md px-3 py-2 flex flex-col items-center min-w-30"
-            >
-              <p class="text-xs" :style="{ color: 'var(--foreground)', opacity: 0.8 }">Max Depth</p>
-              <p class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
-                {{ summary.maxDepth?.toFixed(1) }} m
-              </p>
-            </div>
-            <div
-              class="dive-card bg-white bg-opacity-90 rounded-xl shadow-md px-3 py-2 flex flex-col items-center min-w-30"
-            >
-              <p class="text-xs" :style="{ color: 'var(--foreground)', opacity: 0.8 }">Avg Depth</p>
-              <p class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
-                {{ summary.averageDepth?.toFixed(1) }} m
-              </p>
-            </div>
-          </section>
+          <InfoCardRow v-if="firstProfile && summary">
+            <InfoCard title="Max Depth" :value="`${summary.maxDepth?.toFixed(1)} m`" />
+            <InfoCard title="Avg Depth" :value="`${summary.averageDepth?.toFixed(1)} m`" />
+            <InfoCard title="Bottom Time" :value="formatDiveTime(summary.bottomTime)" />
+          </InfoCardRow>
 
           <!-- Details Grid -->
-          <div class="grid md:grid-cols-3 gap-4">
-            <div class="dive-card bg-white rounded-xl shadow-md p-4">
-              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">
-                Gases
-              </h2>
+          <InfoCardRow>
+            <InfoCard title="Gases">
               <ul class="text-xs text-gray-600 space-y-1">
                 <li v-for="gas in allGases" :key="`${gas.o2}/${gas.he}/${gas.n2}`">
                   <GasDisplay :gas="gas" :show-details="showGasDetails" />
                 </li>
                 <li v-if="allGases.size === 0" class="text-gray-400">No gas data</li>
               </ul>
-            </div>
-            <div class="dive-card bg-white rounded-xl shadow-md p-4">
-              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">
-                Dive Computer
-              </h2>
+            </InfoCard>
+            <InfoCard title="Dive Computer">
               <p class="text-xs text-gray-600">
                 {{ firstProfile?.diveComputer.manufacturer.name }} —
                 {{ firstProfile?.diveComputer.customIdentifier }}
               </p>
-            </div>
-            <div class="dive-card bg-white rounded-xl shadow-md p-4">
-              <h2 class="font-semibold mb-2 text-sm" :style="{ color: 'var(--foreground)' }">
-                Buddies
-              </h2>
+            </InfoCard>
+            <InfoCard title="Buddies">
               <p
                 v-if="!dive.namedBuddies.length && !dive.buddiesDives?.length"
                 class="text-xs text-gray-400"
@@ -226,8 +201,48 @@
               <ul v-else class="text-xs text-gray-600 space-y-1">
                 <li v-for="name in dive.namedBuddies" :key="`named-${name}`">{{ name }}</li>
               </ul>
-            </div>
-          </div>
+            </InfoCard>
+          </InfoCardRow>
+
+          <!-- Advanced Dive Information Row -->
+          <InfoCardRow v-if="firstProfile && summary">
+            <!-- CNS Information -->
+            <InfoCard
+              v-if="summary.startCNS !== undefined || summary.endCNS !== undefined"
+              title="CNS (%)"
+            >
+              <div v-if="summary.startCNS !== undefined" class="flex items-center gap-2">
+                <span>Start:</span>
+                <span class="font-semibold">{{ summary.startCNS?.toFixed(0) }}</span>
+              </div>
+              <div v-if="summary.endCNS !== undefined" class="flex items-center gap-2">
+                <span>End:</span>
+                <span class="font-semibold">{{ summary.endCNS?.toFixed(0) }}</span>
+              </div>
+            </InfoCard>
+
+            <!-- OTU Information -->
+            <InfoCard
+              v-if="summary.o2Toxicity !== undefined"
+              title="OTU"
+              :value="`${summary.o2Toxicity?.toFixed(0)}`"
+            />
+
+            <!-- N2 Loading Information -->
+            <InfoCard
+              v-if="summary.startN2 !== undefined || summary.endN2 !== undefined"
+              title="N2 Loading"
+            >
+              <div v-if="summary.startN2 !== undefined" class="flex items-center gap-2">
+                <span>Start:</span>
+                <span class="font-semibold">{{ summary.startN2?.toFixed(0) }}</span>
+              </div>
+              <div v-if="summary.endN2 !== undefined" class="flex items-center gap-2">
+                <span>End:</span>
+                <span class="font-semibold">{{ summary.endN2?.toFixed(0) }}</span>
+              </div>
+            </InfoCard>
+          </InfoCardRow>
         </div>
       </div>
 
@@ -259,10 +274,13 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import debounce from '@/lib/utils/debounce'
+import { formatISoDurationToTime } from '@/lib/utils/timeUtils'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import ViewDiveProfile from '@/components/dive/view/ViewDiveProfile.vue'
 import DiveGraphModal from '@/components/dive/view/DiveGraphModal.vue'
 import GasDisplay from '@/components/dive/view/GasDisplay.vue'
+import InfoCard from '@/components/InfoCard.vue'
+import InfoCardRow from '@/components/InfoCardRow.vue'
 import { useDiveGraphStore } from '@/stores/diveGraph'
 import { storeToRefs } from 'pinia'
 import type { Dive, DiveWithoutProfiles, Gas, PagedResult } from '@/lib/types/dive'
@@ -376,6 +394,10 @@ const handleLinkDive = async (buddyDiveId: number) => {
     console.error('Link failed', err)
     toast.error('Failed to link dive')
   }
+}
+
+const formatDiveTime = (duration?: string): string => {
+  return formatISoDurationToTime(duration)
 }
 
 onMounted(() => {
