@@ -10,9 +10,7 @@
     <AppHeader
       :show-title="showTitle"
       :page-name="pageName"
-      :theme-label="themeLabel"
       @logout="handleLogout"
-      @toggle-theme="toggleTheme"
     />
 
     <AppSidebar
@@ -36,6 +34,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Toaster } from 'vue-sonner'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppSidebar from './components/layout/AppSidebar.vue'
@@ -48,6 +47,7 @@ const SM_BREAKPOINT = 640 as const
 
 // Auth store
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 
 // Page name - can be empty or use current route path
 const route = useRoute()
@@ -61,11 +61,6 @@ const windowWidth = ref(window.innerWidth)
 const isVisible = ref(true)
 const sidebarWidth = ref<0 | 50 | 130>(0)
 const showTitle = computed(() => windowWidth.value >= SM_BREAKPOINT)
-const themePreference = ref<'light' | 'dark'>('light')
-const themeLabel = computed(() => {
-  if (themePreference.value === 'light') return 'Theme: Light'
-  return 'Theme: Dark'
-})
 
 // Methods
 const handleLogout = async () => {
@@ -84,17 +79,6 @@ const handleLogout = async () => {
 
 const toggleSidebar = () => {
   isVisible.value = !isVisible.value
-}
-
-const applyTheme = () => {
-  const root = document.documentElement
-  root.setAttribute('data-theme', themePreference.value)
-  localStorage.setItem('theme-preference', themePreference.value)
-}
-
-const toggleTheme = () => {
-  themePreference.value = themePreference.value === 'light' ? 'dark' : 'light'
-  applyTheme()
 }
 
 const handleResize = () => {
@@ -121,15 +105,8 @@ watch(
 onMounted(() => {
   window.addEventListener('resize', handleResize)
 
-  const storedTheme = localStorage.getItem('theme-preference') as 'light' | 'dark' | null
-  if (storedTheme === 'light' || storedTheme === 'dark') {
-    themePreference.value = storedTheme
-  } else {
-    // First visit: detect system preference
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    themePreference.value = prefersDark ? 'dark' : 'light'
-  }
-  applyTheme()
+  // Initialize theme
+  themeStore.initializeTheme()
 
   // Initial auth check and token refresh
   authStore.tryInitialLogin()
