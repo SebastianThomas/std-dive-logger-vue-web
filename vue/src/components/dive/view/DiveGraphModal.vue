@@ -2,11 +2,7 @@
   <div class="graph-modal-overlay">
     <div class="graph-modal-card">
       <button class="close-btn" @click="emit('close')">Close</button>
-      <DiveGraphView
-        :profile="profile"
-        :dive-id="diveId"
-        :show-grid-toggle="true"
-      />
+      <DiveGraphView :profile="profile" :dive-id="diveId" :show-grid-toggle="true" />
     </div>
   </div>
 </template>

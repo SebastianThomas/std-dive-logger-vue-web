@@ -514,34 +514,35 @@ function renderAll() {
   if (!gSel.value || !timeScale.value || !depthScale.value || !depthLine.value) return
   const ms = props.profile.measurements
   // Axes
-  
+
   // Generate fixed interval ticks for time axis (in seconds)
   const timeRange = timeScale.value.domain() as [number, number]
   const timeDuration = timeRange[1] - timeRange[0]
   const timeDurationSeconds = timeDuration / 1000
-  
+
   // Determine appropriate tick interval based on duration
   let tickInterval = 60 // 1 minute default
-  if (timeDurationSeconds > 20 * 60) { // > 20 minutes
+  if (timeDurationSeconds > 20 * 60) {
+    // > 20 minutes
     tickInterval = 20 * 60
-  } else if (timeDurationSeconds > 10 * 60) { // > 10 minutes
+  } else if (timeDurationSeconds > 10 * 60) {
+    // > 10 minutes
     tickInterval = 10 * 60
-  } else if (timeDurationSeconds > 5 * 60) { // > 5 minutes
+  } else if (timeDurationSeconds > 5 * 60) {
+    // > 5 minutes
     tickInterval = 5 * 60
   }
-  
+
   // Generate tick values starting from the beginning
   const tickValues: number[] = []
   for (let t = timeRange[0]; t <= timeRange[1]; t += tickInterval * 1000) {
     tickValues.push(t)
   }
-  
+
   axes.x.value?.call(
     axisBottom(timeScale.value)
       .tickValues(tickValues)
-      .tickFormat((t: any) =>
-        formatTimeDisplay(Number(t), props.profile.start),
-      ),
+      .tickFormat((t: any) => formatTimeDisplay(Number(t), props.profile.start)),
   )
   const leftScale = getScaleFor(leftAxisMetric.value)
   const rightScale = getScaleFor(rightAxisMetric.value)
