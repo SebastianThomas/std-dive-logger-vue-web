@@ -15,8 +15,9 @@
             @dragover.prevent
             @drop.prevent="handleDrop"
           >
-            <!-- TODO: What are these icons? -->
-            <div class="text-sky-500 text-4xl mb-2">☁️📤</div>
+            <div class="text-sky-500 text-4xl mb-2">
+              <i class="fas fa-cloud-upload-alt"></i>
+            </div>
             <p class="text-gray-700">
               <span v-if="files.length" class="font-semibold"
                 >{{ files.length }} file(s) selected</span

@@ -108,10 +108,11 @@
             type="text"
             placeholder="Search my dives..."
             class="w-full p-2 mb-4 border rounded"
+            @input="handleSearch"
           />
           <ul class="space-y-2">
             <li
-              v-for="d in filteredMyDives"
+              v-for="d in myDives"
               :key="d.id"
               class="flex justify-between items-center bg-gray-50 p-2 rounded hover:bg-gray-100"
             >
@@ -129,9 +130,7 @@
                 Link
               </button>
             </li>
-            <li v-if="filteredMyDives.length === 0" class="text-sm text-gray-400">
-              No dives found
-            </li>
+            <li v-if="myDives.length === 0" class="text-sm text-gray-400">No dives found</li>
           </ul>
           <div class="flex justify-end mt-4">
             <button
@@ -255,6 +254,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import debounce from '@/lib/utils/debounce'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import ViewDiveProfile from '@/components/dive/view/ViewDiveProfile.vue'
 import DiveGraphModal from '@/components/dive/view/DiveGraphModal.vue'
@@ -313,16 +313,6 @@ const allGases = computed(() => {
 
 const showGasDetails = computed(() => allGases.value.size <= 3)
 
-const filteredMyDives = computed(() =>
-  // TODO: Use backend to filter for dives at site with search term instead
-  myDives.value.filter(
-    (d) =>
-      d.customIdentifier.toLowerCase().includes(searchTerm.value.toLowerCase()) ||
-      d.number.toString().includes(searchTerm.value) ||
-      d.site.name.toLowerCase().includes(searchTerm.value.toLowerCase()),
-  ),
-)
-
 const fetchDive = async () => {
   try {
     loading.value = true
@@ -346,14 +336,19 @@ const fetchUserId = async () => {
 
 const fetchMyDives = async () => {
   try {
-    const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(
-      '/v1/dives?page=0&sortCol=NUMBER&sortDirection=ASCENDING',
-    )
+    const url = searchTerm.value.trim()
+      ? `/v1/dives/search?page=0&query=${encodeURIComponent(searchTerm.value)}`
+      : '/v1/dives?page=0&sortCol=NUMBER&sortDirection=ASCENDING'
+    const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(url)
     myDives.value = res.data.result
   } catch (err) {
     console.error('Failed to fetch my dives', err)
   }
 }
+
+const handleSearch = debounce(() => {
+  fetchMyDives()
+}, 300)
 
 const handleDelete = async () => {
   if (!dive.value) return

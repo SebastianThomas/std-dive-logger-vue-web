@@ -106,8 +106,31 @@ onMounted(async () => {
 })
 
 const handleSubmitMagicLogin = async () => {
-  // This would typically send an email with the magic link
-  // For now, just show a message
-  toast.info('Magic link login is not fully implemented yet. Please use regular login.')
+  if (!email.value.trim()) {
+    toast.error('Please enter your email address.')
+    return
+  }
+
+  isProcessing.value = true
+  processingMessage.value = 'Sending magic link...'
+
+  try {
+    await axios.post(
+      resolveUrl(`/api/auth/login/magic/create`),
+      { email: email.value },
+      {
+        withCredentials: true,
+      },
+    )
+    isProcessing.value = false
+    processingMessage.value = ''
+    toast.success('Check your email for the login link!')
+    email.value = ''
+  } catch (err) {
+    console.error(err)
+    isProcessing.value = false
+    processingMessage.value = ''
+    toast.error(`Could not create a login link for ${email.value}`)
+  }
 }
 </script>
