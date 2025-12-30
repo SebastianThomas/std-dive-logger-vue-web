@@ -14,6 +14,20 @@
             {{ selectedIds.length }} selected
           </span>
         </div>
+        <div v-if="isSelectionMode" class="flex gap-2">
+          <button
+            @click="openBulkActions"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Bulk Actions
+          </button>
+          <button
+            @click="clearSelection"
+            class="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+          >
+            Clear Selection
+          </button>
+        </div>
       </div>
 
       <!-- Search Bar -->
@@ -59,13 +73,16 @@
                 :class="[
                   'border border-gray-400 px-3 py-2 text-left',
                   col.sortable && !searchQuery.trim() ? 'cursor-pointer hover:bg-blue-300' : '',
-                  !col.sortable || searchQuery.trim() ? 'cursor-default opacity-60' : ''
+                  !col.sortable || searchQuery.trim() ? 'cursor-default opacity-60' : '',
                 ]"
                 @click="col.sortable ? sortBy(col.serverCol) : null"
               >
                 <div class="flex items-center gap-2">
                   {{ col.label }}
-                  <span v-if="col.sortable && sortColumn === col.serverCol && !searchQuery.trim()" class="text-xs">
+                  <span
+                    v-if="col.sortable && sortColumn === col.serverCol && !searchQuery.trim()"
+                    class="text-xs"
+                  >
                     {{ sortDirection === 'ASCENDING' ? '▲' : '▼' }}
                   </span>
                 </div>
@@ -78,9 +95,7 @@
               :key="dive.id"
               :class="[
                 'cursor-pointer transition-colors',
-                selectedIds.includes(dive.id)
-                  ? 'bg-sky-100 hover:bg-sky-200'
-                  : 'hover:bg-gray-50',
+                selectedIds.includes(dive.id) ? 'bg-sky-100 hover:bg-sky-200' : 'hover:bg-gray-50',
               ]"
               @click="onRowClick(dive.id)"
             >
@@ -156,6 +171,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Bulk Actions Modal -->
+    <BulkActionsModal
+      :open="showBulkActions"
+      :selected-dives="selectedDivesData"
+      @close="showBulkActions = false"
+      @refresh="handleBulkActionComplete"
+    />
   </div>
 </template>
 
@@ -164,6 +187,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '../composables/useApi'
+import BulkActionsModal from '@/components/dive/BulkActionsModal.vue'
 import type { DiveWithoutProfiles, PagedResult } from '../lib/types/dive'
 import debounce from '../lib/utils/debounce'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
@@ -190,7 +214,12 @@ const sortColumn = ref<SortColumn>('NUMBER')
 const sortDirection = ref<SortDirection>('DESCENDING')
 
 // Column definitions with server mapping
-const columns: { key: keyof DiveWithoutProfiles; label: string; serverCol: SortColumn | null; sortable: boolean }[] = [
+const columns: {
+  key: keyof DiveWithoutProfiles
+  label: string
+  serverCol: SortColumn | null
+  sortable: boolean
+}[] = [
   { key: 'number', label: 'Number', serverCol: 'NUMBER', sortable: true },
   { key: 'customIdentifier', label: 'Custom ID', serverCol: 'CUSTOM_IDENTIFIER', sortable: true },
   { key: 'site', label: 'Site', serverCol: null, sortable: false },
@@ -286,15 +315,17 @@ const sortBy = (serverCol: SortColumn | null) => {
     sortColumn.value = serverCol
     sortDirection.value = 'ASCENDING'
   }
-
-  // Trigger server-side fetch with new sort parameters
-  currentPage.value = 1
-  fetchDives()
 }
 
 // Selection via checkbox only
 const selectedIds = ref<number[]>([])
 const isSelectionMode = computed(() => selectedIds.value.length > 0)
+const showBulkActions = ref(false)
+
+const selectedDivesData = computed(() =>
+  dives.value.filter((d) => selectedIds.value.includes(d.id)),
+)
+
 const toggleRow = (diveId: number) => {
   const index = selectedIds.value.indexOf(diveId)
   if (index > -1) {
@@ -310,6 +341,23 @@ const toggleAll = () => {
   } else {
     selectedIds.value = dives.value.map((d: DiveWithoutProfiles) => d.id)
   }
+}
+
+const clearSelection = () => {
+  selectedIds.value = []
+}
+
+const openBulkActions = () => {
+  if (selectedIds.value.length === 0) {
+    toast.error('No dives selected')
+    return
+  }
+  showBulkActions.value = true
+}
+
+const handleBulkActionComplete = () => {
+  selectedIds.value = []
+  fetchDives()
 }
 
 const onRowClick = (diveId: number) => {

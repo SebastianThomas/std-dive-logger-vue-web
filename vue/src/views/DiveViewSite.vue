@@ -303,7 +303,12 @@ const allGases = computed(() => {
   if (!firstProfile.value?.measurements) {
     return new Set<Gas>()
   }
-  return new Set(firstProfile.value.measurements.map((m) => m.measurement.gas).filter(Boolean).map(m => m!))
+  return new Set(
+    firstProfile.value.measurements
+      .map((m) => m.measurement.gas)
+      .filter(Boolean)
+      .map((m) => m!),
+  )
 })
 
 const showGasDetails = computed(() => allGases.value.size <= 3)

@@ -130,11 +130,7 @@ watch(
 onMounted(() => {
   window.addEventListener('resize', handleResize)
 
-  const storedTheme = localStorage.getItem('theme-preference') as
-    | 'system'
-    | 'light'
-    | 'dark'
-    | null
+  const storedTheme = localStorage.getItem('theme-preference') as 'system' | 'light' | 'dark' | null
   if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system') {
     themePreference.value = storedTheme
   }
