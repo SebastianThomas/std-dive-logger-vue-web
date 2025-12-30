@@ -111,6 +111,7 @@ import {
 } from 'd3'
 import type { DiveProfile, DiveMeasurementWithId, DiveProfileSegmentWithId } from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
+import { formatISoDurationToMinutes } from '@/lib/utils/timeUtils'
 
 type Props = {
   profile: DiveProfile
@@ -235,7 +236,7 @@ function setupScales() {
     .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
   const tempExtent =
     temperatureValues.length && Math.max(...temperatureValues) !== Math.min(...temperatureValues)
-      ? [Math.min(...temperatureValues), Math.max(...temperatureValues)]
+      ? [Math.max(0, Math.min(...temperatureValues) - 2), Math.max(...temperatureValues) + 2]
       : [0, 40]
 
   const otuValues = ms
@@ -513,10 +514,34 @@ function renderAll() {
   if (!gSel.value || !timeScale.value || !depthScale.value || !depthLine.value) return
   const ms = props.profile.measurements
   // Axes
+  
+  // Generate fixed interval ticks for time axis (in seconds)
+  const timeRange = timeScale.value.domain() as [number, number]
+  const timeDuration = timeRange[1] - timeRange[0]
+  const timeDurationSeconds = timeDuration / 1000
+  
+  // Determine appropriate tick interval based on duration
+  let tickInterval = 60 // 1 minute default
+  if (timeDurationSeconds > 20 * 60) { // > 20 minutes
+    tickInterval = 20 * 60
+  } else if (timeDurationSeconds > 10 * 60) { // > 10 minutes
+    tickInterval = 10 * 60
+  } else if (timeDurationSeconds > 5 * 60) { // > 5 minutes
+    tickInterval = 5 * 60
+  }
+  
+  // Generate tick values starting from the beginning
+  const tickValues: number[] = []
+  for (let t = timeRange[0]; t <= timeRange[1]; t += tickInterval * 1000) {
+    tickValues.push(t)
+  }
+  
   axes.x.value?.call(
-    axisBottom(timeScale.value).tickFormat((t: any) =>
-      formatTimeDisplay(Number(t), props.profile.start),
-    ),
+    axisBottom(timeScale.value)
+      .tickValues(tickValues)
+      .tickFormat((t: any) =>
+        formatTimeDisplay(Number(t), props.profile.start),
+      ),
   )
   const leftScale = getScaleFor(leftAxisMetric.value)
   const rightScale = getScaleFor(rightAxisMetric.value)
@@ -832,7 +857,7 @@ function onMouseMoveD3(event: MouseEvent) {
     timeDisplay: formatTimeDisplay(m.measurement.time, props.profile.start),
     depth: m.measurement.depth,
     temp: m.measurement.temperature?.value,
-    ndl: m.measurement.ndl,
+    ndl: formatISoDurationToMinutes(m.measurement.ndl),
     otu: m.measurement.o2Tox,
     cns: m.measurement.cns,
     gf: m.measurement.n2,

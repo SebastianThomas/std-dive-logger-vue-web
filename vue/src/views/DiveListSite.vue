@@ -117,7 +117,7 @@
               <td class="border border-gray-400 px-1 py-1 w-24 flex justify-center">
                 <DiveSitePreview :dive="dive" @preview-regenerated="handlePreviewRegenerated" />
               </td>
-              <td class="border border-gray-400 px-3 py-2 w-40">
+              <td class="border border-gray-400 px-3 py-2 max-w-lg break-words">
                 {{ dive.customIdentifier || '-' }}
               </td>
               <td class="border border-gray-400 px-3 py-2 min-w-48">
@@ -235,7 +235,6 @@ const columns: {
     label: 'Custom ID',
     serverCol: 'CUSTOM_IDENTIFIER',
     sortable: true,
-    width: 'w-40',
   },
   { key: 'site', label: 'Site', serverCol: null, sortable: false },
   { key: 'user', label: 'Diver', serverCol: null, sortable: false, width: 'w-32' },
