@@ -4,11 +4,7 @@
   >
     <div class="flex items-center">
       <router-link :to="{ name: 'Home' }" class="flex items-center">
-        <img
-          src="/images/logo1.png"
-          alt="Logo"
-          class="h-16 w-16 transition-all duration-300"
-        />
+        <img src="/images/logo1.png" alt="Logo" class="h-16 w-16 transition-all duration-300" />
         <h1 v-if="showTitle" class="text-lg sm:text-xl font-bold text-white ml-4">
           Dive Together Log {{ pageName }}
         </h1>
@@ -129,7 +125,7 @@ const handleLogout = () => {
     background-color: rgba(255, 255, 255, 0.15);
     color: white;
   }
-  
+
   :root:not([data-theme]) .theme-button:hover {
     background-color: rgba(255, 255, 255, 0.25);
   }
@@ -140,7 +136,7 @@ const handleLogout = () => {
     background-color: rgba(255, 255, 255, 0.3);
     color: white;
   }
-  
+
   :root:not([data-theme]) .theme-button:hover {
     background-color: rgba(255, 255, 255, 0.4);
   }

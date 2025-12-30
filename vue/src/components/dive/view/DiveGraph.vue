@@ -7,11 +7,20 @@
       Reset Zoom
     </button>
     <!-- Axis selectors and labels -->
-    <div class="absolute top-2 left-2 z-10 flex items-center gap-2 text-xs"
-         :style="{ color: 'var(--foreground)' }">
+    <div
+      class="absolute top-2 left-2 z-10 flex items-center gap-2 text-xs"
+      :style="{ color: 'var(--foreground)' }"
+    >
       <span>Left:</span>
-            <select v-model="leftAxisMetric" class="border rounded px-1 py-0.5"
-              :style="{ backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', borderColor: 'rgba(209,213,219,0.8)' }">
+      <select
+        v-model="leftAxisMetric"
+        class="border rounded px-1 py-0.5"
+        :style="{
+          backgroundColor: 'var(--card-bg)',
+          color: 'var(--foreground)',
+          borderColor: 'rgba(209,213,219,0.8)',
+        }"
+      >
         <option value="depth">Depth</option>
         <option value="temp">Temp</option>
         <option value="ndl">NDL</option>
@@ -24,11 +33,20 @@
         <option value="gasHe">Gas He</option>
       </select>
     </div>
-    <div class="absolute top-2 right-24 z-10 flex items-center gap-2 text-xs"
-         :style="{ color: 'var(--foreground)' }">
+    <div
+      class="absolute top-2 right-24 z-10 flex items-center gap-2 text-xs"
+      :style="{ color: 'var(--foreground)' }"
+    >
       <span>Right:</span>
-            <select v-model="rightAxisMetric" class="border rounded px-1 py-0.5"
-              :style="{ backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', borderColor: 'rgba(209,213,219,0.8)' }">
+      <select
+        v-model="rightAxisMetric"
+        class="border rounded px-1 py-0.5"
+        :style="{
+          backgroundColor: 'var(--card-bg)',
+          color: 'var(--foreground)',
+          borderColor: 'rgba(209,213,219,0.8)',
+        }"
+      >
         <option value="temp">Temp</option>
         <option value="ndl">NDL</option>
         <option value="otu">OTUs</option>
@@ -56,8 +74,11 @@
       <div v-if="tooltip.rmv !== undefined">RMV: {{ tooltip.rmv.toFixed(1) }} L/min</div>
       <div v-if="tooltip.gasO2 !== undefined && tooltip.gasHe !== undefined" class="group relative">
         <div>Gas: {{ tooltip.gasO2.toFixed(0) }}/{{ tooltip.gasHe.toFixed(0) }}</div>
-        <div class="absolute left-full ml-2 top-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          O₂: {{ tooltip.gasO2.toFixed(1) }}%, N₂: {{ tooltip.gasN2?.toFixed(1) }}%, He: {{ tooltip.gasHe.toFixed(1) }}%
+        <div
+          class="absolute left-full ml-2 top-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+        >
+          O₂: {{ tooltip.gasO2.toFixed(1) }}%, N₂: {{ tooltip.gasN2?.toFixed(1) }}%, He:
+          {{ tooltip.gasHe.toFixed(1) }}%
         </div>
       </div>
       <div v-if="tooltip.segmentType" class="mt-1 pt-1 border-t border-gray-300">
@@ -116,22 +137,20 @@ const margin = { top: 10, right: 36, bottom: 24, left: 40 }
 const innerWidth = computed(() => Math.max(10, width.value - margin.left - margin.right))
 const innerHeight = computed(() => Math.max(10, height.value - margin.top - margin.bottom))
 
-const tooltip = ref<
-  {
-    timeDisplay: string
-    depth: number
-    temp?: number
-    ndl?: string
-    otu?: number
-    cns?: number
-    gf?: number
-    rmv?: number
-    gasO2?: number
-    gasN2?: number
-    gasHe?: number
-    segmentType?: string
-  } | null
->(null)
+const tooltip = ref<{
+  timeDisplay: string
+  depth: number
+  temp?: number
+  ndl?: string
+  otu?: number
+  cns?: number
+  gf?: number
+  rmv?: number
+  gasO2?: number
+  gasN2?: number
+  gasHe?: number
+  segmentType?: string
+} | null>(null)
 const tooltipLeft = ref(0)
 const tooltipTop = ref(0)
 const showZoomHint = ref(false)
@@ -177,8 +196,12 @@ const segmentsLayer = ref<any | null>(null)
 const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
 const zoomBehavior = ref<any | null>(null)
 const { getWithToken } = useApi()
-const leftAxisMetric = ref<'depth' | 'temp' | 'ndl' | 'otu' | 'cns' | 'gf' | 'rmv' | 'gasO2' | 'gasN2' | 'gasHe'>('depth')
-const rightAxisMetric = ref<'temp' | 'ndl' | 'otu' | 'cns' | 'gf' | 'rmv' | 'gasO2' | 'gasN2' | 'gasHe'>('temp')
+const leftAxisMetric = ref<
+  'depth' | 'temp' | 'ndl' | 'otu' | 'cns' | 'gf' | 'rmv' | 'gasO2' | 'gasN2' | 'gasHe'
+>('depth')
+const rightAxisMetric = ref<
+  'temp' | 'ndl' | 'otu' | 'cns' | 'gf' | 'rmv' | 'gasO2' | 'gasN2' | 'gasHe'
+>('temp')
 
 let ro: ResizeObserver | null = null
 
@@ -252,10 +275,18 @@ function setupScales() {
 
   tempScale.value = scaleLinear().domain(tempExtent).range([innerHeight.value, 0])
   ndlScale.value = scaleLinear().domain([0, 100]).range([innerHeight.value, 0])
-  otuScale.value = scaleLinear().domain([0, otuMax * 1.05]).range([innerHeight.value, 0])
-  cnsScale.value = scaleLinear().domain([0, cnsMax * 1.05]).range([innerHeight.value, 0])
-  gfScale.value = scaleLinear().domain([0, gfMax * 1.05]).range([innerHeight.value, 0])
-  rmvScale.value = scaleLinear().domain([0, rmvMax * 1.05]).range([innerHeight.value, 0])
+  otuScale.value = scaleLinear()
+    .domain([0, otuMax * 1.05])
+    .range([innerHeight.value, 0])
+  cnsScale.value = scaleLinear()
+    .domain([0, cnsMax * 1.05])
+    .range([innerHeight.value, 0])
+  gfScale.value = scaleLinear()
+    .domain([0, gfMax * 1.05])
+    .range([innerHeight.value, 0])
+  rmvScale.value = scaleLinear()
+    .domain([0, rmvMax * 1.05])
+    .range([innerHeight.value, 0])
   gasScale.value = scaleLinear().domain([0, gasMax]).range([innerHeight.value, 0])
 
   tempLine.value = makeMetricLine(tempScale.value)
@@ -332,7 +363,7 @@ function initSvg() {
     .attr('width', innerWidth.value)
     .attr('height', innerHeight.value)
     .attr('fill', 'var(--card-bg, #ffffff)')
-  
+
   // Layers: segments above background, lines over segments
   segmentsLayer.value = g.append('g').attr('class', 'segments')
 
@@ -366,14 +397,54 @@ function initSvg() {
     .attr('stroke', '#ef4444')
     .attr('stroke-width', 1.5)
     .attr('opacity', props.showTemp ? 1 : 0)
-  g.append('path').attr('class', 'line-ndl').attr('fill', 'none').attr('stroke', '#7c3aed').attr('stroke-width', 1.2).attr('opacity', 0.7)
-  g.append('path').attr('class', 'line-otu').attr('fill', 'none').attr('stroke', '#ec4899').attr('stroke-width', 1.2).attr('opacity', 0.7)
-  g.append('path').attr('class', 'line-cns').attr('fill', 'none').attr('stroke', '#fbbf24').attr('stroke-width', 1.2).attr('opacity', 0.7)
-  g.append('path').attr('class', 'line-gf').attr('fill', 'none').attr('stroke', '#8b5cf6').attr('stroke-width', 1.2).attr('opacity', 0.7)
-  g.append('path').attr('class', 'line-rmv').attr('fill', 'none').attr('stroke', '#14b8a6').attr('stroke-width', 1.2).attr('opacity', 0.7)
-  g.append('path').attr('class', 'line-gas-o2').attr('fill', 'none').attr('stroke', '#06b6d4').attr('stroke-width', 1.2).attr('opacity', 0.7)
-  g.append('path').attr('class', 'line-gas-n2').attr('fill', 'none').attr('stroke', '#84cc16').attr('stroke-width', 1.2).attr('opacity', 0.7)
-  g.append('path').attr('class', 'line-gas-he').attr('fill', 'none').attr('stroke', '#f97316').attr('stroke-width', 1.2).attr('opacity', 0.7)
+  g.append('path')
+    .attr('class', 'line-ndl')
+    .attr('fill', 'none')
+    .attr('stroke', '#7c3aed')
+    .attr('stroke-width', 1.2)
+    .attr('opacity', 0.7)
+  g.append('path')
+    .attr('class', 'line-otu')
+    .attr('fill', 'none')
+    .attr('stroke', '#ec4899')
+    .attr('stroke-width', 1.2)
+    .attr('opacity', 0.7)
+  g.append('path')
+    .attr('class', 'line-cns')
+    .attr('fill', 'none')
+    .attr('stroke', '#fbbf24')
+    .attr('stroke-width', 1.2)
+    .attr('opacity', 0.7)
+  g.append('path')
+    .attr('class', 'line-gf')
+    .attr('fill', 'none')
+    .attr('stroke', '#8b5cf6')
+    .attr('stroke-width', 1.2)
+    .attr('opacity', 0.7)
+  g.append('path')
+    .attr('class', 'line-rmv')
+    .attr('fill', 'none')
+    .attr('stroke', '#14b8a6')
+    .attr('stroke-width', 1.2)
+    .attr('opacity', 0.7)
+  g.append('path')
+    .attr('class', 'line-gas-o2')
+    .attr('fill', 'none')
+    .attr('stroke', '#06b6d4')
+    .attr('stroke-width', 1.2)
+    .attr('opacity', 0.7)
+  g.append('path')
+    .attr('class', 'line-gas-n2')
+    .attr('fill', 'none')
+    .attr('stroke', '#84cc16')
+    .attr('stroke-width', 1.2)
+    .attr('opacity', 0.7)
+  g.append('path')
+    .attr('class', 'line-gas-he')
+    .attr('fill', 'none')
+    .attr('stroke', '#f97316')
+    .attr('stroke-width', 1.2)
+    .attr('opacity', 0.7)
 
   // Hover overlay
   // Vertical crosshair line
@@ -386,7 +457,7 @@ function initSvg() {
     .attr('y1', 0)
     .attr('y2', innerHeight.value)
     .style('display', 'none')
-  
+
   focusCircle.value = g
     .append('circle')
     .attr('r', 5)
@@ -450,10 +521,16 @@ function renderAll() {
   const leftScale = getScaleFor(leftAxisMetric.value)
   const rightScale = getScaleFor(rightAxisMetric.value)
   if (leftScale) {
-    axes.yDepth.value?.call(axisLeft(leftScale).tickFormat((d: any) => formatAxisTick(leftAxisMetric.value, Number(d))))
+    axes.yDepth.value?.call(
+      axisLeft(leftScale).tickFormat((d: any) => formatAxisTick(leftAxisMetric.value, Number(d))),
+    )
   }
   if (rightScale) {
-    axes.yAux.value?.call(axisRight(rightScale).tickFormat((d: any) => formatAxisTick(rightAxisMetric.value, Number(d))))
+    axes.yAux.value?.call(
+      axisRight(rightScale).tickFormat((d: any) =>
+        formatAxisTick(rightAxisMetric.value, Number(d)),
+      ),
+    )
   }
   // Gridlines (optional)
   if (props.showGrid ?? true) {
@@ -476,7 +553,10 @@ function renderAll() {
     grid.y.value?.selectAll('*').remove()
   }
   const depthPts: [number, number][] = ms.map((m) => [m.measurement.time, m.measurement.depth])
-  gSel.value.select('.line-depth').datum(depthPts).attr('d', depthLine.value(depthPts) ?? '')
+  gSel.value
+    .select('.line-depth')
+    .datum(depthPts)
+    .attr('d', depthLine.value(depthPts) ?? '')
 
   const drawMetric = (
     selector: string,
@@ -487,7 +567,10 @@ function renderAll() {
     const path = gSel.value?.select(selector)
     if (!path) return
     if (show && points.length && lineGen) {
-      path.datum(points).attr('d', lineGen(points) ?? '').attr('opacity', 1)
+      path
+        .datum(points)
+        .attr('d', lineGen(points) ?? '')
+        .attr('opacity', 1)
     } else {
       path.attr('opacity', 0).attr('d', '')
     }
@@ -594,13 +677,13 @@ async function maybeFetchSegments() {
     segmentsData.value = null
     return
   }
-  
+
   // Check cache first
   if (segmentsCache.has(props.diveId)) {
     segmentsData.value = segmentsCache.get(props.diveId) ?? null
     return
   }
-  
+
   // Fetch from API
   try {
     const res = await getWithToken<DiveProfileSegmentWithId[]>(
@@ -616,34 +699,34 @@ async function maybeFetchSegments() {
 
 function renderSegments() {
   if (!segmentsLayer.value || !timeScale.value) return
-  
+
   // Clear segments if not showing or no data
   if (!props.showSegments || !segmentsData.value) {
     segmentsLayer.value.selectAll('rect').remove()
     return
   }
-  
+
   const ms = props.profile.measurements
   const getTimeAtIdx = (idx: number) =>
     ms[Math.min(Math.max(idx, 0), ms.length - 1)]!.measurement.time
-  
+
   // Filter out any undefined or malformed segments
   const validSegments = segmentsData.value.filter(
-    (s) => s && s.segment && typeof s.segment.firstMeasurementIdx === 'number'
+    (s) => s && s.segment && typeof s.segment.firstMeasurementIdx === 'number',
   )
-  
+
   const h = innerHeight.value
-  
+
   // Clear old rectangles first
   segmentsLayer.value.selectAll('rect').remove()
-  
+
   // Create new rectangles for each segment with proper width
   validSegments.forEach((s, i) => {
     if (!s?.segment || typeof s.segment.firstMeasurementIdx !== 'number') return
-    
+
     const startTime = getTimeAtIdx(s.segment.firstMeasurementIdx)
     const startX = timeScale.value!(startTime)
-    
+
     // Calculate end time for this segment
     let endTime: number
     if (i < validSegments.length - 1) {
@@ -657,10 +740,10 @@ function renderSegments() {
       // Last segment extends to end of measurements
       endTime = ms[ms.length - 1]?.measurement.time ?? startTime
     }
-    
+
     const endX = timeScale.value!(endTime)
     const width = Math.max(0, endX - startX)
-    
+
     segmentsLayer.value
       .append('rect')
       .attr('x', startX)
@@ -708,17 +791,18 @@ function segmentTypeName(type: string) {
 
 function findSegmentAtIndex(idx: number): string | undefined {
   if (!props.showSegments || !segmentsData.value) return undefined
-  
+
   const segment = segmentsData.value.find((s, i, arr) => {
     if (!s?.segment || typeof s.segment.firstMeasurementIdx !== 'number') return false
     const start = s.segment.firstMeasurementIdx
     const next = arr[i + 1]
-    const end = next?.segment && typeof next.segment.firstMeasurementIdx === 'number'
-      ? next.segment.firstMeasurementIdx
-      : props.profile.measurements.length
+    const end =
+      next?.segment && typeof next.segment.firstMeasurementIdx === 'number'
+        ? next.segment.firstMeasurementIdx
+        : props.profile.measurements.length
     return idx >= start && idx < end
   })
-  
+
   return segment?.segment?.type ? segmentTypeName(segment.segment.type) : undefined
 }
 
@@ -737,10 +821,10 @@ function onMouseMoveD3(event: MouseEvent) {
 
   const cx = timeScale.value(m.measurement.time)
   const cy = depthScale.value(m.measurement.depth)
-  
+
   // Show crosshair line at cursor x position
   crosshairLine.value?.attr('x1', cx).attr('x2', cx).style('display', null)
-  
+
   // Show focus circle at data point
   focusCircle.value?.attr('cx', cx).attr('cy', cy).style('display', null)
 
@@ -758,7 +842,7 @@ function onMouseMoveD3(event: MouseEvent) {
     gasHe: m.measurement.gas?.he !== undefined ? m.measurement.gas.he * 100 : undefined,
     segmentType: findSegmentAtIndex(idx),
   }
-  
+
   // Position tooltip: use mouse Y position instead of data point Y position
   const tipX = cx + margin.left + 8
   const mouseY = event.clientY - container.value!.getBoundingClientRect().top

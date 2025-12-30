@@ -1,11 +1,22 @@
 <template>
   <div class="w-full">
     <div class="flex justify-end px-4 mb-2">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs"
-           :style="{ backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', borderColor: 'rgba(209,213,219,0.8)' }">
+      <div
+        class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs"
+        :style="{
+          backgroundColor: 'var(--card-bg)',
+          color: 'var(--foreground)',
+          borderColor: 'rgba(209,213,219,0.8)',
+        }"
+      >
         <span class="opacity-80">Analytics:</span>
         <label class="flex items-center gap-1.5 cursor-pointer">
-          <input type="checkbox" class="w-4 h-4" :checked="showSegments" @change="showSegments = !showSegments" />
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showSegments"
+            @change="showSegments = !showSegments"
+          />
           <span>Segments</span>
         </label>
       </div>
@@ -84,15 +95,17 @@ const {
 
 const { profile, diveId } = toRefs(props)
 const measurements = computed(() => profile.value.measurements)
-const hasTemp = computed(() => measurements.value.some(m => m.measurement.temperature?.value !== undefined))
-const hasNdl = computed(() => measurements.value.some(m => !!m.measurement.ndl))
-const hasOtu = computed(() => measurements.value.some(m => m.measurement.o2Tox !== undefined))
-const hasCns = computed(() => measurements.value.some(m => m.measurement.cns !== undefined))
-const hasGf = computed(() => measurements.value.some(m => m.measurement.n2 !== undefined))
-const hasRmv = computed(() => measurements.value.some(m => m.measurement.rmvLiters !== undefined))
-const hasGasO2 = computed(() => measurements.value.some(m => m.measurement.gas?.o2 !== undefined))
-const hasGasN2 = computed(() => measurements.value.some(m => m.measurement.gas?.n2 !== undefined))
-const hasGasHe = computed(() => measurements.value.some(m => m.measurement.gas?.he !== undefined))
+const hasTemp = computed(() =>
+  measurements.value.some((m) => m.measurement.temperature?.value !== undefined),
+)
+const hasNdl = computed(() => measurements.value.some((m) => !!m.measurement.ndl))
+const hasOtu = computed(() => measurements.value.some((m) => m.measurement.o2Tox !== undefined))
+const hasCns = computed(() => measurements.value.some((m) => m.measurement.cns !== undefined))
+const hasGf = computed(() => measurements.value.some((m) => m.measurement.n2 !== undefined))
+const hasRmv = computed(() => measurements.value.some((m) => m.measurement.rmvLiters !== undefined))
+const hasGasO2 = computed(() => measurements.value.some((m) => m.measurement.gas?.o2 !== undefined))
+const hasGasN2 = computed(() => measurements.value.some((m) => m.measurement.gas?.n2 !== undefined))
+const hasGasHe = computed(() => measurements.value.some((m) => m.measurement.gas?.he !== undefined))
 </script>
 
 <style scoped>

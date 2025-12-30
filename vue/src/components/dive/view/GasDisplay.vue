@@ -7,7 +7,9 @@
       <span class="block">O₂: {{ o2Percent }}%, N₂: {{ n2Percent }}%, He: {{ hePercent }}%</span>
       <span v-if="showDetails && gas.description" class="block">{{ gas.description }}</span>
       <span v-if="showDetails && gas.size" class="block">Size: {{ formatSize(gas.size) }}</span>
-      <span v-if="showDetails && gas.content" class="block">Content: {{ formatContent(gas.content) }}</span>
+      <span v-if="showDetails && gas.content" class="block"
+        >Content: {{ formatContent(gas.content) }}</span
+      >
     </span>
   </span>
 </template>

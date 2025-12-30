@@ -1,7 +1,11 @@
 <template>
   <div
     class="mb-4 p-3 md:p-4 border rounded-lg shadow-sm w-full max-w-250 mx-auto"
-    :style="{ backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', borderColor: 'rgba(209,213,219,0.8)' }"
+    :style="{
+      backgroundColor: 'var(--card-bg)',
+      color: 'var(--foreground)',
+      borderColor: 'rgba(209,213,219,0.8)',
+    }"
   >
     <div class="flex flex-wrap gap-4 items-center">
       <!-- Metrics toggles -->
@@ -29,7 +33,9 @@
             :checked="showSegments"
             @change="$emit('update:showSegments', !showSegments)"
           />
-          <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">Segments</span>
+          <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }"
+            >Segments</span
+          >
         </label>
         <label class="flex items-center gap-1.5 cursor-pointer">
           <input
@@ -148,16 +154,16 @@ defineProps<{
   showSegmentsToggle?: boolean
 }>()
 defineEmits<{
-  'update:showTemp': []
-  'update:showSegments': []
-  'update:showNdl': []
-  'update:showOtu': []
-  'update:showCns': []
-  'update:showGf': []
-  'update:showRmv': []
-  'update:showGasO2': []
-  'update:showGasN2': []
-  'update:showGasHe': []
+  'update:showTemp': [value: boolean]
+  'update:showSegments': [value: boolean]
+  'update:showNdl': [value: boolean]
+  'update:showOtu': [value: boolean]
+  'update:showCns': [value: boolean]
+  'update:showGf': [value: boolean]
+  'update:showRmv': [value: boolean]
+  'update:showGasO2': [value: boolean]
+  'update:showGasN2': [value: boolean]
+  'update:showGasHe': [value: boolean]
 }>()
 </script>
 

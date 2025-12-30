@@ -2,139 +2,35 @@
   <div class="graph-modal-overlay">
     <div class="graph-modal-card">
       <button class="close-btn" @click="emit('close')">Close</button>
-      <div class="flex justify-end">
-        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs mt-2 mr-3"
-             :style="{ backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', borderColor: 'rgba(209,213,219,0.8)' }">
-          <span class="opacity-80">Analytics:</span>
-          <label class="flex items-center gap-1.5 cursor-pointer">
-            <input type="checkbox" class="w-4 h-4" :checked="showSegments" @change="emit('update:showSegments', !showSegments)" />
-            <span>Segments</span>
-          </label>
-        </div>
-      </div>
-      <MetricsControlPanel
-        class="px-3 pt-3"
-        v-model:show-temp="showTempLocal"
-        v-model:show-segments="showSegmentsLocal"
-        v-model:show-ndl="showNdlLocal"
-        v-model:show-otu="showOtuLocal"
-        v-model:show-cns="showCnsLocal"
-        v-model:show-gf="showGfLocal"
-        v-model:show-rmv="showRmvLocal"
-        v-model:show-gas-o2="showGasO2Local"
-        v-model:show-gas-n2="showGasN2Local"
-        v-model:show-gas-he="showGasHeLocal"
-        :disable-temp="!hasTemp"
-        :disable-ndl="!hasNdl"
-        :disable-otu="!hasOtu"
-        :disable-cns="!hasCns"
-        :disable-gf="!hasGf"
-        :disable-rmv="!hasRmv"
-        :disable-gas-o2="!hasGasO2"
-        :disable-gas-n2="!hasGasN2"
-        :disable-gas-he="!hasGasHe"
+      <DiveGraphView
+        :profile="profile"
+        :dive-id="diveId"
         :show-segments-toggle="false"
+        :show-grid-toggle="true"
       />
-      <div class="graph-area">
-        <label class="graph-grid-toggle">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showGrid"
-            @change="emit('update:showGrid', !showGrid)"
-          />
-          <span>Show grid</span>
-        </label>
-        <DiveGraph
-          :profile="profile"
-          :dive-id="diveId"
-          :show-temp="showTemp"
-          :show-segments="showSegments"
-          :show-grid="showGrid"
-          :show-ndl="showNdl"
-          :show-otu="showOtu"
-          :show-cns="showCns"
-          :show-gf="showGf"
-          :show-rmv="showRmv"
-          :show-gas-o2="showGasO2"
-          :show-gas-n2="showGasN2"
-          :show-gas-he="showGasHe"
-        />
-      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, computed } from 'vue'
-import MetricsControlPanel from '@/components/dive/view/MetricsControlPanel.vue'
-import DiveGraph from '@/components/dive/view/DiveGraph.vue'
+import { onMounted, onBeforeUnmount } from 'vue'
+import DiveGraphView from '@/components/dive/view/DiveGraphView.vue'
 import type { DiveProfile } from '@/lib/types/dive'
 
 type Props = {
   profile: DiveProfile
   diveId: number
-  showTemp: boolean
-  showSegments: boolean
-  showGrid: boolean
-  showNdl: boolean
-  showOtu: boolean
-  showCns: boolean
-  showGf: boolean
-  showRmv: boolean
-  showGasO2: boolean
-  showGasN2: boolean
-  showGasHe: boolean
 }
 
-const props = defineProps<Props>()
-const emit = defineEmits([
-  'close',
-  'update:showTemp',
-  'update:showSegments',
-  'update:showGrid',
-  'update:showNdl',
-  'update:showOtu',
-  'update:showCns',
-  'update:showGf',
-  'update:showRmv',
-  'update:showGasO2',
-  'update:showGasN2',
-  'update:showGasHe',
-])
+defineProps<Props>()
 
-const showTempLocal = computed({
-  get: () => props.showTemp,
-  set: (v: boolean) => emit('update:showTemp', v),
-})
-const showSegmentsLocal = computed({
-  get: () => props.showSegments,
-  set: (v: boolean) => emit('update:showSegments', v),
-})
-const showNdlLocal = computed({ get: () => props.showNdl, set: (v: boolean) => emit('update:showNdl', v) })
-const showOtuLocal = computed({ get: () => props.showOtu, set: (v: boolean) => emit('update:showOtu', v) })
-const showCnsLocal = computed({ get: () => props.showCns, set: (v: boolean) => emit('update:showCns', v) })
-const showGfLocal = computed({ get: () => props.showGf, set: (v: boolean) => emit('update:showGf', v) })
-const showRmvLocal = computed({ get: () => props.showRmv, set: (v: boolean) => emit('update:showRmv', v) })
-const showGasO2Local = computed({ get: () => props.showGasO2, set: (v: boolean) => emit('update:showGasO2', v) })
-const showGasN2Local = computed({ get: () => props.showGasN2, set: (v: boolean) => emit('update:showGasN2', v) })
-const showGasHeLocal = computed({ get: () => props.showGasHe, set: (v: boolean) => emit('update:showGasHe', v) })
+const emit = defineEmits<{
+  close: []
+}>()
 
 const onKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'Escape') emit('close')
 }
-
-// Availability flags based on the provided profile data
-const measurements = computed(() => props.profile.measurements)
-const hasTemp = computed(() => measurements.value.some(m => m.measurement.temperature?.value !== undefined))
-const hasNdl = computed(() => measurements.value.some(m => !!m.measurement.ndl))
-const hasOtu = computed(() => measurements.value.some(m => m.measurement.o2Tox !== undefined))
-const hasCns = computed(() => measurements.value.some(m => m.measurement.cns !== undefined))
-const hasGf = computed(() => measurements.value.some(m => m.measurement.n2 !== undefined))
-const hasRmv = computed(() => measurements.value.some(m => m.measurement.rmvLiters !== undefined))
-const hasGasO2 = computed(() => measurements.value.some(m => m.measurement.gas?.o2 !== undefined))
-const hasGasN2 = computed(() => measurements.value.some(m => m.measurement.gas?.n2 !== undefined))
-const hasGasHe = computed(() => measurements.value.some(m => m.measurement.gas?.he !== undefined))
 
 onMounted(() => {
   window.addEventListener('keydown', onKeyDown)
