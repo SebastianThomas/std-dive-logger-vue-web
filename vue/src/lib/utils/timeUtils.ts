@@ -38,7 +38,9 @@ export function showDuration(time: Duration): string {
  * @returns Formatted time string (e.g., "01:30:45", "30:45") or "-" if invalid/empty
  */
 export function formatISoDurationToTime(duration?: string | null): string {
-  if (!duration) { return '-' }
+  if (!duration) {
+    return '-'
+  }
 
   const result = parseISODuration(duration)
   if ('invalid' in result) {
@@ -63,7 +65,9 @@ export function formatISoDurationToTime(duration?: string | null): string {
  * @returns Formatted string with total minutes (e.g., "90 min", "30 min") or "-" if invalid/empty
  */
 export function formatISoDurationToMinutes(duration?: string | null): string {
-  if (!duration) { return '-' }
+  if (!duration) {
+    return '-'
+  }
 
   const result = parseISODuration(duration)
   if ('invalid' in result) {

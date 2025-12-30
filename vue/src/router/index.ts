@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
-import HomeSite from '../views/HomeSite.vue'
+import HomeView from '../views/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -9,97 +9,97 @@ const router = createRouter({
     {
       path: '/',
       name: 'Home',
-      component: HomeSite,
+      component: HomeView,
       meta: { requiresAuth: false },
     },
     {
       path: '/auth/signup',
       name: 'AuthSignup',
-      component: () => import('../views/AuthSignupSite.vue'),
+      component: () => import('../views/AuthSignupView.vue'),
       meta: { requiresAuth: false },
     },
     {
       path: '/auth/login',
       name: 'AuthLogin',
-      component: () => import('../views/AuthLoginSite.vue'),
+      component: () => import('../views/AuthLoginView.vue'),
       meta: { requiresAuth: false },
     },
     {
       path: '/auth/magic-login',
       name: 'AuthMagicLogin',
-      component: () => import('../views/AuthMagicLoginSite.vue'),
+      component: () => import('../views/AuthMagicLoginView.vue'),
       meta: { requiresAuth: false },
     },
     {
       path: '/dives/list',
       name: 'DiveList',
-      component: () => import('../views/DiveListSite.vue'),
+      component: () => import('../views/DiveListView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/dives/create',
       name: 'DiveCreate',
-      component: () => import('../views/DiveCreateSite.vue'),
+      component: () => import('../views/DiveCreateView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/dives/upload',
       name: 'DiveUpload',
-      component: () => import('../views/DiveUploadSite.vue'),
+      component: () => import('../views/DiveUploadView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/dives/view/:diveId',
       name: 'DiveView',
-      component: () => import('../views/DiveViewSite.vue'),
+      component: () => import('../views/DiveViewView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/dives/edit/:diveId',
       name: 'DiveEdit',
-      component: () => import('../views/DiveEditSite.vue'),
+      component: () => import('../views/DiveEditView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/analytics/depth/:diveId',
       name: 'AnalyticsDepth',
-      component: () => import('../views/AnalyticsDepthSite.vue'),
+      component: () => import('../views/AnalyticsDepthView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/analytics/segments/:diveId',
       name: 'AnalyticsSegments',
-      component: () => import('../views/AnalyticsSegmentsSite.vue'),
+      component: () => import('../views/AnalyticsSegmentsView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/share/overview',
       name: 'ShareOverview',
-      component: () => import('../views/ShareOverviewSite.vue'),
+      component: () => import('../views/ShareOverviewView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/share/:groupId/edit',
       name: 'GroupEdit',
-      component: () => import('../views/GroupEditSite.vue'),
+      component: () => import('../views/GroupEditView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/profile',
       name: 'Profile',
-      component: () => import('../views/ProfileSite.vue'),
+      component: () => import('../views/ProfileView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/user/email',
       name: 'UserEmail',
-      component: () => import('../views/UserEmailSite.vue'),
+      component: () => import('../views/UserEmailView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/map/createView',
       name: 'MapCreateView',
-      component: () => import('../views/MapCreateSite.vue'),
+      component: () => import('../views/MapCreateView.vue'),
       meta: { requiresAuth: true },
     },
   ],
