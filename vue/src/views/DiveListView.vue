@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-[calc(100vh-70px)] flex flex-col items-center py-8 px-4 md:px-10">
-    <div class="w-full max-w-7xl bg-white rounded-lg shadow p-6 space-y-4">
+  <div class="min-h-[calc(100vh-70px)] flex flex-col py-0 px-0 md:px-10">
+    <div class="w-full md:max-w-7xl bg-white rounded-lg shadow p-4 md:p-6 space-y-4">
       <!-- Header -->
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div class="flex items-center gap-3">
@@ -51,6 +51,15 @@
           {{ viewShared ? 'Viewing shared dives' : 'View shared dives' }}
         </button>
       </div>
+
+      <!-- Mobile Pagination (top) -->
+      <PageSelector
+        class="sm:hidden"
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :page-size="pageSize"
+        @update:page="goToPage"
+      />
 
       <!-- Table -->
       <div class="overflow-auto border rounded-lg">
@@ -140,40 +149,12 @@
       </div>
 
       <!-- Pagination -->
-      <div class="flex items-center justify-between">
-        <div class="text-sm text-gray-600">
-          Page {{ currentPage }} of {{ totalPages }} (~{{ totalPages * pageSize }} total dives)
-        </div>
-        <div class="flex gap-2">
-          <button
-            :disabled="currentPage === 1"
-            @click="goToPage(currentPage - 1)"
-            class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <button
-            v-for="page in visiblePages"
-            :key="page"
-            @click="goToPage(page)"
-            :class="[
-              'px-3 py-1 rounded border',
-              currentPage === page
-                ? 'bg-sky-600 text-white border-sky-600'
-                : 'border-gray-300 hover:bg-gray-100',
-            ]"
-          >
-            {{ page }}
-          </button>
-          <button
-            :disabled="currentPage === totalPages"
-            @click="goToPage(currentPage + 1)"
-            class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      <PageSelector
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :page-size="pageSize"
+        @update:page="goToPage"
+      />
     </div>
 
     <!-- Bulk Actions Modal -->
@@ -193,6 +174,7 @@ import { toast } from 'vue-sonner'
 import { useApi } from '../composables/useApi'
 import BulkActionsModal from '@/components/dive/BulkActionsModal.vue'
 import DiveSitePreview from '@/components/DiveSitePreview.vue'
+import PageSelector from '@/components/PageSelector.vue'
 import type { DiveWithoutProfiles, PagedResult } from '../lib/types/dive'
 import debounce from '../lib/utils/debounce'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
@@ -230,44 +212,13 @@ const columns: {
   { key: 'site', label: 'Profile', serverCol: null, sortable: false, width: 'w-24' },
   {
     key: 'customIdentifier',
-    label: 'Custom ID',
+    label: 'Custom Name',
     serverCol: 'CUSTOM_IDENTIFIER',
     sortable: true,
   },
   { key: 'site', label: 'Site', serverCol: null, sortable: false },
   { key: 'user', label: 'Diver', serverCol: null, sortable: false, width: 'w-32' },
 ]
-
-// Computed
-const visiblePages = computed(() => {
-  const pages: number[] = []
-  const total = totalPages.value
-  const current = currentPage.value
-
-  if (total <= 7) {
-    for (let i = 1; i <= total; i++) {
-      pages.push(i)
-    }
-  } else {
-    if (current <= 4) {
-      for (let i = 1; i <= 5; i++) pages.push(i)
-      pages.push(-1) // ellipsis
-      pages.push(total)
-    } else if (current >= total - 3) {
-      pages.push(1)
-      pages.push(-1)
-      for (let i = total - 4; i <= total; i++) pages.push(i)
-    } else {
-      pages.push(1)
-      pages.push(-1)
-      for (let i = current - 1; i <= current + 1; i++) pages.push(i)
-      pages.push(-1)
-      pages.push(total)
-    }
-  }
-
-  return pages.filter((p) => p > 0)
-})
 
 // Functions
 const fetchUserId = async () => {
@@ -403,6 +354,12 @@ const onRowClick = (diveId: number) => {
 const goToPage = (page: number) => {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
+  if (typeof window !== 'undefined') {
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      document?.documentElement?.scrollTo?.({ top: 0, behavior: 'smooth' })
+    })
+  }
 }
 
 // Sync state to URL query params
