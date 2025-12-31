@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed flex justify-center items-start pt-20 px-6 md:px-10"
+    class="flex justify-center items-start pt-20 px-6 md:px-10"
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
     <main class="max-w-5xl w-full mx-auto p-6">

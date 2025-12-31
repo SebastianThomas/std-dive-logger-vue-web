@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed min-h-screen p-4 flex justify-center items-center"
+    class="min-h-screen p-4 flex justify-center items-center"
   >
     <div
       class="dive-card bg-white rounded-xl shadow-lg p-6 max-w-3xl w-full max-h-[90vh] flex flex-col"

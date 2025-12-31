@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed h-full">
+  <div class="h-full">
     <div class="flex justify-center pt-10">
       <main class="bg-white rounded-2xl p-6 max-w-2xl w-full flex flex-col gap-4">
         <div class="flex justify-between">

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed min-h-[calc(100vh-70px)] flex flex-col items-center py-8 px-4 md:px-10"
+    class="min-h-[calc(100vh-70px)] flex flex-col items-center py-8 px-4 md:px-10"
   >
     <div class="w-full max-w-7xl bg-white rounded-lg shadow p-6 space-y-4">
       <!-- Header -->
