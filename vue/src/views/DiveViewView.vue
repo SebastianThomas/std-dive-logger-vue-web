@@ -1,6 +1,6 @@
 <template>
   <div
-    class="dive-view-shell bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed flex justify-center items-start pt-20 px-6 md:px-10"
+    class="dive-view-shell flex justify-center items-start pt-20 px-6 md:px-10"
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
     <DiveGraphModal
@@ -158,7 +158,7 @@
                   id: dive.site.id!,
                   ...dive.site,
                 },
-                diveIds: [dive.id],
+                diveInfo: [{...dive}],
               },
             ]"
             :center="[dive.site.latitude, dive.site.longitude]"
@@ -410,10 +410,6 @@ watch(() => diveId.value, fetchDive)
 </script>
 
 <style scoped>
-.dive-view-shell {
-  background-color: var(--surface-bg);
-}
-
 .dive-card {
   background-color: var(--card-bg);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);

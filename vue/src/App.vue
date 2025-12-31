@@ -16,7 +16,9 @@
     />
 
     <!-- Main content -->
-    <main class="transition-all duration-300 overflow-auto min-h-full min-w-full grid-main">
+    <main
+      class="transition-all duration-300 overflow-auto min-h-full min-w-full grid-main bg-gray-100 relative"
+    >
       <router-view />
     </main>
   </div>
@@ -130,5 +132,10 @@ onUnmounted(() => {
 
 .grid-main {
   grid-area: main;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background: linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6)), url('/images/Karwela.png');
+  background-size: cover;
 }
 </style>

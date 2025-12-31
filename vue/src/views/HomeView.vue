@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed min-h-full"
+    class="min-h-full"
   >
     <main class="flex-1 relative p-6 md:p-10">
       <h2 class="text-3xl text-white font-bold text-center mb-8">Discover What You Can Do</h2>

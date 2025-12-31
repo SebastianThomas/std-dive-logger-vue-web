@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-gray-100 bg-[url('/images/background.jpg')] bg-cover bg-center bg-fixed min-h-[calc(100vh-70px)] flex justify-center items-start pt-10 px-4 md:px-8"
+    class="min-h-[calc(100vh-70px)] flex justify-center items-start pt-10 px-4 md:px-8"
   >
     <div class="w-full max-w-3xl bg-white p-6 rounded-lg shadow">
       <h1 class="text-2xl font-bold mb-4">Upload Dive Files</h1>

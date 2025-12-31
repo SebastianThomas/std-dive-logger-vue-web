@@ -9,17 +9,8 @@ import { ref, onMounted, computed, watch } from 'vue'
 import L from 'leaflet'
 import { usePersistentMapView } from '@/composables/mapViewState'
 import { useThemeStore } from '@/stores/theme'
+import type { SiteWithDives } from '@/lib/types/dive'
 import 'leaflet/dist/leaflet.css'
-
-interface SiteWithDives {
-  site: {
-    id: number
-    name: string
-    latitude: number
-    longitude: number
-  }
-  diveIds: number[]
-}
 
 interface Props {
   sites?: SiteWithDives[]
@@ -75,22 +66,21 @@ const updateMarkers = () => {
   if (!map) return
 
   // Add new markers
-  props.sites.forEach(({ site, diveIds }) => {
+  props.sites.forEach(({ site, diveInfo }) => {
     const marker = L.marker([site.latitude, site.longitude]).addTo(map)
 
     const popupContent = `
-      <div class="space-y-2">
+      <div class="popup-container">
         <h3 class="font-bold">${site.name}</h3>
-        <p class="text-sm opacity-70">Site ID: ${site.id}</p>
-        <div class="mt-2">
-          <p class="font-semibold mb-1">Dive IDs:</p>
+        <div class="dives-scroll-container">
           <ul class="space-y-1">
-            ${diveIds
+            ${diveInfo
+              .sort((a, b) => a.number - b.number)
               .map(
-                (id) => `
+                (info) => `
               <li class="flex items-center justify-between">
-                <span>${id}</span>
-                <a href="#/dives/view/${id}" class="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 inline-block">View Dive</a>
+                <span class="dive-name-truncate">#${info.number}: ${info.customIdentifier}</span>
+                <a href="#/dives/view/${info.id}" class="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 inline-block">View Dive</a>
               </li>
             `,
               )
@@ -161,6 +151,18 @@ watch(() => themeStore.theme, updateTileLayer)
 :deep(.leaflet-popup-content) {
   margin: 8px;
   font-size: 12px;
+  max-height: 150px;
+}
+
+:deep(.popup-container) {
+  display: flex;
+  flex-direction: column;
+  max-height: 150px;
+}
+
+:deep(.dives-scroll-container) {
+  overflow-y: auto;
+  margin-top: 8px;
 }
 
 :deep(.leaflet-popup-content-wrapper) {
@@ -172,5 +174,13 @@ watch(() => themeStore.theme, updateTileLayer)
 :deep(.leaflet-popup-tip) {
   background-color: var(--card-bg);
   border: 1px solid rgba(209, 213, 219, 0.25);
+}
+
+:deep(.dive-name-truncate) {
+  display: inline-block;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

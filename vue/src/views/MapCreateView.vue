@@ -6,16 +6,7 @@
 import { ref, onMounted } from 'vue'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import { useApi } from '@/composables/useApi'
-
-interface SiteWithDives {
-  site: {
-    id: number
-    name: string
-    latitude: number
-    longitude: number
-  }
-  diveIds: number[]
-}
+import type { SiteWithDives } from '@/lib/types/dive'
 
 const sites = ref<SiteWithDives[]>([])
 const { getWithToken } = useApi()
