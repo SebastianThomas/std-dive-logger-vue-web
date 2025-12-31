@@ -158,7 +158,7 @@
                   id: dive.site.id!,
                   ...dive.site,
                 },
-                diveInfo: [{...dive}],
+                diveInfo: [{ ...dive }],
               },
             ]"
             :center="[dive.site.latitude, dive.site.longitude]"

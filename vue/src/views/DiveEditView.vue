@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="min-h-screen p-4 flex justify-center items-center"
-  >
+  <div class="min-h-screen p-4 flex justify-center items-center">
     <div
       class="dive-card bg-white rounded-xl shadow-lg p-6 max-w-3xl w-full max-h-[90vh] flex flex-col"
     >

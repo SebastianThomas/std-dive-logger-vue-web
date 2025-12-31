@@ -179,8 +179,8 @@ export type DiveSite = {
 }
 
 export type BasicDiveInfo = {
-  id: number,
-  number: number,
+  id: number
+  number: number
   customIdentifier: string
 }
 

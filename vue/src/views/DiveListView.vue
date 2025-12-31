@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="min-h-[calc(100vh-70px)] flex flex-col items-center py-8 px-4 md:px-10"
-  >
+  <div class="min-h-[calc(100vh-70px)] flex flex-col items-center py-8 px-4 md:px-10">
     <div class="w-full max-w-7xl bg-white rounded-lg shadow p-6 space-y-4">
       <!-- Header -->
       <div class="flex items-center justify-between flex-wrap gap-4">
