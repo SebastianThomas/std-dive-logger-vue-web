@@ -43,12 +43,6 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/dives/upload',
-      name: 'DiveUpload',
-      component: () => import('../views/DiveUploadView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
       path: '/dives/view/:diveId',
       name: 'DiveView',
       component: () => import('../views/DiveViewView.vue'),

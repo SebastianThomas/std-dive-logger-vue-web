@@ -101,7 +101,7 @@ export function useApi() {
 
   const getWithToken = async <T = unknown, H = unknown>(url: string, init?: AxiosRequestConfig) => {
     const resolved = resolveUrl(url)
-    return requestWithRetry<T, undefined, H>(resolved, 'GET', init)
+    return await requestWithRetry<T, undefined, H>(resolved, 'GET', init)
   }
 
   const deleteWithToken = async <T = unknown, D = object, H = unknown>(
@@ -110,7 +110,7 @@ export function useApi() {
     init?: AxiosRequestConfig,
   ) => {
     const resolved = resolveUrl(url)
-    return requestWithRetry<T, D, H>(resolved, 'DELETE', init, body)
+    return await requestWithRetry<T, D, H>(resolved, 'DELETE', init, body)
   }
 
   const postWithToken = async <T = unknown, D = object, H = unknown>(
@@ -132,7 +132,7 @@ export function useApi() {
 
     const initWithJson: AxiosRequestConfig = { ...init, headers }
 
-    return requestWithRetry<T, H, D>(resolved, 'POST', initWithJson, payload)
+    return await requestWithRetry<T, H, D>(resolved, 'POST', initWithJson, payload)
   }
 
   const putWithToken = async <T = unknown, D = object, H = unknown>(
@@ -153,7 +153,7 @@ export function useApi() {
 
     const payload = body && typeof body === 'object' ? JSON.stringify(body) : body
 
-    return requestWithRetry<T, H, D>(resolved, 'PUT', initWithJson, payload)
+    return await requestWithRetry<T, H, D>(resolved, 'PUT', initWithJson, payload)
   }
 
   return { getWithToken, postWithToken, putWithToken, refresh, deleteWithToken }

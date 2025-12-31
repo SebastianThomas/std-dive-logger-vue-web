@@ -1,16 +1,27 @@
 <template>
   <div class="relative w-full h-full">
-    <div ref="mapContainer" class="w-full h-full rounded" />
+    <l-map
+      :zoom="mapZoom"
+      :center="mapCenter"
+      :use-global-leaflet="false"
+      @click="handleMapClick"
+      @update:zoom="onZoomUpdate"
+      @update:center="onCenterUpdate"
+    >
+      <l-tile-layer :url="tileUrl" :attribution="attribution" />
+      <l-marker v-if="markerCoords" :lat-lng="markerCoords" :icon="defaultIcon" />
+    </l-map>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import L from 'leaflet'
+import { ref, computed, watch } from 'vue'
+import { LMap, LTileLayer, LMarker } from '@vue-leaflet/vue-leaflet'
 import { usePersistentMapView } from '@/composables/mapViewState'
 import { useThemeStore } from '@/stores/theme'
-import '@/lib/map/leafletIcon'
+import { defaultIcon } from '@/lib/map/leafletIcon'
 import 'leaflet/dist/leaflet.css'
+import type { LeafletMouseEvent } from 'leaflet'
 
 export interface MapCoords {
   lat: number
@@ -27,107 +38,69 @@ const emit = defineEmits<{
   select: [coords: MapCoords]
 }>()
 
-const mapContainer = ref<HTMLElement | null>(null)
-const mapInstance = ref<L.Map | null>(null)
-const markerInstance = ref<L.Marker | null>(null)
-const tileLayer = ref<L.TileLayer | null>(null)
 const themeStore = useThemeStore()
-
 const [mapView, setMapView] = usePersistentMapView('map-picker-view', {
   lat: 46,
   lon: 8,
   zoom: 5,
 })
 
-const updateMarker = (lat: number, lon: number) => {
-  if (!mapInstance.value) return
+const markerCoords = ref<[number, number] | null>(
+  props.initialCoords ? [props.initialCoords.lat, props.initialCoords.lon] : null,
+)
 
-  // Remove existing marker
-  if (markerInstance.value) {
-    markerInstance.value.remove()
-  }
-
-  // Add new marker (uses default icon configured in leafletIcon.ts)
-  markerInstance.value = L.marker([lat, lon]).addTo(mapInstance.value as L.Map)
-}
-
-const handleMapChange = () => {
-  if (mapInstance.value) {
-    const center = mapInstance.value.getCenter()
-    setMapView({
-      lat: center.lat,
-      lon: center.lng,
-      zoom: mapInstance.value.getZoom(),
-    })
-  }
-}
-
-onMounted(() => {
-  if (!mapContainer.value) return
-
-  // Determine initial center - use initialCoords if provided, otherwise use saved view
-  const initialCenter: [number, number] = props.initialCoords
+const mapCenter = computed<[number, number]>(() =>
+  props.initialCoords
     ? [props.initialCoords.lat, props.initialCoords.lon]
-    : [mapView.value.lat, mapView.value.lon]
+    : [mapView.value.lat, mapView.value.lon],
+)
 
-  // Initialize map
-  const map = L.map(mapContainer.value).setView(initialCenter, mapView.value.zoom) as L.Map
-  mapInstance.value = map
+const mapZoom = computed(() => mapView.value.zoom)
 
-  // Add tile layer
-  updateTileLayer()
-
-  // Add click handler
-  map.on('click', (e: L.LeafletMouseEvent) => {
-    const coords = { lat: e.latlng.lat, lon: e.latlng.lng }
-    updateMarker(coords.lat, coords.lon)
-    emit('select', coords)
-  })
-
-  // Listen to map changes for persistence
-  map.on('moveend', handleMapChange)
-
-  // Add initial marker if coords provided
-  if (props.initialCoords) {
-    updateMarker(props.initialCoords.lat, props.initialCoords.lon)
-  }
-})
-
-const updateTileLayer = () => {
-  if (!mapInstance.value) return
-
-  // Remove old tile layer if it exists
-  if (tileLayer.value) {
-    tileLayer.value.remove()
-  }
-
-  // Add new tile layer based on current theme
-  const isDark = themeStore.theme === 'dark'
-  const tileUrl = isDark
+const tileUrl = computed(() => {
+  return themeStore.theme === 'dark'
     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
     : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-  const attribution = isDark
+})
+
+const attribution = computed(() => {
+  return themeStore.theme === 'dark'
     ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     : '&copy; OpenStreetMap contributors'
+})
 
-  tileLayer.value = L.tileLayer(tileUrl, {
-    attribution,
-    maxZoom: 19,
-  }).addTo(mapInstance.value as L.Map)
+const handleMapClick = (event: LeafletMouseEvent) => {
+  const { lat, lng } = event.latlng
+  const coords = { lat, lon: lng }
+  markerCoords.value = [lat, lng]
+  emit('select', coords)
+}
+
+const onZoomUpdate = (zoom: number) => {
+  setMapView({
+    lat: mapView.value.lat,
+    lon: mapView.value.lon,
+    zoom,
+  })
+}
+
+const onCenterUpdate = (center: { lat: number; lng: number }) => {
+  setMapView({
+    lat: center.lat,
+    lon: center.lng,
+    zoom: mapView.value.zoom,
+  })
 }
 
 // Watch for prop changes to update marker
 watch(
   () => props.initialCoords,
   (newCoords) => {
-    if (newCoords && mapInstance.value) {
-      updateMarker(newCoords.lat, newCoords.lon)
-      mapInstance.value.setView([newCoords.lat, newCoords.lon])
+    if (newCoords) {
+      markerCoords.value = [newCoords.lat, newCoords.lon]
     }
   },
 )
-
-watch(() => themeStore.theme, updateTileLayer)
 </script>
 
 <style scoped>
