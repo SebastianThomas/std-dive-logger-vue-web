@@ -129,13 +129,14 @@ const handleSubmit = async () => {
         status?: number
         name?: string
         reason?: string
+        detail?: string
       }
       if (data.reason === 'MISSING_VALUE' && data.field === 'DIVE_SITE') {
         missingSiteName.value = data.name ?? null
         showCreateSite.value = true
         return
       }
-      status.value = `Error: ${data.title ?? 'Upload failed'}`
+      status.value = `Error: ${data.title ?? 'Upload failed'} (${data.detail})`
     } else {
       status.value = 'Error: Upload failed'
     }
