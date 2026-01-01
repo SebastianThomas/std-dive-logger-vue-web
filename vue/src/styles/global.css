@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 @import 'leaflet/dist/leaflet.css';
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css');
+@import '@fortawesome/fontawesome-free/css/all.min.css';
 
 /* Default light theme */
 :root {
