@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatISoDurationToMinutes, formatISoDurationToTime, parseISODuration } from './timeUtils'
+import { formatISoDurationToMinutes, formatISoDurationToTime, parseISODuration } from '../lib/utils/timeUtils'
 
 describe('timeUtils', () => {
   describe('parseISODuration', () => {

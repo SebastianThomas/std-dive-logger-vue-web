@@ -180,7 +180,11 @@
               </ul>
             </InfoCard>
             <InfoCard title="Dive Computers">
-              <p class="text-xs text-gray-600" v-for="computer in computers" :key="computer.id">
+              <p
+                class="text-xs text-gray-600"
+                v-for="computer in uniqueComputers"
+                :key="computer.id"
+              >
                 {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
               </p>
             </InfoCard>
@@ -288,7 +292,7 @@ import InfoCard from '@/components/InfoCard.vue'
 import InfoCardRow from '@/components/InfoCardRow.vue'
 import { useDiveGraphStore } from '@/stores/diveGraph'
 import { storeToRefs } from 'pinia'
-import type { Dive, DiveWithoutProfiles, Gas, PagedResult } from '@/lib/types/dive'
+import type { Dive, DiveComputer, DiveWithoutProfiles, Gas, PagedResult } from '@/lib/types/dive'
 import type { User } from '@/lib/types/share'
 
 const router = useRouter()
@@ -325,15 +329,36 @@ const summary = computed(() => dive.value?.summary)
 const isMine = computed(() => dive.value?.user.id === myUserId.value)
 
 const firstProfileSummary = computed(() => dive.value?.profiles[0]?.summary)
-const lastProfileSummary = computed(
-  () => dive.value?.profiles[dive.value?.profiles.length - 1]?.summary,
-)
+const lastProfileSummary = computed(() => {
+  const profiles = dive.value?.profiles
+  if (!profiles) {
+    return undefined
+  }
+  const length = profiles.length
+  return profiles[length - 1]?.summary
+})
 
-const computers = computed(() => new Set(dive.value?.profiles.map((p) => p.diveComputer)))
+const uniqueComputers = computed(() => {
+  const profiles = dive.value?.profiles ?? []
+  const computerMap = new Map<number | string, DiveComputer>()
+  for (const profile of profiles) {
+    const computer = profile.diveComputer
+    if (!computer) continue
+    const key = computer.id ?? computer.serialNumber
+    if (!computerMap.has(key)) {
+      computerMap.set(key, computer)
+    }
+  }
+  return new Set(computerMap.values())
+})
 
 // Extract all unique gas mixes from measurements
 const allGases = computed(() => {
-  const gases = dive.value?.profiles
+  const profiles = dive.value?.profiles
+  if (!profiles) {
+    return new Set<Gas>()
+  }
+  const gases = profiles
     .flatMap((m) => m.measurements)
     .map((m) => m.measurement.gas)
     .filter(Boolean)
