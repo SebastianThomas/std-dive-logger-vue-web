@@ -215,9 +215,9 @@ function updateSize() {
 
 function setupScales() {
   // Collect all measurements from all profiles
-  const allMeasurements = props.profiles.flatMap(p => p.measurements)
+  const allMeasurements = props.profiles.flatMap((p) => p.measurements)
   if (!allMeasurements.length) return
-  
+
   const tValues = allMeasurements.map((m) => m.measurement.time)
   const dValues = allMeasurements.map((m) => m.measurement.depth)
 
@@ -465,7 +465,7 @@ function initSvg() {
 
 function renderAll() {
   if (!gSel.value || !timeScale.value || !depthScale.value || !depthLine.value) return
-  
+
   // Axes
 
   // Generate fixed interval ticks for time axis (in seconds)
@@ -531,11 +531,11 @@ function renderAll() {
     grid.x.value?.selectAll('*').remove()
     grid.y.value?.selectAll('*').remove()
   }
-  
+
   // Render depth lines for each profile
   const depthLinesGroup = gSel.value.select('.lines-depth')
   depthLinesGroup.selectAll('path').remove()
-  props.profiles.forEach(profile => {
+  props.profiles.forEach((profile) => {
     const depthPts: [number, number][] = profile.measurements.map((m) => [
       m.measurement.time,
       m.measurement.depth,
@@ -563,7 +563,7 @@ function renderAll() {
     if (!group) return
     group.selectAll('path').remove()
     if (!show || !lineGen) return
-    
+
     props.profiles.forEach((profile) => {
       const points: [number, number][] = profile.measurements
         .map(extractor)
@@ -583,9 +583,10 @@ function renderAll() {
 
   drawMetricLines(
     '.lines-temp',
-    (m) => m.measurement.temperature?.value !== undefined
-      ? [m.measurement.time, m.measurement.temperature.value]
-      : null,
+    (m) =>
+      m.measurement.temperature?.value !== undefined
+        ? [m.measurement.time, m.measurement.temperature.value]
+        : null,
     tempLine.value,
     props.showTemp ?? false,
     '#ef4444',
@@ -593,7 +594,7 @@ function renderAll() {
 
   drawMetricLines(
     '.lines-ndl',
-    (m) => m.measurement.ndl ? [m.measurement.time, parseIsoMinutes(m.measurement.ndl)] : null,
+    (m) => (m.measurement.ndl ? [m.measurement.time, parseIsoMinutes(m.measurement.ndl)] : null),
     ndlLine.value,
     props.showNdl ?? false,
     '#7c3aed',
@@ -602,7 +603,7 @@ function renderAll() {
 
   drawMetricLines(
     '.lines-otu',
-    (m) => m.measurement.o2Tox !== undefined ? [m.measurement.time, m.measurement.o2Tox] : null,
+    (m) => (m.measurement.o2Tox !== undefined ? [m.measurement.time, m.measurement.o2Tox] : null),
     otuLine.value,
     props.showOtu ?? false,
     '#ec4899',
@@ -611,7 +612,7 @@ function renderAll() {
 
   drawMetricLines(
     '.lines-cns',
-    (m) => m.measurement.cns !== undefined ? [m.measurement.time, m.measurement.cns] : null,
+    (m) => (m.measurement.cns !== undefined ? [m.measurement.time, m.measurement.cns] : null),
     cnsLine.value,
     props.showCns ?? false,
     '#fbbf24',
@@ -620,7 +621,7 @@ function renderAll() {
 
   drawMetricLines(
     '.lines-gf',
-    (m) => m.measurement.n2 !== undefined ? [m.measurement.time, m.measurement.n2] : null,
+    (m) => (m.measurement.n2 !== undefined ? [m.measurement.time, m.measurement.n2] : null),
     gfLine.value,
     props.showGf ?? false,
     '#8b5cf6',
@@ -761,7 +762,7 @@ function renderSegments() {
 
   const ms = props.profiles[0]?.measurements ?? []
   if (!ms.length) return
-  
+
   const getTimeAtIdx = (idx: number) =>
     ms[Math.min(Math.max(idx, 0), ms.length - 1)]!.measurement.time
 
@@ -868,13 +869,13 @@ function onMouseMoveD3(event: MouseEvent) {
     onMouseLeave()
     return
   }
-  
+
   // Find closest measurement across all profiles
-  const allMeasurements = props.profiles.flatMap((p, pIdx) => 
-    p.measurements.map(m => ({ ...m, profileIdx: pIdx, profileStart: p.start }))
+  const allMeasurements = props.profiles.flatMap((p, pIdx) =>
+    p.measurements.map((m) => ({ ...m, profileIdx: pIdx, profileStart: p.start })),
   )
   if (!allMeasurements.length) return
-  
+
   const b = bisector((m: any) => m.measurement.time).center
   const tVal = timeScale.value.invert(mx)
   const idx = Math.min(allMeasurements.length - 1, Math.max(0, b(allMeasurements, tVal)))

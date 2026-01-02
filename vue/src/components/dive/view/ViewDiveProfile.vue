@@ -94,7 +94,7 @@ const {
 } = storeToRefs(graphStore)
 
 const { profiles, diveId } = toRefs(props)
-const measurements = computed(() => profiles.value.flatMap(p => p.measurements))
+const measurements = computed(() => profiles.value.flatMap((p) => p.measurements))
 const hasTemp = computed(() =>
   measurements.value.some((m) => m.measurement.temperature?.value !== undefined),
 )

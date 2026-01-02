@@ -61,9 +61,7 @@
         </div>
         <p class="text-gray-500 text-sm">
           {{ dive.site.name }} ·
-          {{
-            summary?.start ? new Date(summary.start).toLocaleString() : 'No start date'
-          }}
+          {{ summary?.start ? new Date(summary.start).toLocaleString() : 'No start date' }}
         </p>
       </div>
 
@@ -120,11 +118,7 @@
                 <p class="text-sm font-medium">{{ d.customIdentifier }}</p>
                 <p class="text-xs text-gray-500">
                   #{{ d.number }} · {{ dive.site.name }} ·
-                  {{
-                    summary?.start
-                      ? new Date(summary.start).toLocaleString()
-                      : 'No start date'
-                  }}
+                  {{ summary?.start ? new Date(summary.start).toLocaleString() : 'No start date' }}
                 </p>
               </div>
               <button
@@ -207,10 +201,16 @@
           <InfoCardRow v-if="firstProfileSummary || lastProfileSummary">
             <!-- CNS Information -->
             <InfoCard
-              v-if="firstProfileSummary?.startCNS !== undefined || lastProfileSummary?.endCNS !== undefined"
+              v-if="
+                firstProfileSummary?.startCNS !== undefined ||
+                lastProfileSummary?.endCNS !== undefined
+              "
               title="CNS (%)"
             >
-              <div v-if="firstProfileSummary?.startCNS !== undefined" class="flex items-center gap-2">
+              <div
+                v-if="firstProfileSummary?.startCNS !== undefined"
+                class="flex items-center gap-2"
+              >
                 <span>Start:</span>
                 <span class="font-semibold">{{ firstProfileSummary.startCNS.toFixed(0) }}</span>
               </div>
@@ -229,10 +229,16 @@
 
             <!-- N2 Loading Information -->
             <InfoCard
-              v-if="firstProfileSummary?.startN2 !== undefined || lastProfileSummary?.endN2 !== undefined"
+              v-if="
+                firstProfileSummary?.startN2 !== undefined ||
+                lastProfileSummary?.endN2 !== undefined
+              "
               title="N2 Loading"
             >
-              <div v-if="firstProfileSummary?.startN2 !== undefined" class="flex items-center gap-2">
+              <div
+                v-if="firstProfileSummary?.startN2 !== undefined"
+                class="flex items-center gap-2"
+              >
                 <span>Start:</span>
                 <span class="font-semibold">{{ firstProfileSummary.startN2.toFixed(0) }}</span>
               </div>
@@ -319,9 +325,11 @@ const summary = computed(() => dive.value?.summary)
 const isMine = computed(() => dive.value?.user.id === myUserId.value)
 
 const firstProfileSummary = computed(() => dive.value?.profiles[0]?.summary)
-const lastProfileSummary = computed(() => dive.value?.profiles[dive.value?.profiles.length - 1]?.summary)
+const lastProfileSummary = computed(
+  () => dive.value?.profiles[dive.value?.profiles.length - 1]?.summary,
+)
 
-const computers = computed(() => new Set(dive.value?.profiles.map(p => p.diveComputer)))
+const computers = computed(() => new Set(dive.value?.profiles.map((p) => p.diveComputer)))
 
 // Extract all unique gas mixes from measurements
 const allGases = computed(() => {

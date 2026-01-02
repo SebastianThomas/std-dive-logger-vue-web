@@ -80,32 +80,20 @@ const showGasN2 = ref(false)
 const showGasHe = ref(false)
 const showGrid = ref(false)
 
-const measurements = computed(() => props.profiles.flatMap(m => m.measurements))
+const measurements = computed(() => props.profiles.flatMap((m) => m.measurements))
 
 // Availability flags based on profile data
 const hasTemp = computed(() =>
   measurements.value.some((m) => m.measurement.temperature?.value !== undefined),
 )
 const hasNdl = computed(() => measurements.value.some((m) => !!m.measurement.ndl))
-const hasOtu = computed(() =>
-  measurements.value.some((m) => m.measurement.o2Tox !== undefined),
-)
-const hasCns = computed(() =>
-  measurements.value.some((m) => m.measurement.cns !== undefined),
-)
+const hasOtu = computed(() => measurements.value.some((m) => m.measurement.o2Tox !== undefined))
+const hasCns = computed(() => measurements.value.some((m) => m.measurement.cns !== undefined))
 const hasGf = computed(() => measurements.value.some((m) => m.measurement.n2 !== undefined))
-const hasRmv = computed(() =>
-  measurements.value.some((m) => m.measurement.rmvLiters !== undefined),
-)
-const hasGasO2 = computed(() =>
-  measurements.value.some((m) => m.measurement.gas?.o2 !== undefined),
-)
-const hasGasN2 = computed(() =>
-  measurements.value.some((m) => m.measurement.gas?.n2 !== undefined),
-)
-const hasGasHe = computed(() =>
-  measurements.value.some((m) => m.measurement.gas?.he !== undefined),
-)
+const hasRmv = computed(() => measurements.value.some((m) => m.measurement.rmvLiters !== undefined))
+const hasGasO2 = computed(() => measurements.value.some((m) => m.measurement.gas?.o2 !== undefined))
+const hasGasN2 = computed(() => measurements.value.some((m) => m.measurement.gas?.n2 !== undefined))
+const hasGasHe = computed(() => measurements.value.some((m) => m.measurement.gas?.he !== undefined))
 </script>
 
 <style scoped>
