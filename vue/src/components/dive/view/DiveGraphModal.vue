@@ -2,7 +2,7 @@
   <div class="graph-modal-overlay">
     <div class="graph-modal-card">
       <button class="close-btn" @click="emit('close')">Close</button>
-      <DiveGraphView :profile="profile" :dive-id="diveId" :show-grid-toggle="true" />
+      <DiveGraphView :profiles="profiles" :dive-id="diveId" :show-grid-toggle="true" />
     </div>
   </div>
 </template>
@@ -13,7 +13,7 @@ import DiveGraphView from '@/components/dive/view/DiveGraphView.vue'
 import type { DiveProfile } from '@/lib/types/dive'
 
 type Props = {
-  profile: DiveProfile
+  profiles: DiveProfile[]
   diveId: number
 }
 
