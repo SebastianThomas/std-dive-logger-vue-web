@@ -288,7 +288,7 @@ import InfoCard from '@/components/InfoCard.vue'
 import InfoCardRow from '@/components/InfoCardRow.vue'
 import { useDiveGraphStore } from '@/stores/diveGraph'
 import { storeToRefs } from 'pinia'
-import type { Dive, DiveWithoutProfiles, Gas, PagedResult } from '@/lib/types/dive'
+import type { Dive, DiveComputer, DiveWithoutProfiles, Gas, PagedResult } from '@/lib/types/dive'
 import type { User } from '@/lib/types/share'
 
 const router = useRouter()
@@ -329,7 +329,19 @@ const lastProfileSummary = computed(
   () => dive.value?.profiles[dive.value?.profiles.length - 1]?.summary,
 )
 
-const computers = computed(() => new Set(dive.value?.profiles.map((p) => p.diveComputer)))
+const computers = computed(() => {
+  const profiles = dive.value?.profiles ?? []
+  const computerMap = new Map<number | string, DiveComputer>()
+  for (const profile of profiles) {
+    const computer = profile.diveComputer
+    if (!computer) continue
+    const key = computer.id ?? computer.serialNumber
+    if (!computerMap.has(key)) {
+      computerMap.set(key, computer)
+    }
+  }
+  return new Set(computerMap.values())
+})
 
 // Extract all unique gas mixes from measurements
 const allGases = computed(() => {
