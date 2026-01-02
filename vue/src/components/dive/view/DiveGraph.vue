@@ -115,7 +115,7 @@ import { formatISoDurationToMinutes } from '@/lib/utils/timeUtils'
 
 type Props = {
   profiles: DiveProfile[]
-  diveIds: number[]
+  diveId: number
   showTemp?: boolean
   showSegments?: boolean
   showGrid?: boolean
@@ -168,6 +168,8 @@ const grid = {
   x: ref<any | null>(null),
   y: ref<any | null>(null),
 }
+const clipRect = ref<any | null>(null)
+const clipPathId = `graph-clip-${Math.random().toString(36).slice(2, 10)}`
 const depthScale = ref<any | null>(null)
 const timeScale = ref<any | null>(null)
 const tempScale = ref<any | null>(null)
@@ -231,6 +233,11 @@ function setupScales() {
   // Depth increases downwards (invert range so 0 is at top, max depth at bottom)
   depthScaleBase.value = scaleLinear().domain([dmin, dmax]).range([0, innerHeight.value])
   depthScale.value = depthScaleBase.value.copy()
+
+  // Keep clip rect in sync with current inner dimensions
+  if (clipRect.value) {
+    clipRect.value.attr('width', innerWidth.value).attr('height', innerHeight.value)
+  }
 
   // Independent domains per metric to keep lines static regardless of toggle state
   const temperatureValues = allMeasurements
@@ -358,6 +365,14 @@ function initSvg() {
     .attr('height', height.value)
   svgSel.value = svg
 
+  const defs = svg.append('defs')
+  clipRect.value = defs
+    .append('clipPath')
+    .attr('id', clipPathId)
+    .append('rect')
+    .attr('width', innerWidth.value)
+    .attr('height', innerHeight.value)
+
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
   gSel.value = g
 
@@ -368,14 +383,16 @@ function initSvg() {
     .attr('fill', 'var(--card-bg, #ffffff)')
 
   // Layers: segments above background, lines over segments
-  segmentsLayer.value = g.append('g').attr('class', 'segments')
+  const clipPathUrl = `url(#${clipPathId})`
+  segmentsLayer.value = g.append('g').attr('class', 'segments').attr('clip-path', clipPathUrl)
 
   // Gridlines
-  grid.y.value = g.append('g').attr('class', 'grid-y')
+  grid.y.value = g.append('g').attr('class', 'grid-y').attr('clip-path', clipPathUrl)
   grid.x.value = g
     .append('g')
     .attr('class', 'grid-x')
     .attr('transform', `translate(0,${innerHeight.value})`)
+    .attr('clip-path', clipPathUrl)
 
   // Axes
   axes.yDepth.value = g.append('g').attr('transform', `translate(0,0)`).attr('class', 'y-depth')
@@ -389,16 +406,16 @@ function initSvg() {
     .attr('class', 'x-axis')
 
   // Lines layer - will contain multiple paths per profile
-  g.append('g').attr('class', 'lines-depth')
-  g.append('g').attr('class', 'lines-temp')
-  g.append('g').attr('class', 'lines-ndl')
-  g.append('g').attr('class', 'lines-otu')
-  g.append('g').attr('class', 'lines-cns')
-  g.append('g').attr('class', 'lines-gf')
-  g.append('g').attr('class', 'lines-rmv')
-  g.append('g').attr('class', 'lines-gas-o2')
-  g.append('g').attr('class', 'lines-gas-n2')
-  g.append('g').attr('class', 'lines-gas-he')
+  g.append('g').attr('class', 'lines-depth').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-temp').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-ndl').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-otu').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-cns').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-gf').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-rmv').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-gas-o2').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-gas-n2').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-gas-he').attr('clip-path', clipPathUrl)
 
   // Hover overlay
   // Vertical crosshair line
@@ -410,6 +427,7 @@ function initSvg() {
     .attr('stroke-dasharray', '4,2')
     .attr('y1', 0)
     .attr('y2', innerHeight.value)
+    .attr('clip-path', clipPathUrl)
     .style('display', 'none')
 
   focusCircle.value = g
@@ -418,6 +436,7 @@ function initSvg() {
     .attr('fill', '#ef4444')
     .attr('stroke', '#fff')
     .attr('stroke-width', 2)
+    .attr('clip-path', clipPathUrl)
     .style('display', 'none')
   hoverOverlay.value = g
     .append('rect')
@@ -726,7 +745,7 @@ async function maybeFetchSegments() {
     return
   }
 
-  const diveId = props.diveIds[0]
+  const diveId = props.diveId
   if (!diveId) {
     segmentsData.value = null
     return
@@ -872,7 +891,12 @@ function onMouseMoveD3(event: MouseEvent) {
 
   // Find closest measurement across all profiles
   const allMeasurements = props.profiles.flatMap((p, pIdx) =>
-    p.measurements.map((m) => ({ ...m, profileIdx: pIdx, profileStart: p.start })),
+    p.measurements.map((m, mIdx) => ({
+      ...m,
+      profileIdx: pIdx,
+      profileStart: p.start,
+      measurementIndex: mIdx,
+    })),
   )
   if (!allMeasurements.length) return
 
@@ -902,7 +926,10 @@ function onMouseMoveD3(event: MouseEvent) {
     gasO2: m.measurement.gas?.o2 !== undefined ? m.measurement.gas.o2 * 100 : undefined,
     gasN2: m.measurement.gas?.n2 !== undefined ? m.measurement.gas.n2 * 100 : undefined,
     gasHe: m.measurement.gas?.he !== undefined ? m.measurement.gas.he * 100 : undefined,
-    segmentType: props.profiles.length === 1 ? findSegmentAtIndex(idx) : undefined,
+    segmentType:
+      props.profiles.length === 1 && (m as any).measurementIndex !== undefined
+        ? findSegmentAtIndex((m as any).measurementIndex)
+        : undefined,
   }
 
   // Position tooltip: use mouse Y position instead of data point Y position

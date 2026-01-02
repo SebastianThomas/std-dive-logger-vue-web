@@ -51,7 +51,7 @@
       </label>
       <DiveGraph
         :profiles="profiles"
-        :dive-ids="[diveId]"
+        :dive-id="diveId"
         :show-temp="showTemp"
         :show-segments="showSegments"
         :show-grid="showGrid"
