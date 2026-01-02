@@ -31,8 +31,8 @@
       </label>
 
       <DiveGraph
-        :profile="profile"
-        :dive-id="diveId"
+        :profiles="profiles"
+        :dive-ids="[diveId]"
         :show-temp="showTemp"
         :show-segments="showSegments"
         :show-grid="showGrid"
@@ -56,7 +56,7 @@ import DiveGraph from '@/components/dive/view/DiveGraph.vue'
 import type { DiveProfile } from '@/lib/types/dive'
 
 interface Props {
-  profile: DiveProfile
+  profiles: DiveProfile[]
   diveId: number
   showSegmentsToggle?: boolean
   showGridToggle?: boolean
@@ -80,29 +80,31 @@ const showGasN2 = ref(false)
 const showGasHe = ref(false)
 const showGrid = ref(false)
 
+const measurements = computed(() => props.profiles.flatMap(m => m.measurements))
+
 // Availability flags based on profile data
 const hasTemp = computed(() =>
-  props.profile.measurements.some((m) => m.measurement.temperature?.value !== undefined),
+  measurements.value.some((m) => m.measurement.temperature?.value !== undefined),
 )
-const hasNdl = computed(() => props.profile.measurements.some((m) => !!m.measurement.ndl))
+const hasNdl = computed(() => measurements.value.some((m) => !!m.measurement.ndl))
 const hasOtu = computed(() =>
-  props.profile.measurements.some((m) => m.measurement.o2Tox !== undefined),
+  measurements.value.some((m) => m.measurement.o2Tox !== undefined),
 )
 const hasCns = computed(() =>
-  props.profile.measurements.some((m) => m.measurement.cns !== undefined),
+  measurements.value.some((m) => m.measurement.cns !== undefined),
 )
-const hasGf = computed(() => props.profile.measurements.some((m) => m.measurement.n2 !== undefined))
+const hasGf = computed(() => measurements.value.some((m) => m.measurement.n2 !== undefined))
 const hasRmv = computed(() =>
-  props.profile.measurements.some((m) => m.measurement.rmvLiters !== undefined),
+  measurements.value.some((m) => m.measurement.rmvLiters !== undefined),
 )
 const hasGasO2 = computed(() =>
-  props.profile.measurements.some((m) => m.measurement.gas?.o2 !== undefined),
+  measurements.value.some((m) => m.measurement.gas?.o2 !== undefined),
 )
 const hasGasN2 = computed(() =>
-  props.profile.measurements.some((m) => m.measurement.gas?.n2 !== undefined),
+  measurements.value.some((m) => m.measurement.gas?.n2 !== undefined),
 )
 const hasGasHe = computed(() =>
-  props.profile.measurements.some((m) => m.measurement.gas?.he !== undefined),
+  measurements.value.some((m) => m.measurement.gas?.he !== undefined),
 )
 </script>
 
