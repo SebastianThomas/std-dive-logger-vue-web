@@ -872,7 +872,12 @@ function onMouseMoveD3(event: MouseEvent) {
 
   // Find closest measurement across all profiles
   const allMeasurements = props.profiles.flatMap((p, pIdx) =>
-    p.measurements.map((m) => ({ ...m, profileIdx: pIdx, profileStart: p.start })),
+    p.measurements.map((m, mIdx) => ({
+      ...m,
+      profileIdx: pIdx,
+      profileStart: p.start,
+      measurementIndex: mIdx,
+    })),
   )
   if (!allMeasurements.length) return
 
@@ -902,7 +907,10 @@ function onMouseMoveD3(event: MouseEvent) {
     gasO2: m.measurement.gas?.o2 !== undefined ? m.measurement.gas.o2 * 100 : undefined,
     gasN2: m.measurement.gas?.n2 !== undefined ? m.measurement.gas.n2 * 100 : undefined,
     gasHe: m.measurement.gas?.he !== undefined ? m.measurement.gas.he * 100 : undefined,
-    segmentType: props.profiles.length === 1 ? findSegmentAtIndex(idx) : undefined,
+    segmentType:
+      props.profiles.length === 1 && (m as any).measurementIndex !== undefined
+        ? findSegmentAtIndex((m as any).measurementIndex)
+        : undefined,
   }
 
   // Position tooltip: use mouse Y position instead of data point Y position

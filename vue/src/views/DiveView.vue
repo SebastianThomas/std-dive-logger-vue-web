@@ -180,7 +180,11 @@
               </ul>
             </InfoCard>
             <InfoCard title="Dive Computers">
-              <p class="text-xs text-gray-600" v-for="computer in computers" :key="computer.id">
+              <p
+                class="text-xs text-gray-600"
+                v-for="computer in uniqueComputers"
+                :key="computer.id"
+              >
                 {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
               </p>
             </InfoCard>
@@ -325,11 +329,16 @@ const summary = computed(() => dive.value?.summary)
 const isMine = computed(() => dive.value?.user.id === myUserId.value)
 
 const firstProfileSummary = computed(() => dive.value?.profiles[0]?.summary)
-const lastProfileSummary = computed(
-  () => dive.value?.profiles[dive.value?.profiles.length - 1]?.summary,
-)
+const lastProfileSummary = computed(() => {
+  const profiles = dive.value?.profiles
+  if (!profiles) {
+    return undefined
+  }
+  const length = profiles.length
+  return profiles[length - 1]?.summary
+})
 
-const computers = computed(() => {
+const uniqueComputers = computed(() => {
   const profiles = dive.value?.profiles ?? []
   const computerMap = new Map<number | string, DiveComputer>()
   for (const profile of profiles) {
@@ -345,7 +354,11 @@ const computers = computed(() => {
 
 // Extract all unique gas mixes from measurements
 const allGases = computed(() => {
-  const gases = dive.value?.profiles
+  const profiles = dive.value?.profiles
+  if (!profiles) {
+    return new Set<Gas>()
+  }
+  const gases = profiles
     .flatMap((m) => m.measurements)
     .map((m) => m.measurement.gas)
     .filter(Boolean)
