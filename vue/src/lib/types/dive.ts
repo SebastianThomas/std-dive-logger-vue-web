@@ -81,9 +81,20 @@ export type DiveProfile = {
   summary: DiveProfileSummary
 }
 
+export type Duration = string
+
+export type DiveSummary = {
+  start: number
+  end: number
+  maxDepth: number
+  averageDepth: number
+  bottomTime: Duration
+  surfaceIntervalBefore: Duration
+}
+
 export type Dive = {
   id: number
-  user: { id: number; name: string }
+  user: User
   number: number
   customIdentifier: string
   previewImage: string
@@ -94,6 +105,7 @@ export type Dive = {
     diveId: number
   }[]
   namedBuddies: string[]
+  summary: DiveSummary
 }
 
 export type DiveWithoutProfiles = Omit<Dive, 'profiles'>
@@ -143,31 +155,8 @@ export type DiveDepthVariance = {
   stats: DiveDepthVarianceStats
 }
 
-export type ParamsMap = { [K in keyof DiveWithoutProfiles]: string }
-export type FilteredParamsMap = Partial<ParamsMap>
-
-export const ALL_PARAMS_MAP: ParamsMap = {
-  id: 'ID',
-  number: '#',
-  customIdentifier: 'Name',
-  previewImage: 'Preview Image',
-  site: 'Dive Site',
-  buddiesDives: 'Buddy Dives',
-  namedBuddies: 'Buddies',
-  user: 'Diver',
-} as const
-
-export const params: (keyof DiveWithoutProfiles)[] = Object.keys(
-  ALL_PARAMS_MAP,
-) as (keyof DiveWithoutProfiles)[]
-
-type Buddy = {
-  id: number
-  name: string
-}
-
 export type BuddyDive = {
-  buddy: Buddy
+  buddy: User
   diveId: number
 }
 

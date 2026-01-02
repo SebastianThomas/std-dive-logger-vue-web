@@ -4,8 +4,8 @@
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
     <DiveGraphModal
-      v-if="graphOpen && firstProfile"
-      :profile="firstProfile"
+      v-if="graphOpen && dive?.profiles"
+      :profiles="dive.profiles"
       :dive-id="diveId"
       :show-temp="showTemp"
       :show-segments="showSegments"
@@ -61,9 +61,7 @@
         </div>
         <p class="text-gray-500 text-sm">
           {{ dive.site.name }} ·
-          {{
-            firstProfile?.start ? new Date(firstProfile.start).toLocaleString() : 'No start date'
-          }}
+          {{ summary?.start ? new Date(summary.start).toLocaleString() : 'No start date' }}
         </p>
       </div>
 
@@ -120,11 +118,7 @@
                 <p class="text-sm font-medium">{{ d.customIdentifier }}</p>
                 <p class="text-xs text-gray-500">
                   #{{ d.number }} · {{ dive.site.name }} ·
-                  {{
-                    firstProfile?.start
-                      ? new Date(firstProfile.start).toLocaleString()
-                      : 'No start date'
-                  }}
+                  {{ summary?.start ? new Date(summary.start).toLocaleString() : 'No start date' }}
                 </p>
               </div>
               <button
@@ -169,7 +163,7 @@
         <!-- Dive Info -->
         <div class="w-full md:w-4/5 flex flex-col gap-6">
           <!-- Summary Cards -->
-          <InfoCardRow v-if="firstProfile && summary">
+          <InfoCardRow v-if="summary">
             <InfoCard title="Max Depth" :value="`${summary.maxDepth?.toFixed(1)} m`" />
             <InfoCard title="Avg Depth" :value="`${summary.averageDepth?.toFixed(1)} m`" />
             <InfoCard title="Bottom Time" :value="formatDiveTime(summary.bottomTime)" />
@@ -185,10 +179,9 @@
                 <li v-if="allGases.size === 0" class="text-gray-400">No gas data</li>
               </ul>
             </InfoCard>
-            <InfoCard title="Dive Computer">
-              <p class="text-xs text-gray-600">
-                {{ firstProfile?.diveComputer.manufacturer.name }} —
-                {{ firstProfile?.diveComputer.customIdentifier }}
+            <InfoCard title="Dive Computers">
+              <p class="text-xs text-gray-600" v-for="computer in computers" :key="computer.id">
+                {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
               </p>
             </InfoCard>
             <InfoCard title="Buddies">
@@ -205,41 +198,53 @@
           </InfoCardRow>
 
           <!-- Advanced Dive Information Row -->
-          <InfoCardRow v-if="firstProfile && summary">
+          <InfoCardRow v-if="firstProfileSummary || lastProfileSummary">
             <!-- CNS Information -->
             <InfoCard
-              v-if="summary.startCNS !== undefined || summary.endCNS !== undefined"
+              v-if="
+                firstProfileSummary?.startCNS !== undefined ||
+                lastProfileSummary?.endCNS !== undefined
+              "
               title="CNS (%)"
             >
-              <div v-if="summary.startCNS !== undefined" class="flex items-center gap-2">
+              <div
+                v-if="firstProfileSummary?.startCNS !== undefined"
+                class="flex items-center gap-2"
+              >
                 <span>Start:</span>
-                <span class="font-semibold">{{ summary.startCNS?.toFixed(0) }}</span>
+                <span class="font-semibold">{{ firstProfileSummary.startCNS.toFixed(0) }}</span>
               </div>
-              <div v-if="summary.endCNS !== undefined" class="flex items-center gap-2">
+              <div v-if="lastProfileSummary?.endCNS !== undefined" class="flex items-center gap-2">
                 <span>End:</span>
-                <span class="font-semibold">{{ summary.endCNS?.toFixed(0) }}</span>
+                <span class="font-semibold">{{ lastProfileSummary.endCNS.toFixed(0) }}</span>
               </div>
             </InfoCard>
 
             <!-- OTU Information -->
             <InfoCard
-              v-if="summary.o2Toxicity !== undefined"
-              title="OTU"
-              :value="`${summary.o2Toxicity?.toFixed(0)}`"
+              v-if="lastProfileSummary?.o2Toxicity !== undefined"
+              title="OTUs"
+              :value="`${lastProfileSummary?.o2Toxicity?.toFixed(0)}`"
             />
 
             <!-- N2 Loading Information -->
             <InfoCard
-              v-if="summary.startN2 !== undefined || summary.endN2 !== undefined"
+              v-if="
+                firstProfileSummary?.startN2 !== undefined ||
+                lastProfileSummary?.endN2 !== undefined
+              "
               title="N2 Loading"
             >
-              <div v-if="summary.startN2 !== undefined" class="flex items-center gap-2">
+              <div
+                v-if="firstProfileSummary?.startN2 !== undefined"
+                class="flex items-center gap-2"
+              >
                 <span>Start:</span>
-                <span class="font-semibold">{{ summary.startN2?.toFixed(0) }}</span>
+                <span class="font-semibold">{{ firstProfileSummary.startN2.toFixed(0) }}</span>
               </div>
-              <div v-if="summary.endN2 !== undefined" class="flex items-center gap-2">
+              <div v-if="lastProfileSummary?.endN2 !== undefined" class="flex items-center gap-2">
                 <span>End:</span>
-                <span class="font-semibold">{{ summary.endN2?.toFixed(0) }}</span>
+                <span class="font-semibold">{{ lastProfileSummary.endN2.toFixed(0) }}</span>
               </div>
             </InfoCard>
           </InfoCardRow>
@@ -257,7 +262,7 @@
               Expand
             </button>
           </div>
-          <ViewDiveProfile v-if="firstProfile" :profile="firstProfile" :dive-id="diveId" />
+          <ViewDiveProfile v-if="dive.profiles" :profiles="dive.profiles" :dive-id="diveId" />
         </div>
       </div>
     </div>
@@ -316,21 +321,27 @@ const {
   showGasHe,
 } = storeToRefs(graphStore)
 
-const firstProfile = computed(() => dive.value?.profiles?.[0])
-const summary = computed(() => firstProfile.value?.summary)
+const summary = computed(() => dive.value?.summary)
 const isMine = computed(() => dive.value?.user.id === myUserId.value)
+
+const firstProfileSummary = computed(() => dive.value?.profiles[0]?.summary)
+const lastProfileSummary = computed(
+  () => dive.value?.profiles[dive.value?.profiles.length - 1]?.summary,
+)
+
+const computers = computed(() => new Set(dive.value?.profiles.map((p) => p.diveComputer)))
 
 // Extract all unique gas mixes from measurements
 const allGases = computed(() => {
-  if (!firstProfile.value?.measurements) {
+  const gases = dive.value?.profiles
+    .flatMap((m) => m.measurements)
+    .map((m) => m.measurement.gas)
+    .filter(Boolean)
+    .map((g) => g!)
+  if (!gases || gases.length === 0) {
     return new Set<Gas>()
   }
-  return new Set(
-    firstProfile.value.measurements
-      .map((m) => m.measurement.gas)
-      .filter(Boolean)
-      .map((m) => m!),
-  )
+  return new Set(gases)
 })
 
 const showGasDetails = computed(() => allGases.value.size <= 3)

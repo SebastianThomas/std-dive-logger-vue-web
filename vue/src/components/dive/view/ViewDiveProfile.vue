@@ -50,8 +50,8 @@
         <span>Show grid</span>
       </label>
       <DiveGraph
-        :profile="profile"
-        :dive-id="diveId"
+        :profiles="profiles"
+        :dive-ids="[diveId]"
         :show-temp="showTemp"
         :show-segments="showSegments"
         :show-grid="showGrid"
@@ -76,7 +76,7 @@ import { useDiveGraphStore } from '@/stores/diveGraph'
 import { storeToRefs } from 'pinia'
 import { toRefs, computed } from 'vue'
 
-const props = defineProps<{ profile: DiveProfile; diveId: number }>()
+const props = defineProps<{ profiles: DiveProfile[]; diveId: number }>()
 
 const graphStore = useDiveGraphStore()
 const {
@@ -93,8 +93,8 @@ const {
   showGasHe,
 } = storeToRefs(graphStore)
 
-const { profile, diveId } = toRefs(props)
-const measurements = computed(() => profile.value.measurements)
+const { profiles, diveId } = toRefs(props)
+const measurements = computed(() => profiles.value.flatMap((p) => p.measurements))
 const hasTemp = computed(() =>
   measurements.value.some((m) => m.measurement.temperature?.value !== undefined),
 )
