@@ -35,7 +35,7 @@
         </router-link>
         <router-link :to="{ name: 'AuthLogin' }">
           <button
-            class="bg-gray-200 text-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-gray-300 transition-colors"
+            class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
           >
             Sign In
           </button>

@@ -21,7 +21,7 @@
           </button>
           <button
             @click="clearSelection"
-            class="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+            class="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600"
           >
             Clear Selection
           </button>

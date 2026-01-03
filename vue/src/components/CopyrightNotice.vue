@@ -1,16 +1,13 @@
 <template>
   <div>
-    <div class="copyright-notice copyright-notice-background">
-      Diver: Sebastian Thomas, Photo:
-      <a href="https://diverbydesign.com" target="_blank" rel="noopener noreferrer">Vas Proud</a>
-    </div>
-
-    <div class="copyright-notice copyright-notice-hover">
-      Diver: Sebastian Thomas, Photo:
-      <a href="https://diverbydesign.com" target="_blank" rel="noopener noreferrer">Vas Proud</a>
-    </div>
+    <CopyrightNoticeContent class="copyright-notice copyright-notice-background" />
+    <CopyrightNoticeContent class="copyright-notice copyright-notice-hover" />
   </div>
 </template>
+
+<script setup lang="ts">
+import CopyrightNoticeContent from './CopyrightNoticeContent.vue'
+</script>
 
 <style scoped>
 /* Shared copyright notice styles */
@@ -22,7 +19,7 @@
   font-size: 0.75rem;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   display: flex;
-  gap: 4px;
+  gap: 0;
   align-items: center;
   pointer-events: auto;
   padding: 8px 12px;
@@ -35,7 +32,7 @@
 /* Background notice - always visible, lower z-index */
 .copyright-notice-background {
   z-index: 5;
-  opacity: 0.5;
+  opacity: 0.2;
 }
 
 /* Hover notice - appears on hover, higher z-index */
@@ -47,10 +44,5 @@
 
 .copyright-notice-hover:hover {
   opacity: 1;
-}
-
-.copyright-notice a {
-  color: #c7d2fe;
-  text-decoration: underline;
 }
 </style>

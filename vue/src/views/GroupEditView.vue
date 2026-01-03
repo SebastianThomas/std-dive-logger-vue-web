@@ -42,7 +42,7 @@
                   Accept
                 </button>
                 <button
-                  class="px-3 py-1 rounded bg-gray-300 text-gray-800 hover:bg-gray-400"
+                  class="px-3 py-1 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
                   @click="declineRequest(req.id)"
                 >
                   Decline

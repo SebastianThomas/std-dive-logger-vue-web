@@ -78,7 +78,7 @@
           <div class="flex justify-end gap-3">
             <button
               @click="showDeleteModal = false"
-              class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100"
+              class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               Cancel
             </button>
@@ -359,7 +359,7 @@ const allGases = computed(() => {
     return new Set<Gas>()
   }
   const gases = profiles
-    .flatMap((m) => m.measurements)
+    .flatMap((p) => p.measurements)
     .map((m) => m.measurement.gas)
     .filter(Boolean)
     .map((g) => g!)

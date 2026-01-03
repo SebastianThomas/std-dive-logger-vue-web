@@ -10,7 +10,7 @@
         <button
           v-if="view !== 'overview'"
           @click="view = 'overview'"
-          class="p-1 hover:bg-gray-100 rounded"
+          class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
         >
           ←
         </button>
@@ -26,10 +26,10 @@
           <!-- People Section -->
           <section>
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-semibold text-gray-600">People</span>
+              <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">People</span>
               <button
                 @click="view = 'add-person'"
-                class="p-1 hover:bg-gray-100 rounded text-blue-600"
+                class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-blue-600"
               >
                 +
               </button>
@@ -43,22 +43,22 @@
                 <span class="text-sm">{{ person.name }}</span>
                 <button
                   @click="deletePerson(person.id)"
-                  class="p-1 hover:bg-gray-100 rounded text-red-600"
+                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600"
                 >
                   ×
                 </button>
               </li>
-              <li v-if="readers.length === 0" class="text-sm text-gray-400">No people shared</li>
+              <li v-if="readers.length === 0" class="text-sm text-gray-400 dark:text-gray-500">No people shared</li>
             </ul>
           </section>
 
           <!-- Groups Section -->
           <section>
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-semibold text-gray-600">Groups</span>
+              <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">Groups</span>
               <button
                 @click="view = 'add-group'"
-                class="p-1 hover:bg-gray-100 rounded text-blue-600"
+                class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-blue-600"
               >
                 +
               </button>
@@ -72,12 +72,12 @@
                 <span class="text-sm">{{ group.name }}</span>
                 <button
                   @click="deleteGroup(group.id)"
-                  class="p-1 hover:bg-gray-100 rounded text-red-600"
+                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600"
                 >
                   ×
                 </button>
               </li>
-              <li v-if="groupReaders.length === 0" class="text-sm text-gray-400">
+              <li v-if="groupReaders.length === 0" class="text-sm text-gray-400 dark:text-gray-500">
                 No groups shared
               </li>
             </ul>
