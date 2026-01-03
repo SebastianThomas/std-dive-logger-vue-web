@@ -19,7 +19,8 @@
     <main
       class="transition-all duration-300 overflow-auto min-h-full min-w-full grid-main bg-gray-100 relative"
     >
-      <router-view />
+      <router-view class="router-content" />
+      <CopyrightNotice />
     </main>
   </div>
 </template>
@@ -36,6 +37,7 @@ import { useThemeStore } from '@/stores/theme'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppSidebar from './components/layout/AppSidebar.vue'
+import CopyrightNotice from './components/CopyrightNotice.vue'
 
 // Constants
 const headerHeight = 80 as const
@@ -137,5 +139,10 @@ onUnmounted(() => {
   background-attachment: fixed;
   background: linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6)), url('/images/Karwela.png');
   background-size: cover;
+}
+
+.router-content {
+  position: relative;
+  z-index: 10;
 }
 </style>
