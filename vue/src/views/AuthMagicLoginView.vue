@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex justify-center items-start pt-20 px-6 md:px-10"
+    class="flex justify-center items-start pt-20 px-6 md:mx-10"
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
     <main class="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">

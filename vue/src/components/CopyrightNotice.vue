@@ -1,12 +1,14 @@
 <template>
-  <div>
-    <CopyrightNoticeContent class="copyright-notice copyright-notice-background" />
-    <CopyrightNoticeContent class="copyright-notice copyright-notice-hover" />
+    <div class="copyright-notice copyright-notice-hover" >
+    Diver:&ThinSpace;
+    <a href="https://instagram.com/sthomas_ch" target="_blank" rel="noopener noreferrer"
+      >Sebastian Thomas</a
+    >, Photo:&ThinSpace;
+    <a href="https://diverbydesign.com" target="_blank" rel="noopener noreferrer">Vas Proud</a>
   </div>
 </template>
 
 <script setup lang="ts">
-import CopyrightNoticeContent from './CopyrightNoticeContent.vue'
 </script>
 
 <style scoped>
@@ -29,20 +31,20 @@ import CopyrightNoticeContent from './CopyrightNoticeContent.vue'
   backdrop-filter: blur(4px);
 }
 
-/* Background notice - always visible, lower z-index */
-.copyright-notice-background {
-  z-index: 5;
-  opacity: 0.2;
-}
-
 /* Hover notice - appears on hover, higher z-index */
 .copyright-notice-hover {
-  z-index: 50;
-  opacity: 0;
-  transition: opacity 0.3s ease-in-out;
+  z-index: 5;
+  opacity: 0.2;
+  transition: all 0.3s ease-in-out;
 }
 
 .copyright-notice-hover:hover {
+  z-index: 20;
   opacity: 1;
+}
+
+.copyright-notice a {
+  color: #c7d2fe;
+  text-decoration: underline;
 }
 </style>
