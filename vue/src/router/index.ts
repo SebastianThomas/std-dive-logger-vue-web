@@ -55,6 +55,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/analytics',
+      name: 'Analytics',
+      component: () => import('../views/AnalyticsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/analytics/depth/:diveId',
       name: 'AnalyticsDepth',
       component: () => import('../views/AnalyticsDepthView.vue'),
