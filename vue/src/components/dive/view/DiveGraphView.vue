@@ -80,7 +80,7 @@ const showGasN2 = ref(false)
 const showGasHe = ref(false)
 const showGrid = ref(false)
 
-const measurements = computed(() => props.profiles.flatMap((m) => m.measurements))
+const measurements = computed(() => props.profiles.flatMap((p) => p.measurements))
 
 // Availability flags based on profile data
 const hasTemp = computed(() =>

@@ -34,7 +34,7 @@
         </div>
 
         <div class="flex justify-end gap-3">
-          <button class="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400" @click="goBack">
+          <button class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600" @click="goBack">
             Cancel
           </button>
           <button
