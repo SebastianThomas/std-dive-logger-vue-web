@@ -4,7 +4,7 @@
     class="fixed inset-0 z-40 flex items-center justify-center bg-black/40"
     @click.self="onClose"
   >
-    <div class="bg-white rounded-lg shadow-lg p-4 w-full max-w-sm">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 w-full max-w-sm">
       <form @submit.prevent="handleSubmit">
         <div v-if="type === 'new'" class="mb-4">
           <label for="groupName" class="block text-sm font-medium mb-2">
@@ -15,7 +15,7 @@
             v-model="groupName"
             type="text"
             name="groupName"
-            class="w-full border rounded px-3 py-2"
+            class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
             autofocus
             required
           />
@@ -30,7 +30,7 @@
             v-model="groupName"
             type="text"
             name="groupName"
-            class="w-full border rounded px-3 py-2"
+            class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
             autofocus
             required
           />

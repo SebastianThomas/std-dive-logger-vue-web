@@ -4,12 +4,12 @@
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
     <main class="max-w-5xl w-full mx-auto p-6">
-      <div class="bg-white rounded-xl shadow-lg p-8 space-y-8">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 space-y-8">
         <!-- Header -->
         <div class="flex items-center gap-6">
           <!-- Profile Picture Placeholder -->
           <div
-            class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-semibold"
+            class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl font-semibold"
           >
             {{ user?.name?.charAt(0).toUpperCase() ?? '?' }}
           </div>
@@ -17,7 +17,7 @@
           <!-- User Info -->
           <div>
             <h1 class="text-2xl font-semibold">User Profile</h1>
-            <p v-if="user" class="text-gray-700 mt-1"><strong>Username:</strong> {{ user.name }}</p>
+            <p v-if="user" class="text-gray-700 dark:text-gray-300 mt-1"><strong>Username:</strong> {{ user.name }}</p>
           </div>
         </div>
 
@@ -49,7 +49,7 @@
       v-if="showDeregisterModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
-      <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 space-y-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6 space-y-4">
         <h3 class="text-lg font-semibold text-red-600">Deregister Account</h3>
 
         <p class="text-gray-700">

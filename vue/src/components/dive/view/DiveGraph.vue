@@ -1,7 +1,7 @@
 <template>
   <div ref="container" class="w-full h-full relative">
     <button
-      class="absolute top-2 right-2 z-10 px-2 py-1 text-xs bg-white/80 hover:bg-white border border-gray-300 rounded shadow"
+      class="absolute top-2 right-2 z-10 px-2 py-1 text-xs bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow"
       @click="resetZoom"
     >
       Reset Zoom
@@ -61,7 +61,7 @@
     <!-- Tooltip -->
     <div
       v-if="tooltip"
-      class="absolute bg-white text-xs text-gray-700 shadow rounded px-2 py-1 pointer-events-none"
+      class="absolute bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 shadow rounded px-2 py-1 pointer-events-none"
       :style="{ left: tooltipLeft + 'px', top: tooltipTop + 'px' }"
     >
       <div class="font-semibold">Time: {{ tooltip.timeDisplay }}</div>

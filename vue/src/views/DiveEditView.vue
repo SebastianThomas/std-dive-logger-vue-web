@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen p-4 flex justify-center items-center">
     <div
-      class="dive-card bg-white rounded-xl shadow-lg p-6 max-w-3xl w-full max-h-[90vh] flex flex-col"
+      class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-3xl w-full max-h-[90vh] flex flex-col"
     >
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold">Edit Dive #{{ formData.diveNumber }}</h1>

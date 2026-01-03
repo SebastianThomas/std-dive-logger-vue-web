@@ -1,18 +1,18 @@
 <template>
   <div class="relative inline-block">
     <button
-      class="px-3 py-1.5 border border-gray-300 rounded bg-white text-sm flex items-center gap-2 disabled:opacity-60"
+      class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm flex items-center gap-2 disabled:opacity-60"
       :disabled="disabled"
       @click="open = !open"
     >
       {{ modelValue }}
-      <span class="text-gray-500 text-xs">▼</span>
+      <span class="text-gray-500 dark:text-gray-400 text-xs">▼</span>
     </button>
-    <div v-if="open" class="absolute z-20 mt-1 w-28 bg-white border border-gray-200 rounded shadow">
+    <div v-if="open" class="absolute z-20 mt-1 w-28 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded shadow">
       <button
         v-for="role in roles"
         :key="role"
-        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
+        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
         :class="{ 'font-semibold': role === modelValue }"
         @click="selectRole(role)"
       >

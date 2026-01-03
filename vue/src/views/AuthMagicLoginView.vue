@@ -3,7 +3,7 @@
     class="flex justify-center items-start pt-20 px-6 md:mx-10"
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
-    <main class="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
+    <main class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 max-w-md w-full">
       <article>
         <header class="mb-6 text-center">
           <h1 class="text-black text-3xl md:text-4xl font-bold">Magic Link Login</h1>
@@ -22,7 +22,7 @@
               type="email"
               placeholder="Enter email address"
               required
-              class="pl-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400"
+              class="pl-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
             />
           </div>
 

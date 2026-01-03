@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-[calc(100vh-70px)] flex flex-col py-0 px-0 md:mx-10">
-    <div class="w-full md:max-w-7xl bg-white rounded-lg shadow p-4 md:p-6 space-y-4">
+    <div class="w-full md:max-w-7xl bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
       <!-- Header -->
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div class="flex items-center gap-3">
@@ -35,7 +35,7 @@
             v-model="searchQuery"
             type="text"
             placeholder="Search dives..."
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
             @input="handleSearch"
           />
         </div>
@@ -45,7 +45,7 @@
             'px-4 py-2 rounded-md border text-sm font-medium transition',
             viewShared
               ? 'bg-sky-600 text-white border-sky-600'
-              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100',
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700',
           ]"
         >
           {{ viewShared ? 'Viewing shared dives' : 'View shared dives' }}

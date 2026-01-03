@@ -34,7 +34,7 @@
 
     <div v-else-if="!loading && dive" class="space-y-6 md:space-y-8">
       <!-- Header -->
-      <div class="dive-card bg-white rounded-xl shadow-md p-4 md:p-6 flex flex-col">
+      <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 flex flex-col">
         <div class="flex justify-between items-center mb-2">
           <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
           <div class="flex gap-2">
@@ -59,7 +59,7 @@
             </button>
           </div>
         </div>
-        <p class="text-gray-500 text-sm">
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
           {{ dive.site.name }} ·
           {{ summary?.start ? new Date(summary.start).toLocaleString() : 'No start date' }}
         </p>
@@ -70,9 +70,9 @@
         v-if="showDeleteModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       >
-        <div class="dive-card bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md">
+        <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-[90%] max-w-md">
           <h2 class="text-lg font-semibold mb-4 text-gray-800">Confirm Delete</h2>
-          <p class="text-gray-600 mb-6">
+          <p class="text-gray-600 dark:text-gray-400 mb-6">
             Are you sure you want to delete dive #{{ dive.number }}? This action cannot be undone.
           </p>
           <div class="flex justify-end gap-3">
@@ -98,7 +98,7 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       >
         <div
-          class="dive-card bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-lg max-h-[80vh] overflow-auto"
+          class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-[90%] max-w-lg max-h-[80vh] overflow-auto"
         >
           <h2 class="text-lg font-semibold mb-4 text-gray-800">Link a Dive</h2>
           <input
@@ -112,7 +112,7 @@
             <li
               v-for="d in myDives"
               :key="d.id"
-              class="flex justify-between items-center bg-gray-50 p-2 rounded hover:bg-gray-100"
+              class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
             >
               <div>
                 <p class="text-sm font-medium">{{ d.customIdentifier }}</p>
@@ -133,7 +133,7 @@
           <div class="flex justify-end mt-4">
             <button
               @click="showLinkModal = false"
-              class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100"
+              class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               Close
             </button>
@@ -172,16 +172,16 @@
           <!-- Details Grid -->
           <InfoCardRow>
             <InfoCard title="Gases">
-              <ul class="text-xs text-gray-600 space-y-1">
+              <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
                 <li v-for="gas in allGases" :key="`${gas.o2}/${gas.he}/${gas.n2}`">
                   <GasDisplay :gas="gas" :show-details="showGasDetails" />
                 </li>
-                <li v-if="allGases.size === 0" class="text-gray-400">No gas data</li>
+                <li v-if="allGases.size === 0" class="text-gray-400 dark:text-gray-500">No gas data</li>
               </ul>
             </InfoCard>
             <InfoCard title="Dive Computers">
               <p
-                class="text-xs text-gray-600"
+                class="text-xs text-gray-600 dark:text-gray-400"
                 v-for="computer in uniqueComputers"
                 :key="computer.id"
               >
@@ -191,11 +191,11 @@
             <InfoCard title="Buddies">
               <p
                 v-if="!dive.namedBuddies.length && !dive.buddiesDives?.length"
-                class="text-xs text-gray-400"
+                class="text-xs text-gray-400 dark:text-gray-500"
               >
                 No buddies recorded
               </p>
-              <ul v-else class="text-xs text-gray-600 space-y-1">
+              <ul v-else class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
                 <li v-for="name in dive.namedBuddies" :key="`named-${name}`">{{ name }}</li>
               </ul>
             </InfoCard>
@@ -257,7 +257,7 @@
 
       <!-- Dive Profile Graph -->
       <div class="w-full flex justify-center mt-6">
-        <div class="dive-card bg-white rounded-xl shadow-md w-full max-w-150 flex flex-col">
+        <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full max-w-150 flex flex-col">
           <div class="flex justify-between items-center p-4">
             <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
               Dive Profile

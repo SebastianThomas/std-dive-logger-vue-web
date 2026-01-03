@@ -55,7 +55,7 @@
             Choose on Map
           </button>
         </div>
-        <p v-if="modelValue.diveSite" class="text-sm mt-1 text-gray-600">
+        <p v-if="modelValue.diveSite" class="text-sm mt-1 text-gray-600 dark:text-gray-400">
           Selected: {{ modelValue.diveSite.latitude.toFixed(5) }},
           {{ modelValue.diveSite.longitude.toFixed(5) }}
         </p>
@@ -97,7 +97,7 @@
       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
       @click.self="showMap = false"
     >
-      <div class="w-[90vw] h-[90vh] bg-white rounded-xl shadow-lg relative overflow-hidden p-4">
+      <div class="w-[90vw] h-[90vh] bg-white dark:bg-gray-800 rounded-xl shadow-lg relative overflow-hidden p-4">
         <div class="flex justify-between items-center mb-2">
           <div v-if="selectedCoords" class="text-sm">
             <strong>Selected:</strong> {{ selectedCoords.lat.toFixed(5) }},
