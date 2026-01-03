@@ -1,6 +1,6 @@
 <template>
   <div
-    class="dive-view-shell flex justify-center items-start pt-20 px-6 md:px-10"
+    class="dive-view-shell flex justify-center items-start pt-20 px-6 md:mx-10"
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
     <DiveGraphModal
