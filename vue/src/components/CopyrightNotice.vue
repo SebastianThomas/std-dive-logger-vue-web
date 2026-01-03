@@ -1,5 +1,5 @@
 <template>
-    <div class="copyright-notice copyright-notice-hover" >
+  <div class="copyright-notice copyright-notice-hover">
     Diver:&ThinSpace;
     <a href="https://instagram.com/sthomas_ch" target="_blank" rel="noopener noreferrer"
       >Sebastian Thomas</a
@@ -8,8 +8,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
-</script>
+<script setup lang="ts"></script>
 
 <style scoped>
 /* Shared copyright notice styles */

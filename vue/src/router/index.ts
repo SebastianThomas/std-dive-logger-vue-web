@@ -91,9 +91,9 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/map/createView',
-      name: 'MapCreateView',
-      component: () => import('../views/MapCreateView.vue'),
+      path: '/dives/map',
+      name: 'MapView',
+      component: () => import('../views/MapView.vue'),
       meta: { requiresAuth: true },
     },
   ],

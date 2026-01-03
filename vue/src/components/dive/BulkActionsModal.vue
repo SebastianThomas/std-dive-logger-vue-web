@@ -64,7 +64,10 @@
       </div>
 
       <div class="flex justify-end mt-6">
-        <button @click="emit('close')" class="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600">
+        <button
+          @click="emit('close')"
+          class="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600"
+        >
           Close
         </button>
       </div>
