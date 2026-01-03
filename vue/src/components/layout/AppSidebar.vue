@@ -20,7 +20,7 @@
     <router-link :to="{ name: 'Profile' }">
       <MenuItem icon="user-pen" text="Profile" :is-visible="isVisible" />
     </router-link>
-    <router-link :to="{ name: 'MapCreateView' }">
+    <router-link :to="{ name: 'MapView' }">
       <MenuItem icon="map" text="Dive Sites" :is-visible="isVisible" />
     </router-link>
   </aside>

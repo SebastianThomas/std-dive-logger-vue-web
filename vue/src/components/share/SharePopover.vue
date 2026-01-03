@@ -48,7 +48,9 @@
                   ×
                 </button>
               </li>
-              <li v-if="readers.length === 0" class="text-sm text-gray-400 dark:text-gray-500">No people shared</li>
+              <li v-if="readers.length === 0" class="text-sm text-gray-400 dark:text-gray-500">
+                No people shared
+              </li>
             </ul>
           </section>
 
