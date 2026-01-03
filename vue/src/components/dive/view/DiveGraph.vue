@@ -112,6 +112,7 @@ import {
 import type { DiveProfile, DiveMeasurementWithId, DiveProfileSegmentWithId } from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
 import { formatISoDurationToMinutes } from '@/lib/utils/timeUtils'
+import { generateId } from '@/lib/utils/cryptoUtils'
 
 type Props = {
   profiles: DiveProfile[]
@@ -169,7 +170,7 @@ const grid = {
   y: ref<any | null>(null),
 }
 const clipRect = ref<any | null>(null)
-const clipPathId = `graph-clip-${Math.random().toString(36).slice(2, 10)}`
+const clipPathId = `graph-clip-${generateId()}`
 const depthScale = ref<any | null>(null)
 const timeScale = ref<any | null>(null)
 const tempScale = ref<any | null>(null)
@@ -514,7 +515,7 @@ function renderAll() {
   axes.x.value?.call(
     axisBottom(timeScale.value)
       .tickValues(tickValues)
-      .tickFormat((t: any) => formatTimeDisplay(Number(t), props.profiles[0]?.start || 0)),
+      .tickFormat((t: any) => formatTimeDisplay(Number(t), props.profiles[0]?.start ?? 0)),
   )
   const leftScale = getScaleFor(leftAxisMetric.value)
   const rightScale = getScaleFor(rightAxisMetric.value)
