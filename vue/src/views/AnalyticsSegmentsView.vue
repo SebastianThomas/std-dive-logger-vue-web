@@ -3,15 +3,15 @@
     class="flex justify-center items-start pt-20 px-6 md:mx-10"
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
-    <main class="bg-white rounded-2xl p-6 max-w-4xl w-full">
+    <main class="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-4xl w-full">
       <h1 class="text-3xl font-bold mb-2">Analytics - Dive Segments</h1>
-      <p class="text-gray-600 mb-6">
+      <p class="text-gray-600 dark:text-gray-400 mb-6">
         Analytics for dive:
         <span class="font-semibold">{{ dive?.customIdentifier || diveId }}</span>
       </p>
 
       <div v-if="isLoading" class="text-center py-12">
-        <p class="text-gray-600">Loading and preparing data...</p>
+        <p class="text-gray-600 dark:text-gray-400">Loading and preparing data...</p>
       </div>
 
       <div v-else-if="analytics" class="space-y-4">
@@ -19,7 +19,7 @@
       </div>
 
       <div v-else class="text-center py-12">
-        <p class="text-gray-600">No analytics data available</p>
+        <p class="text-gray-600 dark:text-gray-400">No analytics data available</p>
       </div>
     </main>
   </div>

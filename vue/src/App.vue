@@ -17,7 +17,7 @@
 
     <!-- Main content -->
     <main
-      class="transition-all duration-300 overflow-auto min-h-full min-w-full grid-main bg-gray-100 relative"
+      class="transition-all duration-300 overflow-auto min-h-full min-w-full grid-main bg-gray-100 dark:bg-gray-900 relative"
     >
       <router-view class="router-content" />
       <CopyrightNotice />

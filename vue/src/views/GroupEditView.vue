@@ -3,15 +3,15 @@
     class="flex justify-center items-start pt-20 px-6 md:mx-10"
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
-    <main class="bg-white rounded-2xl p-6 max-w-3xl w-full flex flex-col gap-4">
+    <main class="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-3xl w-full flex flex-col gap-4">
       <h1 class="text-2xl font-bold">Edit Group</h1>
-      <p class="text-gray-600">Group ID: {{ groupId }}</p>
+      <p class="text-gray-600 dark:text-gray-400">Group ID: {{ groupId }}</p>
 
       <section>
         <h3 class="font-semibold mb-2">Members</h3>
-        <table class="w-full text-sm border border-gray-200 rounded">
+        <table class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded">
           <tbody>
-            <tr v-for="member in users" :key="member.id" class="border-b last:border-none">
+            <tr v-for="member in users" :key="member.id" class="border-b last:border-none dark:border-gray-700">
               <td class="px-3 py-2 font-medium">{{ member.name }}</td>
               <td class="px-3 py-2">
                 <RoleMenu
@@ -22,7 +22,7 @@
               </td>
             </tr>
             <tr v-if="!users.length">
-              <td class="px-3 py-2 text-gray-400">No members found.</td>
+              <td class="px-3 py-2 text-gray-400 dark:text-gray-500">No members found.</td>
             </tr>
           </tbody>
         </table>
@@ -30,9 +30,9 @@
 
       <section v-if="isAdmin">
         <h3 class="font-semibold mb-2">Join Requests</h3>
-        <table class="w-full text-sm border border-gray-200 rounded">
+        <table class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded">
           <tbody>
-            <tr v-for="req in requests" :key="req.id" class="border-b last:border-none">
+            <tr v-for="req in requests" :key="req.id" class="border-b last:border-none dark:border-gray-700">
               <td class="px-3 py-2 font-medium">{{ req.name }}</td>
               <td class="px-3 py-2 flex gap-2">
                 <button

@@ -3,7 +3,7 @@
     class="flex justify-center items-start pt-20 px-6 md:mx-10"
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
-    <main class="bg-white rounded-2xl p-6 max-w-2xl w-full">
+    <main class="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-2xl w-full">
       <h1 class="text-2xl font-bold mb-6">Email Verification</h1>
 
       <div v-if="isLoading" class="text-center py-12">

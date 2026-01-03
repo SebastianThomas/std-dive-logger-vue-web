@@ -1,12 +1,12 @@
 <template>
   <div class="h-full">
     <div class="flex justify-center pt-10">
-      <main class="bg-white rounded-2xl p-6 max-w-2xl w-full flex flex-col gap-4">
+      <main class="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-2xl w-full flex flex-col gap-4">
         <div class="flex justify-between">
           <h3 class="text-3xl font-semibold pb-8">Your groups</h3>
           <div class="flex gap-4 items-center pb-8">
             <button
-              class="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center gap-2"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
               @click="anchorElAdd = $event.currentTarget as HTMLElement"
             >
               ➕ New group
@@ -20,7 +20,7 @@
             />
 
             <button
-              class="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center gap-2"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
               @click="anchorElJoin = $event.currentTarget as HTMLElement"
             >
               🔗 Join group

@@ -9,7 +9,7 @@
     </button>
 
     <div v-if="open" class="fixed inset-0 flex items-center justify-center bg-black/40 p-4">
-      <div class="bg-white rounded-2xl p-6 shadow-xl w-full max-w-md">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl w-full max-w-md">
         <h2 class="text-xl font-semibold mb-4">Create New Dive Site</h2>
 
         <div class="flex flex-col gap-4">

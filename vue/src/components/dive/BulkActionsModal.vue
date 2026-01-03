@@ -4,22 +4,22 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     @click.self="emit('close')"
   >
-    <div class="dive-card bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+    <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-md">
       <h2 class="text-xl font-bold mb-4">Bulk Actions</h2>
-      <p class="text-sm text-gray-600 mb-6">{{ selectedCount }} dive(s) selected</p>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">{{ selectedCount }} dive(s) selected</p>
 
       <div class="space-y-3">
         <!-- Merge Dives -->
-        <div class="border rounded-lg p-4">
+        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <h3 class="font-semibold mb-2">Merge Dives</h3>
-          <p class="text-sm text-gray-600 mb-3">Select exactly 2 dives to merge them into one.</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Select exactly 2 dives to merge them into one.</p>
           <div v-if="selectedCount === 2" class="space-y-2">
             <p class="text-sm font-medium">Choose primary dive:</p>
             <div class="space-y-1">
               <label
                 v-for="dive in selectedDives"
                 :key="dive.id"
-                class="flex items-center gap-2 p-2 border rounded hover:bg-gray-50 cursor-pointer"
+                class="flex items-center gap-2 p-2 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
               >
                 <input
                   v-model="primaryDiveId"
@@ -79,15 +79,15 @@
       class="fixed inset-0 z-60 flex items-center justify-center bg-black/60"
       @click.self="showDeleteConfirm = false"
     >
-      <div class="dive-card bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
+      <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-sm">
         <h3 class="text-lg font-bold mb-3">Confirm Deletion</h3>
-        <p class="text-sm text-gray-700 mb-6">
+        <p class="text-sm text-gray-700 dark:text-gray-300 mb-6">
           Are you sure you want to delete {{ selectedCount }} dive(s)? This action cannot be undone.
         </p>
         <div class="flex gap-3 justify-end">
           <button
             @click="showDeleteConfirm = false"
-            class="px-4 py-2 border rounded-lg hover:bg-gray-100"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             Cancel
           </button>
@@ -108,10 +108,10 @@
       @click.self="showSecondDeleteConfirm = false"
     >
       <div
-        class="dive-card bg-white rounded-xl shadow-lg p-6 w-full max-w-sm border-2 border-red-500"
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-sm border-2 border-red-500"
       >
         <h3 class="text-lg font-bold text-red-700 mb-3">⚠️ Final Confirmation</h3>
-        <p class="text-sm text-gray-700 mb-4">
+        <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
           This is your last chance to cancel. You are about to permanently delete
           {{ selectedCount }} dive(s).
         </p>
@@ -119,7 +119,7 @@
         <div class="flex gap-3 justify-end">
           <button
             @click="showSecondDeleteConfirm = false"
-            class="px-4 py-2 border rounded-lg hover:bg-gray-100"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             Cancel
           </button>
