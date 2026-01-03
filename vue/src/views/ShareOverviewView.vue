@@ -74,7 +74,7 @@ const anchorElJoin = ref<HTMLElement | null>(null)
 
 const joinGroup = async (groupName: string): Promise<boolean> => {
   try {
-    await postWithToken(`/v1/groups/${groupName}/join`, {})
+    await postWithToken(`/v1/groups/${groupName}/members`, {})
     toast.success('Joined successfully!')
     await fetchGroups()
     return true
