@@ -17,7 +17,7 @@
         :show-coverage-on-hover="true"
         :chunked-loading="true"
         :icon-create-function="iconCreateFunction"
-        :spiderfyOnMaxZoom="true"
+        :spiderfy-on-max-zoom="true"
         v-if="props.sites.length > 0"
       >
         <l-marker
@@ -155,26 +155,6 @@ const onMapUpdate = (center?: { lat: number; lng: number }, zoom?: number) => {
   border: none;
   width: 36px;
   height: 36px;
-}
-
-:deep(.cluster-circle) {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  border: 2px solid white;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-}
-</style>
-<style>
-:deep(.cluster-marker) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
 }
 
 :deep(.cluster-circle) {
