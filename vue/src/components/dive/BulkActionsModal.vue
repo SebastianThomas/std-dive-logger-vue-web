@@ -6,13 +6,17 @@
   >
     <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-md">
       <h2 class="text-xl font-bold mb-4">Bulk Actions</h2>
-      <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">{{ selectedCount }} dive(s) selected</p>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+        {{ selectedCount }} dive(s) selected
+      </p>
 
       <div class="space-y-3">
         <!-- Merge Dives -->
         <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <h3 class="font-semibold mb-2">Merge Dives</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Select exactly 2 dives to merge them into one.</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            Select exactly 2 dives to merge them into one.
+          </p>
           <div v-if="selectedCount === 2" class="space-y-2">
             <p class="text-sm font-medium">Choose primary dive:</p>
             <div class="space-y-1">

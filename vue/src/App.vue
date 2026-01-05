@@ -44,6 +44,7 @@ const headerHeight = 80 as const
 const expandedWidth = 130 as const
 const collapsedWidth = 50 as const
 const SM_BREAKPOINT = 640 as const
+const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed'
 
 // Auth store
 const authStore = useAuthStore()
@@ -56,9 +57,31 @@ const pageName = computed(() => {
   return route.name?.toString() || ''
 })
 
+// Helper functions
+const getSavedSidebarState = (): boolean | null => {
+  const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+  return saved === null ? null : saved === 'true'
+}
+
+const saveSidebarState = (collapsed: boolean) => {
+  localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed))
+}
+
+const getInitialSidebarState = (): boolean => {
+  const savedState = getSavedSidebarState()
+
+  // If there's a saved state, use it
+  if (savedState !== null) {
+    return !savedState // isVisible is the inverse of collapsed
+  }
+
+  // Default: collapsed (not visible) on small screens, visible on large screens
+  return window.innerWidth >= SM_BREAKPOINT
+}
+
 // Reactive state
 const windowWidth = ref(window.innerWidth)
-const isVisible = ref(true)
+const isVisible = ref(getInitialSidebarState())
 const sidebarWidth = ref<0 | 50 | 130>(0)
 const showTitle = computed(() => windowWidth.value >= SM_BREAKPOINT)
 
@@ -79,6 +102,7 @@ const handleLogout = async () => {
 
 const toggleSidebar = () => {
   isVisible.value = !isVisible.value
+  saveSidebarState(!isVisible.value)
 }
 
 const handleResize = () => {
@@ -86,7 +110,11 @@ const handleResize = () => {
 }
 
 watch(windowWidth, (newWidth) => {
-  isVisible.value = newWidth >= SM_BREAKPOINT
+  // Only auto-collapse/expand on resize if there's no saved preference
+  const savedState = getSavedSidebarState()
+  if (savedState === null) {
+    isVisible.value = newWidth >= SM_BREAKPOINT
+  }
 })
 
 watch(

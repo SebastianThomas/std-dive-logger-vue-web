@@ -17,7 +17,9 @@
           <!-- User Info -->
           <div>
             <h1 class="text-2xl font-semibold">User Profile</h1>
-            <p v-if="user" class="text-gray-700 dark:text-gray-300 mt-1"><strong>Username:</strong> {{ user.name }}</p>
+            <p v-if="user" class="text-gray-700 dark:text-gray-300 mt-1">
+              <strong>Username:</strong> {{ user.name }}
+            </p>
           </div>
         </div>
 
