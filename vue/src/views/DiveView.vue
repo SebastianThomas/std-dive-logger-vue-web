@@ -34,7 +34,9 @@
 
     <div v-else-if="!loading && dive" class="space-y-6 md:space-y-8">
       <!-- Header -->
-      <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 flex flex-col">
+      <div
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 flex flex-col"
+      >
         <div class="flex justify-between items-center mb-2">
           <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
           <div class="flex gap-2">
@@ -176,7 +178,9 @@
                 <li v-for="gas in allGases" :key="`${gas.o2}/${gas.he}/${gas.n2}`">
                   <GasDisplay :gas="gas" :show-details="showGasDetails" />
                 </li>
-                <li v-if="allGases.size === 0" class="text-gray-400 dark:text-gray-500">No gas data</li>
+                <li v-if="allGases.size === 0" class="text-gray-400 dark:text-gray-500">
+                  No gas data
+                </li>
               </ul>
             </InfoCard>
             <InfoCard title="Dive Computers">
@@ -257,7 +261,9 @@
 
       <!-- Dive Profile Graph -->
       <div class="w-full flex justify-center mt-6">
-        <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full max-w-150 flex flex-col">
+        <div
+          class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full max-w-150 flex flex-col"
+        >
           <div class="flex justify-between items-center p-4">
             <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
               Dive Profile

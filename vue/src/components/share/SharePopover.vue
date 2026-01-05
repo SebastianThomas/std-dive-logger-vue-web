@@ -4,7 +4,9 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
     @click.self="emit('close')"
   >
-    <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg flex flex-col w-full max-w-md max-h-[70vh]">
+    <div
+      class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg flex flex-col w-full max-w-md max-h-[70vh]"
+    >
       <!-- Header -->
       <div class="flex items-center gap-2 px-4 py-3 border-b shrink-0">
         <button

@@ -8,7 +8,10 @@
       {{ modelValue }}
       <span class="text-gray-500 dark:text-gray-400 text-xs">▼</span>
     </button>
-    <div v-if="open" class="absolute z-20 mt-1 w-28 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded shadow">
+    <div
+      v-if="open"
+      class="absolute z-20 mt-1 w-28 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded shadow"
+    >
       <button
         v-for="role in roles"
         :key="role"

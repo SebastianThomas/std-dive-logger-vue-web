@@ -11,7 +11,11 @@
         <h3 class="font-semibold mb-2">Members</h3>
         <table class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded">
           <tbody>
-            <tr v-for="member in users" :key="member.id" class="border-b last:border-none dark:border-gray-700">
+            <tr
+              v-for="member in users"
+              :key="member.id"
+              class="border-b last:border-none dark:border-gray-700"
+            >
               <td class="px-3 py-2 font-medium">{{ member.name }}</td>
               <td class="px-3 py-2">
                 <RoleMenu
@@ -32,7 +36,11 @@
         <h3 class="font-semibold mb-2">Join Requests</h3>
         <table class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded">
           <tbody>
-            <tr v-for="req in requests" :key="req.id" class="border-b last:border-none dark:border-gray-700">
+            <tr
+              v-for="req in requests"
+              :key="req.id"
+              class="border-b last:border-none dark:border-gray-700"
+            >
               <td class="px-3 py-2 font-medium">{{ req.name }}</td>
               <td class="px-3 py-2 flex gap-2">
                 <button
