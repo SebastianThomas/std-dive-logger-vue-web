@@ -174,11 +174,6 @@ export type BasicDiveInfo = {
 }
 
 export type SiteWithDives = {
-  site: {
-    id: number
-    name: string
-    latitude: number
-    longitude: number
-  }
+  site: DiveSite
   diveInfo: BasicDiveInfo[]
 }
