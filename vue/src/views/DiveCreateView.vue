@@ -31,6 +31,14 @@
           >
             <li v-for="f in files" :key="f.name">{{ f.name }}</li>
           </ul>
+          <button
+            v-if="files.length"
+            type="button"
+            class="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600 text-sm self-start"
+            @click="clearFiles"
+          >
+            Clear Files
+          </button>
         </div>
 
         <div class="flex justify-end gap-3">
@@ -97,6 +105,13 @@ const onFileInput = (e: Event) => {
   if (target.files) files.value = Array.from(target.files)
 }
 
+const clearFiles = () => {
+  files.value = []
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
 const goBack = () => router.back()
 
 const handleSubmit = async () => {
@@ -125,7 +140,7 @@ const handleSubmit = async () => {
       if (res.dives.length === 1) {
         router.push({ name: 'DiveView', params: { diveId: res.dives[0]!.id } })
       }
-      files.value = [];
+      files.value = []
     }
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {

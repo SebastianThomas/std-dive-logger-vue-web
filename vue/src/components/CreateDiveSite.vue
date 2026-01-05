@@ -8,62 +8,50 @@
       Add Dive Site
     </button>
 
-    <div v-if="open" class="fixed inset-0 flex items-center justify-center bg-black/40 p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl w-full max-w-md">
-        <h2 class="text-xl font-semibold mb-4">Create New Dive Site</h2>
-
-        <div class="flex flex-col gap-4">
-          <div>
-            <label for="site-name" class="block mb-1">Name</label>
-            <input
-              id="site-name"
-              v-model="siteName"
-              type="text"
-              class="border rounded-lg p-2 w-full"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="latitude" class="block mb-1">Latitude</label>
-            <input
-              id="latitude"
-              v-model="latitude"
-              type="number"
-              step="any"
-              class="border rounded-lg p-2 w-full"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="longitude" class="block mb-1">Longitude</label>
-            <input
-              id="longitude"
-              v-model="longitude"
-              type="number"
-              step="any"
-              class="border rounded-lg p-2 w-full"
-              required
-            />
-          </div>
-
+    <!-- Map Picker Modal -->
+    <div v-if="open" class="fixed inset-0 flex items-center justify-center bg-black/40 p-4 z-50">
+      <div
+        class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl h-[600px] flex flex-col"
+      >
+        <div
+          class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700"
+        >
+          <h2 class="text-lg font-semibold">Select location for "{{ siteName || 'Dive Site' }}"</h2>
+          <button
+            type="button"
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            @click="closeModal"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="flex-1 overflow-hidden">
+          <DiveSiteMapPicker @select="onMapCoordSelect" />
+        </div>
+        <div
+          class="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700"
+        >
           <p v-if="status" class="text-red-600 text-sm">{{ status }}</p>
-
-          <div class="flex gap-2 justify-end">
+          <div class="flex gap-2">
             <button
               type="button"
               class="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600"
-              @click="closeModal"
+              @click="clearSelection"
             >
-              Cancel
+              Clear
             </button>
             <button
               type="button"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              @click="handleCreateDiveSite"
+              :disabled="!selectedCoords"
+              class="px-4 py-2 rounded-lg"
+              :class="
+                selectedCoords
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+              "
+              @click="confirmSelection"
             >
-              Create
+              Confirm
             </button>
           </div>
         </div>
@@ -74,8 +62,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
 import { type DiveSite } from '@/lib/types/dive'
+import type { MapCoords } from '@/components/DiveSiteMapPicker.vue'
 
 interface Props {
   onCreated?: (data: DiveSite) => void
@@ -98,9 +89,8 @@ const emit = defineEmits<{
 const { postWithToken } = useApi()
 const open = ref(false)
 const siteName = ref(props.initialName ?? '')
-const latitude = ref('')
-const longitude = ref('')
 const status = ref('')
+const selectedCoords = ref<MapCoords | null>(null)
 
 watch(
   () => props.initialName,
@@ -120,27 +110,39 @@ watch(
 
 const closeModal = () => {
   open.value = false
+  selectedCoords.value = null
   emit('close')
 }
 
-const handleCreateDiveSite = async () => {
+const onMapCoordSelect = (coords: MapCoords) => {
+  selectedCoords.value = coords
+  status.value = ''
+}
+
+const clearSelection = () => {
+  selectedCoords.value = null
+  status.value = ''
+}
+
+const confirmSelection = async () => {
   status.value = ''
 
-  if (!siteName.value || !latitude.value || !longitude.value) {
-    status.value = 'Please fill in all fields.'
+  if (!siteName.value || !selectedCoords.value) {
+    status.value = 'Site name or location is missing.'
     return
   }
 
   try {
     const body = {
       name: siteName.value,
-      lat: Number(latitude.value),
-      lon: Number(longitude.value),
+      lat: selectedCoords.value.lat,
+      lon: selectedCoords.value.lon,
     }
 
     const res = await postWithToken<DiveSite>('/v1/dives/sites', body)
     const data = res.data
-    status.value = 'Dive site created successfully!'
+
+    toast.success(`Dive site "${siteName.value}" created successfully`)
 
     if (props.onCreated) {
       props.onCreated(data)
