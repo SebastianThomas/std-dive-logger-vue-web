@@ -11,7 +11,7 @@
     <!-- Map Picker Modal -->
     <div v-if="open" class="fixed inset-0 flex items-center justify-center bg-black/40 p-4 z-50">
       <div
-        class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl h-[600px] flex flex-col"
+        class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl modal-height flex flex-col"
       >
         <div
           class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700"
@@ -156,3 +156,9 @@ const confirmSelection = async () => {
   }
 }
 </script>
+
+<style scoped>
+.modal-height {
+  height: 600px;
+}
+</style>
