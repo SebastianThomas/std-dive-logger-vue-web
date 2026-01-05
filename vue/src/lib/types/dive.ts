@@ -109,6 +109,7 @@ export type Dive = {
 }
 
 export type DiveWithoutProfiles = Omit<Dive, 'profiles'>
+export type UploadDiveResult = { dives: DiveWithoutProfiles[]; errors: string[] }
 
 export type DiveProfileWithoutMeasurements = {
   id: number

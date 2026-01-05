@@ -194,7 +194,7 @@ const handleMerge = async () => {
   if (!secondaryId) return
 
   try {
-    await postWithToken(`/v1/dives/${primaryDiveId.value}/merge?secondaryDiveId=${secondaryId}`, {})
+    await postWithToken(`/v1/dives/${primaryDiveId.value}/profiles/merge?toAddDiveId=${secondaryId}&keepToAddDive=false`, {})
     toast.success('Dives merged successfully')
     emit('refresh')
     emit('close')

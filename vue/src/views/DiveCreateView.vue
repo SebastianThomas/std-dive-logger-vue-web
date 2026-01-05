@@ -75,7 +75,7 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useApi } from '@/composables/useApi'
 import CreateDiveSite from '@/components/CreateDiveSite.vue'
-import type { DiveWithoutProfiles } from '@/lib/types/dive'
+import type { UploadDiveResult } from '@/lib/types/dive'
 
 const router = useRouter()
 const { postWithToken } = useApi()
@@ -112,16 +112,15 @@ const handleSubmit = async () => {
     formDataObj.append('uploadBody', bodyBlob)
     files.value.forEach((f) => formDataObj.append('file', f))
 
-    const res = await postWithToken<DiveWithoutProfiles[]>(
-      '/v1/dives/upload',
-      formDataObj,
-      {},
-      null,
-    )
-    status.value = 'Upload complete!'
-    const dive = res.data?.[0]
-    if (dive?.id) {
-      router.push({ name: 'DiveView', params: { diveId: dive.id } })
+    const res = (await postWithToken<UploadDiveResult>('/v1/dives/upload', formDataObj, {}, null))
+      .data
+    if (res.errors) {
+      status.value = `Upload complete, got dives ${res.dives.map((d) => d.number).join(', ')}, but got errors: \n${res.errors.join('\n')}`
+    } else {
+      status.value = `Upload complete: Uploaded ${res.dives.map((d) => d.number).join(', ')}`
+      if (res.dives.length === 1) {
+        router.push({ name: 'DiveView', params: { diveId: res.dives[0]!.id } })
+      }
     }
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
