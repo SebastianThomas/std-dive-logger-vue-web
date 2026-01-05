@@ -114,8 +114,12 @@ const handleSubmit = async () => {
 
     const res = (await postWithToken<UploadDiveResult>('/v1/dives/upload', formDataObj, {}, null))
       .data
-    if (res.errors && res.errors.length > 0) {
-      status.value = `Upload complete, got dives ${res.dives.map((d) => d.number).join(', ')}, but got errors: \n${res.errors.join('\n')}`
+    const isErrors = res.errors && res.errors.length > 0
+    const isDives = res.dives && res.dives.length > 0
+    if (isErrors) {
+      status.value = `Upload tried, no dives successful, but got errors: \n${res.errors.join('\n')}`
+    } else if (isErrors && isDives) {
+      status.value = `Upload tried, successfully uploaded dives ${res.dives.map((d) => d.number).join(', ')}, but got errors: \n${res.errors.join('\n')}`
     } else {
       status.value = `Upload complete: Uploaded ${res.dives.map((d) => d.number).join(', ')}`
       if (res.dives.length === 1) {
