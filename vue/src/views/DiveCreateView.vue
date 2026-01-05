@@ -121,6 +121,7 @@ const handleSubmit = async () => {
       if (res.dives.length === 1) {
         router.push({ name: 'DiveView', params: { diveId: res.dives[0]!.id } })
       }
+      files.value = [];
     }
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
