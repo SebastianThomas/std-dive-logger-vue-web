@@ -5,9 +5,9 @@ import App from './App.vue'
 import router from './router'
 import './styles/global.css'
 
-import * as L from 'leaflet'
-// Ensure Leaflet markers use diver icons globally
+// Configure Leaflet defaults and provide library globally, add custom icons
 import '@/lib/map/leafletIcon'
+import * as L from 'leaflet'
 
 const app = createApp(App)
 
