@@ -5,6 +5,7 @@
       :zoom="mapZoom"
       :center="mapCenter"
       :max-zoom="16"
+      :min-zoom="3"
       :use-global-leaflet="true"
       @update:zoom="(z) => onMapUpdate(undefined, z)"
       @update:center="(c) => onMapUpdate(c, undefined)"
@@ -13,7 +14,7 @@
       <l-marker-cluster-group
         :max-cluster-radius="80"
         :zoom-to-bounds-on-click="true"
-        :remove-outside-visible-bounds="true"
+        :remove-outside-visible-bounds="false"
         :show-coverage-on-hover="true"
         :chunked-loading="true"
         :icon-create-function="iconCreateFunction"
