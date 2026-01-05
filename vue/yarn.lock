@@ -2929,6 +2929,11 @@ kolorist@^1.8.0:
   resolved "https://registry.yarnpkg.com/kolorist/-/kolorist-1.8.0.tgz#edddbbbc7894bc13302cdf740af6374d4a04743c"
   integrity sha512-Y+60/zizpJ3HRH8DCss+q95yr6145JXZo46OTpFvDZWLfRCE4qChOyk1b26nMaNpfHHgxagk9dXT5OP0Tfe+dQ==
 
+leaflet.markercluster@^1.5.3:
+  version "1.5.3"
+  resolved "https://registry.yarnpkg.com/leaflet.markercluster/-/leaflet.markercluster-1.5.3.tgz#9cdb52a4eab92671832e1ef9899669e80efc4056"
+  integrity sha512-vPTw/Bndq7eQHjLBVlWpnGeLa3t+3zGiuM7fJwCkiMFq+nmRuG3RI3f7f4N4TDX7T4NpbAXpR2+NTRSEGfCSeA==
+
 leaflet@^1.9.4:
   version "1.9.4"
   resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-1.9.4.tgz#23fae724e282fa25745aff82ca4d394748db7d8d"
@@ -3914,6 +3919,13 @@ vue-json-pretty@^2.6.0:
   resolved "https://registry.yarnpkg.com/vue-json-pretty/-/vue-json-pretty-2.6.0.tgz#30f865ff59a319bd88ff5ae7461682d07b0775e1"
   integrity sha512-glz1aBVS35EO8+S9agIl3WOQaW2cJZW192UVKTuGmryx01ZvOVWc4pR3t+5UcyY4jdOfBUgVHjcpRpcnjRhCAg==
 
+vue-leaflet-markercluster@^0.6.1:
+  version "0.6.1"
+  resolved "https://registry.yarnpkg.com/vue-leaflet-markercluster/-/vue-leaflet-markercluster-0.6.1.tgz#aa717b5c63b5c0691eac7c256700c57567990223"
+  integrity sha512-jdU1k7qRb7R4o7kNjcH6hQkw9P0UPUdXcfGcpvFIpWPCeVbkTMo2vK2wIHtZexScw2Pa+tYjsZlYxrOHOR6+gA==
+  dependencies:
+    vue "^3.3.4"
+
 vue-router@^4.6.4:
   version "4.6.4"
   resolved "https://registry.yarnpkg.com/vue-router/-/vue-router-4.6.4.tgz#a0a9cb9ef811a106d249e4bb9313d286718020d8"
@@ -3934,7 +3946,7 @@ vue-tsc@^3.2.1:
     "@volar/typescript" "2.4.27"
     "@vue/language-core" "3.2.1"
 
-vue@^3.2.25, vue@^3.5.26:
+vue@^3.2.25, vue@^3.3.4, vue@^3.5.26:
   version "3.5.26"
   resolved "https://registry.yarnpkg.com/vue/-/vue-3.5.26.tgz#03a0b17311e0e593d34b9358fa249b85e3a6d9fb"
   integrity sha512-SJ/NTccVyAoNUJmkM9KUqPcYlY+u8OVL1X5EW9RIs3ch5H2uERxyyIUI4MRxVCSOiEcupX9xNGde1tL9ZKpimA==

@@ -18,6 +18,7 @@
 </template>
 
 <script setup lang="ts">
+import type { DiveSite } from '@/lib/types/dive'
 import { computed } from 'vue'
 
 interface DiveInfo {
@@ -27,12 +28,7 @@ interface DiveInfo {
 }
 
 interface Props {
-  site: {
-    id: number
-    name: string
-    latitude: number
-    longitude: number
-  }
+  site: DiveSite
   diveInfo: DiveInfo[]
 }
 
