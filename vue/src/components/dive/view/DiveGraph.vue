@@ -250,10 +250,29 @@ function setupScales() {
   const temperatureValues = allMeasurements
     .map((m) => m.measurement.temperature?.value)
     .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
-  const tempExtent =
-    temperatureValues.length && Math.max(...temperatureValues) !== Math.min(...temperatureValues)
-      ? [Math.max(0, Math.min(...temperatureValues) - 2), Math.max(...temperatureValues) + 2]
-      : [0, 40]
+  
+  let tempExtent: [number, number]
+  if (temperatureValues.length > 0) {
+    const minTemp = Math.min(...temperatureValues)
+    const maxTemp = Math.max(...temperatureValues)
+    
+    // Round down to nearest multiple of 5
+    let tempMin = Math.floor(minTemp / 5) * 5
+    // Round up to nearest multiple of 5
+    let tempMax = Math.ceil(maxTemp / 5) * 5
+    
+    // Ensure minimum range of 10 degrees
+    const range = tempMax - tempMin
+    if (range < 10) {
+      const center = (tempMin + tempMax) / 2
+      tempMin = Math.floor((center - 5) / 5) * 5
+      tempMax = Math.ceil((center + 5) / 5) * 5
+    }
+    
+    tempExtent = [tempMin, tempMax]
+  } else {
+    tempExtent = [10, 20]
+  }
 
   const otuValues = allMeasurements
     .map((m) => m.measurement.o2Tox)
@@ -567,18 +586,34 @@ function renderAll() {
   const leftScale = getScaleFor(leftAxisMetric.value)
   const rightScale = getScaleFor(rightAxisMetric.value)
   if (leftScale) {
-    axes.yDepth.value?.call(
-      axisLeft(leftScale).tickFormat((d): string =>
-        formatAxisTick(leftAxisMetric.value, Number(d)),
-      ),
+    const leftAxis = axisLeft(leftScale).tickFormat((d): string =>
+      formatAxisTick(leftAxisMetric.value, Number(d)),
     )
+    // For temperature, show ticks every 5 degrees
+    if (leftAxisMetric.value === 'temp') {
+      const domain = leftScale.domain() as [number, number]
+      const tempTicks: number[] = []
+      for (let t = Math.ceil(domain[0] / 5) * 5; t <= domain[1]; t += 5) {
+        tempTicks.push(t)
+      }
+      leftAxis.tickValues(tempTicks)
+    }
+    axes.yDepth.value?.call(leftAxis)
   }
   if (rightScale) {
-    axes.yAux.value?.call(
-      axisRight(rightScale).tickFormat((d): string =>
-        formatAxisTick(rightAxisMetric.value, Number(d)),
-      ),
+    const rightAxis = axisRight(rightScale).tickFormat((d): string =>
+      formatAxisTick(rightAxisMetric.value, Number(d)),
     )
+    // For temperature, show ticks every 5 degrees
+    if (rightAxisMetric.value === 'temp') {
+      const domain = rightScale.domain() as [number, number]
+      const tempTicks: number[] = []
+      for (let t = Math.ceil(domain[0] / 5) * 5; t <= domain[1]; t += 5) {
+        tempTicks.push(t)
+      }
+      rightAxis.tickValues(tempTicks)
+    }
+    axes.yAux.value?.call(rightAxis)
   }
   // Gridlines (optional)
   if (props.showGrid ?? true) {
@@ -768,7 +803,7 @@ function formatAxisTick(metric: string, v: number): string {
     case 'depth':
       return `${v} m`
     case 'temp':
-      return `${v.toFixed(1)} °C`
+      return `${v.toFixed(0)}°C`
     case 'ndl':
       return `${v}`
     case 'otu':
