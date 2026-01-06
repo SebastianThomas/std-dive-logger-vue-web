@@ -125,7 +125,7 @@ export type DiveProfileSegment = {
   profile: DiveProfileWithoutMeasurements
   firstMeasurementIdx: number
   type: DiveProfileSegmentType
-  measurements?: DiveMeasurementWithId[]
+  measurements?: DiveMeasurementWithId[] | null
 }
 
 export type DiveProfileSegmentWithId = {

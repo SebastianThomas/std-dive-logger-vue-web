@@ -13,7 +13,7 @@
         <span class="text-sm font-semibold" :style="{ color: 'var(--foreground)' }">Metrics:</span>
         <label class="flex items-center gap-1.5 cursor-pointer">
           <input type="checkbox" checked disabled class="w-4 h-4" />
-          <span class="font-bold text-sm" style="color: #2563eb">Depth</span>
+          <span class="font-bold text-sm" style="color: #ffffff">Depth</span>
         </label>
         <label class="flex items-center gap-1.5 cursor-pointer">
           <input

@@ -1,7 +1,8 @@
 <template>
   <div ref="container" class="w-full h-full relative">
     <button
-      class="absolute top-2 right-2 z-10 px-2 py-1 text-xs bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow"
+      v-if="isZoomed"
+      class="absolute bottom-2 right-2 z-10 px-2 py-1 text-xs bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow"
       @click="resetZoom"
     >
       Reset Zoom
@@ -199,6 +200,7 @@ const segmentsData = ref<DiveProfileSegmentWithId[] | null>(null)
 const segmentsLayer = ref<any | null>(null)
 const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
 const zoomBehavior = ref<any | null>(null)
+const isZoomed = ref(false)
 const { getWithToken } = useApi()
 const leftAxisMetric = ref<
   'depth' | 'temp' | 'ndl' | 'otu' | 'cns' | 'gf' | 'rmv' | 'gasO2' | 'gasN2' | 'gasHe'
@@ -472,9 +474,33 @@ function initSvg() {
     .on('zoom', (event: any) => {
       if (!timeScaleBase.value || !depthScaleBase.value) return
       const t = event.transform
+      // Track if zoomed in (scale > 1 indicates zoom)
+      isZoomed.value = t.k > 1
       // Only rescale X (time), keep Y (depth) unchanged
       timeScale.value = t.rescaleX(timeScaleBase.value)
       depthScale.value = depthScaleBase.value.copy()
+
+      // Constrain the view to not extend beyond the data bounds
+      const domain = timeScale.value.domain() as [number, number]
+      const allMeasurements = props.profiles.flatMap((p) => p.measurements)
+      if (allMeasurements.length > 0) {
+        const tmin = Math.min(...allMeasurements.map((m) => m.measurement.time))
+        const tmax = Math.max(...allMeasurements.map((m) => m.measurement.time))
+        const viewWidth = domain[1] - domain[0]
+
+        const newDomain = [...domain] as [number, number]
+        if (domain[0] < tmin) {
+          newDomain[0] = tmin
+          newDomain[1] = Math.min(tmin + viewWidth, tmax)
+        }
+        if (domain[1] > tmax) {
+          newDomain[1] = tmax
+          newDomain[0] = Math.max(tmax - viewWidth, tmin)
+        }
+
+        timeScale.value.domain(newDomain)
+      }
+
       renderAll()
       renderSegments()
     })
@@ -488,45 +514,62 @@ function renderAll() {
 
   // Axes
 
-  // Generate fixed interval ticks for time axis (in seconds)
+  // Generate smart time axis ticks with 4-10 labels based on graph width and duration
   const timeRange = timeScale.value.domain() as [number, number]
   const timeDuration = timeRange[1] - timeRange[0]
   const timeDurationSeconds = timeDuration / 1000
 
-  // Determine appropriate tick interval based on duration
-  let tickInterval = 60 // 1 minute default
-  if (timeDurationSeconds > 20 * 60) {
-    // > 20 minutes
-    tickInterval = 20 * 60
-  } else if (timeDurationSeconds > 10 * 60) {
-    // > 10 minutes
-    tickInterval = 10 * 60
-  } else if (timeDurationSeconds > 5 * 60) {
-    // > 5 minutes
-    tickInterval = 5 * 60
+  // Sensible time intervals in seconds (in order of preference)
+  const intervals = [30, 60, 120, 300, 600, 1200, 1800, 3600]
+
+  // Target 4-10 labels; bias towards 6-7 labels for best readability
+  const targetLabelCount = Math.max(4, Math.min(10, Math.ceil(innerWidth.value / 100)))
+  
+  // Find the best interval that gives us close to targetLabelCount labels
+  let bestInterval = 60
+  let bestDiff = Math.abs(Math.ceil(timeDurationSeconds / 60) - targetLabelCount)
+  
+  for (const interval of intervals) {
+    const labelCount = Math.ceil(timeDurationSeconds / interval)
+    const diff = Math.abs(labelCount - targetLabelCount)
+    
+    // Prefer intervals that give us 4-10 labels and are closest to target
+    if (labelCount >= 4 && labelCount <= 10 && diff < bestDiff) {
+      bestInterval = interval
+      bestDiff = diff
+    }
   }
 
-  // Generate tick values starting from the beginning
+  // Generate tick values starting from a clean interval boundary
   const tickValues: number[] = []
-  for (let t = timeRange[0]; t <= timeRange[1]; t += tickInterval * 1000) {
+  const intervalMs = bestInterval * 1000
+  const diveStart = props.profiles[0]?.start ?? 0
+  // Align ticks to the dive start time, not to epoch 0
+  const offsetFromDiveStart = timeRange[0] - diveStart
+  let firstTickOffset = Math.floor(offsetFromDiveStart / intervalMs) * intervalMs
+  if (firstTickOffset < offsetFromDiveStart) {
+    firstTickOffset += intervalMs
+  }
+  const firstTickTime = diveStart + firstTickOffset
+  for (let t = firstTickTime; t <= timeRange[1]; t += intervalMs) {
     tickValues.push(t)
   }
 
   axes.x.value?.call(
     axisBottom(timeScale.value)
       .tickValues(tickValues)
-      .tickFormat((t: any) => formatTimeDisplay(Number(t), props.profiles[0]?.start ?? 0)),
+      .tickFormat((t) => formatTimeDisplay(Number(t), props.profiles[0]?.start ?? 0)),
   )
   const leftScale = getScaleFor(leftAxisMetric.value)
   const rightScale = getScaleFor(rightAxisMetric.value)
   if (leftScale) {
     axes.yDepth.value?.call(
-      axisLeft(leftScale).tickFormat((d: any) => formatAxisTick(leftAxisMetric.value, Number(d))),
+      axisLeft(leftScale).tickFormat((d) => formatAxisTick(leftAxisMetric.value, Number(d))),
     )
   }
   if (rightScale) {
     axes.yAux.value?.call(
-      axisRight(rightScale).tickFormat((d: any) =>
+      axisRight(rightScale).tickFormat((d) =>
         formatAxisTick(rightAxisMetric.value, Number(d)),
       ),
     )
@@ -565,7 +608,7 @@ function renderAll() {
       .datum(depthPts)
       .attr('d', depthLine.value(depthPts) ?? '')
       .attr('fill', 'none')
-      .attr('stroke', '#2563eb')
+      .attr('stroke', '#ffffff')
       .attr('stroke-width', 2)
       .attr('opacity', 0.8)
   })
@@ -740,8 +783,7 @@ function formatAxisTick(metric: string, v: number): string {
 }
 
 async function maybeFetchSegments() {
-  // Disable segments for multiple profiles (too complex to show)
-  if (!props.showSegments || props.profiles.length > 1) {
+  if (!props.showSegments) {
     segmentsData.value = null
     return
   }
@@ -774,17 +816,15 @@ async function maybeFetchSegments() {
 function renderSegments() {
   if (!segmentsLayer.value || !timeScale.value) return
 
-  // Clear segments if not showing or no data or multiple profiles
-  if (!props.showSegments || !segmentsData.value || props.profiles.length > 1) {
+  // Clear segments if not showing or no data
+  if (!props.showSegments || !segmentsData.value) {
     segmentsLayer.value.selectAll('rect').remove()
     return
   }
 
-  const ms = props.profiles[0]?.measurements ?? []
-  if (!ms.length) return
-
-  const getTimeAtIdx = (idx: number) =>
-    ms[Math.min(Math.max(idx, 0), ms.length - 1)]!.measurement.time
+  // Collect all measurements from all profiles to get time range
+  const allMeasurements = props.profiles.flatMap((p) => p.measurements)
+  if (!allMeasurements.length) return
 
   // Filter out any undefined or malformed segments
   const validSegments = segmentsData.value.filter(
@@ -800,21 +840,37 @@ function renderSegments() {
   validSegments.forEach((s, i) => {
     if (!s?.segment || typeof s.segment.firstMeasurementIdx !== 'number') return
 
-    const startTime = getTimeAtIdx(s.segment.firstMeasurementIdx)
+    // Find the profile this segment belongs to
+    const segmentProfile = props.profiles.find((p) => p.id === s.segment.profile.id)
+    if (!segmentProfile) return
+
+    const profileMeasurements = segmentProfile.measurements
+    if (!profileMeasurements || profileMeasurements.length === 0) return
+
+    // Get start time from the segment's first measurement index
+    const startMeasurement =
+      profileMeasurements[Math.min(s.segment.firstMeasurementIdx, profileMeasurements.length - 1)]
+    if (!startMeasurement) return
+
+    const startTime = startMeasurement.measurement.time
     const startX = timeScale.value!(startTime)
 
-    // Calculate end time for this segment
+    // Calculate end time: either from next segment (if same profile) or end of this profile's measurements
     let endTime: number
-    if (i < validSegments.length - 1) {
-      const nextSegment = validSegments[i + 1]
-      if (nextSegment?.segment && typeof nextSegment.segment.firstMeasurementIdx === 'number') {
-        endTime = getTimeAtIdx(nextSegment.segment.firstMeasurementIdx)
-      } else {
-        endTime = ms[ms.length - 1]?.measurement.time ?? startTime
-      }
+    const nextSegment = validSegments[i + 1]
+    if (
+      nextSegment?.segment &&
+      typeof nextSegment.segment.firstMeasurementIdx === 'number' &&
+      nextSegment.segment.profile.id === s.segment.profile.id
+    ) {
+      // Next segment is in the same profile
+      const nextMeasurement = profileMeasurements[
+        Math.min(nextSegment.segment.firstMeasurementIdx, profileMeasurements.length - 1)
+      ]
+      endTime = nextMeasurement?.measurement.time ?? startTime
     } else {
-      // Last segment extends to end of measurements
-      endTime = ms[ms.length - 1]?.measurement.time ?? startTime
+      // Last segment in this profile or next segment is in a different profile
+      endTime = profileMeasurements[profileMeasurements.length - 1]?.measurement.time ?? startTime
     }
 
     const endX = timeScale.value!(endTime)
@@ -865,18 +921,26 @@ function segmentTypeName(type: string) {
   }
 }
 
-function findSegmentAtIndex(idx: number): string | undefined {
+function findSegmentAtIndex(profileIdx: number, measurementIdx: number): string | undefined {
   if (!props.showSegments || !segmentsData.value) return undefined
 
-  const segment = segmentsData.value.find((s, i, arr) => {
+  // Get segments for this profile
+  const profileSegments = segmentsData.value.filter(
+    (s) => s?.segment && s.segment.profile.id === props.profiles[profileIdx]?.id,
+  )
+  if (!profileSegments.length) return undefined
+
+  // Find which segment contains this measurement index
+  const segment = profileSegments.find((s, i, arr) => {
     if (!s?.segment || typeof s.segment.firstMeasurementIdx !== 'number') return false
     const start = s.segment.firstMeasurementIdx
+    const profileMeasurements = props.profiles[profileIdx]?.measurements
     const next = arr[i + 1]
     const end =
       next?.segment && typeof next.segment.firstMeasurementIdx === 'number'
         ? next.segment.firstMeasurementIdx
-        : (props.profiles[0]?.measurements.length ?? 0)
-    return idx >= start && idx < end
+        : profileMeasurements?.length ?? 0
+    return measurementIdx >= start && measurementIdx < end
   })
 
   return segment?.segment?.type ? segmentTypeName(segment.segment.type) : undefined
@@ -901,7 +965,7 @@ function onMouseMoveD3(event: MouseEvent) {
   )
   if (!allMeasurements.length) return
 
-  const b = bisector((m: any) => m.measurement.time).center
+  const b = bisector((m: DiveMeasurementWithId) => m.measurement.time).center
   const tVal = timeScale.value.invert(mx)
   const idx = Math.min(allMeasurements.length - 1, Math.max(0, b(allMeasurements, tVal)))
   const m = allMeasurements[idx]!
@@ -916,7 +980,7 @@ function onMouseMoveD3(event: MouseEvent) {
   focusCircle.value?.attr('cx', cx).attr('cy', cy).style('display', null)
 
   tooltip.value = {
-    timeDisplay: formatTimeDisplay(m.measurement.time, (m as any).profileStart),
+    timeDisplay: formatTimeDisplay(m.measurement.time, m.profileStart),
     depth: m.measurement.depth,
     temp: m.measurement.temperature?.value,
     ndl: formatISoDurationToMinutes(m.measurement.ndl),
@@ -928,8 +992,8 @@ function onMouseMoveD3(event: MouseEvent) {
     gasN2: m.measurement.gas?.n2 !== undefined ? m.measurement.gas.n2 * 100 : undefined,
     gasHe: m.measurement.gas?.he !== undefined ? m.measurement.gas.he * 100 : undefined,
     segmentType:
-      props.profiles.length === 1 && (m as any).measurementIndex !== undefined
-        ? findSegmentAtIndex((m as any).measurementIndex)
+      m.measurementIndex !== undefined && m.profileIdx !== undefined
+        ? findSegmentAtIndex(m.profileIdx, m.measurementIndex)
         : undefined,
   }
 
@@ -962,6 +1026,7 @@ function resetZoom() {
   if (zoomBehavior.value && svgSel.value) {
     svgSel.value.call(zoomBehavior.value.transform, zoomIdentity)
   }
+  isZoomed.value = false
   renderAll()
   renderSegments()
 }
@@ -1003,4 +1068,9 @@ function parseIsoMinutes(ndl: string) {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+div {
+  touch-action: manipulation;
+  overscroll-behavior-x: contain;
+}
+</style>
