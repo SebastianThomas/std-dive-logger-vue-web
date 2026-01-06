@@ -97,7 +97,6 @@
 </template>
 
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 import {
   select,
@@ -109,6 +108,11 @@ import {
   bisector,
   zoom,
   zoomIdentity,
+  type Selection,
+  type ScaleLinear,
+  type Line,
+  type ZoomBehavior,
+  type ZoomTransform,
 } from 'd3'
 import type { DiveProfile, DiveMeasurementWithId, DiveProfileSegmentWithId } from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
@@ -159,47 +163,47 @@ const tooltipTop = ref(0)
 const showZoomHint = ref(false)
 let zoomHintTimer: ReturnType<typeof setTimeout> | null = null
 
-const svgSel = ref<any | null>(null)
-const gSel = ref<any | null>(null)
+const svgSel = ref<Selection<SVGSVGElement, unknown, null, undefined> | null>(null)
+const gSel = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const axes = {
-  x: ref<any | null>(null),
-  yDepth: ref<any | null>(null),
-  yAux: ref<any | null>(null),
+  x: ref<Selection<SVGGElement, unknown, null, undefined> | null>(null),
+  yDepth: ref<Selection<SVGGElement, unknown, null, undefined> | null>(null),
+  yAux: ref<Selection<SVGGElement, unknown, null, undefined> | null>(null),
 }
 const grid = {
-  x: ref<any | null>(null),
-  y: ref<any | null>(null),
+  x: ref<Selection<SVGGElement, unknown, null, undefined> | null>(null),
+  y: ref<Selection<SVGGElement, unknown, null, undefined> | null>(null),
 }
-const clipRect = ref<any | null>(null)
+const clipRect = ref<Selection<SVGRectElement, unknown, null, undefined> | null>(null)
 const clipPathId = `graph-clip-${generateId()}`
-const depthScale = ref<any | null>(null)
-const timeScale = ref<any | null>(null)
-const tempScale = ref<any | null>(null)
-const ndlScale = ref<any | null>(null)
-const otuScale = ref<any | null>(null)
-const cnsScale = ref<any | null>(null)
-const gfScale = ref<any | null>(null)
-const rmvScale = ref<any | null>(null)
-const gasScale = ref<any | null>(null)
-const timeScaleBase = ref<any | null>(null)
-const depthScaleBase = ref<any | null>(null)
-const depthLine = ref<any | null>(null)
-const tempLine = ref<any | null>(null)
-const ndlLine = ref<any | null>(null)
-const otuLine = ref<any | null>(null)
-const cnsLine = ref<any | null>(null)
-const gfLine = ref<any | null>(null)
-const rmvLine = ref<any | null>(null)
-const gasO2Line = ref<any | null>(null)
-const gasN2Line = ref<any | null>(null)
-const gasHeLine = ref<any | null>(null)
-const hoverOverlay = ref<any | null>(null)
-const focusCircle = ref<any | null>(null)
-const crosshairLine = ref<any | null>(null)
+const depthScale = ref<ScaleLinear<number, number> | null>(null)
+const timeScale = ref<ScaleLinear<number, number> | null>(null)
+const tempScale = ref<ScaleLinear<number, number> | null>(null)
+const ndlScale = ref<ScaleLinear<number, number> | null>(null)
+const otuScale = ref<ScaleLinear<number, number> | null>(null)
+const cnsScale = ref<ScaleLinear<number, number> | null>(null)
+const gfScale = ref<ScaleLinear<number, number> | null>(null)
+const rmvScale = ref<ScaleLinear<number, number> | null>(null)
+const gasScale = ref<ScaleLinear<number, number> | null>(null)
+const timeScaleBase = ref<ScaleLinear<number, number> | null>(null)
+const depthScaleBase = ref<ScaleLinear<number, number> | null>(null)
+const depthLine = ref<Line<[number, number]> | null>(null)
+const tempLine = ref<Line<[number, number]> | null>(null)
+const ndlLine = ref<Line<[number, number]> | null>(null)
+const otuLine = ref<Line<[number, number]> | null>(null)
+const cnsLine = ref<Line<[number, number]> | null>(null)
+const gfLine = ref<Line<[number, number]> | null>(null)
+const rmvLine = ref<Line<[number, number]> | null>(null)
+const gasO2Line = ref<Line<[number, number]> | null>(null)
+const gasN2Line = ref<Line<[number, number]> | null>(null)
+const gasHeLine = ref<Line<[number, number]> | null>(null)
+const hoverOverlay = ref<Selection<SVGRectElement, unknown, null, undefined> | null>(null)
+const focusCircle = ref<Selection<SVGCircleElement, unknown, null, undefined> | null>(null)
+const crosshairLine = ref<Selection<SVGLineElement, unknown, null, undefined> | null>(null)
 const segmentsData = ref<DiveProfileSegmentWithId[] | null>(null)
-const segmentsLayer = ref<any | null>(null)
+const segmentsLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
-const zoomBehavior = ref<any | null>(null)
+const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
 const { getWithToken } = useApi()
 const leftAxisMetric = ref<
@@ -281,7 +285,7 @@ function setupScales() {
     .x((d: [number, number]) => (timeScale.value ? timeScale.value(d[0]) : 0))
     .y((d: [number, number]) => (depthScale.value ? depthScale.value(d[1]) : 0))
 
-  const makeMetricLine = (scale: any) =>
+  const makeMetricLine = (scale: ScaleLinear<number, number> | null): Line<[number, number]> =>
     line()
       .x((d: [number, number]) => (timeScale.value ? timeScale.value(d[0]) : 0))
       .y((d: [number, number]) => (scale ? scale(d[1]) : 0))
@@ -450,13 +454,13 @@ function initSvg() {
     .on('mouseleave', onMouseLeave)
 
   // Zoom & pan on the SVG (X-axis only, requires Ctrl)
-  const z = zoom()
+  const z = zoom<SVGSVGElement, unknown>()
     .scaleExtent([1, 20])
     .translateExtent([
       [0, 0],
       [width.value, height.value],
     ])
-    .filter((event: any) => {
+    .filter((event): boolean => {
       // Only allow zoom/pan with Ctrl key pressed
       if (event.type === 'wheel' && !event.ctrlKey) {
         // Show hint when user tries to zoom without Ctrl
@@ -471,9 +475,9 @@ function initSvg() {
       }
       return !event.button && event.type !== 'dblclick'
     })
-    .on('zoom', (event: any) => {
+    .on('zoom', (event): void => {
       if (!timeScaleBase.value || !depthScaleBase.value) return
-      const t = event.transform
+      const t: ZoomTransform = event.transform
       // Track if zoomed in (scale > 1 indicates zoom)
       isZoomed.value = t.k > 1
       // Only rescale X (time), keep Y (depth) unchanged
@@ -504,7 +508,7 @@ function initSvg() {
       renderAll()
       renderSegments()
     })
-  svgSel.value.call(z as any)
+  svgSel.value.call(z)
   // Store zoom behavior for reset
   zoomBehavior.value = z
 }
@@ -524,15 +528,15 @@ function renderAll() {
 
   // Target 4-10 labels; bias towards 6-7 labels for best readability
   const targetLabelCount = Math.max(4, Math.min(10, Math.ceil(innerWidth.value / 100)))
-  
+
   // Find the best interval that gives us close to targetLabelCount labels
   let bestInterval = 60
   let bestDiff = Math.abs(Math.ceil(timeDurationSeconds / 60) - targetLabelCount)
-  
+
   for (const interval of intervals) {
     const labelCount = Math.ceil(timeDurationSeconds / interval)
     const diff = Math.abs(labelCount - targetLabelCount)
-    
+
     // Prefer intervals that give us 4-10 labels and are closest to target
     if (labelCount >= 4 && labelCount <= 10 && diff < bestDiff) {
       bestInterval = interval
@@ -558,18 +562,20 @@ function renderAll() {
   axes.x.value?.call(
     axisBottom(timeScale.value)
       .tickValues(tickValues)
-      .tickFormat((t) => formatTimeDisplay(Number(t), props.profiles[0]?.start ?? 0)),
+      .tickFormat((t): string => formatTimeDisplay(Number(t), props.profiles[0]?.start ?? 0)),
   )
   const leftScale = getScaleFor(leftAxisMetric.value)
   const rightScale = getScaleFor(rightAxisMetric.value)
   if (leftScale) {
     axes.yDepth.value?.call(
-      axisLeft(leftScale).tickFormat((d) => formatAxisTick(leftAxisMetric.value, Number(d))),
+      axisLeft(leftScale).tickFormat((d): string =>
+        formatAxisTick(leftAxisMetric.value, Number(d)),
+      ),
     )
   }
   if (rightScale) {
     axes.yAux.value?.call(
-      axisRight(rightScale).tickFormat((d) =>
+      axisRight(rightScale).tickFormat((d): string =>
         formatAxisTick(rightAxisMetric.value, Number(d)),
       ),
     )
@@ -606,7 +612,7 @@ function renderAll() {
     depthLinesGroup
       .append('path')
       .datum(depthPts)
-      .attr('d', depthLine.value(depthPts) ?? '')
+      .attr('d', depthLine.value?.(depthPts) ?? '')
       .attr('fill', 'none')
       .attr('stroke', '#ffffff')
       .attr('stroke-width', 2)
@@ -617,11 +623,11 @@ function renderAll() {
   const drawMetricLines = (
     groupSelector: string,
     extractor: (m: DiveMeasurementWithId) => [number, number] | null,
-    lineGen: any,
+    lineGen: Line<[number, number]> | null,
     show: boolean,
     color: string,
     width: number = 1.5,
-  ) => {
+  ): void => {
     const group = gSel.value?.select(groupSelector)
     if (!group) return
     group.selectAll('path').remove()
@@ -732,7 +738,7 @@ function renderAll() {
   )
 }
 
-function getScaleFor(metric: string) {
+function getScaleFor(metric: string): ScaleLinear<number, number> | null {
   switch (metric) {
     case 'depth':
       return depthScale.value
@@ -826,7 +832,7 @@ function renderSegments() {
   const allMeasurements = props.profiles.flatMap((p) => p.measurements)
   if (!allMeasurements.length) return
 
-  // Filter out any undefined or malformed segments
+  // Filter out undefined or malformed segments
   const validSegments = segmentsData.value.filter(
     (s) => s && s.segment && typeof s.segment.firstMeasurementIdx === 'number',
   )
@@ -864,9 +870,10 @@ function renderSegments() {
       nextSegment.segment.profile.id === s.segment.profile.id
     ) {
       // Next segment is in the same profile
-      const nextMeasurement = profileMeasurements[
-        Math.min(nextSegment.segment.firstMeasurementIdx, profileMeasurements.length - 1)
-      ]
+      const nextMeasurement =
+        profileMeasurements[
+          Math.min(nextSegment.segment.firstMeasurementIdx, profileMeasurements.length - 1)
+        ]
       endTime = nextMeasurement?.measurement.time ?? startTime
     } else {
       // Last segment in this profile or next segment is in a different profile
@@ -876,18 +883,20 @@ function renderSegments() {
     const endX = timeScale.value!(endTime)
     const width = Math.max(0, endX - startX)
 
-    segmentsLayer.value
-      .append('rect')
-      .attr('x', startX)
-      .attr('y', 0)
-      .attr('width', width)
-      .attr('height', h)
-      .attr('fill', segmentColor(s.segment.type || ''))
-      .attr('opacity', 0.3)
-      .attr('stroke', segmentColor(s.segment.type || ''))
-      .attr('stroke-width', 1.5)
-      .attr('stroke-opacity', 0.5)
-      .style('pointer-events', 'none')
+    if (segmentsLayer.value !== null) {
+      segmentsLayer.value
+        .append('rect')
+        .attr('x', startX)
+        .attr('y', 0)
+        .attr('width', width)
+        .attr('height', h)
+        .attr('fill', segmentColor(s.segment.type || ''))
+        .attr('opacity', 0.3)
+        .attr('stroke', segmentColor(s.segment.type || ''))
+        .attr('stroke-width', 1.5)
+        .attr('stroke-opacity', 0.5)
+        .style('pointer-events', 'none')
+    }
   })
 }
 
@@ -939,7 +948,7 @@ function findSegmentAtIndex(profileIdx: number, measurementIdx: number): string 
     const end =
       next?.segment && typeof next.segment.firstMeasurementIdx === 'number'
         ? next.segment.firstMeasurementIdx
-        : profileMeasurements?.length ?? 0
+        : (profileMeasurements?.length ?? 0)
     return measurementIdx >= start && measurementIdx < end
   })
 
