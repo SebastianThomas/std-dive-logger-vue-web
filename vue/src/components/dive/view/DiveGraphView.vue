@@ -8,6 +8,9 @@
       v-model:show-otu="showOtu"
       v-model:show-cns="showCns"
       v-model:show-gf="showGf"
+      v-model:show-po2-measured="showPo2Measured"
+      v-model:show-po2-calculated="showPo2Calculated"
+      v-model:show-po2-setpoint="showPo2Setpoint"
       v-model:show-rmv="showRmv"
       v-model:show-gas-o2="showGasO2"
       v-model:show-gas-n2="showGasN2"
@@ -17,6 +20,9 @@
       :disable-otu="!hasOtu"
       :disable-cns="!hasCns"
       :disable-gf="!hasGf"
+      :disable-po2-measured="!hasPo2Measured"
+      :disable-po2-calculated="!hasPo2Calculated"
+      :disable-po2-setpoint="!hasPo2Setpoint"
       :disable-rmv="!hasRmv"
       :disable-gas-o2="!hasGasO2"
       :disable-gas-n2="!hasGasN2"
@@ -40,6 +46,9 @@
         :show-otu="showOtu"
         :show-cns="showCns"
         :show-gf="showGf"
+        :show-po2-measured="showPo2Measured"
+        :show-po2-calculated="showPo2Calculated"
+        :show-po2-setpoint="showPo2Setpoint"
         :show-rmv="showRmv"
         :show-gas-o2="showGasO2"
         :show-gas-n2="showGasN2"
@@ -50,9 +59,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { toRef } from 'vue'
 import MetricsControlPanel from '@/components/dive/view/MetricsControlPanel.vue'
 import DiveGraph from '@/components/dive/view/DiveGraph.vue'
+import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
 import type { DiveProfile } from '@/lib/types/dive'
 
 interface Props {
@@ -67,33 +77,35 @@ const props = withDefaults(defineProps<Props>(), {
   showGridToggle: true,
 })
 
-// All metrics state
-const showTemp = ref(false)
-const showSegments = ref(false)
-const showNdl = ref(false)
-const showOtu = ref(false)
-const showCns = ref(false)
-const showGf = ref(false)
-const showRmv = ref(false)
-const showGasO2 = ref(false)
-const showGasN2 = ref(false)
-const showGasHe = ref(false)
-const showGrid = ref(false)
-
-const measurements = computed(() => props.profiles.flatMap((p) => p.measurements))
-
-// Availability flags based on profile data
-const hasTemp = computed(() =>
-  measurements.value.some((m) => m.measurement.temperature?.value !== undefined),
-)
-const hasNdl = computed(() => measurements.value.some((m) => !!m.measurement.ndl))
-const hasOtu = computed(() => measurements.value.some((m) => m.measurement.o2Tox !== undefined))
-const hasCns = computed(() => measurements.value.some((m) => m.measurement.cns !== undefined))
-const hasGf = computed(() => measurements.value.some((m) => m.measurement.n2 !== undefined))
-const hasRmv = computed(() => measurements.value.some((m) => m.measurement.rmvLiters !== undefined))
-const hasGasO2 = computed(() => measurements.value.some((m) => m.measurement.gas?.o2 !== undefined))
-const hasGasN2 = computed(() => measurements.value.some((m) => m.measurement.gas?.n2 !== undefined))
-const hasGasHe = computed(() => measurements.value.some((m) => m.measurement.gas?.he !== undefined))
+const profilesRef = toRef(props, 'profiles')
+const {
+  showTemp,
+  showSegments,
+  showGrid,
+  showNdl,
+  showOtu,
+  showCns,
+  showGf,
+  showPo2Measured,
+  showPo2Calculated,
+  showPo2Setpoint,
+  showRmv,
+  showGasO2,
+  showGasN2,
+  showGasHe,
+  hasTemp,
+  hasNdl,
+  hasOtu,
+  hasCns,
+  hasGf,
+  hasPo2Measured,
+  hasPo2Calculated,
+  hasPo2Setpoint,
+  hasRmv,
+  hasGasO2,
+  hasGasN2,
+  hasGasHe,
+} = useDiveGraphMetrics(profilesRef)
 </script>
 
 <style scoped>

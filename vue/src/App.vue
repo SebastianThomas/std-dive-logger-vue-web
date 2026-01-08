@@ -174,3 +174,13 @@ onUnmounted(() => {
   z-index: 10;
 }
 </style>
+
+<style>
+:root.hide-header .app-grid {
+  grid-template-rows: 0 1fr !important;
+}
+
+:root.hide-header .grid-header {
+  display: none !important;
+}
+</style>

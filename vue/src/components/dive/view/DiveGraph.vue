@@ -28,6 +28,9 @@
         <option value="otu">OTUs</option>
         <option value="cns">CNS</option>
         <option value="gf">GF99</option>
+        <option value="po2Measured">PO₂ measured</option>
+        <option value="po2Calculated">PO₂ calculated</option>
+        <option value="po2Setpoint">PO₂ setpoint</option>
         <option value="rmv">RMV</option>
         <option value="gasO2">Gas O₂</option>
         <option value="gasN2">Gas N₂</option>
@@ -53,6 +56,9 @@
         <option value="otu">OTUs</option>
         <option value="cns">CNS</option>
         <option value="gf">GF99</option>
+        <option value="po2Measured">PO₂ measured</option>
+        <option value="po2Calculated">PO₂ calculated</option>
+        <option value="po2Setpoint">PO₂ setpoint</option>
         <option value="rmv">RMV</option>
         <option value="gasO2">Gas O₂</option>
         <option value="gasN2">Gas N₂</option>
@@ -73,6 +79,15 @@
       <div v-if="tooltip.cns !== undefined">CNS: {{ tooltip.cns.toFixed(0) }}%</div>
       <div v-if="tooltip.gf !== undefined">GF99: {{ tooltip.gf.toFixed(0) }}%</div>
       <div v-if="tooltip.rmv !== undefined">RMV: {{ tooltip.rmv.toFixed(0) }} L/min</div>
+      <div v-if="tooltip.po2Measured !== undefined">
+        PO₂ (meas): {{ tooltip.po2Measured.toFixed(2) }} bar
+      </div>
+      <div v-if="tooltip.po2Calculated !== undefined">
+        PO₂ (calc): {{ tooltip.po2Calculated.toFixed(2) }} bar
+      </div>
+      <div v-if="tooltip.po2Setpoint !== undefined">
+        PO₂ (setpoint): {{ tooltip.po2Setpoint.toFixed(2) }} bar
+      </div>
       <div v-if="tooltip.gasO2 !== undefined && tooltip.gasHe !== undefined" class="group relative">
         <div>Gas: {{ tooltip.gasO2.toFixed(0) }}/{{ tooltip.gasHe.toFixed(0) }}</div>
         <div
@@ -122,6 +137,9 @@ import { generateId } from '@/lib/utils/cryptoUtils'
 type Props = {
   profiles: DiveProfile[]
   diveId: number
+  // Optional visibility mask per profile; when provided, axes still use all profiles
+  // but rendering (lines, segments, tooltip) respects visibility.
+  visibleProfiles?: boolean[]
   showTemp?: boolean
   showSegments?: boolean
   showGrid?: boolean
@@ -129,6 +147,9 @@ type Props = {
   showOtu?: boolean
   showCns?: boolean
   showGf?: boolean
+  showPo2Measured?: boolean
+  showPo2Calculated?: boolean
+  showPo2Setpoint?: boolean
   showRmv?: boolean
   showGasO2?: boolean
   showGasN2?: boolean
@@ -136,6 +157,15 @@ type Props = {
 }
 
 const props = defineProps<Props>()
+
+// Visibility mask with safe defaults (all visible)
+const visibleMask = computed<boolean[]>(() => {
+  const n = props.profiles.length
+  if (!props.visibleProfiles || props.visibleProfiles.length !== n) {
+    return Array.from({ length: n }, () => true)
+  }
+  return props.visibleProfiles
+})
 
 const container = ref<HTMLElement | null>(null)
 const width = ref(600)
@@ -152,6 +182,9 @@ const tooltip = ref<{
   otu?: number
   cns?: number
   gf?: number
+  po2Measured?: number
+  po2Calculated?: number
+  po2Setpoint?: number
   rmv?: number
   gasO2?: number
   gasN2?: number
@@ -183,6 +216,7 @@ const ndlScale = ref<ScaleLinear<number, number> | null>(null)
 const otuScale = ref<ScaleLinear<number, number> | null>(null)
 const cnsScale = ref<ScaleLinear<number, number> | null>(null)
 const gfScale = ref<ScaleLinear<number, number> | null>(null)
+const po2Scale = ref<ScaleLinear<number, number> | null>(null)
 const rmvScale = ref<ScaleLinear<number, number> | null>(null)
 const gasScale = ref<ScaleLinear<number, number> | null>(null)
 const timeScaleBase = ref<ScaleLinear<number, number> | null>(null)
@@ -193,6 +227,9 @@ const ndlLine = ref<Line<[number, number]> | null>(null)
 const otuLine = ref<Line<[number, number]> | null>(null)
 const cnsLine = ref<Line<[number, number]> | null>(null)
 const gfLine = ref<Line<[number, number]> | null>(null)
+const po2MeasuredLine = ref<Line<[number, number]> | null>(null)
+const po2CalculatedLine = ref<Line<[number, number]> | null>(null)
+const po2SetpointLine = ref<Line<[number, number]> | null>(null)
 const rmvLine = ref<Line<[number, number]> | null>(null)
 const gasO2Line = ref<Line<[number, number]> | null>(null)
 const gasN2Line = ref<Line<[number, number]> | null>(null)
@@ -207,10 +244,33 @@ const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
 const { getWithToken } = useApi()
 const leftAxisMetric = ref<
-  'depth' | 'temp' | 'ndl' | 'otu' | 'cns' | 'gf' | 'rmv' | 'gasO2' | 'gasN2' | 'gasHe'
+  | 'depth'
+  | 'temp'
+  | 'ndl'
+  | 'otu'
+  | 'cns'
+  | 'gf'
+  | 'po2Measured'
+  | 'po2Calculated'
+  | 'po2Setpoint'
+  | 'rmv'
+  | 'gasO2'
+  | 'gasN2'
+  | 'gasHe'
 >('depth')
 const rightAxisMetric = ref<
-  'temp' | 'ndl' | 'otu' | 'cns' | 'gf' | 'rmv' | 'gasO2' | 'gasN2' | 'gasHe'
+  | 'temp'
+  | 'ndl'
+  | 'otu'
+  | 'cns'
+  | 'gf'
+  | 'po2Measured'
+  | 'po2Calculated'
+  | 'po2Setpoint'
+  | 'rmv'
+  | 'gasO2'
+  | 'gasN2'
+  | 'gasHe'
 >('temp')
 
 let ro: ResizeObserver | null = null
@@ -250,17 +310,17 @@ function setupScales() {
   const temperatureValues = allMeasurements
     .map((m) => m.measurement.temperature?.value)
     .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
-  
+
   let tempExtent: [number, number]
   if (temperatureValues.length > 0) {
     const minTemp = Math.min(...temperatureValues)
     const maxTemp = Math.max(...temperatureValues)
-    
+
     // Round down to nearest multiple of 5
     let tempMin = Math.floor(minTemp / 5) * 5
     // Round up to nearest multiple of 5
     let tempMax = Math.ceil(maxTemp / 5) * 5
-    
+
     // Ensure minimum range of 10 degrees
     const range = tempMax - tempMin
     if (range < 10) {
@@ -268,7 +328,7 @@ function setupScales() {
       tempMin = Math.floor((center - 5) / 5) * 5
       tempMax = Math.ceil((center + 5) / 5) * 5
     }
-    
+
     tempExtent = [tempMin, tempMax]
   } else {
     tempExtent = [10, 20]
@@ -293,6 +353,13 @@ function setupScales() {
     .map((m) => m.measurement.rmvLiters)
     .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
   const rmvMax = Math.max(80, rmvValues.length ? Math.max(...rmvValues) : 0)
+
+  const po2Values = allMeasurements
+    .map((m) => m.measurement.po2)
+    .filter((p): p is { measured?: number; calculated?: number; maxSetPoint?: number } => !!p)
+    .flatMap((p) => [p.measured, p.calculated, p.maxSetPoint])
+    .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
+  const po2Max = Math.max(1.6, po2Values.length ? Math.max(...po2Values) : 0)
 
   const gasValues = allMeasurements
     .map((m) => m.measurement.gas)
@@ -320,6 +387,9 @@ function setupScales() {
   gfScale.value = scaleLinear()
     .domain([0, gfMax * 1.05])
     .range([innerHeight.value, 0])
+  po2Scale.value = scaleLinear()
+    .domain([0, po2Max * 1.05])
+    .range([innerHeight.value, 0])
   rmvScale.value = scaleLinear()
     .domain([0, rmvMax * 1.05])
     .range([innerHeight.value, 0])
@@ -330,6 +400,9 @@ function setupScales() {
   otuLine.value = makeMetricLine(otuScale.value)
   cnsLine.value = makeMetricLine(cnsScale.value)
   gfLine.value = makeMetricLine(gfScale.value)
+  po2MeasuredLine.value = makeMetricLine(po2Scale.value)
+  po2CalculatedLine.value = makeMetricLine(po2Scale.value)
+  po2SetpointLine.value = makeMetricLine(po2Scale.value)
   rmvLine.value = makeMetricLine(rmvScale.value)
   gasO2Line.value = makeMetricLine(gasScale.value)
   gasN2Line.value = makeMetricLine(gasScale.value)
@@ -361,6 +434,7 @@ onBeforeUnmount(() => {
 watch(
   () => [
     props.profiles,
+    props.visibleProfiles,
     props.showTemp,
     props.showSegments,
     props.showGrid,
@@ -368,6 +442,9 @@ watch(
     props.showOtu,
     props.showCns,
     props.showGf,
+    props.showPo2Measured,
+    props.showPo2Calculated,
+    props.showPo2Setpoint,
     props.showRmv,
     props.showGasO2,
     props.showGasN2,
@@ -438,6 +515,9 @@ function initSvg() {
   g.append('g').attr('class', 'lines-otu').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-cns').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-gf').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-po2-measured').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-po2-calculated').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-po2-setpoint').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-rmv').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-gas-o2').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-gas-n2').attr('clip-path', clipPathUrl)
@@ -639,7 +719,8 @@ function renderAll() {
   // Render depth lines for each profile
   const depthLinesGroup = gSel.value.select('.lines-depth')
   depthLinesGroup.selectAll('path').remove()
-  props.profiles.forEach((profile) => {
+  props.profiles.forEach((profile, idx) => {
+    if (!visibleMask.value[idx]) return
     const depthPts: [number, number][] = profile.measurements.map((m) => [
       m.measurement.time,
       m.measurement.depth,
@@ -668,7 +749,8 @@ function renderAll() {
     group.selectAll('path').remove()
     if (!show || !lineGen) return
 
-    props.profiles.forEach((profile) => {
+    props.profiles.forEach((profile, idx) => {
+      if (!visibleMask.value[idx]) return
       const points: [number, number][] = profile.measurements
         .map(extractor)
         .filter((p): p is [number, number] => p !== null)
@@ -733,6 +815,42 @@ function renderAll() {
   )
 
   drawMetricLines(
+    '.lines-po2-measured',
+    (m) =>
+      m.measurement.po2?.measured !== undefined
+        ? [m.measurement.time, m.measurement.po2.measured]
+        : null,
+    po2MeasuredLine.value,
+    props.showPo2Measured ?? false,
+    '#1d4ed8',
+    1.2,
+  )
+
+  drawMetricLines(
+    '.lines-po2-calculated',
+    (m) =>
+      m.measurement.po2?.calculated !== undefined
+        ? [m.measurement.time, m.measurement.po2.calculated]
+        : null,
+    po2CalculatedLine.value,
+    props.showPo2Calculated ?? false,
+    '#d946ef',
+    1.2,
+  )
+
+  drawMetricLines(
+    '.lines-po2-setpoint',
+    (m) =>
+      m.measurement.po2?.maxSetPoint !== undefined
+        ? [m.measurement.time, m.measurement.po2.maxSetPoint]
+        : null,
+    po2SetpointLine.value,
+    props.showPo2Setpoint ?? false,
+    '#22c55e',
+    1.2,
+  )
+
+  drawMetricLines(
     '.lines-rmv',
     (m) =>
       m.measurement.rmvLiters !== undefined ? [m.measurement.time, m.measurement.rmvLiters] : null,
@@ -787,6 +905,10 @@ function getScaleFor(metric: string): ScaleLinear<number, number> | null {
       return cnsScale.value
     case 'gf':
       return gfScale.value
+    case 'po2Measured':
+    case 'po2Calculated':
+    case 'po2Setpoint':
+      return po2Scale.value
     case 'rmv':
       return rmvScale.value
     case 'gasO2':
@@ -812,6 +934,10 @@ function formatAxisTick(metric: string, v: number): string {
       return `${v}%`
     case 'gf':
       return `${v}%`
+    case 'po2Measured':
+    case 'po2Calculated':
+    case 'po2Setpoint':
+      return `${v.toFixed(2)} bar`
     case 'rmv':
       return `${v.toFixed(1)}`
     case 'gasO2':
@@ -884,6 +1010,9 @@ function renderSegments() {
     // Find the profile this segment belongs to
     const segmentProfile = props.profiles.find((p) => p.id === s.segment.profile.id)
     if (!segmentProfile) return
+    // Respect profile visibility
+    const segIdx = props.profiles.findIndex((p) => p.id === s.segment.profile.id)
+    if (segIdx >= 0 && !visibleMask.value[segIdx]) return
 
     const profileMeasurements = segmentProfile.measurements
     if (!profileMeasurements || profileMeasurements.length === 0) return
@@ -998,14 +1127,16 @@ function onMouseMoveD3(event: MouseEvent) {
     return
   }
 
-  // Find closest measurement across all profiles
+  // Find closest measurement across visible profiles only
   const allMeasurements = props.profiles.flatMap((p, pIdx) =>
-    p.measurements.map((m, mIdx) => ({
-      ...m,
-      profileIdx: pIdx,
-      profileStart: p.start,
-      measurementIndex: mIdx,
-    })),
+    (visibleMask.value[pIdx]
+      ? p.measurements.map((m, mIdx) => ({
+          ...m,
+          profileIdx: pIdx,
+          profileStart: p.start,
+          measurementIndex: mIdx,
+        }))
+      : []),
   )
   if (!allMeasurements.length) return
 
@@ -1031,6 +1162,9 @@ function onMouseMoveD3(event: MouseEvent) {
     otu: m.measurement.o2Tox,
     cns: m.measurement.cns,
     gf: m.measurement.n2,
+    po2Measured: m.measurement.po2?.measured,
+    po2Calculated: m.measurement.po2?.calculated,
+    po2Setpoint: m.measurement.po2?.maxSetPoint,
     rmv: m.measurement.rmvLiters,
     gasO2: m.measurement.gas?.o2 !== undefined ? m.measurement.gas.o2 * 100 : undefined,
     gasN2: m.measurement.gas?.n2 !== undefined ? m.measurement.gas.n2 * 100 : undefined,

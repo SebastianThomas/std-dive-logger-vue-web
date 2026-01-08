@@ -43,6 +43,11 @@ export type DiveMeasurement = {
   depth: number
   ndl: string
   deco: Deco[]
+  po2?: {
+    measured?: number
+    calculated?: number
+    maxSetPoint?: number
+  }
   gas?: Gas
   rmvLiters?: number
   n2?: number

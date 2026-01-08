@@ -23,8 +23,18 @@
               <span v-else><span class="font-semibold">Click to upload</span> or drag & drop</span>
             </p>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Multiple files supported</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Supported formats: UDDF, XML, FIT (POSB not yet supported)
+            </p>
           </button>
-          <input ref="fileInputRef" type="file" class="hidden" multiple @change="onFileInput" />
+          <input
+            ref="fileInputRef"
+            type="file"
+            class="hidden"
+            multiple
+            accept=".uddf,.xml,.posb,.fit"
+            @change="onFileInput"
+          />
           <ul
             v-if="files.length"
             class="text-sm text-gray-700 dark:text-gray-300 list-disc pl-5 space-y-1"
@@ -96,13 +106,34 @@ const missingSiteName = ref<string | null>(null)
 
 const handleDrop = (e: DragEvent) => {
   if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-    files.value = Array.from(e.dataTransfer.files).filter(Boolean) as File[]
+    const droppedFiles = Array.from(e.dataTransfer.files)
+    const validFiles = droppedFiles.filter((file) => {
+      const ext = file.name.split('.').pop()?.toLowerCase()
+      const validExts = ['uddf', 'xml', 'posb', 'fit']
+      return validExts.includes(ext || '')
+    })
+    if (validFiles.length < droppedFiles.length) {
+      status.value =
+        'Warning: Some files were skipped due to unsupported format. Supported: UDDF, XML, FIT, POSB.'
+    }
+    files.value = validFiles
   }
 }
 
 const onFileInput = (e: Event) => {
   const target = e.target as HTMLInputElement
-  if (target.files) files.value = Array.from(target.files)
+  if (target.files) {
+    const validFiles = Array.from(target.files).filter((file) => {
+      const ext = file.name.split('.').pop()?.toLowerCase()
+      const validExts = ['uddf', 'xml', 'posb', 'fit']
+      return validExts.includes(ext || '')
+    })
+    if (validFiles.length < target.files.length) {
+      status.value =
+        'Warning: Some files were skipped due to unsupported format. Supported: UDDF, XML, FIT, POSB.'
+    }
+    files.value = validFiles
+  }
 }
 
 const clearFiles = () => {

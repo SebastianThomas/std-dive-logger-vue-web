@@ -14,6 +14,9 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
   const showOtu = ref(false)
   const showCns = ref(false)
   const showGf = ref(false)
+  const showPo2Measured = ref(false)
+  const showPo2Calculated = ref(false)
+  const showPo2Setpoint = ref(false)
   const showRmv = ref(false)
   const showGasO2 = ref(false)
   const showGasN2 = ref(false)
@@ -36,6 +39,9 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
         showOtu?: boolean
         showCns?: boolean
         showGf?: boolean
+        showPo2Measured?: boolean
+        showPo2Calculated?: boolean
+        showPo2Setpoint?: boolean
         showRmv?: boolean
         showGasO2?: boolean
         showGasN2?: boolean
@@ -76,6 +82,9 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       showOtu: showOtu.value,
       showCns: showCns.value,
       showGf: showGf.value,
+      showPo2Measured: showPo2Measured.value,
+      showPo2Calculated: showPo2Calculated.value,
+      showPo2Setpoint: showPo2Setpoint.value,
       showRmv: showRmv.value,
       showGasO2: showGasO2.value,
       showGasN2: showGasN2.value,
@@ -96,6 +105,9 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       showOtu,
       showCns,
       showGf,
+      showPo2Measured,
+      showPo2Calculated,
+      showPo2Setpoint,
       showRmv,
       showGasO2,
       showGasN2,
@@ -113,6 +125,9 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
     showOtu,
     showCns,
     showGf,
+    showPo2Measured,
+    showPo2Calculated,
+    showPo2Setpoint,
     showRmv,
     showGasO2,
     showGasN2,

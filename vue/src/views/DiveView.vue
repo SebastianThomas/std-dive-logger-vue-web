@@ -3,33 +3,12 @@
     class="dive-view-shell flex justify-center items-start pt-20 px-6 md:mx-10"
     :style="{ minHeight: 'calc(100vh - 80px)' }"
   >
-    <DiveGraphModal
+    <DiveGraphContainer
       v-if="graphOpen && dive?.profiles"
       :profiles="dive.profiles"
       :dive-id="diveId"
-      :show-temp="showTemp"
-      :show-segments="showSegments"
-      :show-grid="showGrid"
-      :show-ndl="showNdl"
-      :show-otu="showOtu"
-      :show-cns="showCns"
-      :show-gf="showGf"
-      :show-rmv="showRmv"
-      :show-gas-o2="showGasO2"
-      :show-gas-n2="showGasN2"
-      :show-gas-he="showGasHe"
+      fullscreen
       @close="graphOpen = false"
-      @update:show-temp="showTemp = $event"
-      @update:show-segments="showSegments = $event"
-      @update:show-grid="showGrid = $event"
-      @update:show-ndl="showNdl = $event"
-      @update:show-otu="showOtu = $event"
-      @update:show-cns="showCns = $event"
-      @update:show-gf="showGf = $event"
-      @update:show-rmv="showRmv = $event"
-      @update:show-gas-o2="showGasO2 = $event"
-      @update:show-gas-n2="showGasN2 = $event"
-      @update:show-gas-he="showGasHe = $event"
     />
 
     <div v-else-if="!loading && dive" class="space-y-6 md:space-y-8">
@@ -102,36 +81,13 @@
         <div
           class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-[90%] max-w-lg max-h-[80vh] overflow-auto"
         >
-          <h2 class="text-lg font-semibold mb-4 text-gray-800">Link a Dive</h2>
-          <input
-            v-model="searchTerm"
-            type="text"
-            placeholder="Search my dives..."
-            class="w-full p-2 mb-4 border rounded"
-            @input="handleSearch"
+          <h2 class="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Link a Dive</h2>
+          <DiveSearchAndLink
+            :current-dive-id="diveId"
+            :current-dive-site-name="dive.site.name"
+            :current-dive-start-date="summary?.start"
+            @dive-linked="onDiveLinked"
           />
-          <ul class="space-y-2">
-            <li
-              v-for="d in myDives"
-              :key="d.id"
-              class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
-            >
-              <div>
-                <p class="text-sm font-medium">{{ d.customIdentifier }}</p>
-                <p class="text-xs text-gray-500">
-                  #{{ d.number }} · {{ dive.site.name }} ·
-                  {{ summary?.start ? new Date(summary.start).toLocaleString() : 'No start date' }}
-                </p>
-              </div>
-              <button
-                @click="handleLinkDive(d.id)"
-                class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
-              >
-                Link
-              </button>
-            </li>
-            <li v-if="myDives.length === 0" class="text-sm text-gray-400">No dives found</li>
-          </ul>
           <div class="flex justify-end mt-4">
             <button
               @click="showLinkModal = false"
@@ -272,7 +228,7 @@
               Expand
             </button>
           </div>
-          <ViewDiveProfile v-if="dive.profiles" :profiles="dive.profiles" :dive-id="diveId" />
+          <DiveGraphContainer v-if="dive.profiles" :profiles="dive.profiles" :dive-id="diveId" />
         </div>
       </div>
     </div>
@@ -288,22 +244,19 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
-import debounce from '@/lib/utils/debounce'
 import { formatISoDurationToTime } from '@/lib/utils/timeUtils'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
-import ViewDiveProfile from '@/components/dive/view/ViewDiveProfile.vue'
-import DiveGraphModal from '@/components/dive/view/DiveGraphModal.vue'
+import DiveSearchAndLink from '@/components/DiveSearchAndLink.vue'
+import DiveGraphContainer from '@/components/dive/view/DiveGraphContainer.vue'
 import GasDisplay from '@/components/dive/view/GasDisplay.vue'
 import InfoCard from '@/components/InfoCard.vue'
 import InfoCardRow from '@/components/InfoCardRow.vue'
-import { useDiveGraphStore } from '@/stores/diveGraph'
-import { storeToRefs } from 'pinia'
-import type { Dive, DiveComputer, DiveWithoutProfiles, Gas, PagedResult } from '@/lib/types/dive'
+import type { Dive, DiveComputer, Gas } from '@/lib/types/dive'
 import type { User } from '@/lib/types/share'
 
 const router = useRouter()
 const route = useRoute()
-const { getWithToken, deleteWithToken, postWithToken } = useApi()
+const { getWithToken, deleteWithToken } = useApi()
 
 const diveId = computed(() => Number(route.params.diveId))
 const dive = ref<Dive | null>(null)
@@ -313,23 +266,6 @@ const graphOpen = ref(false)
 const showDeleteModal = ref(false)
 const showLinkModal = ref(false)
 const myUserId = ref<number | null>(null)
-const myDives = ref<DiveWithoutProfiles[]>([])
-const searchTerm = ref('')
-
-const graphStore = useDiveGraphStore()
-const {
-  showTemp,
-  showSegments,
-  showGrid,
-  showNdl,
-  showOtu,
-  showCns,
-  showGf,
-  showRmv,
-  showGasO2,
-  showGasN2,
-  showGasHe,
-} = storeToRefs(graphStore)
 
 const summary = computed(() => dive.value?.summary)
 const isMine = computed(() => dive.value?.user.id === myUserId.value)
@@ -372,7 +308,15 @@ const allGases = computed(() => {
   if (!gases || gases.length === 0) {
     return new Set<Gas>()
   }
-  return new Set(gases)
+  // Deduplicate by composition, not by object reference (to handle Vue proxies)
+  const seen = new Map<string, Gas>()
+  gases.forEach((gas) => {
+    const key = `${gas.o2}-${gas.n2}-${gas.he}-${gas.description || ''}`
+    if (!seen.has(key)) {
+      seen.set(key, gas)
+    }
+  })
+  return new Set(seen.values())
 })
 
 const showGasDetails = computed(() => allGases.value.size <= 3)
@@ -398,22 +342,6 @@ const fetchUserId = async () => {
   }
 }
 
-const fetchMyDives = async () => {
-  try {
-    const url = searchTerm.value.trim()
-      ? `/v1/dives/search?page=0&query=${encodeURIComponent(searchTerm.value)}`
-      : '/v1/dives?page=0&sortCol=NUMBER&sortDirection=ASCENDING'
-    const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(url)
-    myDives.value = res.data.result
-  } catch (err) {
-    console.error('Failed to fetch my dives', err)
-  }
-}
-
-const handleSearch = debounce(() => {
-  fetchMyDives()
-}, 300)
-
 const handleDelete = async () => {
   if (!dive.value) return
   try {
@@ -426,16 +354,8 @@ const handleDelete = async () => {
   }
 }
 
-const handleLinkDive = async (buddyDiveId: number) => {
-  if (!dive.value) return
-  try {
-    await postWithToken(`/v1/dives/${diveId.value}/link?buddyDiveId=${buddyDiveId}`, {})
-    toast.success('Dive linked successfully')
-    showLinkModal.value = false
-  } catch (err) {
-    console.error('Link failed', err)
-    toast.error('Failed to link dive')
-  }
+const onDiveLinked = () => {
+  showLinkModal.value = false
 }
 
 const formatDiveTime = (duration?: string): string => {
@@ -445,7 +365,6 @@ const formatDiveTime = (duration?: string): string => {
 onMounted(() => {
   fetchDive()
   fetchUserId()
-  fetchMyDives()
 })
 
 watch(() => diveId.value, fetchDive)

@@ -85,6 +85,39 @@
           <input
             type="checkbox"
             class="w-4 h-4"
+            :checked="showPo2Measured"
+            :disabled="disablePo2Measured"
+            :title="disablePo2Measured ? 'No PO₂ measured data' : ''"
+            @change="$emit('update:showPo2Measured', !showPo2Measured)"
+          />
+          <span class="font-bold text-sm" style="color: #1d4ed8">PO₂ measured</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showPo2Calculated"
+            :disabled="disablePo2Calculated"
+            :title="disablePo2Calculated ? 'No PO₂ calculated data' : ''"
+            @change="$emit('update:showPo2Calculated', !showPo2Calculated)"
+          />
+          <span class="font-bold text-sm" style="color: #d946ef">PO₂ calculated</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showPo2Setpoint"
+            :disabled="disablePo2Setpoint"
+            :title="disablePo2Setpoint ? 'No PO₂ setpoint data' : ''"
+            @change="$emit('update:showPo2Setpoint', !showPo2Setpoint)"
+          />
+          <span class="font-bold text-sm" style="color: #22c55e">PO₂ setpoint</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
             :checked="showRmv"
             :disabled="disableRmv"
             :title="disableRmv ? 'No RMV data' : ''"
@@ -138,6 +171,9 @@ defineProps<{
   showOtu: boolean
   showCns: boolean
   showGf: boolean
+  showPo2Measured: boolean
+  showPo2Calculated: boolean
+  showPo2Setpoint: boolean
   showRmv: boolean
   showGasO2: boolean
   showGasN2: boolean
@@ -147,6 +183,9 @@ defineProps<{
   disableOtu?: boolean
   disableCns?: boolean
   disableGf?: boolean
+  disablePo2Measured?: boolean
+  disablePo2Calculated?: boolean
+  disablePo2Setpoint?: boolean
   disableRmv?: boolean
   disableGasO2?: boolean
   disableGasN2?: boolean
@@ -160,6 +199,9 @@ defineEmits<{
   'update:showOtu': [value: boolean]
   'update:showCns': [value: boolean]
   'update:showGf': [value: boolean]
+  'update:showPo2Measured': [value: boolean]
+  'update:showPo2Calculated': [value: boolean]
+  'update:showPo2Setpoint': [value: boolean]
   'update:showRmv': [value: boolean]
   'update:showGasO2': [value: boolean]
   'update:showGasN2': [value: boolean]
