@@ -73,6 +73,30 @@
         >
           {{ status }}
         </p>
+
+        <!-- Hints & Tips -->
+        <div
+          class="mt-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4"
+        >
+          <div class="flex items-start gap-3">
+            <div class="text-amber-600 dark:text-amber-400 text-xl leading-none">
+              <i class="fas fa-lightbulb"></i>
+            </div>
+            <div>
+              <h2 class="font-semibold text-amber-900 dark:text-amber-200 mb-1">
+                Hints & Tips
+              </h2>
+              <ul class="list-disc pl-5 text-sm text-amber-900/90 dark:text-amber-100/90 space-y-1">
+                <li>
+                  Shearwater auto-merge: Add a <strong>+</strong> in front of the dive number in
+                  the Shearwater Cloud app before exporting to auto-merge the uploaded dive into an
+                  existing dive with the same number. If no such dive exists, the upload will
+                  return an error.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
