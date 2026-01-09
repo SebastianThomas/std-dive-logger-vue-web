@@ -186,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, computed, toRef } from 'vue'
+import { onMounted, onBeforeUnmount, ref, toRef } from 'vue'
 import MetricsControlPanel from '@/components/dive/view/MetricsControlPanel.vue'
 import DiveGraph from '@/components/dive/view/DiveGraph.vue'
 import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
@@ -235,10 +235,6 @@ const {
   hasGasN2,
   hasGasHe,
 } = useDiveGraphMetrics(profilesRef)
-
-const filteredProfiles = computed(() =>
-  props.profiles.filter((_, idx) => visibleProfiles.value[idx]),
-)
 
 const toggleProfile = (idx: number) => {
   visibleProfiles.value[idx] = !visibleProfiles.value[idx]

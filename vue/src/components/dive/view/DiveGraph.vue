@@ -1129,14 +1129,14 @@ function onMouseMoveD3(event: MouseEvent) {
 
   // Find closest measurement across visible profiles only
   const allMeasurements = props.profiles.flatMap((p, pIdx) =>
-    (visibleMask.value[pIdx]
+    visibleMask.value[pIdx]
       ? p.measurements.map((m, mIdx) => ({
           ...m,
           profileIdx: pIdx,
           profileStart: p.start,
           measurementIndex: mIdx,
         }))
-      : []),
+      : [],
   )
   if (!allMeasurements.length) return
 
