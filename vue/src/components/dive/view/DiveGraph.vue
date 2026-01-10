@@ -888,14 +888,21 @@ function onMouseMoveD3(event: MouseEvent) {
   // Show focus circle at data point
   focusCircle.value?.attr('cx', cx).attr('cy', cy).style('display', null)
 
-  // Calculate metric availability based on which profiles are displayed
+  // Calculate metric availability based on which profiles are visible in the graph
+  const visibleProfileIndices = visibleMask.value
+    .map((visible, idx) => (visible ? idx : -1))
+    .filter((idx) => idx >= 0)
+  
   let metricAvailability
-  if (props.selectedProfiles && props.selectedProfiles.length > 1) {
-    // Use combined availability of all profiles in selectedProfiles
-    metricAvailability = getCombinedMetricAvailability(props.selectedProfiles)
+  if (visibleProfileIndices.length > 1) {
+    // Use combined availability of all visible profiles
+    metricAvailability = getCombinedMetricAvailability(visibleProfileIndices)
+  } else if (visibleProfileIndices.length === 1) {
+    // Use only the single visible profile's availability
+    metricAvailability = getProfileMetricAvailability(visibleProfileIndices[0]!)
   } else {
-    // Use only the selected profile's availability
-    metricAvailability = getProfileMetricAvailability(selectedProfile.value)
+    // Fallback if no profiles are visible
+    metricAvailability = getProfileMetricAvailability(0)
   }
 
   tooltip.value = {

@@ -22,7 +22,6 @@
       </div>
       <div v-show="showMetrics" class="flex flex-wrap gap-3 items-center">
         <label class="flex items-center gap-1.5 cursor-pointer">
-          <input type="checkbox" checked disabled class="w-4 h-4" />
           <span class="font-bold text-sm" style="color: #ffffff">Depth</span>
         </label>
         <label class="flex items-center gap-1.5 cursor-pointer">
@@ -341,5 +340,9 @@ function handleRightAxisChange(event: Event): void {
 <style scoped>
 label input:disabled + span {
   opacity: 0.5;
+}
+label input:disabled + span,
+label input:not(:checked) + span {
+  font-weight: 400;
 }
 </style>

@@ -219,7 +219,7 @@
       <!-- Dive Profile Graph -->
       <div class="w-full flex justify-center mt-6">
         <div
-          class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full max-w-150 flex flex-col"
+          class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full flex flex-col"
         >
           <div class="flex justify-between items-center p-4">
             <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
