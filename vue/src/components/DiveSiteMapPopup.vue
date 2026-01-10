@@ -7,7 +7,7 @@
           <span class="dive-name-truncate">#{{ info.number }}: {{ info.customIdentifier }}</span>
           <router-link
             :to="`/dives/view/${info.id}`"
-            class="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 inline-block"
+            class="ml-2 px-2 py-1 bg-blue-600 text-white! rounded text-xs hover:bg-blue-700 inline-block"
           >
             View Dive
           </router-link>
