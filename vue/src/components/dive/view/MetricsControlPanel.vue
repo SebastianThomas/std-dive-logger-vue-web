@@ -21,7 +21,6 @@
         </button>
       </div>
       <div v-show="showMetrics" class="flex flex-wrap gap-3 items-center">
-        <span class="text-sm font-semibold" :style="{ color: 'var(--foreground)' }">Metrics:</span>
         <label class="flex items-center gap-1.5 cursor-pointer">
           <input type="checkbox" checked disabled class="w-4 h-4" />
           <span class="font-bold text-sm" style="color: #ffffff">Depth</span>
@@ -223,7 +222,7 @@
         <div class="flex flex-wrap w-full items-center justify-between">
           <div class="flex items-center gap-2">
             <select
-              :value="leftAxisMetric"
+              :value="props.leftAxisMetric"
               @input="handleLeftAxisChange"
               class="border rounded px-2 py-1 text-sm"
               :style="{
@@ -243,7 +242,7 @@
           </div>
           <div class="flex items-center gap-2">
             <select
-              :value="rightAxisMetric"
+              :value="props.rightAxisMetric"
               @input="handleRightAxisChange"
               class="border rounded px-2 py-1 text-sm"
               :style="{
@@ -271,7 +270,7 @@
 import { metricDisplayNames, type MetricType } from '@/lib/types/graph'
 import { ref } from 'vue'
 
-defineProps<{
+const props = defineProps<{
   selectedProfiles: number[]
   profilesCount: number
   showTemp: boolean

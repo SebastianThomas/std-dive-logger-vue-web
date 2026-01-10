@@ -34,18 +34,18 @@
           v-model:show-gas-o2="showGasO2"
           v-model:show-gas-n2="showGasN2"
           v-model:show-gas-he="showGasHe"
-          :disable-temp="!hasTemp"
-          :disable-ndl="!hasNdl"
-          :disable-otu="!hasOtu"
-          :disable-cns="!hasCns"
-          :disable-gf="!hasGf"
-          :disable-po2-measured="!hasPo2Measured"
-          :disable-po2-calculated="!hasPo2Calculated"
-          :disable-po2-setpoint="!hasPo2Setpoint"
-          :disable-rmv="!hasRmv"
-          :disable-gas-o2="!hasGasO2"
-          :disable-gas-n2="!hasGasN2"
-          :disable-gas-he="!hasGasHe"
+          :disable-temp="!combinedMetricsAvailability.hasTemp"
+          :disable-ndl="!combinedMetricsAvailability.hasNdl"
+          :disable-otu="!combinedMetricsAvailability.hasOtu"
+          :disable-cns="!combinedMetricsAvailability.hasCns"
+          :disable-gf="!combinedMetricsAvailability.hasGf"
+          :disable-po2-measured="!combinedMetricsAvailability.hasPo2Measured"
+          :disable-po2-calculated="!combinedMetricsAvailability.hasPo2Calculated"
+          :disable-po2-setpoint="!combinedMetricsAvailability.hasPo2Setpoint"
+          :disable-rmv="!combinedMetricsAvailability.hasRmv"
+          :disable-gas-o2="!combinedMetricsAvailability.hasGasO2"
+          :disable-gas-n2="!combinedMetricsAvailability.hasGasN2"
+          :disable-gas-he="!combinedMetricsAvailability.hasGasHe"
           :show-segments-toggle="true"
           v-model:left-axis-metric="leftAxisMetric"
           v-model:right-axis-metric="rightAxisMetric"
@@ -70,18 +70,18 @@
             :show-gas-o2="showGasO2"
             :show-gas-n2="showGasN2"
             :show-gas-he="showGasHe"
-            :has-temp="hasTemp"
-            :has-ndl="hasNdl"
-            :has-otu="hasOtu"
-            :has-cns="hasCns"
-            :has-gf="hasGf"
-            :has-po2-measured="hasPo2Measured"
-            :has-po2-calculated="hasPo2Calculated"
-            :has-po2-setpoint="hasPo2Setpoint"
-            :has-rmv="hasRmv"
-            :has-gas-o2="hasGasO2"
-            :has-gas-n2="hasGasN2"
-            :has-gas-he="hasGasHe"
+            :has-temp="combinedMetricsAvailability.hasTemp"
+            :has-ndl="combinedMetricsAvailability.hasNdl"
+            :has-otu="combinedMetricsAvailability.hasOtu"
+            :has-cns="combinedMetricsAvailability.hasCns"
+            :has-gf="combinedMetricsAvailability.hasGf"
+            :has-po2-measured="combinedMetricsAvailability.hasPo2Measured"
+            :has-po2-calculated="combinedMetricsAvailability.hasPo2Calculated"
+            :has-po2-setpoint="combinedMetricsAvailability.hasPo2Setpoint"
+            :has-rmv="combinedMetricsAvailability.hasRmv"
+            :has-gas-o2="combinedMetricsAvailability.hasGasO2"
+            :has-gas-n2="combinedMetricsAvailability.hasGasN2"
+            :has-gas-he="combinedMetricsAvailability.hasGasHe"
             :selected-profiles="selectedProfiles"
             v-model:left-axis-metric="leftAxisMetric"
             v-model:right-axis-metric="rightAxisMetric"
@@ -159,18 +159,18 @@
       v-model:show-gas-o2="showGasO2"
       v-model:show-gas-n2="showGasN2"
       v-model:show-gas-he="showGasHe"
-      :disable-temp="!hasTemp"
-      :disable-ndl="!hasNdl"
-      :disable-otu="!hasOtu"
-      :disable-cns="!hasCns"
-      :disable-gf="!hasGf"
-      :disable-po2-measured="!hasPo2Measured"
-      :disable-po2-calculated="!hasPo2Calculated"
-      :disable-po2-setpoint="!hasPo2Setpoint"
-      :disable-rmv="!hasRmv"
-      :disable-gas-o2="!hasGasO2"
-      :disable-gas-n2="!hasGasN2"
-      :disable-gas-he="!hasGasHe"
+      :disable-temp="!combinedMetricsAvailability.hasTemp"
+      :disable-ndl="!combinedMetricsAvailability.hasNdl"
+      :disable-otu="!combinedMetricsAvailability.hasOtu"
+      :disable-cns="!combinedMetricsAvailability.hasCns"
+      :disable-gf="!combinedMetricsAvailability.hasGf"
+      :disable-po2-measured="!combinedMetricsAvailability.hasPo2Measured"
+      :disable-po2-calculated="!combinedMetricsAvailability.hasPo2Calculated"
+      :disable-po2-setpoint="!combinedMetricsAvailability.hasPo2Setpoint"
+      :disable-rmv="!combinedMetricsAvailability.hasRmv"
+      :disable-gas-o2="!combinedMetricsAvailability.hasGasO2"
+      :disable-gas-n2="!combinedMetricsAvailability.hasGasN2"
+      :disable-gas-he="!combinedMetricsAvailability.hasGasHe"
       :show-segments-toggle="false"
       v-model:left-axis-metric="leftAxisMetric"
       v-model:right-axis-metric="rightAxisMetric"
@@ -194,18 +194,18 @@
         :show-gas-o2="showGasO2"
         :show-gas-n2="showGasN2"
         :show-gas-he="showGasHe"
-        :has-temp="hasTemp"
-        :has-ndl="hasNdl"
-        :has-otu="hasOtu"
-        :has-cns="hasCns"
-        :has-gf="hasGf"
-        :has-po2-measured="hasPo2Measured"
-        :has-po2-calculated="hasPo2Calculated"
-        :has-po2-setpoint="hasPo2Setpoint"
-        :has-rmv="hasRmv"
-        :has-gas-o2="hasGasO2"
-        :has-gas-n2="hasGasN2"
-        :has-gas-he="hasGasHe"
+        :has-temp="combinedMetricsAvailability.hasTemp"
+        :has-ndl="combinedMetricsAvailability.hasNdl"
+        :has-otu="combinedMetricsAvailability.hasOtu"
+        :has-cns="combinedMetricsAvailability.hasCns"
+        :has-gf="combinedMetricsAvailability.hasGf"
+        :has-po2-measured="combinedMetricsAvailability.hasPo2Measured"
+        :has-po2-calculated="combinedMetricsAvailability.hasPo2Calculated"
+        :has-po2-setpoint="combinedMetricsAvailability.hasPo2Setpoint"
+        :has-rmv="combinedMetricsAvailability.hasRmv"
+        :has-gas-o2="combinedMetricsAvailability.hasGasO2"
+        :has-gas-n2="combinedMetricsAvailability.hasGasN2"
+        :has-gas-he="combinedMetricsAvailability.hasGasHe"
         :selected-profiles="selectedProfiles"
         v-model:left-axis-metric="leftAxisMetric"
         v-model:right-axis-metric="rightAxisMetric"
@@ -223,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, toRef } from 'vue'
+import { onMounted, onBeforeUnmount, ref, toRef, computed } from 'vue'
 import MetricsControlPanel from '@/components/dive/view/MetricsControlPanel.vue'
 import DiveGraph from '@/components/dive/view/DiveGraph.vue'
 import ProfileAlignmentModal from '@/components/dive/view/ProfileAlignmentModal.vue'
@@ -262,18 +262,7 @@ const {
   showGasO2,
   showGasN2,
   showGasHe,
-  hasTemp,
-  hasNdl,
-  hasOtu,
-  hasCns,
-  hasGf,
-  hasPo2Measured,
-  hasPo2Calculated,
-  hasPo2Setpoint,
-  hasRmv,
-  hasGasO2,
-  hasGasN2,
-  hasGasHe,
+  getCombinedMetricAvailability,
 } = useDiveGraphMetrics(profilesRef)
 
 const leftAxisMetric = ref<MetricType>('depth')
@@ -288,8 +277,11 @@ const showAlignmentModal = ref(false)
 const handleProfilesAligned = (updatedDive: Dive) => {
   // Emit the updated dive to parent so it can refresh
   emit('profiles-aligned', updatedDive)
-  console.log('Profiles aligned successfully')
 }
+
+const combinedMetricsAvailability = computed(() =>
+  getCombinedMetricAvailability(selectedProfiles.value),
+)
 
 const emit = defineEmits<{
   close: []
