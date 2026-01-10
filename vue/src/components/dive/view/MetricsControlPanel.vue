@@ -158,6 +158,16 @@
           />
           <span class="font-bold text-sm" style="color: #f97316">Gas He</span>
         </label>
+        <label for="show-grid" class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            id="show-grid"
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showGrid"
+            @change="$emit('update:showGrid', !showGrid)"
+          />
+          <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">Grid</span>
+        </label>
       </div>
     </div>
   </div>
@@ -167,6 +177,7 @@
 defineProps<{
   showTemp: boolean
   showSegments: boolean
+  showGrid: boolean
   showNdl: boolean
   showOtu: boolean
   showCns: boolean
@@ -195,6 +206,7 @@ defineProps<{
 defineEmits<{
   'update:showTemp': [value: boolean]
   'update:showSegments': [value: boolean]
+  'update:showGrid': [value: boolean]
   'update:showNdl': [value: boolean]
   'update:showOtu': [value: boolean]
   'update:showCns': [value: boolean]

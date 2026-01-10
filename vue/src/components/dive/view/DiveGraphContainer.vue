@@ -20,6 +20,7 @@
           class="px-3 pt-3 shrink-0"
           v-model:show-temp="showTemp"
           v-model:show-segments="showSegments"
+          v-model:show-grid="showGrid"
           v-model:show-ndl="showNdl"
           v-model:show-otu="showOtu"
           v-model:show-cns="showCns"
@@ -47,16 +48,6 @@
         />
 
         <div class="graph-area flex-1 relative p-3">
-          <label class="graph-grid-toggle">
-            <input
-              type="checkbox"
-              class="w-4 h-4"
-              :checked="showGrid"
-              @change="showGrid = !showGrid"
-            />
-            <span>Show grid</span>
-          </label>
-
           <DiveGraph
             :profiles="profiles"
             :visible-profiles="visibleProfiles"
@@ -135,6 +126,7 @@
       class="px-4 mb-2"
       v-model:show-temp="showTemp"
       v-model:show-segments="showSegments"
+      v-model:show-grid="showGrid"
       v-model:show-ndl="showNdl"
       v-model:show-otu="showOtu"
       v-model:show-cns="showCns"
@@ -161,10 +153,6 @@
       :show-segments-toggle="false"
     />
     <div class="relative h-75">
-      <label class="inline-grid-toggle">
-        <input type="checkbox" class="w-4 h-4" :checked="showGrid" @change="showGrid = !showGrid" />
-        <span>Show grid</span>
-      </label>
       <DiveGraph
         :profiles="profiles"
         :visible-profiles="visibleProfiles"
@@ -519,52 +507,5 @@ onBeforeUnmount(() => {
 
 .graph-area {
   position: relative;
-}
-
-.graph-grid-toggle {
-  position: absolute;
-  top: 0;
-  right: 12px;
-  z-index: 25;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background-color: var(--card-bg, #ffffff);
-  color: var(--foreground, #111827);
-  border: 1px solid rgba(209, 213, 219, 0.8);
-  border-radius: 9999px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
-}
-
-[data-theme='dark'] .graph-grid-toggle {
-  border-color: #334155;
-  background-color: var(--card-bg, #111827);
-  color: var(--foreground, #e5e7eb);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-}
-
-.inline-grid-toggle {
-  position: absolute;
-  top: -2.5rem;
-  right: 12px;
-  z-index: 20;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background-color: var(--card-bg, #ffffff);
-  color: var(--foreground, #111827);
-  border: 1px solid rgba(209, 213, 219, 0.8);
-  border-radius: 9999px;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
-  font-size: 0.875rem;
-}
-
-[data-theme='dark'] .inline-grid-toggle {
-  background-color: var(--card-bg, #111827);
-  color: var(--foreground, #e5e7eb);
-  border-color: #334155;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 </style>
