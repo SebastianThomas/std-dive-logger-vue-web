@@ -61,6 +61,9 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       if (typeof parsed.showOtu === 'boolean') showOtu.value = parsed.showOtu
       if (typeof parsed.showCns === 'boolean') showCns.value = parsed.showCns
       if (typeof parsed.showGf === 'boolean') showGf.value = parsed.showGf
+      if (typeof parsed.showPo2Measured === 'boolean') showPo2Measured.value = parsed.showPo2Measured
+      if (typeof parsed.showPo2Calculated === 'boolean') showPo2Calculated.value = parsed.showPo2Calculated
+      if (typeof parsed.showPo2Setpoint === 'boolean') showPo2Setpoint.value = parsed.showPo2Setpoint
       if (typeof parsed.showRmv === 'boolean') showRmv.value = parsed.showRmv
       if (typeof parsed.showGasO2 === 'boolean') showGasO2.value = parsed.showGasO2
       if (typeof parsed.showGasN2 === 'boolean') showGasN2.value = parsed.showGasN2
