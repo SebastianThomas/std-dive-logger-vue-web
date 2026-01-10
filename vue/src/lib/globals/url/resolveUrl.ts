@@ -1,4 +1,4 @@
-import { AUTOCOMPLETE_URL, BASE_URL } from '../constants'
+import { AUTOCOMPLETE_URL, BASE_URL, IMPORTER_URL } from '../constants'
 
 // Resolve a possibly-relative API path against `BASE_URL` while avoiding
 // duplicate slashes (and preserving the protocol part like `https://`).
@@ -32,4 +32,7 @@ export function resolveUrl(path: string, baseUrl: string = BASE_URL || ''): stri
 
 export function resolveAutocompleteUrl(path: string): string {
   return resolveUrl(path, AUTOCOMPLETE_URL)
+}
+export function resolveImporterUrl(path: string): string {
+  return resolveUrl(path, IMPORTER_URL)
 }

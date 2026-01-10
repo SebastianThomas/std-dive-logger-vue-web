@@ -116,6 +116,7 @@ import axios from 'axios'
 import { useApi } from '@/composables/useApi'
 import CreateDiveSite from '@/components/CreateDiveSite.vue'
 import type { UploadDiveResult } from '@/lib/types/dive'
+import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
 
 const router = useRouter()
 const { postWithToken } = useApi()
@@ -180,8 +181,9 @@ const handleSubmit = async () => {
     formDataObj.append('uploadBody', bodyBlob)
     files.value.forEach((f) => formDataObj.append('file', f))
 
-    const res = (await postWithToken<UploadDiveResult>('/v1/dives/upload', formDataObj, {}, null))
-      .data
+    const res = (
+      await postWithToken<UploadDiveResult>(resolveImporterUrl(`/v1/import`), formDataObj, {}, null)
+    ).data
     const isErrors = res.errors && res.errors.length > 0
     const isDives = res.dives && res.dives.length > 0
     if (isErrors) {
