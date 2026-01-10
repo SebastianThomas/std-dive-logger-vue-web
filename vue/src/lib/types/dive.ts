@@ -183,3 +183,8 @@ export type SiteWithDives = {
   site: DiveSite
   diveInfo: BasicDiveInfo[]
 }
+
+export type AlignmentType =
+  | 'AUTO_MIN_AVG_DISTANCE'
+  | 'AUTO_MIN_AVG_SQ_DISTANCE'
+  | 'AUTO_MIN_MAX_DISTANCE'

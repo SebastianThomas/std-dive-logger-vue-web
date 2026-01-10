@@ -107,6 +107,9 @@
           />
           <span>{{ idx + 1 }}</span>
         </label>
+        <button class="align-button" title="Align profiles" @click="showAlignmentModal = true">
+          ⚖
+        </button>
       </div>
       <div
         class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs"
@@ -183,14 +186,23 @@
       />
     </div>
   </div>
+
+  <ProfileAlignmentModal
+    :profiles="profiles"
+    :dive-id="diveId"
+    :is-open="showAlignmentModal"
+    @close="showAlignmentModal = false"
+    @aligned="handleProfilesAligned"
+  />
 </template>
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, toRef } from 'vue'
 import MetricsControlPanel from '@/components/dive/view/MetricsControlPanel.vue'
 import DiveGraph from '@/components/dive/view/DiveGraph.vue'
+import ProfileAlignmentModal from '@/components/dive/view/ProfileAlignmentModal.vue'
 import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
-import type { DiveProfile } from '@/lib/types/dive'
+import type { Dive, DiveProfile } from '@/lib/types/dive'
 
 interface Props {
   profiles: DiveProfile[]
@@ -240,8 +252,17 @@ const toggleProfile = (idx: number) => {
   visibleProfiles.value[idx] = !visibleProfiles.value[idx]
 }
 
+const showAlignmentModal = ref(false)
+
+const handleProfilesAligned = (updatedDive: Dive) => {
+  // Emit the updated dive to parent so it can refresh
+  emit('profiles-aligned', updatedDive)
+  console.log('Profiles aligned successfully')
+}
+
 const emit = defineEmits<{
   close: []
+  'profiles-aligned': [updatedDive: Dive]
 }>()
 
 const onKeyDown = (e: KeyboardEvent) => {
@@ -469,6 +490,31 @@ onBeforeUnmount(() => {
 
 .profile-toggle span {
   white-space: nowrap;
+}
+
+.align-button {
+  padding: 2px 6px;
+  margin-left: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #10b981;
+  font-size: 16px;
+  transition:
+    transform 0.2s,
+    opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.align-button:hover {
+  transform: scale(1.2);
+  opacity: 0.8;
+}
+
+.align-button:active {
+  transform: scale(0.95);
 }
 
 .graph-area {

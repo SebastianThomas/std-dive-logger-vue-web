@@ -32,18 +32,18 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
   const hasCns = computed(() => measurements.value.some((m) => m.measurement.cns !== undefined))
   const hasGf = computed(() => measurements.value.some((m) => m.measurement.n2 !== undefined))
   const hasPo2Measured = computed(() =>
-    profiles.value.some((p) =>
-      p.measurements.filter((m) => m.measurement.po2?.measured !== undefined).length > 1,
+    profiles.value.some(
+      (p) => p.measurements.filter((m) => m.measurement.po2?.measured !== undefined).length > 1,
     ),
   )
   const hasPo2Calculated = computed(() =>
-    profiles.value.some((p) =>
-      p.measurements.filter((m) => m.measurement.po2?.calculated !== undefined).length > 1,
+    profiles.value.some(
+      (p) => p.measurements.filter((m) => m.measurement.po2?.calculated !== undefined).length > 1,
     ),
   )
   const hasPo2Setpoint = computed(() =>
-    profiles.value.some((p) =>
-      p.measurements.filter((m) => m.measurement.po2?.maxSetPoint !== undefined).length > 1,
+    profiles.value.some(
+      (p) => p.measurements.filter((m) => m.measurement.po2?.maxSetPoint !== undefined).length > 1,
     ),
   )
   const hasRmv = computed(() =>

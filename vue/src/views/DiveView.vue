@@ -9,6 +9,7 @@
       :dive-id="diveId"
       fullscreen
       @close="graphOpen = false"
+      @profiles-aligned="handleProfilesAligned"
     />
 
     <div v-else-if="!loading && dive" class="space-y-6 md:space-y-8">
@@ -228,7 +229,12 @@
               Expand
             </button>
           </div>
-          <DiveGraphContainer v-if="dive.profiles" :profiles="dive.profiles" :dive-id="diveId" />
+          <DiveGraphContainer
+            v-if="dive.profiles"
+            :profiles="dive.profiles"
+            :dive-id="diveId"
+            @profiles-aligned="handleProfilesAligned"
+          />
         </div>
       </div>
     </div>
@@ -356,6 +362,12 @@ const handleDelete = async () => {
 
 const onDiveLinked = () => {
   showLinkModal.value = false
+}
+
+const handleProfilesAligned = (updatedDive: Dive) => {
+  // Replace the current dive with the updated one from the alignment response
+  dive.value = updatedDive
+  toast.success('Profiles aligned successfully')
 }
 
 const formatDiveTime = (duration?: string): string => {
