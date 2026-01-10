@@ -4,7 +4,7 @@
     <span
       class="absolute top-full mt-1 left-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10"
     >
-      <span class="block">O₂: {{ o2Percent }}%, N₂: {{ n2Percent }}%, He: {{ hePercent }}%</span>
+      <span class="block">O2: {{ o2Percent }}%, N2: {{ n2Percent }}%, He: {{ hePercent }}%</span>
       <span v-if="showDetails && gas.description" class="block">{{ gas.description }}</span>
       <span v-if="showDetails && gas.size" class="block">Size: {{ formatSize(gas.size) }}</span>
       <span v-if="showDetails && gas.content" class="block"

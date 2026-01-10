@@ -7,9 +7,14 @@
     >
       Reset Zoom
     </button>
-    <DiveGraphAxisSelector v-model="leftAxisMetric" label="Left" position="left" />
-    <DiveGraphAxisSelector v-model="rightAxisMetric" label="Right" position="right" />
-    <DiveGraphTooltip :data="tooltip" :left="tooltipLeft" :top="tooltipTop" />
+
+    <DiveGraphTooltip
+      :data="tooltip"
+      :time="tooltipTime"
+      :left="tooltipLeft"
+      :top="tooltipTop"
+      :selected-profiles="props.selectedProfiles"
+    />
     <div
       v-if="showZoomHint"
       class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/75 text-white px-4 py-2 rounded-lg text-sm font-medium pointer-events-none z-20"
@@ -19,8 +24,15 @@
   </div>
 </template>
 
+<style scoped>
+div {
+  touch-action: manipulation;
+  overscroll-behavior-x: contain;
+}
+</style>
+
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, computed, onMounted, onBeforeUnmount, nextTick, toRef } from 'vue'
 import {
   select,
   line,
@@ -41,13 +53,23 @@ import DiveGraphTooltip, {
   type TooltipData,
   type TooltipProfileData,
 } from '@/components/dive/view/DiveGraphTooltip.vue'
-import DiveGraphAxisSelector, {
-  type AxisMetric,
-} from '@/components/dive/view/DiveGraphAxisSelector.vue'
 import type { DiveProfile, DiveMeasurementWithId, DiveProfileSegmentWithId } from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
-import { formatISoDurationToMinutes } from '@/lib/utils/timeUtils'
+import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
+import { formatISoDurationToMinutes, formatElapsedTime } from '@/lib/utils/timeUtils'
 import { generateId } from '@/lib/utils/cryptoUtils'
+import type { MetricType } from '@/lib/types/graph'
+import { DEFAULT_METRIC_CONFIGS } from '@/lib/types/graph'
+import { toKebabCase } from '@/lib/utils/stringUtils'
+import { getSegmentColor, findSegmentTypeAtIndex } from '@/lib/utils/diveSegmentUtils'
+import {
+  generateTimeAxisTicks,
+  formatAxisTick,
+  generateTemperatureTicks,
+  calculateTemperatureExtent,
+  getScaleForMetric,
+} from '@/lib/utils/graphUtils'
+import { createMetricConfigs, METRICS_TO_RENDER } from '@/lib/graph/metricExtractors'
 
 type Props = {
   profiles: DiveProfile[]
@@ -67,9 +89,29 @@ type Props = {
   showGasO2?: boolean
   showGasN2?: boolean
   showGasHe?: boolean
+  leftAxisMetric?: MetricType
+  rightAxisMetric?: MetricType
+  hasTemp?: boolean
+  hasNdl?: boolean
+  hasOtu?: boolean
+  hasCns?: boolean
+  hasGf?: boolean
+  hasPo2Measured?: boolean
+  hasPo2Calculated?: boolean
+  hasPo2Setpoint?: boolean
+  hasRmv?: boolean
+  hasGasO2?: boolean
+  hasGasN2?: boolean
+  hasGasHe?: boolean
+  selectedProfiles?: number[]
 }
 
 const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  'update:leftAxisMetric': [value: MetricType]
+  'update:rightAxisMetric': [value: MetricType]
+}>()
 
 // Visibility mask with safe defaults (all visible)
 const visibleMask = computed<boolean[]>(() => {
@@ -80,6 +122,10 @@ const visibleMask = computed<boolean[]>(() => {
   return props.visibleProfiles
 })
 
+const profilesRef = toRef(props, 'profiles')
+const { getProfileMetricAvailability, getCombinedMetricAvailability } =
+  useDiveGraphMetrics(profilesRef)
+
 const container = ref<HTMLElement | null>(null)
 const width = ref(600)
 const height = ref(300)
@@ -88,8 +134,10 @@ const innerWidth = computed(() => Math.max(10, width.value - margin.left - margi
 const innerHeight = computed(() => Math.max(10, height.value - margin.top - margin.bottom))
 
 const tooltip = ref<TooltipData | null>(null)
+const tooltipTime = ref(0)
 const tooltipLeft = ref(0)
 const tooltipTop = ref(0)
+const selectedProfile = computed(() => props.selectedProfiles?.[0] ?? 0)
 const showZoomHint = ref(false)
 let zoomHintTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -140,8 +188,16 @@ const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
 const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
 const { getWithToken } = useApi()
-const leftAxisMetric = ref<AxisMetric>('depth')
-const rightAxisMetric = ref<AxisMetric>('temp')
+
+const leftAxisMetric = computed({
+  get: () => props.leftAxisMetric ?? 'depth',
+  set: (value: MetricType) => emit('update:leftAxisMetric', value),
+})
+
+const rightAxisMetric = computed({
+  get: () => props.rightAxisMetric ?? 'temp',
+  set: (value: MetricType) => emit('update:rightAxisMetric', value),
+})
 
 let ro: ResizeObserver | null = null
 
@@ -181,28 +237,7 @@ function setupScales() {
     .map((m) => m.measurement.temperature?.value)
     .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
 
-  let tempExtent: [number, number]
-  if (temperatureValues.length > 0) {
-    const minTemp = Math.min(...temperatureValues)
-    const maxTemp = Math.max(...temperatureValues)
-
-    // Round down to nearest multiple of 5
-    let tempMin = Math.floor(minTemp / 5) * 5
-    // Round up to nearest multiple of 5
-    let tempMax = Math.ceil(maxTemp / 5) * 5
-
-    // Ensure minimum range of 10 degrees
-    const range = tempMax - tempMin
-    if (range < 10) {
-      const center = (tempMin + tempMax) / 2
-      tempMin = Math.floor((center - 5) / 5) * 5
-      tempMax = Math.ceil((center + 5) / 5) * 5
-    }
-
-    tempExtent = [tempMin, tempMax]
-  } else {
-    tempExtent = [10, 20]
-  }
+  const tempExtent = calculateTemperatureExtent(temperatureValues)
 
   const otuValues = allMeasurements
     .map((m) => m.measurement.o2Tox)
@@ -319,6 +354,8 @@ watch(
     props.showGasO2,
     props.showGasN2,
     props.showGasHe,
+    leftAxisMetric.value,
+    rightAxisMetric.value,
   ],
   async () => {
     setupScales()
@@ -331,7 +368,7 @@ watch(
 
 function initSvg() {
   if (!container.value) return
-  select(container.value).selectAll('*').remove()
+  select(container.value).selectAll('svg').remove()
   const svg = select(container.value)
     .append('svg')
     .attr('width', width.value)
@@ -489,52 +526,27 @@ function renderAll() {
 
   // Generate smart time axis ticks with 4-10 labels based on graph width and duration
   const timeRange = timeScale.value.domain() as [number, number]
-  const timeDuration = timeRange[1] - timeRange[0]
-  const timeDurationSeconds = timeDuration / 1000
-
-  // Sensible time intervals in seconds (in order of preference)
-  const intervals = [30, 60, 120, 300, 600, 1200, 1800, 3600]
-
-  // Target 4-10 labels; bias towards 6-7 labels for best readability
-  const targetLabelCount = Math.max(4, Math.min(10, Math.ceil(innerWidth.value / 100)))
-
-  // Find the best interval that gives us close to targetLabelCount labels
-  let bestInterval = 60
-  let bestDiff = Math.abs(Math.ceil(timeDurationSeconds / 60) - targetLabelCount)
-
-  for (const interval of intervals) {
-    const labelCount = Math.ceil(timeDurationSeconds / interval)
-    const diff = Math.abs(labelCount - targetLabelCount)
-
-    // Prefer intervals that give us 4-10 labels and are closest to target
-    if (labelCount >= 4 && labelCount <= 10 && diff < bestDiff) {
-      bestInterval = interval
-      bestDiff = diff
-    }
-  }
-
-  // Generate tick values starting from a clean interval boundary
-  const tickValues: number[] = []
-  const intervalMs = bestInterval * 1000
   const diveStart = props.profiles[0]?.start ?? 0
-  // Align ticks to the dive start time, not to epoch 0
-  const offsetFromDiveStart = timeRange[0] - diveStart
-  let firstTickOffset = Math.floor(offsetFromDiveStart / intervalMs) * intervalMs
-  if (firstTickOffset < offsetFromDiveStart) {
-    firstTickOffset += intervalMs
-  }
-  const firstTickTime = diveStart + firstTickOffset
-  for (let t = firstTickTime; t <= timeRange[1]; t += intervalMs) {
-    tickValues.push(t)
-  }
+  const tickValues = generateTimeAxisTicks(timeRange, diveStart, innerWidth.value)
 
   axes.x.value?.call(
     axisBottom(timeScale.value)
       .tickValues(tickValues)
-      .tickFormat((t): string => formatTimeDisplay(Number(t), props.profiles[0]?.start ?? 0)),
+      .tickFormat((t): string => formatElapsedTime(Number(t), props.profiles[0]?.start ?? 0)),
   )
-  const leftScale = getScaleFor(leftAxisMetric.value)
-  const rightScale = getScaleFor(rightAxisMetric.value)
+  const scales = {
+    depth: depthScale.value,
+    temp: tempScale.value,
+    ndl: ndlScale.value,
+    otu: otuScale.value,
+    cns: cnsScale.value,
+    gf: gfScale.value,
+    po2: po2Scale.value,
+    rmv: rmvScale.value,
+    gas: gasScale.value,
+  }
+  const leftScale = getScaleForMetric(leftAxisMetric.value, scales)
+  const rightScale = getScaleForMetric(rightAxisMetric.value, scales)
   if (leftScale) {
     const leftAxis = axisLeft(leftScale).tickFormat((d): string =>
       formatAxisTick(leftAxisMetric.value, Number(d)),
@@ -542,11 +554,7 @@ function renderAll() {
     // For temperature, show ticks every 5 degrees
     if (leftAxisMetric.value === 'temp') {
       const domain = leftScale.domain() as [number, number]
-      const tempTicks: number[] = []
-      for (let t = Math.ceil(domain[0] / 5) * 5; t <= domain[1]; t += 5) {
-        tempTicks.push(t)
-      }
-      leftAxis.tickValues(tempTicks)
+      leftAxis.tickValues(generateTemperatureTicks(domain))
     }
     axes.yDepth.value?.call(leftAxis)
   }
@@ -557,11 +565,7 @@ function renderAll() {
     // For temperature, show ticks every 5 degrees
     if (rightAxisMetric.value === 'temp') {
       const domain = rightScale.domain() as [number, number]
-      const tempTicks: number[] = []
-      for (let t = Math.ceil(domain[0] / 5) * 5; t <= domain[1]; t += 5) {
-        tempTicks.push(t)
-      }
-      rightAxis.tickValues(tempTicks)
+      rightAxis.tickValues(generateTemperatureTicks(domain))
     }
     axes.yAux.value?.call(rightAxis)
   }
@@ -605,30 +609,44 @@ function renderAll() {
       .attr('opacity', 0.8)
   })
 
+  // Metric configuration: maps metric type to its data extractor and line generator
+  const metricConfigs = createMetricConfigs(props, {
+    temp: tempLine,
+    ndl: ndlLine,
+    otu: otuLine,
+    cns: cnsLine,
+    gf: gfLine,
+    po2Measured: po2MeasuredLine,
+    po2Calculated: po2CalculatedLine,
+    po2Setpoint: po2SetpointLine,
+    rmv: rmvLine,
+    gasO2: gasO2Line,
+    gasN2: gasN2Line,
+    gasHe: gasHeLine,
+  })
+
   // Helper to draw multiple lines (one per profile) for a metric
-  const drawMetricLines = (
-    groupSelector: string,
-    extractor: (m: DiveMeasurementWithId) => [number, number] | null,
-    lineGen: Line<[number, number]> | null,
-    show: boolean,
-    color: string,
-    width: number = 1.5,
-  ): void => {
-    const group = gSel.value?.select(groupSelector)
+  const drawMetricLines = (metric: Exclude<MetricType, 'depth'>): void => {
+    const config = metricConfigs[metric]
+    const className = `.lines-${toKebabCase(metric)}`
+    const group = gSel.value?.select(className)
     if (!group) return
     group.selectAll('path').remove()
-    if (!show || !lineGen) return
+    if (!config.showProp || !config.lineRef.value) return
+
+    const color = DEFAULT_METRIC_CONFIGS[metric].color
+    const width = config.width ?? 1.5
 
     props.profiles.forEach((profile, idx) => {
       if (!visibleMask.value[idx]) return
       const points: [number, number][] = profile.measurements
-        .map(extractor)
+        .map(config.extractor)
         .filter((p): p is [number, number] => p !== null)
       if (points.length) {
         group
           .append('path')
           .datum(points)
-          .attr('d', lineGen(points) ?? '')
+          .attr('d', config.lineRef.value?.(points) ?? '')
           .attr('fill', 'none')
           .attr('stroke', color)
           .attr('stroke-width', width)
@@ -637,186 +655,8 @@ function renderAll() {
     })
   }
 
-  drawMetricLines(
-    '.lines-temp',
-    (m) =>
-      m.measurement.temperature?.value !== undefined
-        ? [m.measurement.time, m.measurement.temperature.value]
-        : null,
-    tempLine.value,
-    props.showTemp ?? false,
-    '#ef4444',
-  )
-
-  drawMetricLines(
-    '.lines-ndl',
-    (m) => (m.measurement.ndl ? [m.measurement.time, parseIsoMinutes(m.measurement.ndl)] : null),
-    ndlLine.value,
-    props.showNdl ?? false,
-    '#7c3aed',
-    1.2,
-  )
-
-  drawMetricLines(
-    '.lines-otu',
-    (m) => (m.measurement.o2Tox !== undefined ? [m.measurement.time, m.measurement.o2Tox] : null),
-    otuLine.value,
-    props.showOtu ?? false,
-    '#ec4899',
-    1.2,
-  )
-
-  drawMetricLines(
-    '.lines-cns',
-    (m) => (m.measurement.cns !== undefined ? [m.measurement.time, m.measurement.cns] : null),
-    cnsLine.value,
-    props.showCns ?? false,
-    '#fbbf24',
-    1.2,
-  )
-
-  drawMetricLines(
-    '.lines-gf',
-    (m) => (m.measurement.n2 !== undefined ? [m.measurement.time, m.measurement.n2] : null),
-    gfLine.value,
-    props.showGf ?? false,
-    '#8b5cf6',
-    1.2,
-  )
-
-  drawMetricLines(
-    '.lines-po2-measured',
-    (m) =>
-      m.measurement.po2?.measured !== undefined
-        ? [m.measurement.time, m.measurement.po2.measured]
-        : null,
-    po2MeasuredLine.value,
-    props.showPo2Measured ?? false,
-    '#1d4ed8',
-    1.2,
-  )
-
-  drawMetricLines(
-    '.lines-po2-calculated',
-    (m) =>
-      m.measurement.po2?.calculated !== undefined
-        ? [m.measurement.time, m.measurement.po2.calculated]
-        : null,
-    po2CalculatedLine.value,
-    props.showPo2Calculated ?? false,
-    '#d946ef',
-    1.2,
-  )
-
-  drawMetricLines(
-    '.lines-po2-setpoint',
-    (m) =>
-      m.measurement.po2?.maxSetPoint !== undefined
-        ? [m.measurement.time, m.measurement.po2.maxSetPoint]
-        : null,
-    po2SetpointLine.value,
-    props.showPo2Setpoint ?? false,
-    '#22c55e',
-    1.2,
-  )
-
-  drawMetricLines(
-    '.lines-rmv',
-    (m) =>
-      m.measurement.rmvLiters !== undefined ? [m.measurement.time, m.measurement.rmvLiters] : null,
-    rmvLine.value,
-    props.showRmv ?? false,
-    '#14b8a6',
-    1.2,
-  )
-
-  drawMetricLines(
-    '.lines-gas-o2',
-    (m) =>
-      m.measurement.gas?.o2 !== undefined ? [m.measurement.time, m.measurement.gas.o2 * 100] : null,
-    gasO2Line.value,
-    props.showGasO2 ?? false,
-    '#06b6d4',
-    1.2,
-  )
-
-  drawMetricLines(
-    '.lines-gas-n2',
-    (m) =>
-      m.measurement.gas?.n2 !== undefined ? [m.measurement.time, m.measurement.gas.n2 * 100] : null,
-    gasN2Line.value,
-    props.showGasN2 ?? false,
-    '#84cc16',
-    1.2,
-  )
-
-  drawMetricLines(
-    '.lines-gas-he',
-    (m) =>
-      m.measurement.gas?.he !== undefined ? [m.measurement.time, m.measurement.gas.he * 100] : null,
-    gasHeLine.value,
-    props.showGasHe ?? false,
-    '#f97316',
-    1.2,
-  )
-}
-
-function getScaleFor(metric: string): ScaleLinear<number, number> | null {
-  switch (metric) {
-    case 'depth':
-      return depthScale.value
-    case 'temp':
-      return tempScale.value
-    case 'ndl':
-      return ndlScale.value
-    case 'otu':
-      return otuScale.value
-    case 'cns':
-      return cnsScale.value
-    case 'gf':
-      return gfScale.value
-    case 'po2Measured':
-    case 'po2Calculated':
-    case 'po2Setpoint':
-      return po2Scale.value
-    case 'rmv':
-      return rmvScale.value
-    case 'gasO2':
-    case 'gasN2':
-    case 'gasHe':
-      return gasScale.value
-    default:
-      return null
-  }
-}
-
-function formatAxisTick(metric: string, v: number): string {
-  switch (metric) {
-    case 'depth':
-      return `${v} m`
-    case 'temp':
-      return `${v.toFixed(0)}°C`
-    case 'ndl':
-      return `${v}`
-    case 'otu':
-      return `${v}`
-    case 'cns':
-      return `${v}%`
-    case 'gf':
-      return `${v}%`
-    case 'po2Measured':
-    case 'po2Calculated':
-    case 'po2Setpoint':
-      return `${v.toFixed(2)} bar`
-    case 'rmv':
-      return `${v.toFixed(1)}`
-    case 'gasO2':
-    case 'gasN2':
-    case 'gasHe':
-      return `${v}%`
-    default:
-      return `${v}`
-  }
+  // Draw all metric lines
+  METRICS_TO_RENDER.forEach(drawMetricLines)
 }
 
 async function maybeFetchSegments() {
@@ -913,75 +753,21 @@ function renderSegments() {
     const width = Math.max(0, endX - startX)
 
     if (segmentsLayer.value !== null) {
+      const color = getSegmentColor(s.segment.type || '')
       segmentsLayer.value
         .append('rect')
         .attr('x', startX)
         .attr('y', 0)
         .attr('width', width)
         .attr('height', h)
-        .attr('fill', segmentColor(s.segment.type || ''))
+        .attr('fill', color)
         .attr('opacity', 0.3)
-        .attr('stroke', segmentColor(s.segment.type || ''))
+        .attr('stroke', color)
         .attr('stroke-width', 1.5)
         .attr('stroke-opacity', 0.5)
         .style('pointer-events', 'none')
     }
   })
-}
-
-function segmentColor(type: string) {
-  switch (type) {
-    case 'DESCENT':
-      return '#f59e0b' // amber
-    case 'HOLD_LEVEL':
-      return '#10b981' // emerald
-    case 'ASCENT':
-      return '#3b82f6' // blue
-    case 'SURFACE':
-      return '#6b7280' // gray
-    default:
-      return '#9ca3af'
-  }
-}
-
-function segmentTypeName(type: string) {
-  switch (type) {
-    case 'DESCENT':
-      return 'Descent'
-    case 'HOLD_LEVEL':
-      return 'Hold Level'
-    case 'ASCENT':
-      return 'Ascent'
-    case 'SURFACE':
-      return 'Surface'
-    default:
-      return type
-  }
-}
-
-function findSegmentAtIndex(profileIdx: number, measurementIdx: number): string | undefined {
-  if (!props.showSegments || !segmentsData.value) return undefined
-
-  // Get segments for this profile
-  const profileSegments = segmentsData.value.filter(
-    (s) => s?.segment && s.segment.profile.id === props.profiles[profileIdx]?.id,
-  )
-  if (!profileSegments.length) return undefined
-
-  // Find which segment contains this measurement index
-  const segment = profileSegments.find((s, i, arr) => {
-    if (!s?.segment || typeof s.segment.firstMeasurementIdx !== 'number') return false
-    const start = s.segment.firstMeasurementIdx
-    const profileMeasurements = props.profiles[profileIdx]?.measurements
-    const next = arr[i + 1]
-    const end =
-      next?.segment && typeof next.segment.firstMeasurementIdx === 'number'
-        ? next.segment.firstMeasurementIdx
-        : (profileMeasurements?.length ?? 0)
-    return measurementIdx >= start && measurementIdx < end
-  })
-
-  return segment?.segment?.type ? segmentTypeName(segment.segment.type) : undefined
 }
 
 function onMouseMoveD3(event: MouseEvent) {
@@ -1036,7 +822,7 @@ function onMouseMoveD3(event: MouseEvent) {
     profileDataList.push({
       profileIdx,
       profileNum: profileIdx + 1,
-      timeDisplay: formatTimeDisplay(m.measurement.time, m.profileStart),
+      timeDisplay: formatElapsedTime(m.measurement.time, m.profileStart),
       depth: m.measurement.depth,
       temp: m.measurement.temperature?.value,
       ndl: formatISoDurationToMinutes(m.measurement.ndl),
@@ -1051,16 +837,50 @@ function onMouseMoveD3(event: MouseEvent) {
       gasN2: m.measurement.gas?.n2 !== undefined ? m.measurement.gas.n2 * 100 : undefined,
       gasHe: m.measurement.gas?.he !== undefined ? m.measurement.gas.he * 100 : undefined,
       segmentType:
-        m.measurementIndex !== undefined && m.profileIdx !== undefined
-          ? findSegmentAtIndex(m.profileIdx, m.measurementIndex)
+        m.measurementIndex !== undefined &&
+        m.profileIdx !== undefined &&
+        props.profiles[m.profileIdx]
+          ? findSegmentTypeAtIndex(
+              segmentsData.value,
+              props.profiles[m.profileIdx]!.id,
+              m.measurementIndex,
+              props.profiles[m.profileIdx]!.measurements?.length ?? 0,
+            )
           : undefined,
     })
   })
 
   if (profileDataList.length === 0) return
 
-  const cx = timeScale.value(closestMeasurement.measurement.time)
-  const cy = depthScale.value(closestMeasurement.measurement.depth)
+  // Don't show tooltip if the selected profile is not visible
+  const selIdx = selectedProfile.value
+  if (selIdx < 0 || selIdx >= props.profiles.length || !visibleMask.value[selIdx]) {
+    onMouseLeave()
+    return
+  }
+
+  // Anchor crosshair/focus to the selected profile's nearest measurement
+  let anchorTime = closestMeasurement.measurement.time
+  let anchorDepth = closestMeasurement.measurement.depth
+  if (selIdx >= 0 && selIdx < props.profiles.length && visibleMask.value[selIdx]) {
+    const selProfile = props.profiles[selIdx]
+    if (selProfile) {
+      const selMeasurements = selProfile.measurements
+      if (selMeasurements && selMeasurements.length) {
+        const bSel = bisector((m: DiveMeasurementWithId) => m.measurement.time).center
+        const selMIdx = Math.min(
+          selMeasurements.length - 1,
+          Math.max(0, bSel(selMeasurements, tVal)),
+        )
+        const selM = selMeasurements[selMIdx]!
+        anchorTime = selM.measurement.time
+        anchorDepth = selM.measurement.depth
+      }
+    }
+  }
+
+  const cx = timeScale.value(anchorTime)
+  const cy = depthScale.value(anchorDepth)
 
   // Show crosshair line at cursor x position
   crosshairLine.value?.attr('x1', cx).attr('x2', cx).style('display', null)
@@ -1068,17 +888,59 @@ function onMouseMoveD3(event: MouseEvent) {
   // Show focus circle at data point
   focusCircle.value?.attr('cx', cx).attr('cy', cy).style('display', null)
 
-  tooltip.value = {
-    time: closestMeasurement.measurement.time,
-    profiles: profileDataList,
+  // Calculate metric availability based on which profiles are displayed
+  let metricAvailability
+  if (props.selectedProfiles && props.selectedProfiles.length > 1) {
+    // Use combined availability of all profiles in selectedProfiles
+    metricAvailability = getCombinedMetricAvailability(props.selectedProfiles)
+  } else {
+    // Use only the selected profile's availability
+    metricAvailability = getProfileMetricAvailability(selectedProfile.value)
   }
 
-  // Position tooltip: use mouse Y position instead of data point Y position
-  const tipX = cx + margin.left + 8
-  const mouseY = event.clientY - container.value!.getBoundingClientRect().top
-  const bounds = container.value!.getBoundingClientRect()
-  tooltipLeft.value = Math.min(bounds.width - 200, Math.max(0, tipX))
-  tooltipTop.value = Math.min(bounds.height - 100, Math.max(0, mouseY - 40))
+  tooltip.value = {
+    profiles: profileDataList,
+    metricAvailability,
+  }
+  tooltipTime.value = anchorTime
+
+  // Position tooltip to follow the mouse - measure on next tick to get actual rendered size
+  nextTick(() => {
+    const containerEl = container.value
+    if (!containerEl) return
+
+    const rect = containerEl.getBoundingClientRect()
+    const mouseX = event.clientX - rect.left
+    const mouseY = event.clientY - rect.top
+
+    // Measure actual tooltip element if available, otherwise use estimates
+    const tooltipEl = containerEl.querySelector(
+      '[class*="bg-white"][class*="dark:bg-gray"]',
+    ) as HTMLElement
+    const tooltipWidth = tooltipEl?.offsetWidth || 280
+    const tooltipHeight = tooltipEl?.offsetHeight || 120
+
+    const containerWidth = containerEl.offsetWidth
+    const containerHeight = containerEl.offsetHeight
+
+    // Try to position to the right of the mouse first
+    let xPos = mouseX + 8
+
+    // If tooltip would overflow on the right, move it to the left of the mouse cursor
+    if (xPos + tooltipWidth > containerWidth) {
+      xPos = mouseX - tooltipWidth - 8
+      // If it would go off the left edge, position at the far right
+      if (xPos < 0) {
+        xPos = Math.max(0, containerWidth - tooltipWidth)
+      }
+    }
+
+    // Position Y slightly above the mouse
+    const yPos = Math.min(containerHeight - tooltipHeight, Math.max(0, mouseY - 40))
+
+    tooltipLeft.value = xPos
+    tooltipTop.value = yPos
+  })
 }
 
 function pointerInG(event: MouseEvent): [number, number] {
@@ -1093,7 +955,10 @@ function onMouseLeave() {
   focusCircle.value?.style('display', 'none')
   crosshairLine.value?.style('display', 'none')
   tooltip.value = null
+  // tooltipSelectedProfile.value = 0
 }
+
+// selection controlled by parent via selectedProfile prop
 
 function resetZoom() {
   if (!timeScaleBase.value || !depthScaleBase.value) return
@@ -1106,47 +971,4 @@ function resetZoom() {
   renderAll()
   renderSegments()
 }
-
-function formatTimeDisplay(t: number, start: number) {
-  // Display as s, mm:ss, or hh:mm(:ss) relative to profile start
-  const dtMs = Math.max(0, Math.abs(t - start))
-  const totalSeconds = Math.round(dtMs / 1000)
-  if (totalSeconds < 60) {
-    return `${totalSeconds}s`
-  }
-  const seconds = totalSeconds % 60
-  const totalMinutes = Math.floor(totalSeconds / 60)
-  if (totalMinutes < 60) {
-    const mm = String(totalMinutes).padStart(2, '0')
-    const ss = String(seconds).padStart(2, '0')
-    return `${mm}:${ss}`
-  }
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-  const hh = String(hours).padStart(2, '0')
-  const mm = String(minutes).padStart(2, '0')
-  if (seconds > 0) {
-    const ss = String(seconds).padStart(2, '0')
-    return `${hh}:${mm}:${ss}`
-  }
-  return `${hh}:${mm}`
-}
-
-function parseIsoMinutes(ndl: string) {
-  if (!ndl) return 0
-  const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/u
-  const match = regex.exec(ndl)
-  if (!match) return 0
-  const hours = Number.parseInt(match[1] ?? '0', 10)
-  const minutes = Number.parseInt(match[2] ?? '0', 10)
-  const seconds = Number.parseInt(match[3] ?? '0', 10)
-  return hours * 60 + minutes + seconds / 60
-}
 </script>
-
-<style scoped>
-div {
-  touch-action: manipulation;
-  overscroll-behavior-x: contain;
-}
-</style>

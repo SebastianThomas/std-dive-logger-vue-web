@@ -1,14 +1,20 @@
 export type MetricType =
   | 'depth'
-  | 'temperature'
-  | 'cns'
+  | 'temp'
   | 'ndl'
-  | 'n2Loading'
-  | 'o2Tox'
-  | 'rmvLiters'
+  | 'otu'
+  | 'cns'
+  | 'gf'
+  | 'po2Measured'
+  | 'po2Calculated'
+  | 'po2Setpoint'
+  | 'rmv'
   | 'gasO2'
   | 'gasN2'
   | 'gasHe'
+
+// Alias for axis metrics (same as MetricType)
+export type AxisMetric = MetricType
 
 export type MetricConfig = {
   show: boolean
@@ -52,38 +58,47 @@ export type TooltipData = {
 
 export const DEFAULT_METRIC_CONFIGS: Record<MetricType, MetricConfig> = {
   depth: { show: true, color: '#9CA3AF' },
-  temperature: { show: true, color: '#2563eb' },
+  temp: { show: true, color: '#ef4444' },
   cns: { show: false, color: '#fbbf24' },
-  ndl: { show: false, color: '#991b1b' },
-  n2Loading: { show: false, color: '#8b5cf6' },
-  o2Tox: { show: false, color: '#ec4899' },
-  rmvLiters: { show: false, color: '#14b8a6' },
+  ndl: { show: false, color: '#7c3aed' },
+  gf: { show: false, color: '#8b5cf6' },
+  otu: { show: false, color: '#ec4899' },
+  po2Measured: { show: false, color: '#1d4ed8' },
+  po2Calculated: { show: false, color: '#d946ef' },
+  po2Setpoint: { show: false, color: '#22c55e' },
+  rmv: { show: false, color: '#14b8a6' },
   gasO2: { show: false, color: '#06b6d4' },
   gasN2: { show: false, color: '#84cc16' },
   gasHe: { show: false, color: '#f97316' },
 }
 
-export const metricLabels: Record<MetricType, string> = {
-  depth: 'Depth (m)',
-  temperature: 'Temperature',
-  cns: 'CNS (%)',
-  ndl: 'NDL (min)',
-  n2Loading: 'GF99 (%)',
-  o2Tox: 'OTUs',
-  rmvLiters: 'RMV (L/min)',
-  gasO2: 'Gas O2 (%)',
-  gasN2: 'Gas N2 (%)',
-  gasHe: 'Gas He (%)',
+export const metricUnits: Record<MetricType, string | null> = {
+  depth: 'm',
+  temp: '°C',
+  cns: '%',
+  ndl: 'min',
+  gf: '%',
+  otu: null,
+  po2Measured: 'bar',
+  po2Calculated: 'bar',
+  po2Setpoint: 'bar',
+  rmv: 'l/min',
+  gasO2: '%',
+  gasN2: '%',
+  gasHe: '%',
 }
 
 export const metricDisplayNames: Record<MetricType, string> = {
   depth: 'Depth',
-  temperature: 'Temperature',
+  temp: 'Temperature',
   cns: 'CNS',
   ndl: 'NDL',
-  n2Loading: 'GF99',
-  o2Tox: 'OTUs',
-  rmvLiters: 'RMV',
+  gf: 'GF99',
+  otu: 'OTUs',
+  po2Measured: 'PO2 measured',
+  po2Calculated: 'PO2 calculated',
+  po2Setpoint: 'PO2 setpoint',
+  rmv: 'RMV',
   gasO2: 'Gas O2',
   gasN2: 'Gas N2',
   gasHe: 'Gas He',

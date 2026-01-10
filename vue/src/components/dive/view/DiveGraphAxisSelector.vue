@@ -15,7 +15,11 @@
         borderColor: 'rgba(209,213,219,0.8)',
       }"
     >
-      <option v-for="[metric, n] in Object.entries(metricNames)" :key="metric" :value="metric">
+      <option
+        v-for="[metric, n] in Object.entries(metricDisplayNames)"
+        :key="metric"
+        :value="metric"
+      >
         {{ n }}
       </option>
     </select>
@@ -23,39 +27,10 @@
 </template>
 
 <script setup lang="ts">
-export type AxisMetric =
-  | 'depth'
-  | 'temp'
-  | 'ndl'
-  | 'otu'
-  | 'cns'
-  | 'gf'
-  | 'po2Measured'
-  | 'po2Calculated'
-  | 'po2Setpoint'
-  | 'rmv'
-  | 'gasO2'
-  | 'gasN2'
-  | 'gasHe'
-
-const metricNames: Record<AxisMetric, string> = {
-  depth: `Depth`,
-  temp: `Temp`,
-  ndl: `NDL`,
-  otu: `OTUs`,
-  cns: `CNS`,
-  gf: `GF99`,
-  po2Measured: `PO₂ measured`,
-  po2Calculated: `PO₂ calculated`,
-  po2Setpoint: `PO₂ setpoint`,
-  rmv: `RMV`,
-  gasO2: `Gas O₂`,
-  gasN2: `Gas N₂`,
-  gasHe: `Gas He`,
-}
+import { metricDisplayNames, type MetricType } from '@/lib/types/graph'
 
 interface Props {
-  modelValue: AxisMetric
+  modelValue: MetricType
   label: string
   position: 'left' | 'right'
 }
@@ -63,11 +38,11 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: AxisMetric]
+  'update:modelValue': [value: MetricType]
 }>()
 
 function handleInput(event: Event): void {
-  const value = (event.target as HTMLSelectElement).value as AxisMetric
+  const value = (event.target as HTMLSelectElement).value as MetricType
   emit('update:modelValue', value)
 }
 </script>

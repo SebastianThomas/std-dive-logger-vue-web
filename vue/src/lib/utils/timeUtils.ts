@@ -79,3 +79,59 @@ export function formatISoDurationToMinutes(duration?: string | null): string {
 
   return `${totalMinutes} min`
 }
+
+/**
+ * Parses ISO 8601 duration string (PT format) to total minutes as a number.
+ * Includes fractional minutes from seconds.
+ * @param duration ISO 8601 duration string (e.g., "PT1H30M45S", "PT30M", "PT45S")
+ * @returns Total minutes as a decimal number (e.g., 90.75 for 1h 30m 45s) or 0 if invalid/empty
+ */
+export function parseISODurationToMinutes(duration?: string | null): number {
+  if (!duration) return 0
+
+  const result = parseISODuration(duration)
+  if ('invalid' in result) return 0
+
+  const { hours, minutes, seconds } = result
+  return hours * 60 + minutes + seconds / 60
+}
+
+/**
+ * Formats elapsed time from milliseconds to a human-readable string.
+ * Displays as "Xs", "MM:SS", or "HH:MM:SS" depending on duration.
+ * @param timeMs The time value in milliseconds
+ * @param startMs The start time in milliseconds to calculate elapsed time from
+ * @returns Formatted time string (e.g., "45s", "05:30", "01:30:45")
+ */
+export function formatElapsedTime(timeMs: number, startMs: number): string {
+  const dtMs = Math.max(0, Math.abs(timeMs - startMs))
+  const totalSeconds = Math.round(dtMs / 1000)
+
+  // Less than 1 minute: show as seconds
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`
+  }
+
+  const seconds = totalSeconds % 60
+  const totalMinutes = Math.floor(totalSeconds / 60)
+
+  // Less than 1 hour: show as MM:SS
+  if (totalMinutes < 60) {
+    const mm = String(totalMinutes).padStart(2, '0')
+    const ss = String(seconds).padStart(2, '0')
+    return `${mm}:${ss}`
+  }
+
+  // 1 hour or more: show as HH:MM or HH:MM:SS
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  const hh = String(hours).padStart(2, '0')
+  const mm = String(minutes).padStart(2, '0')
+
+  if (seconds > 0) {
+    const ss = String(seconds).padStart(2, '0')
+    return `${hh}:${mm}:${ss}`
+  }
+
+  return `${hh}:${mm}`
+}

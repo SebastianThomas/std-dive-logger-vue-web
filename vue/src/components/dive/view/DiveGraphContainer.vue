@@ -18,6 +18,8 @@
       <div class="w-full h-full flex flex-col overflow-hidden">
         <MetricsControlPanel
           class="px-3 pt-3 shrink-0"
+          v-model:selected-profiles="selectedProfiles"
+          :profiles-count="profiles.length"
           v-model:show-temp="showTemp"
           v-model:show-segments="showSegments"
           v-model:show-grid="showGrid"
@@ -45,6 +47,8 @@
           :disable-gas-n2="!hasGasN2"
           :disable-gas-he="!hasGasHe"
           :show-segments-toggle="true"
+          v-model:left-axis-metric="leftAxisMetric"
+          v-model:right-axis-metric="rightAxisMetric"
         />
 
         <div class="graph-area flex-1 relative p-3">
@@ -66,6 +70,21 @@
             :show-gas-o2="showGasO2"
             :show-gas-n2="showGasN2"
             :show-gas-he="showGasHe"
+            :has-temp="hasTemp"
+            :has-ndl="hasNdl"
+            :has-otu="hasOtu"
+            :has-cns="hasCns"
+            :has-gf="hasGf"
+            :has-po2-measured="hasPo2Measured"
+            :has-po2-calculated="hasPo2Calculated"
+            :has-po2-setpoint="hasPo2Setpoint"
+            :has-rmv="hasRmv"
+            :has-gas-o2="hasGasO2"
+            :has-gas-n2="hasGasN2"
+            :has-gas-he="hasGasHe"
+            :selected-profiles="selectedProfiles"
+            v-model:left-axis-metric="leftAxisMetric"
+            v-model:right-axis-metric="rightAxisMetric"
           />
         </div>
       </div>
@@ -124,6 +143,8 @@
     </div>
     <MetricsControlPanel
       class="px-4 mb-2"
+      v-model:selected-profiles="selectedProfiles"
+      :profiles-count="profiles.length"
       v-model:show-temp="showTemp"
       v-model:show-segments="showSegments"
       v-model:show-grid="showGrid"
@@ -151,6 +172,8 @@
       :disable-gas-n2="!hasGasN2"
       :disable-gas-he="!hasGasHe"
       :show-segments-toggle="false"
+      v-model:left-axis-metric="leftAxisMetric"
+      v-model:right-axis-metric="rightAxisMetric"
     />
     <div class="relative h-75">
       <DiveGraph
@@ -171,6 +194,21 @@
         :show-gas-o2="showGasO2"
         :show-gas-n2="showGasN2"
         :show-gas-he="showGasHe"
+        :has-temp="hasTemp"
+        :has-ndl="hasNdl"
+        :has-otu="hasOtu"
+        :has-cns="hasCns"
+        :has-gf="hasGf"
+        :has-po2-measured="hasPo2Measured"
+        :has-po2-calculated="hasPo2Calculated"
+        :has-po2-setpoint="hasPo2Setpoint"
+        :has-rmv="hasRmv"
+        :has-gas-o2="hasGasO2"
+        :has-gas-n2="hasGasN2"
+        :has-gas-he="hasGasHe"
+        :selected-profiles="selectedProfiles"
+        v-model:left-axis-metric="leftAxisMetric"
+        v-model:right-axis-metric="rightAxisMetric"
       />
     </div>
   </div>
@@ -191,6 +229,7 @@ import DiveGraph from '@/components/dive/view/DiveGraph.vue'
 import ProfileAlignmentModal from '@/components/dive/view/ProfileAlignmentModal.vue'
 import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
 import type { Dive, DiveProfile } from '@/lib/types/dive'
+import type { MetricType } from '@/lib/types/graph'
 
 interface Props {
   profiles: DiveProfile[]
@@ -203,6 +242,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const visibleProfiles = ref<boolean[]>([])
+const selectedProfiles = ref<number[]>([0])
 const showRotateTip = ref(false)
 const isClosing = ref(false)
 
@@ -235,6 +275,9 @@ const {
   hasGasN2,
   hasGasHe,
 } = useDiveGraphMetrics(profilesRef)
+
+const leftAxisMetric = ref<MetricType>('depth')
+const rightAxisMetric = ref<MetricType>('temp')
 
 const toggleProfile = (idx: number) => {
   visibleProfiles.value[idx] = !visibleProfiles.value[idx]

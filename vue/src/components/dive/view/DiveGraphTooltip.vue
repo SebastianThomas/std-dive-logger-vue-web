@@ -1,132 +1,118 @@
 <template>
   <div
     v-if="data"
-    class="absolute bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 shadow rounded px-2 py-1 pointer-events-none max-w-xs"
-    :style="{ left: left + 'px', top: top + 'px' }"
+    class="absolute bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 shadow rounded px-2 py-1 pointer-events-auto"
+    :style="{ left: left + 'px', top: top + 'px', width: (props.selectedProfiles && props.selectedProfiles.length > 1) ? 'auto' : '10rem', maxWidth: (props.selectedProfiles && props.selectedProfiles.length > 1) ? '20rem' : '10rem' }"
+    @mousedown.stop
+    @click.stop
   >
+    <!-- Header with time -->
     <div class="font-semibold mb-1">
-      Time: {{ data.profiles[0]?.timeDisplay }}
-      <span v-if="data.profiles.length > 1 && !showAllProfiles" class="text-xs opacity-70 ml-1">
-        ({{ data.profiles.length }} profiles)
+      Time: {{ currentProfile?.timeDisplay ?? data.profiles[0]?.timeDisplay }}
+      <span v-if="data.profiles.length > 1" class="text-xs opacity-70 ml-1">
+        ({{ selectedProfile + 1 }}/{{ data.profiles.length }})
       </span>
     </div>
 
-    <!-- Toggle for multiple profiles -->
-    <div
-      v-if="data.profiles.length > 1"
-      class="mb-1 pb-1 border-b border-gray-300 dark:border-gray-600"
-    >
-      <button
-        @click="showAllProfiles = !showAllProfiles"
-        class="text-xs px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-      >
-        {{ showAllProfiles ? 'Show Active' : 'Show All' }}
-      </button>
+    <!-- Show selected profile data or all profiles -->
+    <div v-if="props.selectedProfiles && props.selectedProfiles.length > 1" class="grid gap-3" :style="{ gridTemplateColumns: `repeat(${Math.min(data.profiles.length, 3)}, 1fr)` }">
+      <div v-for="(profile, idx) in data.profiles" :key="idx" :class="[idx > 0 ? 'border-l pl-2 border-gray-300 dark:border-gray-600' : '']">
+        <div class="font-semibold text-xs mb-1">Profile {{ profile.profileNum }}</div>
+        <div class="profile-data">
+          <div>Depth: {{ profile.depth != null ? profile.depth.toFixed(1) : '-' }} m</div>
+          <div v-if="data.metricAvailability.hasTemp">
+            Temp: {{ profile.temp !== undefined ? profile.temp.toFixed(1) : '-' }} °C
+          </div>
+          <div v-if="data.metricAvailability.hasNdl">
+            NDL: {{ profile.ndl !== undefined ? profile.ndl : '-' }}
+          </div>
+          <div v-if="data.metricAvailability.hasOtu">
+            OTU: {{ profile.otu !== undefined ? profile.otu.toFixed(0) : '-' }}
+          </div>
+          <div v-if="data.metricAvailability.hasCns">
+            CNS: {{ profile.cns !== undefined ? profile.cns.toFixed(0) : '-' }}%
+          </div>
+          <div v-if="data.metricAvailability.hasGf">
+            GF: {{ profile.gf !== undefined ? profile.gf.toFixed(0) : '-' }}%
+          </div>
+          <div v-if="data.metricAvailability.hasRmv">
+            RMV: {{ profile.rmv ? profile.rmv.toFixed(0) : '-' }} L/m
+          </div>
+          <div v-if="data.metricAvailability.hasPo2Measured">
+            PO2(m): {{ profile.po2Measured ? profile.po2Measured.toFixed(2) : '-' }}
+          </div>
+          <div v-if="data.metricAvailability.hasPo2Calculated">
+            PO2(c): {{ profile.po2Calculated ? profile.po2Calculated.toFixed(2) : '-' }}
+          </div>
+          <div v-if="data.metricAvailability.hasPo2Setpoint">
+            PO2(s): {{ profile.po2Setpoint ? profile.po2Setpoint.toFixed(2) : '-' }}
+          </div>
+          <div v-if="data.metricAvailability.hasGasO2 || data.metricAvailability.hasGasHe">
+            <div v-if="profile.gasO2 !== undefined && profile.gasHe !== undefined">
+              Gas: {{ profile.gasO2.toFixed(0) }}/{{ profile.gasHe.toFixed(0) }}
+            </div>
+            <div v-else>Gas: -</div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Show either active profile or all profiles -->
-    <template v-if="showAllProfiles">
+    <!-- Show selected profile data (original view) -->
+    <div v-else-if="currentProfile" class="profile-data">
+      <div>Depth: {{ currentProfile.depth != null ? currentProfile.depth.toFixed(1) : '-' }} m</div>
+      <div v-if="data.metricAvailability.hasTemp">
+        Temperature: {{ currentProfile.temp !== undefined ? currentProfile.temp.toFixed(1) : '-' }} °C
+      </div>
+      <div v-if="data.metricAvailability.hasNdl">
+        NDL: {{ currentProfile.ndl !== undefined ? currentProfile.ndl : '-' }}
+      </div>
+      <div v-if="data.metricAvailability.hasOtu">
+        OTUs: {{ currentProfile.otu !== undefined ? currentProfile.otu.toFixed(0) : '-' }}
+      </div>
+      <div v-if="data.metricAvailability.hasCns">
+        CNS: {{ currentProfile.cns !== undefined ? currentProfile.cns.toFixed(0) : '-' }}%
+      </div>
+      <div v-if="data.metricAvailability.hasGf">
+        GF99: {{ currentProfile.gf !== undefined ? currentProfile.gf.toFixed(0) : '-' }}%
+      </div>
+      <div v-if="data.metricAvailability.hasRmv">
+        RMV: {{ currentProfile.rmv ? currentProfile.rmv.toFixed(0) : '-' }} L/min
+      </div>
+      <div v-if="data.metricAvailability.hasPo2Measured">
+        PO2 (measured): {{ currentProfile.po2Measured ? currentProfile.po2Measured.toFixed(2) : '-' }} bar
+      </div>
+      <div v-if="data.metricAvailability.hasPo2Calculated">
+        PO2 (calculated): {{ currentProfile.po2Calculated ? currentProfile.po2Calculated.toFixed(2) : '-' }} bar
+      </div>
+      <div v-if="data.metricAvailability.hasPo2Setpoint">
+        PO2 (setpoint): {{ currentProfile.po2Setpoint ? currentProfile.po2Setpoint.toFixed(2) : '-' }} bar
+      </div>
+      <div v-if="data.metricAvailability.hasGasO2 || data.metricAvailability.hasGasHe">
+        <div v-if="(currentProfile.gasO2 !== undefined || currentProfile.gasN2 !== undefined || currentProfile.gasHe !== undefined)" class="group relative">
+          <div v-if="currentProfile.gasO2 !== undefined && currentProfile.gasHe !== undefined">Gas: {{ currentProfile.gasO2.toFixed(0) }}/{{ currentProfile.gasHe.toFixed(0) }}</div>
+          <div v-else>Gas: -</div>
+          <div
+            class="absolute left-full ml-2 top-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+            v-if="currentProfile.gasN2 !== undefined"
+            >
+            O2: {{ currentProfile.gasO2?.toFixed(0) ?? '-' }}%, N2: {{ currentProfile.gasN2.toFixed(0) }}%,
+            He: {{ currentProfile.gasHe?.toFixed(0) ?? '-' }}%
+          </div>
+        </div>
+        <div v-else>Gas: -</div>
+      </div>
       <div
-        v-for="(profile, pIdx) in data.profiles"
-        :key="pIdx"
-        class="mb-2 pb-2"
-        :class="{
-          'border-b border-gray-300 dark:border-gray-600': pIdx < data.profiles.length - 1,
-        }"
+        v-if="currentProfile.segmentType"
+        class="mt-1 pt-1 border-t border-gray-300 dark:border-gray-600"
       >
-        <div class="font-semibold text-xs opacity-80">Profile {{ profile.profileNum }}</div>
-        <div>Depth: {{ profile.depth.toFixed(1) }} m</div>
-        <div v-if="profile.temp !== undefined">Temp: {{ profile.temp.toFixed(1) }} °C</div>
-        <div v-if="profile.ndl">NDL: {{ profile.ndl }}</div>
-        <div v-if="profile.otu !== undefined">OTUs: {{ profile.otu.toFixed(0) }}</div>
-        <div v-if="profile.cns !== undefined">CNS: {{ profile.cns.toFixed(0) }}%</div>
-        <div v-if="profile.gf !== undefined">GF99: {{ profile.gf.toFixed(0) }}%</div>
-        <div v-if="profile.rmv !== undefined">RMV: {{ profile.rmv.toFixed(0) }} L/min</div>
-        <div v-if="profile.po2Measured !== undefined">
-          PO₂ (meas): {{ profile.po2Measured.toFixed(2) }} bar
-        </div>
-        <div v-if="profile.po2Calculated !== undefined">
-          PO₂ (calc): {{ profile.po2Calculated.toFixed(2) }} bar
-        </div>
-        <div v-if="profile.po2Setpoint !== undefined">
-          PO₂ (setpoint): {{ profile.po2Setpoint.toFixed(2) }} bar
-        </div>
-        <div
-          v-if="profile.gasO2 !== undefined && profile.gasHe !== undefined"
-          class="group relative"
-        >
-          <div>Gas: {{ profile.gasO2.toFixed(0) }}/{{ profile.gasHe.toFixed(0) }}</div>
-          <div
-            class="absolute left-full ml-2 top-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-          >
-            O₂: {{ profile.gasO2.toFixed(0) }}%, N₂: {{ profile.gasN2?.toFixed(0) }}%, He:
-            {{ profile.gasHe.toFixed(0) }}%
-          </div>
-        </div>
-        <div
-          v-if="profile.segmentType"
-          class="mt-1 pt-1 border-t border-gray-300 dark:border-gray-600"
-        >
-          Segment: {{ profile.segmentType }}
-        </div>
+        Segment: {{ currentProfile.segmentType }}
       </div>
-    </template>
-    <template v-else>
-      <!-- Show only the first (active) profile -->
-      <div v-if="data.profiles[0]">
-        <div>Depth: {{ data.profiles[0].depth.toFixed(1) }} m</div>
-        <div v-if="data.profiles[0].temp !== undefined">
-          Temp: {{ data.profiles[0].temp.toFixed(1) }} °C
-        </div>
-        <div v-if="data.profiles[0].ndl">NDL: {{ data.profiles[0].ndl }}</div>
-        <div v-if="data.profiles[0].otu !== undefined">
-          OTUs: {{ data.profiles[0].otu.toFixed(0) }}
-        </div>
-        <div v-if="data.profiles[0].cns !== undefined">
-          CNS: {{ data.profiles[0].cns.toFixed(0) }}%
-        </div>
-        <div v-if="data.profiles[0].gf !== undefined">
-          GF99: {{ data.profiles[0].gf.toFixed(0) }}%
-        </div>
-        <div v-if="data.profiles[0].rmv !== undefined">
-          RMV: {{ data.profiles[0].rmv.toFixed(0) }} L/min
-        </div>
-        <div v-if="data.profiles[0].po2Measured !== undefined">
-          PO₂ (meas): {{ data.profiles[0].po2Measured.toFixed(2) }} bar
-        </div>
-        <div v-if="data.profiles[0].po2Calculated !== undefined">
-          PO₂ (calc): {{ data.profiles[0].po2Calculated.toFixed(2) }} bar
-        </div>
-        <div v-if="data.profiles[0].po2Setpoint !== undefined">
-          PO₂ (setpoint): {{ data.profiles[0].po2Setpoint.toFixed(2) }} bar
-        </div>
-        <div
-          v-if="data.profiles[0].gasO2 !== undefined && data.profiles[0].gasHe !== undefined"
-          class="group relative"
-        >
-          <div>
-            Gas: {{ data.profiles[0].gasO2.toFixed(0) }}/{{ data.profiles[0].gasHe.toFixed(0) }}
-          </div>
-          <div
-            class="absolute left-full ml-2 top-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-          >
-            O₂: {{ data.profiles[0].gasO2.toFixed(0) }}%, N₂:
-            {{ data.profiles[0].gasN2?.toFixed(0) }}%, He: {{ data.profiles[0].gasHe.toFixed(0) }}%
-          </div>
-        </div>
-        <div
-          v-if="data.profiles[0].segmentType"
-          class="mt-1 pt-1 border-t border-gray-300 dark:border-gray-600"
-        >
-          Segment: {{ data.profiles[0].segmentType }}
-        </div>
-      </div>
-    </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed } from 'vue'
 
 export type TooltipProfileData = {
   profileIdx: number
@@ -138,9 +124,9 @@ export type TooltipProfileData = {
   otu?: number
   cns?: number
   gf?: number
-  po2Measured?: number
-  po2Calculated?: number
-  po2Setpoint?: number
+  po2Measured?: number | null
+  po2Calculated?: number | null
+  po2Setpoint?: number | null
   rmv?: number
   gasO2?: number
   gasN2?: number
@@ -148,18 +134,35 @@ export type TooltipProfileData = {
   segmentType?: string
 }
 
+export type MetricAvailability = {
+  hasTemp: boolean
+  hasNdl: boolean
+  hasOtu: boolean
+  hasCns: boolean
+  hasGf: boolean
+  hasPo2Measured: boolean
+  hasPo2Calculated: boolean
+  hasPo2Setpoint: boolean
+  hasRmv: boolean
+  hasGasO2: boolean
+  hasGasN2: boolean
+  hasGasHe: boolean
+}
+
 export type TooltipData = {
-  time: number
   profiles: TooltipProfileData[]
+  metricAvailability: MetricAvailability
 }
 
 interface Props {
   data: TooltipData | null
+  time?: number
   left: number
   top: number
+  selectedProfiles?: number[]
 }
 
-defineProps<Props>()
-
-const showAllProfiles = ref(false)
+const props = defineProps<Props>()
+const selectedProfile = computed(() => props.selectedProfiles?.[0] ?? 0)
+const currentProfile = computed(() => props.data?.profiles[selectedProfile.value])
 </script>
