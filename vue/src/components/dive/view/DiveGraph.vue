@@ -7,101 +7,9 @@
     >
       Reset Zoom
     </button>
-    <!-- Axis selectors and labels -->
-    <div
-      class="absolute top-2 left-2 z-10 flex items-center gap-2 text-xs"
-      :style="{ color: 'var(--foreground)' }"
-    >
-      <span>Left:</span>
-      <select
-        v-model="leftAxisMetric"
-        class="border rounded px-1 py-0.5"
-        :style="{
-          backgroundColor: 'var(--card-bg)',
-          color: 'var(--foreground)',
-          borderColor: 'rgba(209,213,219,0.8)',
-        }"
-      >
-        <option value="depth">Depth</option>
-        <option value="temp">Temp</option>
-        <option value="ndl">NDL</option>
-        <option value="otu">OTUs</option>
-        <option value="cns">CNS</option>
-        <option value="gf">GF99</option>
-        <option value="po2Measured">PO₂ measured</option>
-        <option value="po2Calculated">PO₂ calculated</option>
-        <option value="po2Setpoint">PO₂ setpoint</option>
-        <option value="rmv">RMV</option>
-        <option value="gasO2">Gas O₂</option>
-        <option value="gasN2">Gas N₂</option>
-        <option value="gasHe">Gas He</option>
-      </select>
-    </div>
-    <div
-      class="absolute top-2 right-24 z-10 flex items-center gap-2 text-xs"
-      :style="{ color: 'var(--foreground)' }"
-    >
-      <span>Right:</span>
-      <select
-        v-model="rightAxisMetric"
-        class="border rounded px-1 py-0.5"
-        :style="{
-          backgroundColor: 'var(--card-bg)',
-          color: 'var(--foreground)',
-          borderColor: 'rgba(209,213,219,0.8)',
-        }"
-      >
-        <option value="temp">Temp</option>
-        <option value="ndl">NDL</option>
-        <option value="otu">OTUs</option>
-        <option value="cns">CNS</option>
-        <option value="gf">GF99</option>
-        <option value="po2Measured">PO₂ measured</option>
-        <option value="po2Calculated">PO₂ calculated</option>
-        <option value="po2Setpoint">PO₂ setpoint</option>
-        <option value="rmv">RMV</option>
-        <option value="gasO2">Gas O₂</option>
-        <option value="gasN2">Gas N₂</option>
-        <option value="gasHe">Gas He</option>
-      </select>
-    </div>
-    <!-- Tooltip -->
-    <div
-      v-if="tooltip"
-      class="absolute bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 shadow rounded px-2 py-1 pointer-events-none"
-      :style="{ left: tooltipLeft + 'px', top: tooltipTop + 'px' }"
-    >
-      <div class="font-semibold">Time: {{ tooltip.timeDisplay }}</div>
-      <div>Depth: {{ tooltip.depth.toFixed(1) }} m</div>
-      <div v-if="tooltip.temp !== undefined">Temp: {{ tooltip.temp.toFixed(1) }} °C</div>
-      <div v-if="tooltip.ndl">NDL: {{ tooltip.ndl }}</div>
-      <div v-if="tooltip.otu !== undefined">OTUs: {{ tooltip.otu.toFixed(0) }}</div>
-      <div v-if="tooltip.cns !== undefined">CNS: {{ tooltip.cns.toFixed(0) }}%</div>
-      <div v-if="tooltip.gf !== undefined">GF99: {{ tooltip.gf.toFixed(0) }}%</div>
-      <div v-if="tooltip.rmv !== undefined">RMV: {{ tooltip.rmv.toFixed(0) }} L/min</div>
-      <div v-if="tooltip.po2Measured !== undefined">
-        PO₂ (meas): {{ tooltip.po2Measured.toFixed(2) }} bar
-      </div>
-      <div v-if="tooltip.po2Calculated !== undefined">
-        PO₂ (calc): {{ tooltip.po2Calculated.toFixed(2) }} bar
-      </div>
-      <div v-if="tooltip.po2Setpoint !== undefined">
-        PO₂ (setpoint): {{ tooltip.po2Setpoint.toFixed(2) }} bar
-      </div>
-      <div v-if="tooltip.gasO2 !== undefined && tooltip.gasHe !== undefined" class="group relative">
-        <div>Gas: {{ tooltip.gasO2.toFixed(0) }}/{{ tooltip.gasHe.toFixed(0) }}</div>
-        <div
-          class="absolute left-full ml-2 top-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-        >
-          O₂: {{ tooltip.gasO2.toFixed(0) }}%, N₂: {{ tooltip.gasN2?.toFixed(0) }}%, He:
-          {{ tooltip.gasHe.toFixed(0) }}%
-        </div>
-      </div>
-      <div v-if="tooltip.segmentType" class="mt-1 pt-1 border-t border-gray-300">
-        Segment: {{ tooltip.segmentType }}
-      </div>
-    </div>
-    <!-- Zoom hint overlay -->
+    <DiveGraphAxisSelector v-model="leftAxisMetric" label="Left" position="left" />
+    <DiveGraphAxisSelector v-model="rightAxisMetric" label="Right" position="right" />
+    <DiveGraphTooltip :data="tooltip" :left="tooltipLeft" :top="tooltipTop" />
     <div
       v-if="showZoomHint"
       class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/75 text-white px-4 py-2 rounded-lg text-sm font-medium pointer-events-none z-20"
@@ -129,6 +37,13 @@ import {
   type ZoomBehavior,
   type ZoomTransform,
 } from 'd3'
+import DiveGraphTooltip, {
+  type TooltipData,
+  type TooltipProfileData,
+} from '@/components/dive/view/DiveGraphTooltip.vue'
+import DiveGraphAxisSelector, {
+  type AxisMetric,
+} from '@/components/dive/view/DiveGraphAxisSelector.vue'
 import type { DiveProfile, DiveMeasurementWithId, DiveProfileSegmentWithId } from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
 import { formatISoDurationToMinutes } from '@/lib/utils/timeUtils'
@@ -137,8 +52,6 @@ import { generateId } from '@/lib/utils/cryptoUtils'
 type Props = {
   profiles: DiveProfile[]
   diveId: number
-  // Optional visibility mask per profile; when provided, axes still use all profiles
-  // but rendering (lines, segments, tooltip) respects visibility.
   visibleProfiles?: boolean[]
   showTemp?: boolean
   showSegments?: boolean
@@ -174,23 +87,7 @@ const margin = { top: 10, right: 36, bottom: 24, left: 40 }
 const innerWidth = computed(() => Math.max(10, width.value - margin.left - margin.right))
 const innerHeight = computed(() => Math.max(10, height.value - margin.top - margin.bottom))
 
-const tooltip = ref<{
-  timeDisplay: string
-  depth: number
-  temp?: number
-  ndl?: string
-  otu?: number
-  cns?: number
-  gf?: number
-  po2Measured?: number
-  po2Calculated?: number
-  po2Setpoint?: number
-  rmv?: number
-  gasO2?: number
-  gasN2?: number
-  gasHe?: number
-  segmentType?: string
-} | null>(null)
+const tooltip = ref<TooltipData | null>(null)
 const tooltipLeft = ref(0)
 const tooltipTop = ref(0)
 const showZoomHint = ref(false)
@@ -243,35 +140,8 @@ const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
 const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
 const { getWithToken } = useApi()
-const leftAxisMetric = ref<
-  | 'depth'
-  | 'temp'
-  | 'ndl'
-  | 'otu'
-  | 'cns'
-  | 'gf'
-  | 'po2Measured'
-  | 'po2Calculated'
-  | 'po2Setpoint'
-  | 'rmv'
-  | 'gasO2'
-  | 'gasN2'
-  | 'gasHe'
->('depth')
-const rightAxisMetric = ref<
-  | 'temp'
-  | 'ndl'
-  | 'otu'
-  | 'cns'
-  | 'gf'
-  | 'po2Measured'
-  | 'po2Calculated'
-  | 'po2Setpoint'
-  | 'rmv'
-  | 'gasO2'
-  | 'gasN2'
-  | 'gasHe'
->('temp')
+const leftAxisMetric = ref<AxisMetric>('depth')
+const rightAxisMetric = ref<AxisMetric>('temp')
 
 let ro: ResizeObserver | null = null
 
@@ -954,20 +824,15 @@ async function maybeFetchSegments() {
     segmentsData.value = null
     return
   }
-
   const diveId = props.diveId
   if (!diveId) {
     segmentsData.value = null
     return
   }
-
-  // Check cache first
   if (segmentsCache.has(diveId)) {
     segmentsData.value = segmentsCache.get(diveId) ?? null
     return
   }
-
-  // Fetch from API
   try {
     const res = await getWithToken<DiveProfileSegmentWithId[]>(
       `/v1/dives/analytics/segments?id=${diveId}`,
@@ -1127,7 +992,7 @@ function onMouseMoveD3(event: MouseEvent) {
     return
   }
 
-  // Find closest measurement across visible profiles only
+  // Find closest measurement across visible profiles only to determine time
   const allMeasurements = props.profiles.flatMap((p, pIdx) =>
     visibleMask.value[pIdx]
       ? p.measurements.map((m, mIdx) => ({
@@ -1143,10 +1008,59 @@ function onMouseMoveD3(event: MouseEvent) {
   const b = bisector((m: DiveMeasurementWithId) => m.measurement.time).center
   const tVal = timeScale.value.invert(mx)
   const idx = Math.min(allMeasurements.length - 1, Math.max(0, b(allMeasurements, tVal)))
-  const m = allMeasurements[idx]!
+  const closestMeasurement = allMeasurements[idx]!
 
-  const cx = timeScale.value(m.measurement.time)
-  const cy = depthScale.value(m.measurement.depth)
+  // Collect data from all visible profiles at this time
+  const profileDataList: TooltipProfileData[] = []
+
+  props.profiles.forEach((profile, profileIdx) => {
+    if (!visibleMask.value[profileIdx]) return
+
+    // Find the closest measurement in this profile to the current time
+    const profileMeasurements = profile.measurements.map((m, mIdx) => ({
+      ...m,
+      profileIdx,
+      profileStart: profile.start,
+      measurementIndex: mIdx,
+    }))
+
+    if (profileMeasurements.length === 0) return
+
+    const bProfile = bisector((m: DiveMeasurementWithId) => m.measurement.time).center
+    const mIdx = Math.min(
+      profileMeasurements.length - 1,
+      Math.max(0, bProfile(profileMeasurements, tVal)),
+    )
+    const m = profileMeasurements[mIdx]!
+
+    profileDataList.push({
+      profileIdx,
+      profileNum: profileIdx + 1,
+      timeDisplay: formatTimeDisplay(m.measurement.time, m.profileStart),
+      depth: m.measurement.depth,
+      temp: m.measurement.temperature?.value,
+      ndl: formatISoDurationToMinutes(m.measurement.ndl),
+      otu: m.measurement.o2Tox,
+      cns: m.measurement.cns,
+      gf: m.measurement.n2,
+      po2Measured: m.measurement.po2?.measured,
+      po2Calculated: m.measurement.po2?.calculated,
+      po2Setpoint: m.measurement.po2?.maxSetPoint,
+      rmv: m.measurement.rmvLiters,
+      gasO2: m.measurement.gas?.o2 !== undefined ? m.measurement.gas.o2 * 100 : undefined,
+      gasN2: m.measurement.gas?.n2 !== undefined ? m.measurement.gas.n2 * 100 : undefined,
+      gasHe: m.measurement.gas?.he !== undefined ? m.measurement.gas.he * 100 : undefined,
+      segmentType:
+        m.measurementIndex !== undefined && m.profileIdx !== undefined
+          ? findSegmentAtIndex(m.profileIdx, m.measurementIndex)
+          : undefined,
+    })
+  })
+
+  if (profileDataList.length === 0) return
+
+  const cx = timeScale.value(closestMeasurement.measurement.time)
+  const cy = depthScale.value(closestMeasurement.measurement.depth)
 
   // Show crosshair line at cursor x position
   crosshairLine.value?.attr('x1', cx).attr('x2', cx).style('display', null)
@@ -1155,32 +1069,16 @@ function onMouseMoveD3(event: MouseEvent) {
   focusCircle.value?.attr('cx', cx).attr('cy', cy).style('display', null)
 
   tooltip.value = {
-    timeDisplay: formatTimeDisplay(m.measurement.time, m.profileStart),
-    depth: m.measurement.depth,
-    temp: m.measurement.temperature?.value,
-    ndl: formatISoDurationToMinutes(m.measurement.ndl),
-    otu: m.measurement.o2Tox,
-    cns: m.measurement.cns,
-    gf: m.measurement.n2,
-    po2Measured: m.measurement.po2?.measured,
-    po2Calculated: m.measurement.po2?.calculated,
-    po2Setpoint: m.measurement.po2?.maxSetPoint,
-    rmv: m.measurement.rmvLiters,
-    gasO2: m.measurement.gas?.o2 !== undefined ? m.measurement.gas.o2 * 100 : undefined,
-    gasN2: m.measurement.gas?.n2 !== undefined ? m.measurement.gas.n2 * 100 : undefined,
-    gasHe: m.measurement.gas?.he !== undefined ? m.measurement.gas.he * 100 : undefined,
-    segmentType:
-      m.measurementIndex !== undefined && m.profileIdx !== undefined
-        ? findSegmentAtIndex(m.profileIdx, m.measurementIndex)
-        : undefined,
+    time: closestMeasurement.measurement.time,
+    profiles: profileDataList,
   }
 
   // Position tooltip: use mouse Y position instead of data point Y position
   const tipX = cx + margin.left + 8
   const mouseY = event.clientY - container.value!.getBoundingClientRect().top
   const bounds = container.value!.getBoundingClientRect()
-  tooltipLeft.value = Math.min(bounds.width - 160, Math.max(0, tipX))
-  tooltipTop.value = Math.min(bounds.height - 80, Math.max(0, mouseY - 40))
+  tooltipLeft.value = Math.min(bounds.width - 200, Math.max(0, tipX))
+  tooltipTop.value = Math.min(bounds.height - 100, Math.max(0, mouseY - 40))
 }
 
 function pointerInG(event: MouseEvent): [number, number] {

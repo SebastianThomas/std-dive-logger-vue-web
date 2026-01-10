@@ -99,7 +99,7 @@
           <span>{{ idx + 1 }}</span>
         </label>
         <button class="align-button" title="Align profiles" @click="showAlignmentModal = true">
-          ⚖
+          <span class="fa-lg"> <i class="fa-solid fa-arrows-left-right-to-line"></i> </span>
         </button>
       </div>
       <div
@@ -481,8 +481,6 @@ onBeforeUnmount(() => {
 }
 
 .align-button {
-  padding: 2px 6px;
-  margin-left: 4px;
   background: none;
   border: none;
   cursor: pointer;

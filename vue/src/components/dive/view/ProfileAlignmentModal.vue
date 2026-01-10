@@ -7,18 +7,10 @@
       </div>
 
       <div class="tabs">
-        <button
-          class="tab"
-          :class="{ active: activeTab === 'align' }"
-          @click="activeTab = 'align'"
-        >
+        <button class="tab" :class="{ active: activeTab === 'align' }" @click="activeTab = 'align'">
           Align
         </button>
-        <button
-          class="tab"
-          :class="{ active: activeTab === 'reset' }"
-          @click="activeTab = 'reset'"
-        >
+        <button class="tab" :class="{ active: activeTab === 'reset' }" @click="activeTab = 'reset'">
           Reset
         </button>
       </div>
@@ -62,11 +54,7 @@
         <div class="form-group">
           <label>Select Profiles to Reset</label>
           <div class="checkbox-group">
-            <label
-              v-for="(profile, idx) in profiles"
-              :key="profile.id"
-              class="checkbox-label"
-            >
+            <label v-for="(profile, idx) in profiles" :key="profile.id" class="checkbox-label">
               <input
                 type="checkbox"
                 :checked="selectedResetProfiles.includes(profile.id)"
@@ -223,9 +211,7 @@ const handleAlign = async () => {
 
     success.value = true
     emit('aligned', response.data)
-    setTimeout(() => {
-      close()
-    }, 300)
+    close()
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to align profiles'
     error.value = message
@@ -252,9 +238,7 @@ const handleReset = async () => {
 
     success.value = true
     emit('aligned', response.data)
-    setTimeout(() => {
-      close()
-    }, 300)
+    close()
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to reset profiles'
     error.value = message
