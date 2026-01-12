@@ -6,9 +6,7 @@ import { resolveUrl } from '../url/resolveUrl'
 export async function refreshAccessToken(): Promise<string | null> {
   const url = resolveUrl('/api/auth/refresh')
   try {
-    console.log('Refreshing...')
     const res = await axios.post(url, undefined, { withCredentials: true, timeout: 1000 })
-    console.log('Refreshed')
     const token = res.data as string
     return token || null
   } catch (err) {

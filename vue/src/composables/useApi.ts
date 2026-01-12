@@ -28,12 +28,12 @@ export function useApi() {
     }
   }
 
-  const refresh = async (): Promise<string> => {
+  const getTokenOrRefresh = async ({ force }: { force: boolean }): Promise<string> => {
     while (authStore.isRefreshing) {
       // wait
       await new Promise((resolve) => setTimeout(resolve, 50))
     }
-    if (authStore.isLoggedIn && authStore.accessToken) {
+    if (!force && authStore.isLoggedIn && authStore.accessToken) {
       return authStore.accessToken
     }
     authStore.setRefreshing()
@@ -55,7 +55,7 @@ export function useApi() {
     init: AxiosRequestConfig | undefined,
     body?: BodyType,
   ): Promise<AxiosResponse<T, D, H>> {
-    const token = (authStore.isLoggedIn && authStore.accessToken) || (await refresh())
+    const token = await getTokenOrRefresh({ force: false })
     if (!token) {
       throw new Error('Refreshing failed or another refresh request is outstanding.')
     }
@@ -70,12 +70,16 @@ export function useApi() {
     try {
       return await axios(firstConfig)
     } catch (err: unknown) {
-      if (!axios.isAxiosError(err) || err.response?.status !== 401) {
+      if (!axios.isAxiosError(err)) {
+        throw err
+      }
+      const status = err.response?.status
+      if (!status || status !== 401) {
         throw err
       }
 
       // Try refresh
-      const newToken = await refresh()
+      const newToken = await getTokenOrRefresh({ force: true })
       if (!newToken) throw new Error('Unauthorized: refresh failed')
 
       const retryConfig: AxiosRequestConfig = {
@@ -156,7 +160,7 @@ export function useApi() {
     return await requestWithRetry<T, H, D>(resolved, 'PUT', initWithJson, payload)
   }
 
-  return { getWithToken, postWithToken, putWithToken, refresh, deleteWithToken }
+  return { getWithToken, postWithToken, putWithToken, refresh: getTokenOrRefresh, deleteWithToken }
 }
 
 export default useApi
