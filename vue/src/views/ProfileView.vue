@@ -80,7 +80,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
-import { type User } from '@/lib/types/share'
+import { type User } from '@/lib/types/user'
 
 const router = useRouter()
 const { getWithToken, postWithToken } = useApi()

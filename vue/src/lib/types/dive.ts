@@ -1,4 +1,4 @@
-import type { User } from './share'
+import type { User } from './user'
 
 export type PagedResult<T> = {
   pageSize: number

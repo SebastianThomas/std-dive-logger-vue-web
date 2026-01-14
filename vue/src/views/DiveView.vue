@@ -27,6 +27,13 @@
             </RouterLink>
             <button
               v-if="isMine"
+              @click="showShareModal = true"
+              class="bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
+            >
+              Share
+            </button>
+            <button
+              v-if="isMine"
               @click="showDeleteModal = true"
               class="bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
             >
@@ -99,6 +106,9 @@
           </div>
         </div>
       </div>
+
+      <!-- Share Popover -->
+      <SharePopover :open="showShareModal" :dive-id="dive.id" :dive-user-id="dive.user.id" @close="showShareModal = false" />
 
       <!-- Main Content -->
       <div class="flex flex-col md:flex-row gap-6">
@@ -255,8 +265,9 @@ import DiveGraphContainer from '@/components/dive/view/DiveGraphContainer.vue'
 import GasDisplay from '@/components/dive/view/GasDisplay.vue'
 import InfoCard from '@/components/InfoCard.vue'
 import InfoCardRow from '@/components/InfoCardRow.vue'
+import SharePopover from '@/components/share/SharePopover.vue'
 import type { Dive, DiveComputer, Gas } from '@/lib/types/dive'
-import type { User } from '@/lib/types/share'
+import type { User } from '@/lib/types/user'
 
 const router = useRouter()
 const route = useRoute()
@@ -269,6 +280,7 @@ const error = ref<string | null>(null)
 const graphOpen = ref(false)
 const showDeleteModal = ref(false)
 const showLinkModal = ref(false)
+const showShareModal = ref(false)
 const myUserId = ref<number | null>(null)
 
 const summary = computed(() => dive.value?.summary)

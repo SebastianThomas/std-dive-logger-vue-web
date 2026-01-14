@@ -74,7 +74,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import RoleMenu from '@/components/share/RoleMenu.vue'
-import type { GroupRequest, GroupWithMembers, User, UserWithRole } from '@/lib/types/share'
+import type { GroupRequest, GroupWithMembers, User, UserWithRole } from '@/lib/types/user'
 
 const route = useRoute()
 const groupId = computed(() => Number(route.params.groupId))

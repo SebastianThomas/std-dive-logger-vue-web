@@ -9,132 +9,139 @@
     >
       <!-- Header -->
       <div class="flex items-center gap-2 px-4 py-3 border-b shrink-0">
-        <button
-          v-if="view !== 'overview'"
-          @click="view = 'overview'"
-          class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-        >
-          ←
-        </button>
         <span class="font-medium text-sm">
-          {{ viewTitle }}
+          Dive shared with
         </span>
       </div>
 
       <!-- Body (scrollable) -->
-      <div class="flex-1 overflow-y-auto px-4 py-3">
-        <!-- Overview -->
-        <div v-if="view === 'overview'" class="space-y-4">
-          <!-- People Section -->
-          <section>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">People</span>
-              <button
-                @click="view = 'add-person'"
-                class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-blue-600"
-              >
-                +
-              </button>
-            </div>
-            <ul class="space-y-1">
-              <li
-                v-for="person in readers"
-                :key="person.id"
-                class="flex justify-between items-center py-1"
-              >
-                <span class="text-sm">{{ person.name }}</span>
-                <button
-                  @click="deletePerson(person.id)"
-                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600"
-                >
-                  ×
-                </button>
-              </li>
-              <li v-if="readers.length === 0" class="text-sm text-gray-400 dark:text-gray-500">
-                No people shared
-              </li>
-            </ul>
-          </section>
-
-          <!-- Groups Section -->
-          <section>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">Groups</span>
-              <button
-                @click="view = 'add-group'"
-                class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-blue-600"
-              >
-                +
-              </button>
-            </div>
-            <ul class="space-y-1">
-              <li
-                v-for="group in groupReaders"
-                :key="group.id"
-                class="flex justify-between items-center py-1"
-              >
-                <span class="text-sm">{{ group.name }}</span>
-                <button
-                  @click="deleteGroup(group.id)"
-                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600"
-                >
-                  ×
-                </button>
-              </li>
-              <li v-if="groupReaders.length === 0" class="text-sm text-gray-400 dark:text-gray-500">
-                No groups shared
-              </li>
-            </ul>
-          </section>
-        </div>
-
-        <!-- Add Person -->
-        <form
-          v-else-if="view === 'add-person'"
-          @submit.prevent="handleAddPerson"
-          class="flex flex-col gap-4"
-        >
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium">Enter username</label>
-            <input
-              v-model="personInput"
-              type="text"
-              placeholder="Username..."
-              class="border rounded-lg p-2"
-              autofocus
-            />
+      <div class="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        <!-- People Section -->
+        <section>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">People</span>
+            <button
+              @click="showAddPersonForm = !showAddPersonForm"
+              class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-blue-600"
+            >
+              +
+            </button>
           </div>
-          <button
-            type="submit"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-          >
-            Add buddy
-          </button>
-        </form>
 
-        <!-- Add Group -->
-        <form
-          v-else-if="view === 'add-group'"
-          @submit.prevent="handleAddGroup"
-          class="flex flex-col gap-4"
-        >
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium">Enter group name</label>
+          <!-- Add Person Form (inline) -->
+          <form
+            v-if="showAddPersonForm"
+            @submit.prevent="handleAddPerson"
+            class="flex flex-col gap-3 mb-3 pb-3 border-b"
+          >
+            <AutocompleteInput
+              suburl="user"
+              label="Search for a user"
+              @selected="selectedPerson = $event"
+              @enter="handleAddPerson"
+              @escape="showAddPersonForm = false; selectedPerson = null"
+            />
+            <div class="flex gap-2">
+              <button
+                type="submit"
+                :disabled="!selectedPerson"
+                class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-2 rounded text-sm"
+              >
+                Add buddy
+              </button>
+              <button
+                type="button"
+                @click="showAddPersonForm = false; selectedPerson = null"
+                class="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 px-3 py-2 rounded text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+
+          <ul class="space-y-1">
+            <li
+              v-for="person in displayedReaders"
+              :key="person.id"
+              class="flex justify-between items-center py-1"
+            >
+              <span class="text-sm">{{ person.name }}</span>
+              <button
+                @click="deletePerson(person.id)"
+                class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600"
+              >
+                ×
+              </button>
+            </li>
+            <li v-if="displayedReaders.length === 0" class="text-sm text-gray-400 dark:text-gray-500">
+              No people shared
+            </li>
+          </ul>
+        </section>
+
+        <!-- Groups Section -->
+        <section>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">Groups</span>
+            <button
+              @click="showAddGroupForm = !showAddGroupForm"
+              class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-blue-600"
+            >
+              +
+            </button>
+          </div>
+
+          <!-- Add Group Form (inline) -->
+          <form
+            v-if="showAddGroupForm"
+            @submit.prevent="handleAddGroup"
+            class="flex flex-col gap-3 mb-3 pb-3 border-b"
+          >
             <input
               v-model="groupInput"
               type="text"
+              @keydown.enter="handleAddGroup"
+              @keydown.escape="showAddGroupForm = false; groupInput = ''"
               placeholder="Group name..."
-              class="border rounded-lg p-2"
+              class="border rounded-lg p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               autofocus
             />
-          </div>
-          <button
-            type="submit"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-          >
-            Add group
-          </button>
-        </form>
+            <div class="flex gap-2">
+              <button
+                type="submit"
+                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm"
+              >
+                Add group
+              </button>
+              <button
+                type="button"
+                @click="showAddGroupForm = false; groupInput = ''"
+                class="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 px-3 py-2 rounded text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+
+          <ul class="space-y-1">
+            <li
+              v-for="group in groupReaders"
+              :key="group.id"
+              class="flex justify-between items-center py-1"
+            >
+              <span class="text-sm">{{ group.name }}</span>
+              <button
+                @click="deleteGroup(group.id)"
+                class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600"
+              >
+                ×
+              </button>
+            </li>
+            <li v-if="groupReaders.length === 0" class="text-sm text-gray-400 dark:text-gray-500">
+              No groups shared
+            </li>
+          </ul>
+        </section>
       </div>
     </div>
   </div>
@@ -144,46 +151,39 @@
 import { ref, computed, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
-import type { User, Group } from '@/lib/types/share'
+import AutocompleteInput from '@/components/AutocompleteInput.vue'
+import type { User, Group } from '@/lib/types/user'
 import type { PagedResult } from '@/lib/types/dive'
 
 const props = defineProps<{
   open: boolean
   diveId: number | undefined
+  diveUserId: number | undefined
 }>()
 
 const emit = defineEmits<{
   close: []
 }>()
 
-type View = 'overview' | 'add-person' | 'add-group'
-
-const view = ref<View>('overview')
 const readers = ref<User[]>([])
 const groupReaders = ref<Group[]>([])
-const personInput = ref('')
 const groupInput = ref('')
+const selectedPerson = ref<User | null>(null)
+const showAddPersonForm = ref(false)
+const showAddGroupForm = ref(false)
 
 const { getWithToken, postWithToken, deleteWithToken } = useApi()
 
-const viewTitle = computed(() => {
-  switch (view.value) {
-    case 'overview':
-      return 'Dive shared with'
-    case 'add-person':
-      return 'Add person'
-    case 'add-group':
-      return 'Add group'
-    default:
-      return '' // ESLint
-  }
+const displayedReaders = computed(() => {
+  return readers.value.filter((reader) => reader.id !== props.diveUserId)
 })
 
 watch(
   () => props.open,
   async (isOpen) => {
     if (isOpen) {
-      view.value = 'overview'
+      showAddPersonForm.value = false
+      showAddGroupForm.value = false
       await fetchAllReaders()
     }
   },
@@ -229,13 +229,13 @@ const deleteGroup = async (id: number | undefined) => {
 }
 
 const handleAddPerson = async () => {
-  if (props.diveId == null || !personInput.value.trim()) return
+  if (props.diveId == null || !selectedPerson.value) return
   try {
-    await postWithToken(`/v1/dives/${props.diveId}/readers`, [personInput.value])
+    const res = await postWithToken<PagedResult<User>>(`/v1/dives/${props.diveId}/readers`, [selectedPerson.value.id])
+    readers.value = res.data.result
     toast.success('Added person')
-    personInput.value = ''
-    view.value = 'overview'
-    await fetchAllReaders()
+    selectedPerson.value = null
+    showAddPersonForm.value = false
   } catch (err) {
     toast.error('Failed to add person')
     console.error(err)
@@ -248,7 +248,7 @@ const handleAddGroup = async () => {
     await postWithToken(`/v1/dives/${props.diveId}/group-readers`, groupInput.value)
     toast.success('Added group')
     groupInput.value = ''
-    view.value = 'overview'
+    showAddGroupForm.value = false
     await fetchAllReaders()
   } catch (err) {
     toast.error('Failed to add group')

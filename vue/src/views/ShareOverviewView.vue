@@ -7,13 +7,13 @@
           <div class="flex gap-4 items-center pb-8">
             <button
               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
-              @click="anchorElAdd = $event.currentTarget as HTMLElement"
+              @click="anchorElAdd = !anchorElAdd"
             >
               ➕ New group
             </button>
             <GroupPopover
-              :anchor-el="anchorElAdd"
-              @close="anchorElAdd = null"
+              :open="anchorElAdd"
+              @close="anchorElAdd = false"
               @submit="addGroup"
               label="group name"
               type="new"
@@ -21,13 +21,13 @@
 
             <button
               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
-              @click="anchorElJoin = $event.currentTarget as HTMLElement"
+              @click="anchorElJoin = !anchorElJoin"
             >
               🔗 Join group
             </button>
             <GroupPopover
-              :anchor-el="anchorElJoin"
-              @close="anchorElJoin = null"
+              :open="anchorElJoin"
+              @close="anchorElJoin = false"
               @submit="joinGroup"
               label="group name"
               type="join"
@@ -64,13 +64,13 @@ import { toast } from 'vue-sonner'
 import axios from 'axios'
 import { useApi } from '@/composables/useApi'
 import { type PagedResult } from '@/lib/types/dive'
-import { type GroupMember } from '@/lib/types/share'
-import GroupPopover from '@/components/GroupPopover.vue'
+import { type GroupMember } from '@/lib/types/user'
+import GroupPopover from '@/components/share/GroupPopover.vue'
 
 const { getWithToken, postWithToken } = useApi()
 const groups = ref<GroupMember[]>([])
-const anchorElAdd = ref<HTMLElement | null>(null)
-const anchorElJoin = ref<HTMLElement | null>(null)
+const anchorElAdd = ref(false)
+const anchorElJoin = ref(false)
 
 const joinGroup = async (groupName: string): Promise<boolean> => {
   try {
