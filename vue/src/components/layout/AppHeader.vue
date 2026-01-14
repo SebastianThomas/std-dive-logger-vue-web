@@ -4,7 +4,11 @@
   >
     <div class="flex items-center">
       <router-link :to="{ name: 'Home' }" class="flex items-center">
-        <img src="/images/logo_with_name.png" alt="Logo" class="h-16 w-16 transition-all duration-300" />
+        <img
+          src="/images/logo_with_name.png"
+          alt="Logo"
+          class="h-16 w-16 transition-all duration-300"
+        />
         <h1 v-if="showTitle" class="text-lg sm:text-xl font-bold text-white ml-4">
           Dive Together Log {{ pageName }}
         </h1>

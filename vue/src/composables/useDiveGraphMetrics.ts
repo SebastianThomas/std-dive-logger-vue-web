@@ -70,8 +70,12 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
       hasPo2Setpoint: measurements.filter((m) => m.measurement.po2?.maxSetPoint).length > 1,
       hasRmv: measurements.some((m) => m.measurement.rmvLiters !== undefined),
       hasGasO2: measurements.some((m) => m.measurement.gas?.o2 !== undefined),
-      hasGasN2: measurements.some((m) => m.measurement.gas?.n2 !== undefined && m.measurement.gas.n2 > 0),
-      hasGasHe: measurements.some((m) => m.measurement.gas?.he !== undefined && m.measurement.gas.he > 0),
+      hasGasN2: measurements.some(
+        (m) => m.measurement.gas?.n2 !== undefined && m.measurement.gas.n2 > 0,
+      ),
+      hasGasHe: measurements.some(
+        (m) => m.measurement.gas?.he !== undefined && m.measurement.gas.he > 0,
+      ),
     }
   }
 

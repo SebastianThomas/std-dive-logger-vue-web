@@ -14,53 +14,53 @@
               @toggle-profile="toggleProfile"
             />
           </div>
-          
+
           <!-- Grid layout for larger screens, single column for small -->
           <div class="grid grid-cols-1 xl:grid-cols-[minmax(200px,1fr)_auto_1fr] gap-4">
             <!-- Left column: Empty spacer (hidden on small screens) -->
             <div class="hidden xl:block"></div>
-            
+
             <!-- Center column: MetricsControlPanel -->
             <div>
               <MetricsControlPanel
-              v-model:selected-profiles="selectedProfiles"
-              :profiles-count="profiles.length"
-              v-model:show-temp="showTemp"
-              v-model:show-segments="showSegments"
-              v-model:show-grid="showGrid"
-              v-model:show-ndl="showNdl"
-              v-model:show-otu="showOtu"
-              v-model:show-cns="showCns"
-              v-model:show-gf="showGf"
-              v-model:show-po2-measured="showPo2Measured"
-              v-model:show-po2-calculated="showPo2Calculated"
-              v-model:show-po2-setpoint="showPo2Setpoint"
-              v-model:show-rmv="showRmv"
-              v-model:show-gas-o2="showGasO2"
-              v-model:show-gas-n2="showGasN2"
-              v-model:show-gas-he="showGasHe"
-              :disable-temp="!combinedMetricsAvailability.hasTemp"
-              :disable-ndl="!combinedMetricsAvailability.hasNdl"
-              :disable-otu="!combinedMetricsAvailability.hasOtu"
-              :disable-cns="!combinedMetricsAvailability.hasCns"
-              :disable-gf="!combinedMetricsAvailability.hasGf"
-              :disable-po2-measured="!combinedMetricsAvailability.hasPo2Measured"
-              :disable-po2-calculated="!combinedMetricsAvailability.hasPo2Calculated"
-              :disable-po2-setpoint="!combinedMetricsAvailability.hasPo2Setpoint"
-              :disable-rmv="!combinedMetricsAvailability.hasRmv"
-              :disable-gas-o2="!combinedMetricsAvailability.hasGasO2"
-              :disable-gas-n2="!combinedMetricsAvailability.hasGasN2"
-              :disable-gas-he="!combinedMetricsAvailability.hasGasHe"
-              :show-segments-toggle="true"
-              v-model:left-axis-metric="leftAxisMetric"
-              v-model:right-axis-metric="rightAxisMetric"
-            />
+                v-model:selected-profiles="selectedProfiles"
+                :profiles-count="profiles.length"
+                v-model:show-temp="showTemp"
+                v-model:show-segments="showSegments"
+                v-model:show-grid="showGrid"
+                v-model:show-ndl="showNdl"
+                v-model:show-otu="showOtu"
+                v-model:show-cns="showCns"
+                v-model:show-gf="showGf"
+                v-model:show-po2-measured="showPo2Measured"
+                v-model:show-po2-calculated="showPo2Calculated"
+                v-model:show-po2-setpoint="showPo2Setpoint"
+                v-model:show-rmv="showRmv"
+                v-model:show-gas-o2="showGasO2"
+                v-model:show-gas-n2="showGasN2"
+                v-model:show-gas-he="showGasHe"
+                :disable-temp="!combinedMetricsAvailability.hasTemp"
+                :disable-ndl="!combinedMetricsAvailability.hasNdl"
+                :disable-otu="!combinedMetricsAvailability.hasOtu"
+                :disable-cns="!combinedMetricsAvailability.hasCns"
+                :disable-gf="!combinedMetricsAvailability.hasGf"
+                :disable-po2-measured="!combinedMetricsAvailability.hasPo2Measured"
+                :disable-po2-calculated="!combinedMetricsAvailability.hasPo2Calculated"
+                :disable-po2-setpoint="!combinedMetricsAvailability.hasPo2Setpoint"
+                :disable-rmv="!combinedMetricsAvailability.hasRmv"
+                :disable-gas-o2="!combinedMetricsAvailability.hasGasO2"
+                :disable-gas-n2="!combinedMetricsAvailability.hasGasN2"
+                :disable-gas-he="!combinedMetricsAvailability.hasGasHe"
+                :show-segments-toggle="true"
+                v-model:left-axis-metric="leftAxisMetric"
+                v-model:right-axis-metric="rightAxisMetric"
+              />
+            </div>
+
+            <!-- Right column: Empty spacer (hidden on small screens) -->
+            <div class="hidden xl:block"></div>
           </div>
-          
-          <!-- Right column: Empty spacer (hidden on small screens) -->
-          <div class="hidden xl:block"></div>
         </div>
-      </div>
 
         <div class="graph-area flex-1 relative p-3">
           <DiveGraph
@@ -261,7 +261,7 @@ const combinedMetricsAvailability = computed(() => {
   const visibleIndices = visibleProfiles.value
     .map((visible, idx) => (visible ? idx : -1))
     .filter((idx) => idx >= 0)
-  
+
   // Return combined availability for all visible profiles
   return getCombinedMetricAvailability(visibleIndices.length > 0 ? visibleIndices : [0])
 })
@@ -272,41 +272,41 @@ watch(
   (availability) => {
     if (!availability.hasTemp) showTemp.value = false
     else if (showTemp.value === false) showTemp.value = true
-    
+
     if (!availability.hasNdl) showNdl.value = false
     else if (showNdl.value === false) showNdl.value = true
-    
+
     if (!availability.hasOtu) showOtu.value = false
     else if (showOtu.value === false) showOtu.value = true
-    
+
     if (!availability.hasCns) showCns.value = false
     else if (showCns.value === false) showCns.value = true
-    
+
     if (!availability.hasGf) showGf.value = false
     else if (showGf.value === false) showGf.value = true
-    
+
     if (!availability.hasPo2Measured) showPo2Measured.value = false
     else if (showPo2Measured.value === false) showPo2Measured.value = true
-    
+
     if (!availability.hasPo2Calculated) showPo2Calculated.value = false
     else if (showPo2Calculated.value === false) showPo2Calculated.value = true
-    
+
     if (!availability.hasPo2Setpoint) showPo2Setpoint.value = false
     else if (showPo2Setpoint.value === false) showPo2Setpoint.value = true
-    
+
     if (!availability.hasRmv) showRmv.value = false
     else if (showRmv.value === false) showRmv.value = true
-    
+
     if (!availability.hasGasO2) showGasO2.value = false
     else if (showGasO2.value === false) showGasO2.value = true
-    
+
     if (!availability.hasGasN2) showGasN2.value = false
     else if (showGasN2.value === false) showGasN2.value = true
-    
+
     if (!availability.hasGasHe) showGasHe.value = false
     else if (showGasHe.value === false) showGasHe.value = true
   },
-  { deep: true }
+  { deep: true },
 )
 
 const emit = defineEmits<{

@@ -9,9 +9,9 @@
       class="xl:vertical-profile-selector"
       @toggle-profile="$emit('toggleProfile', $event)"
     />
-    <AnalyticsToggle 
-      :show-segments="showSegments" 
-      @update:show-segments="$emit('update:showSegments', $event)" 
+    <AnalyticsToggle
+      :show-segments="showSegments"
+      @update:show-segments="$emit('update:showSegments', $event)"
     />
   </div>
 </template>
@@ -81,5 +81,4 @@ const profileSelectorVertical = computed(() => isXlScreen.value)
 .close-btn:hover {
   background: #b91c1c;
 }
-
 </style>

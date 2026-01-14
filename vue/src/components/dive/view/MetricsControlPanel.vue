@@ -181,7 +181,9 @@
     </div>
     <!-- Tooltip profile selector placed between Metrics and Axis sections -->
     <div v-if="profilesCount > 1" class="flex items-center gap-2 mt-3">
-      <span class="text-sm font-semibold" :style="{ color: 'var(--foreground)' }">Tooltip Profile:</span>
+      <span class="text-sm font-semibold" :style="{ color: 'var(--foreground)' }"
+        >Tooltip Profile:</span
+      >
       <button
         v-for="idx in profilesCount"
         :key="idx"
@@ -196,7 +198,14 @@
         {{ idx }}
       </button>
       <button
-        @click="$emit('update:selectedProfiles', selectedProfiles.length === profilesCount ? [selectedProfiles[0] ?? 0] : Array.from({length: profilesCount}, (_, i) => i))"
+        @click="
+          $emit(
+            'update:selectedProfiles',
+            selectedProfiles.length === profilesCount
+              ? [selectedProfiles[0] ?? 0]
+              : Array.from({ length: profilesCount }, (_, i) => i),
+          )
+        "
         :class="[
           'px-2 py-0.5 text-xs rounded border transition-colors ml-2',
           selectedProfiles.length === profilesCount

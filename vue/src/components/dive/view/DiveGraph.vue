@@ -892,7 +892,7 @@ function onMouseMoveD3(event: MouseEvent) {
   const visibleProfileIndices = visibleMask.value
     .map((visible, idx) => (visible ? idx : -1))
     .filter((idx) => idx >= 0)
-  
+
   let metricAvailability
   if (visibleProfileIndices.length > 1) {
     // Use combined availability of all visible profiles

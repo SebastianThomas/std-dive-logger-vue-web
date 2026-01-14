@@ -2,7 +2,7 @@
   <div
     :class="[
       'gap-2 px-3 py-1 border text-xs',
-      vertical ? 'flex flex-wrap rounded-lg w-full' : 'inline-flex items-center rounded-full'
+      vertical ? 'flex flex-wrap rounded-lg w-full' : 'inline-flex items-center rounded-full',
     ]"
     :style="{
       backgroundColor: 'var(--card-bg)',
@@ -24,7 +24,12 @@
       />
       <span>{{ idx + 1 }}</span>
     </label>
-    <button v-if="!vertical" class="align-button" title="Align profiles" @click="$emit('openAlignModal')">
+    <button
+      v-if="!vertical"
+      class="align-button"
+      title="Align profiles"
+      @click="$emit('openAlignModal')"
+    >
       <span class="fa-lg"> <i class="fa-solid fa-arrows-left-right-to-line"></i> </span>
     </button>
   </div>

@@ -64,91 +64,22 @@
       />
 
       <!-- Table -->
-      <div class="overflow-auto border rounded-lg">
-        <table class="w-full border-collapse overflow-scroll">
-          <thead>
-            <tr class="bg-blue-200">
-              <th class="border border-gray-400 px-2 py-2 text-left w-12">
-                <input
-                  type="checkbox"
-                  :checked="selectedIds.length === dives.length && dives.length > 0"
-                  @change="toggleAll"
-                  class="cursor-pointer"
-                />
-              </th>
-              <th
-                v-for="col in columns"
-                :key="col.key"
-                :class="[
-                  'border border-gray-400 px-3 py-2 text-left',
-                  col.width,
-                  col.sortable && !searchQuery.trim() ? 'cursor-pointer hover:bg-blue-300' : '',
-                  !col.sortable || searchQuery.trim() ? 'cursor-default opacity-60' : '',
-                ]"
-                @click="col.sortable ? sortBy(col.serverCol) : null"
-              >
-                <div class="flex items-center gap-2">
-                  {{ col.label }}
-                  <span
-                    v-if="col.sortable && sortColumn === col.serverCol && !searchQuery.trim()"
-                    class="text-xs"
-                  >
-                    {{ sortDirection === 'ASCENDING' ? '▲' : '▼' }}
-                  </span>
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white">
-            <tr
-              v-for="dive in dives"
-              :key="dive.id"
-              :class="[
-                'cursor-pointer transition-colors',
-                selectedIds.includes(dive.id)
-                  ? 'bg-sky-100 hover:bg-sky-200 dark:bg-sky-900 dark:hover:bg-sky-800 border-l-4 border-l-sky-500 dark:border-l-sky-400'
-                  : dive.user.id !== myUserId
-                    ? 'bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-800',
-              ]"
-              @click="onRowClick(dive.id)"
-            >
-              <td class="border border-gray-400 px-2 py-2 text-center" @click.stop>
-                <input
-                  type="checkbox"
-                  :checked="selectedIds.includes(dive.id)"
-                  @click.stop
-                  @change="toggleRow(dive.id)"
-                  class="cursor-pointer"
-                />
-              </td>
-              <td class="border border-gray-400 px-3 py-2 w-16">{{ dive.number }}</td>
-              <td class="border border-gray-400 px-1 py-1 w-24 flex justify-center">
-                <DiveSitePreview :dive="dive" @preview-regenerated="handlePreviewRegenerated" />
-              </td>
-              <td class="border border-gray-400 px-3 py-2 max-w-lg wrap-break-word">
-                {{ dive.customIdentifier || '-' }}
-              </td>
-              <td class="border border-gray-400 px-3 py-2 min-w-48">
-                {{ dive.site?.name || 'Unknown' }}
-              </td>
-              <td class="border border-gray-400 px-3 py-2 w-32">
-                {{ dive.user.id === myUserId ? 'You' : dive.user?.name || 'Unknown' }}
-              </td>
-            </tr>
-            <tr v-if="!dives.length && !isLoading">
-              <td colspan="5" class="border border-gray-400 px-3 py-4 text-center text-gray-500">
-                {{ status || 'No dives found' }}
-              </td>
-            </tr>
-            <tr v-if="isLoading">
-              <td colspan="5" class="border border-gray-400 px-3 py-4 text-center text-gray-500">
-                Loading...
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <DiveListTable
+        :dives="dives"
+        :selected-ids="selectedIds"
+        :my-user-id="myUserId"
+        :is-loading="isLoading"
+        :status="status"
+        :search-query="searchQuery"
+        :sort-column="sortColumn"
+        :sort-direction="sortDirection"
+        :columns="columns"
+        @toggle-all="toggleAll"
+        @toggle-row="toggleRow"
+        @row-click="onRowClick"
+        @sort="sortBy"
+        @preview-regenerated="handlePreviewRegenerated"
+      />
 
       <!-- Pagination -->
       <PageSelector
@@ -175,7 +106,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '../composables/useApi'
 import BulkActionsModal from '@/components/dive/BulkActionsModal.vue'
-import DiveSitePreview from '@/components/DiveSitePreview.vue'
+import DiveListTable from '@/components/DiveListTable.vue'
 import PageSelector from '@/components/PageSelector.vue'
 import type { DiveWithoutProfiles, PagedResult } from '../lib/types/dive'
 import debounce from '../lib/utils/debounce'
@@ -211,14 +142,17 @@ const columns: {
   width?: string
 }[] = [
   { key: 'number', label: '#', serverCol: 'NUMBER', sortable: true, width: 'w-16' },
-  { key: 'site', label: 'Profile', serverCol: null, sortable: false, width: 'w-24' },
   {
     key: 'customIdentifier',
     label: 'Custom Name',
     serverCol: 'CUSTOM_IDENTIFIER',
     sortable: true,
   },
+  { key: 'summary', label: 'Start Time', serverCol: null, sortable: false, width: 'w-40' },
+  { key: 'summary', label: 'Max Depth', serverCol: null, sortable: false, width: 'w-24' },
+  { key: 'summary', label: 'Bottom Time', serverCol: null, sortable: false, width: 'w-28' },
   { key: 'site', label: 'Site', serverCol: null, sortable: false },
+  { key: 'site', label: 'Profile', serverCol: null, sortable: false, width: 'w-24' },
   { key: 'user', label: 'Diver', serverCol: null, sortable: false, width: 'w-32' },
 ]
 
