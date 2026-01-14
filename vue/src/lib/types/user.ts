@@ -10,8 +10,8 @@ export type GroupMember = {
   role: GroupRole
 }
 
-type InGroupRole = 'MEMBER' | 'ADMIN'
-type GroupRole = InGroupRole | 'REQUESTED' | 'DENIED'
+export type InGroupRole = 'MEMBER' | 'ADMIN'
+export type GroupRole = InGroupRole | 'REQUESTED' | 'DENIED'
 
 export type UserWithRole = User & {
   role: InGroupRole

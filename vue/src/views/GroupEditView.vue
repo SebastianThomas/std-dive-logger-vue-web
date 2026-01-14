@@ -65,25 +65,106 @@
       </section>
 
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+
+      <div class="flex gap-2 mt-4">
+        <button
+          @click="showLeaveConfirm = true"
+          class="px-4 py-2 rounded bg-orange-600 text-white hover:bg-orange-700"
+        >
+          Leave Group
+        </button>
+        <button
+          v-if="isAdmin"
+          @click="showDeleteConfirm = true"
+          class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+        >
+          Delete Group
+        </button>
+      </div>
+
+      <!-- Leave Confirmation Dialog -->
+      <div
+        v-if="showLeaveConfirm"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+        @click.self="showLeaveConfirm = false"
+      >
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-sm">
+          <h2 class="text-lg font-bold mb-2">Leave Group?</h2>
+          <p class="text-gray-600 dark:text-gray-400 mb-4">
+            Are you sure you want to leave this group? You can rejoin later if invited.
+          </p>
+          <div class="flex gap-2 justify-end">
+            <button
+              @click="showLeaveConfirm = false"
+              class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              @click="leaveGroup"
+              :disabled="isLoadingLeave"
+              class="px-4 py-2 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ isLoadingLeave ? 'Leaving...' : 'Leave' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delete Confirmation Dialog -->
+      <div
+        v-if="showDeleteConfirm"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+        @click.self="showDeleteConfirm = false"
+      >
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-sm">
+          <h2 class="text-lg font-bold mb-2">Delete Group?</h2>
+          <p class="text-gray-600 dark:text-gray-400 mb-4">
+            Are you sure you want to delete this group? This action cannot be undone.
+          </p>
+          <div class="flex gap-2 justify-end">
+            <button
+              @click="showDeleteConfirm = false"
+              class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              @click="deleteGroup"
+              :disabled="isLoadingDelete"
+              class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ isLoadingDelete ? 'Deleting...' : 'Delete' }}
+            </button>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { toast } from 'vue-sonner'
 import RoleMenu from '@/components/share/RoleMenu.vue'
-import type { GroupRequest, GroupWithMembers, User, UserWithRole } from '@/lib/types/user'
+import type { GroupRequest, GroupWithMembers, InGroupRole, User, UserWithRole } from '@/lib/types/user'
 
 const route = useRoute()
+const router = useRouter()
 const groupId = computed(() => Number(route.params.groupId))
 
-const { getWithToken, putWithToken } = useApi()
+const { getWithToken, putWithToken, deleteWithToken } = useApi()
 const users = ref<UserWithRole[]>([])
 const requests = ref<User[]>([])
 const isAdmin = ref(false)
 const error = ref('')
+const showLeaveConfirm = ref(false)
+const showDeleteConfirm = ref(false)
+const isLoadingLeave = ref(false)
+const isLoadingDelete = ref(false)
+const groupName = ref<string>('')
 
 const fetchJoinRequests = async () => {
   try {
@@ -98,9 +179,10 @@ const fetchGroupDetails = async () => {
   if (!groupId.value) return
   try {
     const res = await getWithToken<GroupWithMembers>(`/v1/groups/${groupId.value}/members`)
+    groupName.value = res.data.name || ''
     const merged: UserWithRole[] = [
-      ...res.data.members.map((m) => ({ ...m, role: 'MEMBER' as const })),
-      ...res.data.admins.map((m) => ({ ...m, role: 'ADMIN' as const })),
+      ...res.data.members.map((m) => ({ ...m, role: 'MEMBER' as InGroupRole })),
+      ...res.data.admins.map((m) => ({ ...m, role: 'ADMIN' as InGroupRole })),
     ].sort((a, b) => a.name.localeCompare(b.name))
     users.value = merged
 
@@ -150,6 +232,35 @@ const declineRequest = async (userId: number) => {
   } catch (err) {
     console.error(err)
     error.value = 'Failed to decline request.'
+  }
+}
+
+const leaveGroup = async () => {
+  isLoadingLeave.value = true
+  try {
+    await deleteWithToken(`/v1/groups/${groupId.value}/members`, {})
+    toast.success('Left group successfully')
+    showLeaveConfirm.value = false
+    router.back()
+  } catch (err) {
+    console.error(err)
+    error.value = 'Failed to leave group.'
+    isLoadingLeave.value = false
+  }
+}
+
+const deleteGroup = async () => {
+  isLoadingDelete.value = true
+  try {
+    console.log(groupName.value)
+    await deleteWithToken(`/v1/groups/${groupName.value}`, {})
+    toast.success('Group deleted successfully')
+    showDeleteConfirm.value = false
+    router.back()
+  } catch (err) {
+    console.error(err)
+    error.value = 'Failed to delete group.'
+    isLoadingDelete.value = false
   }
 }
 
