@@ -97,12 +97,79 @@ export type DiveSummary = {
   surfaceIntervalBefore: Duration
 }
 
+export type VisibilityFeeling = 'HIGH' | 'AVERAGE' | 'LOW'
+
+export type Visibility = {
+  meters?: number,
+  description?: string
+  feeling: VisibilityFeeling
+}
+
+export type GasConsumption = {
+  sacBar: number, rmvLiters: number, totalLiters: number
+}
+
+export type SuitType =
+  'NONE' |
+  'RASHGUARD' |
+  'THERMOCLINE' |
+  'NEOPRENE' |
+  'MEMBRANE_DRY' |
+  'NEOPRENE_DRY' |
+  'OTHER'
+
+export type Suit = {
+  id: number,
+  type: SuitType,
+  thickness?: number | null,
+  notes: string
+}
+
+export type BaseConfiguration =
+  'SINGLE_TANK' |
+  'SINGLE_TANK_AVELO' |
+  'SIDEMOUNT' |
+  'BACKMOUNT_DOUBLES' |
+  'BACKMOUNT_CCR' |
+  'SIDEMOUNT_CCR' |
+  'CHESTMOUNT_CCR' |
+  'OTHER'
+
+export type WeightFeeling = 'LIGHT' | 'GOOD' | 'HEAVY'
+
+export type CylinderSizeUnit = 'LITER' | 'CUFT'
+
+export type CylinderSize = {
+  unit: CylinderSizeUnit,
+  value: number
+}
+
+export type DiveConfigurationCylinder = {
+  id: number,
+  size: CylinderSize,
+  startBar?: number | null,
+  endBar?: number | null,
+  notes?: string
+}
+
+export type DiveConfiguration = {
+  suit: Suit,
+  base: BaseConfiguration,
+  weight: number,
+  weightFeeling?: WeightFeeling,
+  cylinders: DiveConfigurationCylinder[]
+}
+
 export type Dive = {
   id: number
   user: User
   number: number
+  notes: string
   customIdentifier: string
-  previewImage: string
+  previewImage?: string
+  visibility: Visibility
+  gasConsumption: GasConsumption
+  configuration: DiveConfiguration
   site: DiveSite
   profiles: DiveProfile[]
   buddiesDives: {
@@ -113,7 +180,20 @@ export type Dive = {
   summary: DiveSummary
 }
 
-export type DiveWithoutProfiles = Omit<Dive, 'profiles'>
+export type DiveWithoutProfiles = {
+  id: number
+  user: User
+  number: number
+  customIdentifier: string
+  previewImage: string
+  site: DiveSite
+  buddiesDives: {
+    buddy: User
+    diveId: number
+  }[]
+  namedBuddies: string[]
+  summary: DiveSummary
+}
 export type UploadDiveResult = { dives: DiveWithoutProfiles[]; errors: string[] }
 
 export type DiveProfileWithoutMeasurements = {

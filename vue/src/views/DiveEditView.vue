@@ -45,7 +45,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import EditDiveForm from '@/components/dive/edit/EditDiveForm.vue'
-import type { Dive, DiveSite } from '@/lib/types/dive'
+import type { Dive, DiveSite, Visibility, GasConsumption, DiveConfiguration } from '@/lib/types/dive'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,6 +61,10 @@ interface DiveFormData {
   diveName?: string
   diveSite?: DiveSite | null
   diveBuddies?: string[]
+  notes?: string
+  visibility?: Visibility | null
+  gasConsumption?: GasConsumption | null
+  configuration?: DiveConfiguration | null
 }
 
 const formData = ref<DiveFormData>({
@@ -83,6 +87,10 @@ const fetchDive = async () => {
       diveName: dive.customIdentifier,
       diveSite: dive.site,
       diveBuddies: dive.namedBuddies ?? [],
+      notes: dive.notes,
+      visibility: dive.visibility,
+      gasConsumption: dive.gasConsumption,
+      configuration: dive.configuration,
     }
     originalSite.value = dive.site
   } catch (err) {
@@ -198,6 +206,10 @@ const handleSubmit = async () => {
     customIdentifier: formData.value.diveName ?? null,
     siteId: sitePayload.id,
     namedBuddies: formData.value.diveBuddies ?? null,
+    notes: formData.value.notes ?? null,
+    visibility: formData.value.visibility ?? null,
+    gasConsumption: formData.value.gasConsumption ?? null,
+    configuration: formData.value.configuration ?? null,
   }
 
   try {
