@@ -252,19 +252,28 @@
       </div>
 
       <!-- Notes Panel -->
-      <div v-if="dive.notes" class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
+      <div
+        v-if="dive.notes"
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
+      >
         <h2 class="text-lg font-semibold mb-3">Notes</h2>
         <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ dive.notes }}</p>
       </div>
 
       <!-- Visibility Panel -->
-      <div v-if="dive.visibility && dive.visibility.feeling" class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
+      <div
+        v-if="dive.visibility && dive.visibility.feeling"
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
+      >
         <h2 class="text-lg font-semibold mb-4">Visibility</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <InfoCard title="Feeling">
             <span class="capitalize">{{ dive.visibility.feeling?.toLowerCase() }}</span>
           </InfoCard>
-          <InfoCard v-if="dive.visibility.meters !== undefined && dive.visibility.meters !== null" title="Distance">
+          <InfoCard
+            v-if="dive.visibility.meters !== undefined && dive.visibility.meters !== null"
+            title="Distance"
+          >
             {{ dive.visibility.meters }} m
           </InfoCard>
           <InfoCard v-if="dive.visibility.description" title="Description">
@@ -274,23 +283,47 @@
       </div>
 
       <!-- Gas Consumption Panel -->
-      <div v-if="dive.gasConsumption && dive.gasConsumption.sacBar !== undefined && dive.gasConsumption.sacBar !== null" class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
+      <div
+        v-if="
+          dive.gasConsumption &&
+          dive.gasConsumption.sacBar !== undefined &&
+          dive.gasConsumption.sacBar !== null
+        "
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
+      >
         <h2 class="text-lg font-semibold mb-4">Gas Consumption</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <InfoCard v-if="dive.gasConsumption.sacBar !== undefined && dive.gasConsumption.sacBar !== null" title="SAC (bar/min)">
+          <InfoCard
+            v-if="dive.gasConsumption.sacBar !== undefined && dive.gasConsumption.sacBar !== null"
+            title="SAC (bar/min)"
+          >
             {{ dive.gasConsumption.sacBar.toFixed(2) }}
           </InfoCard>
-          <InfoCard v-if="dive.gasConsumption.rmvLiters !== undefined && dive.gasConsumption.rmvLiters !== null" title="RMV (l/min)">
+          <InfoCard
+            v-if="
+              dive.gasConsumption.rmvLiters !== undefined && dive.gasConsumption.rmvLiters !== null
+            "
+            title="RMV (l/min)"
+          >
             {{ dive.gasConsumption.rmvLiters.toFixed(2) }}
           </InfoCard>
-          <InfoCard v-if="dive.gasConsumption.totalLiters !== undefined && dive.gasConsumption.totalLiters !== null" title="Total Gas">
+          <InfoCard
+            v-if="
+              dive.gasConsumption.totalLiters !== undefined &&
+              dive.gasConsumption.totalLiters !== null
+            "
+            title="Total Gas"
+          >
             {{ dive.gasConsumption.totalLiters.toFixed(1) }} l
           </InfoCard>
         </div>
       </div>
 
       <!-- Configuration Panel -->
-      <div v-if="dive.configuration && dive.configuration.base" class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
+      <div
+        v-if="dive.configuration && dive.configuration.base"
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
+      >
         <h2 class="text-lg font-semibold mb-4">Configuration</h2>
         <div class="space-y-4">
           <!-- Suit Info -->
@@ -298,9 +331,17 @@
             <h3 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">Suit</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InfoCard v-if="dive.configuration.suit.type" title="Type">
-                <span class="capitalize">{{ dive.configuration.suit.type?.toLowerCase().replace(/_/g, ' ') }}</span>
+                <span class="capitalize">{{
+                  dive.configuration.suit.type?.toLowerCase().replace(/_/g, ' ')
+                }}</span>
               </InfoCard>
-              <InfoCard v-if="dive.configuration.suit.thickness !== undefined && dive.configuration.suit.thickness !== null" title="Thickness">
+              <InfoCard
+                v-if="
+                  dive.configuration.suit.thickness !== undefined &&
+                  dive.configuration.suit.thickness !== null
+                "
+                title="Thickness"
+              >
                 {{ dive.configuration.suit.thickness }} mm
               </InfoCard>
               <InfoCard v-if="dive.configuration.suit.notes" title="Notes" class="md:col-span-2">
@@ -311,9 +352,13 @@
 
           <!-- Base Configuration -->
           <div v-if="dive.configuration.base">
-            <h3 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">Base Configuration</h3>
+            <h3 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">
+              Base Configuration
+            </h3>
             <InfoCard title="Setup">
-              <span class="capitalize">{{ dive.configuration.base?.toLowerCase().replace(/_/g, ' ') }}</span>
+              <span class="capitalize">{{
+                dive.configuration.base?.toLowerCase().replace(/_/g, ' ')
+              }}</span>
             </InfoCard>
           </div>
 
@@ -325,7 +370,9 @@
                 {{ dive.configuration.weight }}
               </InfoCard>
               <InfoCard v-if="dive.configuration.weightFeeling" title="Feeling">
-                <span class="capitalize">{{ dive.configuration.weightFeeling?.toLowerCase() }}</span>
+                <span class="capitalize">{{
+                  dive.configuration.weightFeeling?.toLowerCase()
+                }}</span>
               </InfoCard>
             </div>
           </div>

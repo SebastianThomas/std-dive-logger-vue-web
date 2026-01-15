@@ -45,7 +45,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import EditDiveForm from '@/components/dive/edit/EditDiveForm.vue'
-import type { Dive, DiveSite, Visibility, GasConsumption, DiveConfiguration } from '@/lib/types/dive'
+import type {
+  Dive,
+  DiveSite,
+  Visibility,
+  GasConsumption,
+  DiveConfiguration,
+} from '@/lib/types/dive'
 
 const route = useRoute()
 const router = useRouter()

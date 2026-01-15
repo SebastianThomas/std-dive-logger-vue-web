@@ -186,7 +186,12 @@ const handleSubmit = async () => {
     files.value.forEach((f) => formDataObj.append('file', f))
 
     const res = (
-      await postWithToken<UploadDiveResult, FormData>(resolveImporterUrl(`/v1/import`), formDataObj, {}, null)
+      await postWithToken<UploadDiveResult, FormData>(
+        resolveImporterUrl(`/v1/import`),
+        formDataObj,
+        {},
+        null,
+      )
     ).data
     const isErrors = res.errors && res.errors.length > 0
     const isDives = res.dives && res.dives.length > 0

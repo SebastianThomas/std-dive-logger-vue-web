@@ -37,9 +37,11 @@ export type Gas = {
   description?: string
 }
 
+export type Temperature = { value: number; unit: 'CELSIUS' | 'KELVIN' }
+
 export type DiveMeasurement = {
   time: number
-  temperature: { value: number; unit: 'CELSIUS' | 'KELVIN' }
+  temperature: Temperature
   depth: number
   ndl: string
   deco: Deco[]
@@ -100,63 +102,65 @@ export type DiveSummary = {
 export type VisibilityFeeling = 'HIGH' | 'AVERAGE' | 'LOW'
 
 export type Visibility = {
-  meters?: number,
+  meters?: number
   description?: string
   feeling: VisibilityFeeling
 }
 
 export type GasConsumption = {
-  sacBar: number, rmvLiters: number, totalLiters: number
+  sacBar: number
+  rmvLiters: number
+  totalLiters: number
 }
 
 export type SuitType =
-  'NONE' |
-  'RASHGUARD' |
-  'THERMOCLINE' |
-  'NEOPRENE' |
-  'MEMBRANE_DRY' |
-  'NEOPRENE_DRY' |
-  'OTHER'
+  | 'NONE'
+  | 'RASHGUARD'
+  | 'THERMOCLINE'
+  | 'NEOPRENE'
+  | 'MEMBRANE_DRY'
+  | 'NEOPRENE_DRY'
+  | 'OTHER'
 
 export type Suit = {
-  id: number,
-  type: SuitType,
-  thickness?: number | null,
+  id: number
+  type: SuitType
+  thickness?: number | null
   notes: string
 }
 
 export type BaseConfiguration =
-  'SINGLE_TANK' |
-  'SINGLE_TANK_AVELO' |
-  'SIDEMOUNT' |
-  'BACKMOUNT_DOUBLES' |
-  'BACKMOUNT_CCR' |
-  'SIDEMOUNT_CCR' |
-  'CHESTMOUNT_CCR' |
-  'OTHER'
+  | 'SINGLE_TANK'
+  | 'SINGLE_TANK_AVELO'
+  | 'SIDEMOUNT'
+  | 'BACKMOUNT_DOUBLES'
+  | 'BACKMOUNT_CCR'
+  | 'SIDEMOUNT_CCR'
+  | 'CHESTMOUNT_CCR'
+  | 'OTHER'
 
 export type WeightFeeling = 'LIGHT' | 'GOOD' | 'HEAVY'
 
 export type CylinderSizeUnit = 'LITER' | 'CUFT'
 
 export type CylinderSize = {
-  unit: CylinderSizeUnit,
+  unit: CylinderSizeUnit
   value: number
 }
 
 export type DiveConfigurationCylinder = {
-  id: number,
-  size: CylinderSize,
-  startBar?: number | null,
-  endBar?: number | null,
+  id: number
+  size: CylinderSize
+  startBar?: number | null
+  endBar?: number | null
   notes?: string
 }
 
 export type DiveConfiguration = {
-  suit: Suit,
-  base: BaseConfiguration,
-  weight: number,
-  weightFeeling?: WeightFeeling,
+  suit: Suit
+  base: BaseConfiguration
+  weight: number
+  weightFeeling?: WeightFeeling
   cylinders: DiveConfigurationCylinder[]
 }
 

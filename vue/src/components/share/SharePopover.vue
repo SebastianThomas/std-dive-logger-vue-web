@@ -102,10 +102,7 @@
               v-model="groupInput"
               type="text"
               @keydown.enter="handleAddGroup"
-              @keydown.escape="
-                showAddGroupForm = false,
-                groupInput = ''
-              "
+              @keydown.escape="((showAddGroupForm = false), (groupInput = ''))"
               placeholder="Group name..."
               class="border rounded-lg p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               autofocus
@@ -119,10 +116,7 @@
               </button>
               <button
                 type="button"
-                @click="
-                  showAddGroupForm = false,
-                  groupInput = ''
-                "
+                @click="((showAddGroupForm = false), (groupInput = ''))"
                 class="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 px-3 py-2 rounded text-sm"
               >
                 Cancel

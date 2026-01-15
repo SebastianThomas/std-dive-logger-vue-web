@@ -102,6 +102,12 @@ const router = createRouter({
       component: () => import('../views/MapView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/stats',
+      name: 'Stats',
+      component: () => import('../views/StatsView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

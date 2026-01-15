@@ -140,7 +140,9 @@
               type="text"
               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
               placeholder="Optional description"
-              @input="updateVisibilityField('description', ($event.target as HTMLInputElement).value)"
+              @input="
+                updateVisibilityField('description', ($event.target as HTMLInputElement).value)
+              "
             />
           </div>
         </div>
@@ -278,7 +280,9 @@
               id="weight-feeling"
               :value="modelValue.configuration.weightFeeling ?? ''"
               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              @change="updateConfigField('weightFeeling', ($event.target as HTMLSelectElement).value)"
+              @change="
+                updateConfigField('weightFeeling', ($event.target as HTMLSelectElement).value)
+              "
             >
               <option value="">None</option>
               <option value="LIGHT">Light</option>
@@ -336,7 +340,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
-import type { DiveSite, Visibility, GasConsumption, DiveConfiguration, Suit } from '@/lib/types/dive'
+import type {
+  DiveSite,
+  Visibility,
+  GasConsumption,
+  DiveConfiguration,
+  Suit,
+} from '@/lib/types/dive'
 
 interface DiveFormData {
   diveNumber?: number
@@ -406,7 +416,7 @@ const removeBuddy = (name: string) => {
 const handleNumberInput = (path: string, event: Event) => {
   const value = (event.target as HTMLInputElement).value
   const numValue = value === '' ? undefined : Number(value)
-  
+
   // Split path and navigate to the right place
   const parts = path.split('.')
   if (parts.length === 1) {
@@ -459,17 +469,17 @@ const updateConfigSuitField = (field: string, value: string | number | undefined
   if (!props.modelValue.configuration || !props.modelValue.configuration.suit) {
     return
   }
-  
+
   const updatedSuit = {
     ...props.modelValue.configuration.suit,
     [field]: value,
   }
-  
+
   // Ensure notes is always a string, not null or undefined
   if (field !== 'notes' && (updatedSuit.notes === null || updatedSuit.notes === undefined)) {
     updatedSuit.notes = ''
   }
-  
+
   emit('update:modelValue', {
     ...props.modelValue,
     configuration: {

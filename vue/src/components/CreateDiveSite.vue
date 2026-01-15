@@ -16,7 +16,9 @@
         <div
           class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700"
         >
-          <h2 v-if="siteName" class="text-lg font-semibold">Select location for "{{ siteName }}"</h2>
+          <h2 v-if="siteName" class="text-lg font-semibold">
+            Select location for "{{ siteName }}"
+          </h2>
           <h2 v-else class="text-lg font-semibold">Create New Dive Site</h2>
           <button
             type="button"
@@ -42,7 +44,10 @@
                 <strong>location</strong> on the map below.
               </p>
               <div>
-                <label for="site-name-input" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                <label
+                  for="site-name-input"
+                  class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
+                >
                   Site Name
                 </label>
                 <input

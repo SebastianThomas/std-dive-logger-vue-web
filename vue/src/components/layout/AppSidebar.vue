@@ -23,6 +23,9 @@
     <router-link :to="{ name: 'MapView' }">
       <MenuItem icon="map" text="Dive Sites" :is-visible="isVisible" />
     </router-link>
+    <router-link :to="{ name: 'Stats' }">
+      <MenuItem icon="chart-line" text="Statistics" :is-visible="isVisible" />
+    </router-link>
   </aside>
   <div v-else></div>
 </template>
