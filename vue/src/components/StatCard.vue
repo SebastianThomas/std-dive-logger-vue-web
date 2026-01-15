@@ -1,13 +1,13 @@
 <template>
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" v-if="stats">
     <StatItem label="Dives" :value="stats.diveCount.toString()" icon="water" />
-    <StatItem label="Max Dive Number" :value="stats.maxDiveNr.toString()" icon="hashtag" />
+    <StatItem label="Newest Dive #" :value="stats.maxDiveNr.toString()" icon="hashtag" />
+    <StatItem label="Max Depth" :value="`${stats.maxDepth.toFixed(1)} m`" icon="arrow-down" />
     <StatItem
       label="Longest Dive"
       :value="formatDuration(stats.longestDive)"
       icon="hourglass-end"
     />
-    <StatItem label="Max Depth" :value="`${stats.maxDepth.toFixed(1)} m`" icon="arrow-down" />
     <StatItem label="Total Time" :value="formatDuration(stats.totalTime)" icon="clock" />
     <StatItem
       label="Dive Buddies"
