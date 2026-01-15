@@ -231,7 +231,7 @@ const handleReset = async () => {
   try {
     const payload = selectedResetProfiles.value
 
-    const response = await postWithToken<Dive, { profileIds: number[] }>(
+    const response = await postWithToken<Dive, number[]>(
       `/v1/dives/${props.diveId}/profiles/reset`,
       payload,
     )

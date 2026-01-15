@@ -59,12 +59,26 @@ const pageName = computed(() => {
 
 // Helper functions
 const getSavedSidebarState = (): boolean | null => {
-  const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-  return saved === null ? null : saved === 'true'
+  if (typeof localStorage === 'undefined' || localStorage === null) {
+    return null
+  }
+  try {
+    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+    return saved === null ? null : saved === 'true'
+  } catch {
+    return null
+  }
 }
 
 const saveSidebarState = (collapsed: boolean) => {
-  localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed))
+  if (typeof localStorage === 'undefined' || localStorage === null) {
+    return
+  }
+  try {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed))
+  } catch {
+    // Silently fail if localStorage is not available
+  }
 }
 
 const getInitialSidebarState = (): boolean => {

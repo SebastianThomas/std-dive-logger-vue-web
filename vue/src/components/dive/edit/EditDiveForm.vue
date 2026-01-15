@@ -334,9 +334,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
-import type { DiveSite, Visibility, GasConsumption, DiveConfiguration } from '@/lib/types/dive'
+import type { DiveSite, Visibility, GasConsumption, DiveConfiguration, Suit } from '@/lib/types/dive'
 
 interface DiveFormData {
   diveNumber?: number
@@ -411,21 +411,21 @@ const handleNumberInput = (path: string, event: Event) => {
   const parts = path.split('.')
   if (parts.length === 1) {
     // Top-level field like 'notes'
-    updateField(parts[0] as keyof DiveFormData, numValue as any)
-  } else if (parts[0] === 'visibility') {
-    updateVisibilityField(parts[1] as any, numValue)
+    updateField(parts[0] as keyof DiveFormData, numValue)
+  } else if (parts[0] === 'visibility' && parts[1]) {
+    updateVisibilityField(parts[1] as keyof Visibility, numValue)
   } else if (parts[0] === 'gasConsumption') {
-    updateGasConsumptionField(parts[1] as any, numValue)
+    updateGasConsumptionField(parts[1] as keyof GasConsumption, numValue)
   } else if (parts[0] === 'configuration') {
     if (parts[1] === 'suit') {
-      updateConfigSuitField(parts[2] as any, numValue)
+      updateConfigSuitField(parts[2] as keyof Suit, numValue)
     } else {
-      updateConfigField(parts[1] as any, numValue)
+      updateConfigField(parts[1] as string, numValue)
     }
   }
 }
 
-const updateVisibilityField = (field: keyof Visibility, value: any) => {
+const updateVisibilityField = (field: keyof Visibility, value: string | number | undefined) => {
   emit('update:modelValue', {
     ...props.modelValue,
     visibility: {
@@ -445,7 +445,7 @@ const updateGasConsumptionField = (field: keyof GasConsumption, value: number | 
   })
 }
 
-const updateConfigField = (field: string, value: any) => {
+const updateConfigField = (field: string, value: string | number | undefined) => {
   emit('update:modelValue', {
     ...props.modelValue,
     configuration: {
@@ -455,7 +455,7 @@ const updateConfigField = (field: string, value: any) => {
   })
 }
 
-const updateConfigSuitField = (field: string, value: any) => {
+const updateConfigSuitField = (field: string, value: string | number | undefined) => {
   if (!props.modelValue.configuration || !props.modelValue.configuration.suit) {
     return
   }
