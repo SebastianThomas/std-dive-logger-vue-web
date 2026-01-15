@@ -53,7 +53,7 @@ export function useApi() {
     resolvedUrl: string,
     method: string,
     init: AxiosRequestConfig | undefined,
-    body?: BodyType,
+    body?: D,
   ): Promise<AxiosResponse<T, D, H>> {
     const token = await getTokenOrRefresh({ force: false })
     if (!token) {
@@ -110,7 +110,7 @@ export function useApi() {
 
   const deleteWithToken = async <T = unknown, D = object, H = unknown>(
     url: string,
-    body?: BodyType,
+    body?: D,
     init?: AxiosRequestConfig,
   ) => {
     const resolved = resolveUrl(url)
@@ -119,7 +119,7 @@ export function useApi() {
 
   const postWithToken = async <T = unknown, D = object, H = unknown>(
     url: string,
-    body?: BodyType,
+    body?: D,
     init?: AxiosRequestConfig,
     contentType: string | null = 'application/json',
   ) => {
@@ -131,17 +131,14 @@ export function useApi() {
       ...init?.headers,
     } as AxiosHeaders
 
-    const stringify = body && typeof body === 'object' && contentType === 'application/json'
-    const payload = stringify ? JSON.stringify(body) : body
-
     const initWithJson: AxiosRequestConfig = { ...init, headers }
 
-    return await requestWithRetry<T, H, D>(resolved, 'POST', initWithJson, payload)
+    return await requestWithRetry<T, D | string, H>(resolved, 'POST', initWithJson, body)
   }
 
   const putWithToken = async <T = unknown, D = object, H = unknown>(
     url: string,
-    body?: BodyType,
+    body?: D,
     init?: AxiosRequestConfig,
   ) => {
     const resolved = resolveUrl(url)
@@ -155,9 +152,7 @@ export function useApi() {
       headers: { ...init?.headers, ...headers },
     }
 
-    const payload = body && typeof body === 'object' ? JSON.stringify(body) : body
-
-    return await requestWithRetry<T, H, D>(resolved, 'PUT', initWithJson, payload)
+    return await requestWithRetry<T, D, H>(resolved, 'PUT', initWithJson, body)
   }
 
   return { getWithToken, postWithToken, putWithToken, refresh: getTokenOrRefresh, deleteWithToken }

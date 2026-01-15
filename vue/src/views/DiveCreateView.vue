@@ -115,7 +115,7 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useApi } from '@/composables/useApi'
 import CreateDiveSite from '@/components/CreateDiveSite.vue'
-import type { UploadDiveResult } from '@/lib/types/dive'
+import type { UploadDiveResult, DiveSite } from '@/lib/types/dive'
 import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
 
 const router = useRouter()
@@ -126,6 +126,7 @@ const status = ref('')
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const showCreateSite = ref(false)
 const missingSiteName = ref<string | null>(null)
+const createdSiteId = ref<number | null>(null)
 
 const handleDrop = (e: DragEvent) => {
   if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
@@ -176,13 +177,16 @@ const handleSubmit = async () => {
   }
   try {
     const formDataObj = new FormData()
-    const body = {}
+    const body: { diveSiteId?: number } = {}
+    if (createdSiteId.value) {
+      body.diveSiteId = createdSiteId.value
+    }
     const bodyBlob = new Blob([JSON.stringify(body)], { type: 'application/json' })
     formDataObj.append('uploadBody', bodyBlob)
     files.value.forEach((f) => formDataObj.append('file', f))
 
     const res = (
-      await postWithToken<UploadDiveResult>(resolveImporterUrl(`/v1/import`), formDataObj, {}, null)
+      await postWithToken<UploadDiveResult, FormData>(resolveImporterUrl(`/v1/import`), formDataObj, {}, null)
     ).data
     const isErrors = res.errors && res.errors.length > 0
     const isDives = res.dives && res.dives.length > 0
@@ -220,9 +224,10 @@ const handleSubmit = async () => {
   }
 }
 
-const onSiteCreated = async () => {
+const onSiteCreated = async (site: DiveSite) => {
   showCreateSite.value = false
   missingSiteName.value = null
+  createdSiteId.value = site.id ?? null
   await handleSubmit()
 }
 </script>
