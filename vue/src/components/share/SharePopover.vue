@@ -9,9 +9,7 @@
     >
       <!-- Header -->
       <div class="flex items-center gap-2 px-4 py-3 border-b shrink-0">
-        <span class="font-medium text-sm">
-          Dive shared with
-        </span>
+        <span class="font-medium text-sm"> Dive shared with </span>
       </div>
 
       <!-- Body (scrollable) -->
@@ -39,7 +37,7 @@
               label="Search for a user"
               @selected="selectedPerson = $event"
               @enter="handleAddPerson"
-              @escape="showAddPersonForm = false; selectedPerson = null"
+              @escape="personEscape"
             />
             <div class="flex gap-2">
               <button
@@ -51,7 +49,7 @@
               </button>
               <button
                 type="button"
-                @click="showAddPersonForm = false; selectedPerson = null"
+                @click="personCancel"
                 class="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 px-3 py-2 rounded text-sm"
               >
                 Cancel
@@ -73,7 +71,10 @@
                 ×
               </button>
             </li>
-            <li v-if="displayedReaders.length === 0" class="text-sm text-gray-400 dark:text-gray-500">
+            <li
+              v-if="displayedReaders.length === 0"
+              class="text-sm text-gray-400 dark:text-gray-500"
+            >
               No people shared
             </li>
           </ul>
@@ -101,7 +102,10 @@
               v-model="groupInput"
               type="text"
               @keydown.enter="handleAddGroup"
-              @keydown.escape="showAddGroupForm = false; groupInput = ''"
+              @keydown.escape="
+                showAddGroupForm = false,
+                groupInput = ''
+              "
               placeholder="Group name..."
               class="border rounded-lg p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               autofocus
@@ -115,7 +119,10 @@
               </button>
               <button
                 type="button"
-                @click="showAddGroupForm = false; groupInput = ''"
+                @click="
+                  showAddGroupForm = false,
+                  groupInput = ''
+                "
                 class="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 px-3 py-2 rounded text-sm"
               >
                 Cancel
@@ -228,10 +235,21 @@ const deleteGroup = async (id: number | undefined) => {
   }
 }
 
+const personEscape = () => {
+  showAddPersonForm.value = false
+  selectedPerson.value = null
+}
+const personCancel = () => {
+  showAddPersonForm.value = false
+  selectedPerson.value = null
+}
+
 const handleAddPerson = async () => {
   if (props.diveId == null || !selectedPerson.value) return
   try {
-    const res = await postWithToken<PagedResult<User>>(`/v1/dives/${props.diveId}/readers`, [selectedPerson.value.id])
+    const res = await postWithToken<PagedResult<User>>(`/v1/dives/${props.diveId}/readers`, [
+      selectedPerson.value.id,
+    ])
     readers.value = res.data.result
     toast.success('Added person')
     selectedPerson.value = null

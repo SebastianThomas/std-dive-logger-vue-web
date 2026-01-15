@@ -770,7 +770,7 @@ function renderSegments() {
   })
 }
 
-function onMouseMoveD3(event: MouseEvent) {
+function onMouseMoveD3(event: MouseEvent | TouchEvent) {
   if (!timeScale.value || !depthScale.value || !gSel.value) return
   const [mx, my] = pointerInG(event)
   if (mx < 0 || mx > innerWidth.value || my < 0 || my > innerHeight.value) {
@@ -917,8 +917,18 @@ function onMouseMoveD3(event: MouseEvent) {
     if (!containerEl) return
 
     const rect = containerEl.getBoundingClientRect()
-    const mouseX = event.clientX - rect.left
-    const mouseY = event.clientY - rect.top
+    let mouseX: number
+    let mouseY: number
+
+    if (event instanceof TouchEvent) {
+      const touch = event.touches[0] || event.changedTouches[0]
+      if (!touch) return
+      mouseX = touch.clientX - rect.left
+      mouseY = touch.clientY - rect.top
+    } else {
+      mouseX = event.clientX - rect.left
+      mouseY = event.clientY - rect.top
+    }
 
     // Measure actual tooltip element if available, otherwise use estimates
     const tooltipEl = containerEl.querySelector(
@@ -950,10 +960,23 @@ function onMouseMoveD3(event: MouseEvent) {
   })
 }
 
-function pointerInG(event: MouseEvent): [number, number] {
+function pointerInG(event: MouseEvent | TouchEvent): [number, number] {
   const rect = container.value!.getBoundingClientRect()
-  const x = event.clientX - rect.left - margin.left
-  const y = event.clientY - rect.top - margin.top
+  let clientX: number
+  let clientY: number
+
+  if (event instanceof TouchEvent) {
+    const touch = event.touches[0] || event.changedTouches[0]
+    if (!touch) return [0, 0]
+    clientX = touch.clientX
+    clientY = touch.clientY
+  } else {
+    clientX = event.clientX
+    clientY = event.clientY
+  }
+
+  const x = clientX - rect.left - margin.left
+  const y = clientY - rect.top - margin.top
   return [x, y]
 }
 

@@ -149,7 +149,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { toast } from 'vue-sonner'
 import RoleMenu from '@/components/share/RoleMenu.vue'
-import type { GroupRequest, GroupWithMembers, InGroupRole, User, UserWithRole } from '@/lib/types/user'
+import type {
+  GroupRequest,
+  GroupWithMembers,
+  InGroupRole,
+  User,
+  UserWithRole,
+} from '@/lib/types/user'
 
 const route = useRoute()
 const router = useRouter()

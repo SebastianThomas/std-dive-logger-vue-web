@@ -108,7 +108,12 @@
       </div>
 
       <!-- Share Popover -->
-      <SharePopover :open="showShareModal" :dive-id="dive.id" :dive-user-id="dive.user.id" @close="showShareModal = false" />
+      <SharePopover
+        :open="showShareModal"
+        :dive-id="dive.id"
+        :dive-user-id="dive.user.id"
+        @close="showShareModal = false"
+      />
 
       <!-- Main Content -->
       <div class="flex flex-col md:flex-row gap-6">
