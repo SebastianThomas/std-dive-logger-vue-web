@@ -867,6 +867,10 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
   props.profiles.forEach((profile, profileIdx) => {
     if (!visibleMask.value[profileIdx]) return
 
+    // Check if this profile has data at the current time point
+    // Only show tooltip for profiles where current time is within their time range
+    if (tVal < profile.start || tVal > profile.end) return
+
     // Find the closest measurement in this profile to the current time
     const profileMeasurements = profile.measurements.map((m, mIdx) => ({
       ...m,
@@ -884,10 +888,14 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
     )
     const m = profileMeasurements[mIdx]!
 
+    // Calculate absolute time from the earliest profile start
+    const graphStartTime = Math.min(...props.profiles.map((p) => p.start))
+
     profileDataList.push({
       profileIdx,
       profileNum: profileIdx + 1,
       timeDisplay: formatElapsedTime(m.measurement.time, m.profileStart),
+      absoluteTime: formatElapsedTime(m.measurement.time, graphStartTime),
       depth: m.measurement.depth,
       temp: m.measurement.temperature?.value,
       ndl: formatISoDurationToMinutes(m.measurement.ndl),
@@ -925,8 +933,10 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
   }
 
   // Anchor crosshair/focus to the selected profile's nearest measurement
-  let anchorTime = closestMeasurement.measurement.time
+  // Use the actual mouse position for the crosshair time (not snapped to a measurement)
   let anchorDepth = closestMeasurement.measurement.depth
+  
+  // Find the depth at the current time for the selected profile
   if (selIdx >= 0 && selIdx < props.profiles.length && visibleMask.value[selIdx]) {
     const selProfile = props.profiles[selIdx]
     if (selProfile) {
@@ -938,17 +948,16 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
           Math.max(0, bSel(selMeasurements, tVal)),
         )
         const selM = selMeasurements[selMIdx]!
-        anchorTime = selM.measurement.time
         anchorDepth = selM.measurement.depth
       }
     }
   }
 
-  const cx = timeScale.value(anchorTime)
+  const cx = mx  // Use mouse X position directly instead of converting back from time
   const cy = depthScale.value(anchorDepth)
 
   // Show crosshair line at cursor x position
-  crosshairLine.value?.attr('x1', cx).attr('x2', cx).style('display', null)
+  crosshairLine.value?.attr('x1', mx).attr('x2', mx).style('display', null)
 
   // Show focus circle at data point
   focusCircle.value?.attr('cx', cx).attr('cy', cy).style('display', null)
@@ -974,7 +983,7 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
     profiles: profileDataList,
     metricAvailability,
   }
-  tooltipTime.value = anchorTime
+  tooltipTime.value = tVal  // Use the actual time at mouse position
 
   // Position tooltip to follow the mouse - measure on next tick to get actual rendered size
   nextTick(() => {

@@ -25,6 +25,7 @@
               <MetricsControlPanel
                 v-model:selected-profiles="selectedProfiles"
                 :profiles-count="profiles.length"
+                :visible-profiles="visibleProfiles"
                 v-model:show-temp="showTemp"
                 v-model:show-segments="showSegments"
                 v-model:show-grid="showGrid"
@@ -418,6 +419,9 @@ const updateRotateTip = () => {
 onMounted(() => {
   // Initialize all profiles as visible
   visibleProfiles.value = props.profiles.map(() => true)
+  
+  // Initialize selectedProfiles to include all profiles
+  selectedProfiles.value = props.profiles.map((_, idx) => idx)
 
   if (props.fullscreen) {
     window.addEventListener('keydown', onKeyDown)

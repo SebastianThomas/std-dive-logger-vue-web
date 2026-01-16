@@ -187,10 +187,13 @@
       <button
         v-for="idx in profilesCount"
         :key="idx"
-        @click="$emit('update:selectedProfiles', [idx - 1])"
+        @click="(!props.visibleProfiles || props.visibleProfiles[idx - 1]) && $emit('update:selectedProfiles', [idx - 1])"
+        :disabled="props.visibleProfiles && !props.visibleProfiles[idx - 1]"
         :class="[
           'px-2 py-0.5 text-xs rounded border transition-colors',
-          selectedProfiles.includes(idx - 1)
+          props.visibleProfiles && !props.visibleProfiles[idx - 1]
+            ? 'opacity-50 cursor-not-allowed bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-300 dark:border-gray-700'
+            : selectedProfiles.includes(idx - 1)
             ? 'bg-blue-500 text-white border-blue-600'
             : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600',
         ]"
@@ -281,6 +284,7 @@ import { ref } from 'vue'
 const props = defineProps<{
   selectedProfiles: number[]
   profilesCount: number
+  visibleProfiles?: boolean[]
   showTemp: boolean
   showSegments: boolean
   showGrid: boolean

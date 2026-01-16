@@ -13,20 +13,32 @@
   >
     <!-- Header with time -->
     <div class="font-semibold mb-1">
-      Time: {{ currentProfile?.timeDisplay ?? data.profiles[0]?.timeDisplay }}
-      <span v-if="data.profiles.length > 1" class="text-xs opacity-70 ml-1">
+      <div>Time: {{ currentProfile?.absoluteTime ?? data.profiles[0]?.absoluteTime }}</div>
+      <div
+        v-if="
+          (currentProfile?.timeDisplay ?? data.profiles[0]?.timeDisplay) !==
+          (currentProfile?.absoluteTime ?? data.profiles[0]?.absoluteTime)
+        "
+        class="text-xs opacity-70"
+      >
+        Profile: {{ currentProfile?.timeDisplay ?? data.profiles[0]?.timeDisplay }}
+        <span v-if="data.profiles.length > 1" class="ml-1">
+          ({{ selectedProfile + 1 }}/{{ data.profiles.length }})
+        </span>
+      </div>
+      <div v-else-if="data.profiles.length > 1" class="text-xs opacity-70">
         ({{ selectedProfile + 1 }}/{{ data.profiles.length }})
-      </span>
+      </div>
     </div>
 
     <!-- Show selected profile data or all profiles -->
     <div
-      v-if="props.selectedProfiles && props.selectedProfiles.length > 1"
+      v-if="selectedProfilesData.length > 1"
       class="grid gap-3"
-      :style="{ gridTemplateColumns: `repeat(${Math.min(data.profiles.length, 3)}, 1fr)` }"
+      :style="{ gridTemplateColumns: `repeat(${Math.min(selectedProfilesData.length, 3)}, 1fr)` }"
     >
       <div
-        v-for="(profile, idx) in data.profiles"
+        v-for="(profile, idx) in selectedProfilesData"
         :key="idx"
         :class="[idx > 0 ? 'border-l pl-2 border-gray-300 dark:border-gray-600' : '']"
       >
@@ -145,6 +157,7 @@ export type TooltipProfileData = {
   profileIdx: number
   profileNum: number
   timeDisplay: string
+  absoluteTime: string
   depth: number
   temp?: number
   ndl?: string
@@ -191,5 +204,12 @@ interface Props {
 
 const props = defineProps<Props>()
 const selectedProfile = computed(() => props.selectedProfiles?.[0] ?? 0)
-const currentProfile = computed(() => props.data?.profiles[selectedProfile.value])
+const currentProfile = computed(() => 
+  props.data?.profiles.find(p => p.profileIdx === selectedProfile.value)
+)
+const selectedProfilesData = computed(() => 
+  props.data?.profiles.filter(p => 
+    props.selectedProfiles?.includes(p.profileIdx) ?? true
+  ) ?? []
+)
 </script>
