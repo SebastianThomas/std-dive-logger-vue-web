@@ -22,7 +22,7 @@
           <div class="flex gap-2">
             <RouterLink v-if="isMine" :to="{ name: 'DiveEdit', params: { diveId: dive.id } }">
               <button class="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
-                Edit Dive
+                Edit
               </button>
             </RouterLink>
             <button
