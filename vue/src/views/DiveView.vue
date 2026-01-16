@@ -17,9 +17,9 @@
       <div
         class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 flex flex-col"
       >
-        <div class="flex justify-between items-center mb-2">
+        <div class="flex justify-between items-center mb-4 gap-4">
           <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
-          <div class="flex gap-2">
+          <div class="flex gap-2 ml-auto">
             <RouterLink v-if="isMine" :to="{ name: 'DiveEdit', params: { diveId: dive.id } }">
               <button class="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
                 Edit

@@ -5,6 +5,9 @@
   <!-- Command Palette -->
   <CommandPalette v-model="showCommandPalette" />
 
+  <!-- Help Menu -->
+  <HelpMenu v-model="showHelpMenu" />
+
   <Toaster position="top-right" richColors closeButton />
   <div
     class="grid app-grid min-h-screen w-full transition-all duration-300"
@@ -46,6 +49,7 @@ import AppHeader from './components/layout/AppHeader.vue'
 import AppSidebar from './components/layout/AppSidebar.vue'
 import CopyrightNotice from './components/CopyrightNotice.vue'
 import CommandPalette from './components/CommandPalette.vue'
+import HelpMenu from './components/HelpMenu.vue'
 
 // Constants
 const headerHeight = 80 as const
@@ -107,6 +111,7 @@ const isVisible = ref(getInitialSidebarState())
 const sidebarWidth = ref<0 | 50 | 130>(0)
 const showTitle = computed(() => windowWidth.value >= SM_BREAKPOINT)
 const showCommandPalette = ref(false)
+const showHelpMenu = ref(false)
 
 // Methods
 const handleLogout = async () => {
@@ -177,9 +182,8 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
   }
   // '?' to show help/shortcuts
   if (event.key === '?' && !event.ctrlKey && !event.metaKey) {
-    console.log(
-      'Available shortcuts: Ctrl+P=command palette, b=back, f=forward, e=edit, s=share, d=delete (in DiveView)',
-    )
+    event.preventDefault()
+    showHelpMenu.value = !showHelpMenu.value
   }
 }
 
