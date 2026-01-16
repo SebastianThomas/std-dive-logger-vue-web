@@ -6,7 +6,7 @@
         <li v-for="info in sortedDiveInfo" :key="info.id" class="flex items-center justify-between">
           <span class="dive-name-truncate">#{{ info.number }}: {{ info.customIdentifier }}</span>
           <router-link
-            :to="`/dives/view/${info.id}`"
+            :to="{ name: 'DiveView', params: { diveId: info.id } }"
             class="ml-2 px-2 py-1 bg-blue-600 text-white! rounded text-xs hover:bg-blue-700 inline-block"
           >
             View Dive

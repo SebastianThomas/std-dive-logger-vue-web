@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { toast } from 'vue-sonner'
@@ -255,6 +255,25 @@ const leaveGroup = async () => {
   }
 }
 
+// Keyboard shortcuts for GroupEditView
+const handleGroupEditKeydown = (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+    return
+  }
+
+  // 'l' to leave group
+  if (event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey) {
+    showLeaveConfirm.value = true
+  }
+  // Shift+D to delete group
+  if (event.key.toLowerCase() === 'd' && event.shiftKey && !event.ctrlKey && !event.metaKey) {
+    if (isAdmin.value) {
+      showDeleteConfirm.value = true
+    }
+  }
+}
+
 const deleteGroup = async () => {
   isLoadingDelete.value = true
   try {
@@ -273,5 +292,10 @@ const deleteGroup = async () => {
 onMounted(() => {
   fetchGroupDetails()
   fetchJoinRequests()
+  window.addEventListener('keydown', handleGroupEditKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGroupEditKeydown)
 })
 </script>

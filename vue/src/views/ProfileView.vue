@@ -76,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
@@ -95,7 +95,25 @@ onMounted(async () => {
     console.error(err)
     toast.error('Failed to load user profile')
   }
+  window.addEventListener('keydown', handleProfileKeydown)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleProfileKeydown)
+})
+
+// Keyboard shortcuts for ProfileView
+const handleProfileKeydown = (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+    return
+  }
+
+  // Shift+D to delete account
+  if (event.key.toLowerCase() === 'd' && event.shiftKey && !event.ctrlKey && !event.metaKey) {
+    showDeregisterModal.value = true
+  }
+}
 
 const confirmDeregister = async () => {
   try {

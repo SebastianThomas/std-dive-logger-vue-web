@@ -110,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useApi } from '@/composables/useApi'
@@ -168,6 +168,29 @@ const clearFiles = () => {
 }
 
 const goBack = () => router.back()
+
+// Keyboard shortcuts for DiveCreateView
+const handleDiveCreateKeydown = (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+    // Allow Ctrl+Enter in inputs
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault()
+      handleSubmit()
+      return
+    }
+    return
+  }
+  // Ctrl+Enter to submit
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    event.preventDefault()
+    handleSubmit()
+  }
+  // Escape to cancel
+  if (event.key === 'Escape') {
+    router.back()
+  }
+}
 
 const handleSubmit = async () => {
   status.value = ''
@@ -235,6 +258,14 @@ const onSiteCreated = async (site: DiveSite) => {
   createdSiteId.value = site.id ?? null
   await handleSubmit()
 }
+
+onMounted(() => {
+  window.addEventListener('keydown', handleDiveCreateKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleDiveCreateKeydown)
+})
 </script>
 
 <style scoped></style>

@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '../composables/useApi'
@@ -285,6 +285,49 @@ const onRowClick = (diveId: number) => {
   }
 }
 
+// Keyboard shortcuts for DiveListView
+const handleDiveListKeydown = (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement
+  // Don't trigger if typing in input
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+    // '/' to focus search
+    if (event.key === '/' && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault()
+      const searchInput = document.querySelector(
+        'input[placeholder="Search dives..."]',
+      ) as HTMLInputElement
+      searchInput?.focus()
+    }
+    return
+  }
+
+  // '/' to focus search
+  if (event.key === '/' && !event.ctrlKey && !event.metaKey) {
+    event.preventDefault()
+    const searchInput = document.querySelector(
+      'input[placeholder="Search dives..."]',
+    ) as HTMLInputElement
+    searchInput?.focus()
+  }
+  // 'a' to toggle shared dives view
+  if (event.key.toLowerCase() === 'a' && !event.ctrlKey && !event.metaKey) {
+    toggleSharedDives()
+  }
+  // 'm' for bulk actions when in selection mode
+  if (
+    event.key.toLowerCase() === 'm' &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    isSelectionMode.value
+  ) {
+    openBulkActions()
+  }
+  // Escape to clear selection
+  if (event.key === 'Escape' && isSelectionMode.value) {
+    clearSelection()
+  }
+}
+
 // Row click navigates directly; selection and action button removed
 
 const goToPage = (page: number) => {
@@ -321,6 +364,11 @@ watch([currentPage, searchQuery, viewShared, sortColumn, sortDirection], () => {
 onMounted(() => {
   fetchUserId()
   fetchDives()
+  window.addEventListener('keydown', handleDiveListKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleDiveListKeydown)
 })
 </script>
 

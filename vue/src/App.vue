@@ -1,4 +1,10 @@
 <template>
+  <!-- Skip to content button for accessibility -->
+  <a href="#main-content" class="skip-to-content">Skip to main content</a>
+
+  <!-- Command Palette -->
+  <CommandPalette v-model="showCommandPalette" />
+
   <Toaster position="top-right" richColors closeButton />
   <div
     class="grid app-grid min-h-screen w-full transition-all duration-300"
@@ -17,6 +23,7 @@
 
     <!-- Main content -->
     <main
+      id="main-content"
       class="transition-all duration-300 overflow-auto min-h-full min-w-full grid-main bg-gray-100 dark:bg-gray-900 relative"
     >
       <router-view class="router-content" />
@@ -38,6 +45,7 @@ import { resolveUrl } from '@/lib/globals/url/resolveUrl'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppSidebar from './components/layout/AppSidebar.vue'
 import CopyrightNotice from './components/CopyrightNotice.vue'
+import CommandPalette from './components/CommandPalette.vue'
 
 // Constants
 const headerHeight = 80 as const
@@ -98,6 +106,7 @@ const windowWidth = ref(window.innerWidth)
 const isVisible = ref(getInitialSidebarState())
 const sidebarWidth = ref<0 | 50 | 130>(0)
 const showTitle = computed(() => windowWidth.value >= SM_BREAKPOINT)
+const showCommandPalette = ref(false)
 
 // Methods
 const handleLogout = async () => {
@@ -143,9 +152,41 @@ watch(
   { immediate: true },
 )
 
+// Global keyboard shortcuts
+const handleGlobalKeydown = (event: KeyboardEvent) => {
+  // Ctrl+P / Cmd+P for command palette - always works
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
+    event.preventDefault()
+    showCommandPalette.value = !showCommandPalette.value
+    return
+  }
+
+  // Don't trigger shortcuts when typing in input/textarea
+  const target = event.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+    return
+  }
+
+  // 'b' for back
+  if (event.key.toLowerCase() === 'b' && !event.ctrlKey && !event.metaKey) {
+    router.back()
+  }
+  // 'f' for forward
+  if (event.key.toLowerCase() === 'f' && !event.ctrlKey && !event.metaKey) {
+    router.forward()
+  }
+  // '?' to show help/shortcuts
+  if (event.key === '?' && !event.ctrlKey && !event.metaKey) {
+    console.log(
+      'Available shortcuts: Ctrl+P=command palette, b=back, f=forward, e=edit, s=share, d=delete (in DiveView)',
+    )
+  }
+}
+
 // Lifecycle hooks
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  window.addEventListener('keydown', handleGlobalKeydown)
 
   // Initialize theme
   themeStore.initializeTheme()
@@ -156,6 +197,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 
@@ -196,5 +238,21 @@ onUnmounted(() => {
 
 :root.hide-header .grid-header {
   display: none !important;
+}
+
+.skip-to-content {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 100;
+  border-radius: 0 0 4px 0;
+}
+
+.skip-to-content:focus {
+  top: 0;
 }
 </style>

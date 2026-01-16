@@ -420,7 +420,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
@@ -550,12 +550,43 @@ const formatDiveTime = (duration?: string): string => {
   return formatISoDurationToTime(duration)
 }
 
+// Keyboard shortcuts for DiveView
+const handleDiveViewKeydown = (event: KeyboardEvent) => {
+  // Don't trigger shortcuts when typing in input/textarea
+  const target = event.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+    return
+  }
+
+  // 'e' for edit
+  if (event.key.toLowerCase() === 'e' && !event.ctrlKey && !event.metaKey && isMine.value) {
+    router.push({ name: 'DiveEdit', params: { diveId: dive.value?.id } })
+  }
+  // 's' for share
+  if (event.key.toLowerCase() === 's' && !event.ctrlKey && !event.metaKey && isMine.value) {
+    showShareModal.value = true
+  }
+  // 'd' for delete
+  if (event.key.toLowerCase() === 'd' && !event.ctrlKey && !event.metaKey && isMine.value) {
+    showDeleteModal.value = true
+  }
+  // 'l' for link dive
+  if (event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey && !isMine.value) {
+    showLinkModal.value = true
+  }
+}
+
 onMounted(() => {
   fetchDive()
   fetchUserId()
+  window.addEventListener('keydown', handleDiveViewKeydown)
 })
 
 watch(() => diveId.value, fetchDive)
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleDiveViewKeydown)
+})
 </script>
 
 <style scoped>
