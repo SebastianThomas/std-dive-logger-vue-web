@@ -184,6 +184,11 @@ const siteStats = computed(() => cache.value.site || [])
 const buddyStats = computed(() => cache.value.buddy || [])
 
 const selectStat = async (stat: StatType) => {
+  // Ignore if clicking the same stat that's already selected
+  if (selectedStat.value === stat) {
+    return
+  }
+
   selectedStat.value = stat
 
   // Update URL query parameter
