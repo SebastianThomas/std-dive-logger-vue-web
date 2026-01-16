@@ -39,12 +39,12 @@
           v-for="dive in dives"
           :key="dive.id"
           :class="[
-            'cursor-pointer transition-colors',
+            'cursor-pointer transition-colors border-l-4',
             selectedIds.includes(dive.id)
-              ? 'bg-sky-100 hover:bg-sky-200 dark:bg-sky-900 dark:hover:bg-sky-800 border-l-4 border-l-sky-500 dark:border-l-sky-400'
+              ? 'bg-sky-100 hover:bg-sky-200 dark:bg-sky-900 dark:hover:bg-sky-800 border-l-sky-500 dark:border-l-sky-400'
               : dive.user.id !== myUserId
-                ? 'bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700'
-                : 'hover:bg-gray-50 dark:hover:bg-gray-800',
+                ? 'bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 border-l-transparent'
+                : 'hover:bg-gray-50 dark:hover:bg-gray-800 border-l-transparent',
           ]"
           @click="$emit('row-click', dive.id)"
         >
