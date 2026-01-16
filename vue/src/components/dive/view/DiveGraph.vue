@@ -19,7 +19,7 @@
       v-if="showZoomHint"
       class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/75 text-white px-4 py-2 rounded-lg text-sm font-medium pointer-events-none z-20"
     >
-      Ctrl+Scroll to zoom in the graph
+      Ctrl+Scroll • 2-finger pinch to zoom to zoom
     </div>
   </div>
 </template>
@@ -187,6 +187,7 @@ const segmentsLayer = ref<Selection<SVGGElement, unknown, null, undefined> | nul
 const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
 const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
+const currentZoomLevel = ref(1)
 const { getWithToken } = useApi()
 
 const leftAxisMetric = computed({
@@ -457,9 +458,14 @@ function initSvg() {
     .attr('height', innerHeight.value)
     .attr('fill', 'transparent')
     .on('mousemove', onMouseMoveD3)
+    .on('touchmove', onMouseMoveD3)
     .on('mouseleave', onMouseLeave)
+    .on('touchend', onMouseLeave)
 
-  // Zoom & pan on the SVG (X-axis only, requires Ctrl)
+  // Zoom & pan on the SVG (X-axis only, requires Ctrl on desktop, or 2-finger pinch on touch)
+  let touchDistance = 0
+  let lastZoomLevel = 1
+
   const z = zoom<SVGSVGElement, unknown>()
     .scaleExtent([1, 20])
     .translateExtent([
@@ -467,18 +473,26 @@ function initSvg() {
       [width.value, height.value],
     ])
     .filter((event): boolean => {
-      // Only allow zoom/pan with Ctrl key pressed
-      if (event.type === 'wheel' && !event.ctrlKey) {
-        // Show hint when user tries to zoom without Ctrl
-        if (!showZoomHint.value) {
-          showZoomHint.value = true
-          if (zoomHintTimer) clearTimeout(zoomHintTimer)
-          zoomHintTimer = setTimeout(() => {
-            showZoomHint.value = false
-          }, 2000)
+      // Allow wheel zoom only with Ctrl key pressed
+      if (event.type === 'wheel') {
+        if (!event.ctrlKey) {
+          // Show hint when user tries to zoom without Ctrl
+          if (!showZoomHint.value) {
+            showZoomHint.value = true
+            if (zoomHintTimer) clearTimeout(zoomHintTimer)
+            zoomHintTimer = setTimeout(() => {
+              showZoomHint.value = false
+            }, 2000)
+          }
+          return false
         }
-        return false
+        return true
       }
+      // Allow touch zoom (will be handled by touchstart/touchmove)
+      if (event.type.startsWith('touch')) {
+        return true
+      }
+      // Block double-click zoom and allow regular pan
       return !event.button && event.type !== 'dblclick'
     })
     .on('zoom', (event): void => {
@@ -486,6 +500,7 @@ function initSvg() {
       const t: ZoomTransform = event.transform
       // Track if zoomed in (scale > 1 indicates zoom)
       isZoomed.value = t.k > 1
+      currentZoomLevel.value = t.k
       // Only rescale X (time), keep Y (depth) unchanged
       timeScale.value = t.rescaleX(timeScaleBase.value)
       depthScale.value = depthScaleBase.value.copy()
@@ -514,6 +529,56 @@ function initSvg() {
       renderAll()
       renderSegments()
     })
+
+  // Add touch event handlers for two-finger pinch zoom
+  if (svgSel.value) {
+    svgSel.value.on('touchstart', (event: TouchEvent) => {
+      if (event.touches.length === 2) {
+        // Calculate initial distance between two fingers
+        const touch1 = event.touches[0]!
+        const touch2 = event.touches[1]!
+        const dx = touch2.clientX - touch1.clientX
+        const dy = touch2.clientY - touch1.clientY
+        touchDistance = Math.sqrt(dx * dx + dy * dy)
+        lastZoomLevel = currentZoomLevel.value
+      }
+    })
+
+    svgSel.value.on('touchmove', (event: TouchEvent) => {
+      if (event.touches.length === 2 && zoomBehavior.value) {
+        // Calculate current distance between two fingers
+        const touch1 = event.touches[0]!
+        const touch2 = event.touches[1]!
+        const dx = touch2.clientX - touch1.clientX
+        const dy = touch2.clientY - touch1.clientY
+        const currentDistance = Math.sqrt(dx * dx + dy * dy)
+
+        // Calculate zoom scale based on finger distance change
+        if (touchDistance > 0) {
+          const scale = currentDistance / touchDistance
+          const newZoomLevel = Math.max(1, Math.min(20, lastZoomLevel * scale))
+
+          // Get center point between two fingers for zoom origin
+          const centerX = (touch1.clientX + touch2.clientX) / 2
+          // const centerY = (touch1.clientY + touch2.clientY) / 2
+
+          // Apply zoom transformation
+          const rect = container.value?.getBoundingClientRect()
+          if (rect && svgSel.value) {
+            const x = centerX - rect.left - margin.left
+            // const y = centerY - rect.top - margin.top
+
+            svgSel.value.call(
+              zoomBehavior.value.transform,
+              zoomIdentity.translate(x, 0).scale(newZoomLevel).translate(-x, 0),
+            )
+            lastZoomLevel = newZoomLevel
+          }
+        }
+      }
+    })
+  }
+
   svgSel.value.call(z)
   // Store zoom behavior for reset
   zoomBehavior.value = z
