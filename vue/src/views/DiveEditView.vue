@@ -79,7 +79,7 @@ const formData = ref<DiveFormData>({
 
 const originalSite = ref<DiveSite | null>(null)
 
-const goBack = () => router.push({ name: 'DiveView', params: { diveId: diveId.value } })
+const goBack = () => router.back()
 
 const fetchDive = async () => {
   loading.value = true

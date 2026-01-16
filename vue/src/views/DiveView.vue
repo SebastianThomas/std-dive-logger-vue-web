@@ -529,7 +529,7 @@ const handleDelete = async () => {
   try {
     await deleteWithToken(`/v1/dives/${diveId.value}`)
     toast.success('Dive deleted successfully')
-    router.push({ name: 'Home' })
+    router.push({ name: 'DiveList' })
   } catch (err) {
     console.error('Delete failed', err)
     toast.error('Failed to delete dive')

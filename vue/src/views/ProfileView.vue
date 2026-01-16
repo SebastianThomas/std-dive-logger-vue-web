@@ -107,7 +107,7 @@ const confirmDeregister = async () => {
 
     localStorage.removeItem('token')
     toast.success('Account deregistered successfully')
-    router.push({ name: 'AuthLogin' })
+    router.push({ name: 'AuthSignup' })
   } catch (err) {
     console.error(err)
     toast.error('Failed to deregister account')
