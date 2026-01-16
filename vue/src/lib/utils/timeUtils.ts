@@ -135,3 +135,25 @@ export function formatElapsedTime(timeMs: number, startMs: number): string {
 
   return `${hh}:${mm}`
 }
+
+/**
+ * Formats a date/timestamp to German locale format with zero-padded day and month.
+ * @param date Date object, timestamp number, or ISO string
+ * @returns Formatted date string (e.g., "01.01.2002, 14:30") or "Unknown" if invalid
+ */
+export function formatDate(date: Date | number | string | undefined | null): string {
+  if (!date) return 'Unknown'
+
+  try {
+    const dateObj = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date
+    return dateObj.toLocaleString('de-DE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return 'Unknown'
+  }
+}

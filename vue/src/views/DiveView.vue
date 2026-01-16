@@ -49,8 +49,7 @@
           </div>
         </div>
         <p class="text-gray-500 dark:text-gray-400 text-sm">
-          {{ dive.site.name }} ·
-          {{ summary?.start ? new Date(summary.start).toLocaleString() : 'No start date' }}
+          {{ dive.site.name }} · {{ summary?.start ? formatDate(summary.start) : 'No start date' }}
         </p>
       </div>
 
@@ -424,7 +423,7 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
-import { formatISoDurationToTime } from '@/lib/utils/timeUtils'
+import { formatISoDurationToTime, formatDate } from '@/lib/utils/timeUtils'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import DiveSearchAndLink from '@/components/DiveSearchAndLink.vue'
 import DiveGraphContainer from '@/components/dive/view/DiveGraphContainer.vue'

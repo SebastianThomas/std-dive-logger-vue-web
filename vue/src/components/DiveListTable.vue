@@ -62,15 +62,7 @@
             {{ dive.customIdentifier || '-' }}
           </td>
           <td class="border border-gray-400 px-3 py-2 w-40">
-            {{
-              new Date(dive.summary.start).toLocaleString('de-DE', {
-                year: 'numeric',
-                month: 'numeric',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })
-            }}
+            {{ formatDate(dive.summary.start) }}
           </td>
           <td class="border border-gray-400 px-3 py-2 w-24">
             {{ dive.summary.maxDepth.toFixed(1) }} m
@@ -107,7 +99,7 @@
 import DiveSitePreview from '@/components/DiveSitePreview.vue'
 import type { DiveWithoutProfiles } from '@/lib/types/dive'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
-import { formatISoDurationToTime } from '@/lib/utils/timeUtils'
+import { formatISoDurationToTime, formatDate } from '@/lib/utils/timeUtils'
 
 interface ColumnDef {
   key: keyof DiveWithoutProfiles

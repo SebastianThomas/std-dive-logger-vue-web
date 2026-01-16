@@ -98,6 +98,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import type { AlignmentType, Dive, DiveProfile } from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
+import { formatDate } from '@/lib/utils/timeUtils'
 
 interface Props {
   profiles: DiveProfile[]
@@ -170,15 +171,6 @@ watch(
     }
   },
 )
-
-const formatDate = (timestamp: number): string => {
-  if (!timestamp) return 'Unknown'
-  try {
-    return new Date(timestamp).toLocaleString()
-  } catch {
-    return 'Unknown'
-  }
-}
 
 const handleAlign = async () => {
   if (!canAlign.value) return

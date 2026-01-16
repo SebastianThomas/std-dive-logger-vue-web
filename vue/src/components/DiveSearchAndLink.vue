@@ -17,11 +17,7 @@
           <p class="text-sm font-medium dark:text-white">{{ d.customIdentifier }}</p>
           <p class="text-xs text-gray-500 dark:text-gray-400">
             #{{ d.number }} · {{ currentDiveSiteName }} ·
-            {{
-              currentDiveStartDate
-                ? new Date(currentDiveStartDate).toLocaleString()
-                : 'No start date'
-            }}
+            {{ currentDiveStartDate ? formatDate(currentDiveStartDate) : 'No start date' }}
           </p>
         </div>
         <button
@@ -40,6 +36,7 @@
 import { ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { formatDate } from '@/lib/utils/timeUtils'
 import debounce from '@/lib/utils/debounce'
 import type { DiveWithoutProfiles, PagedResult } from '@/lib/types/dive'
 
