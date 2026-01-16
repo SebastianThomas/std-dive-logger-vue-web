@@ -204,12 +204,16 @@ interface Props {
 
 const props = defineProps<Props>()
 const selectedProfile = computed(() => props.selectedProfiles?.[0] ?? 0)
-const currentProfile = computed(() => 
-  props.data?.profiles.find(p => p.profileIdx === selectedProfile.value)
-)
-const selectedProfilesData = computed(() => 
-  props.data?.profiles.filter(p => 
-    props.selectedProfiles?.includes(p.profileIdx) ?? true
-  ) ?? []
+const currentProfile = computed(() => {
+  // First try to find the selected profile
+  const selected = props.data?.profiles.find((p) => p.profileIdx === selectedProfile.value)
+  if (selected) return selected
+  // If selected profile has no data, use the first available profile with data
+  return props.data?.profiles[0]
+})
+const selectedProfilesData = computed(
+  () =>
+    props.data?.profiles.filter((p) => props.selectedProfiles?.includes(p.profileIdx) ?? true) ??
+    [],
 )
 </script>

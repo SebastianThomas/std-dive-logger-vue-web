@@ -925,21 +925,13 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
 
   if (profileDataList.length === 0) return
 
-  // Don't show tooltip if the selected profile is not visible
-  const selIdx = selectedProfile.value
-  if (selIdx < 0 || selIdx >= props.profiles.length || !visibleMask.value[selIdx]) {
-    onMouseLeave()
-    return
-  }
-
-  // Anchor crosshair/focus to the selected profile's nearest measurement
-  // Use the actual mouse position for the crosshair time (not snapped to a measurement)
   let anchorDepth = closestMeasurement.measurement.depth
-  
+
   // Find the depth at the current time for the selected profile
+  const selIdx = selectedProfile.value
   if (selIdx >= 0 && selIdx < props.profiles.length && visibleMask.value[selIdx]) {
     const selProfile = props.profiles[selIdx]
-    if (selProfile) {
+    if (selProfile && tVal >= selProfile.start && tVal <= selProfile.end) {
       const selMeasurements = selProfile.measurements
       if (selMeasurements && selMeasurements.length) {
         const bSel = bisector((m: DiveMeasurementWithId) => m.measurement.time).center
@@ -953,7 +945,7 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
     }
   }
 
-  const cx = mx  // Use mouse X position directly instead of converting back from time
+  const cx = mx // Use mouse X position directly instead of converting back from time
   const cy = depthScale.value(anchorDepth)
 
   // Show crosshair line at cursor x position
@@ -983,7 +975,7 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
     profiles: profileDataList,
     metricAvailability,
   }
-  tooltipTime.value = tVal  // Use the actual time at mouse position
+  tooltipTime.value = tVal // Use the actual time at mouse position
 
   // Position tooltip to follow the mouse - measure on next tick to get actual rendered size
   nextTick(() => {

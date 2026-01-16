@@ -310,6 +310,24 @@ watch(
   { deep: true },
 )
 
+// Watch for changes to visibleProfiles and remove disabled profiles from selectedProfiles
+watch(
+  () => visibleProfiles.value,
+  () => {
+    // Filter out disabled profiles from selectedProfiles
+    selectedProfiles.value = selectedProfiles.value.filter(
+      (idx) => idx >= 0 && idx < visibleProfiles.value.length && visibleProfiles.value[idx],
+    )
+    // If no profiles are selected, select the first visible one
+    if (selectedProfiles.value.length === 0) {
+      const firstVisible = visibleProfiles.value.findIndex((visible) => visible)
+      if (firstVisible >= 0) {
+        selectedProfiles.value = [firstVisible]
+      }
+    }
+  },
+)
+
 const emit = defineEmits<{
   close: []
   'profiles-aligned': [updatedDive: Dive]
@@ -418,10 +436,10 @@ const updateRotateTip = () => {
 
 onMounted(() => {
   // Initialize all profiles as visible
-  visibleProfiles.value = props.profiles.map(() => true)
-  
+  visibleProfiles.value = Array.from({ length: props.profiles.length }, () => true)
+
   // Initialize selectedProfiles to include all profiles
-  selectedProfiles.value = props.profiles.map((_, idx) => idx)
+  selectedProfiles.value = Array.from({ length: props.profiles.length }, (_, idx) => idx)
 
   if (props.fullscreen) {
     window.addEventListener('keydown', onKeyDown)
