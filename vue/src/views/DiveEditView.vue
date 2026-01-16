@@ -5,7 +5,7 @@
     >
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold">Edit Dive #{{ formData.diveNumber }}</h1>
-        <button @click="goBack" class="text-xl font-bold hover:text-gray-600">✕</button>
+        <button @click="safeBack" class="text-xl font-bold hover:text-gray-600">✕</button>
       </div>
 
       <div v-if="loading" class="flex-1 flex items-center justify-center">
@@ -22,7 +22,7 @@
 
       <div class="mt-6 pt-4 border-t flex justify-end gap-3">
         <button
-          @click="goBack"
+          @click="safeBack"
           class="px-6 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600"
         >
           Cancel
@@ -41,9 +41,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { useNavigation } from '@/composables/useNavigation'
 import EditDiveForm from '@/components/dive/edit/EditDiveForm.vue'
 import type {
   Dive,
@@ -54,7 +55,7 @@ import type {
 } from '@/lib/types/dive'
 
 const route = useRoute()
-const router = useRouter()
+const { safeBack } = useNavigation()
 const { getWithToken, putWithToken, postWithToken } = useApi()
 
 const diveId = computed(() => Number(route.params.diveId))
@@ -78,8 +79,6 @@ const formData = ref<DiveFormData>({
 })
 
 const originalSite = ref<DiveSite | null>(null)
-
-const goBack = () => router.back()
 
 const fetchDive = async () => {
   loading.value = true
@@ -223,7 +222,7 @@ const handleSubmit = async () => {
       headers: { 'Content-Type': 'application/json' },
     })
     toast.success('Dive updated successfully!')
-    goBack()
+    safeBack()
   } catch (err) {
     console.error(err)
     toast.error('Failed to update dive.')

@@ -39,11 +39,12 @@
 import 'vue-sonner/style.css'
 
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { Toaster } from 'vue-sonner'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { useNavigation } from '@/composables/useNavigation'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppSidebar from './components/layout/AppSidebar.vue'
@@ -61,10 +62,10 @@ const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed'
 // Auth store
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+const { safeBack, safeForward, router } = useNavigation()
 
 // Page name - can be empty or use current route path
 const route = useRoute()
-const router = useRouter()
 const pageName = computed(() => {
   return route.name?.toString() || ''
 })
@@ -174,11 +175,11 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
 
   // 'b' for back
   if (event.key.toLowerCase() === 'b' && !event.ctrlKey && !event.metaKey) {
-    router.back()
+    safeBack()
   }
   // 'f' for forward
   if (event.key.toLowerCase() === 'f' && !event.ctrlKey && !event.metaKey) {
-    router.forward()
+    safeForward()
   }
   // '?' to show help/shortcuts
   if (event.key === '?' && !event.ctrlKey && !event.metaKey) {

@@ -34,11 +34,13 @@
       <div class="flex gap-4 items-center">
         <div class="flex-1">
           <input
+            ref="searchInputRef"
             v-model="searchQuery"
             type="text"
             placeholder="Search dives..."
             class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
             @input="handleSearch"
+            @keydown.esc="handleSearchEscape"
           />
         </div>
         <button
@@ -129,6 +131,7 @@ const pageSize = ref(20)
 
 const searchQuery = ref((route.query.search as string) || '')
 const viewShared = ref(route.query.shared === 'true')
+const searchInputRef = ref<HTMLInputElement | null>(null)
 
 const sortColumn = ref<SortColumn>((route.query.sortCol as SortColumn) || 'NUMBER')
 const sortDirection = ref<SortDirection>((route.query.sortDir as SortDirection) || 'DESCENDING')
@@ -283,6 +286,10 @@ const onRowClick = (diveId: number) => {
   } else {
     router.push({ name: 'DiveView', params: { diveId } })
   }
+}
+
+const handleSearchEscape = () => {
+  searchInputRef.value?.blur()
 }
 
 // Keyboard shortcuts for DiveListView

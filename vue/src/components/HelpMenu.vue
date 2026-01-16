@@ -18,7 +18,9 @@
         <div class="space-y-3">
           <!-- Global shortcuts - Always visible -->
           <div>
-            <h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">
+            <h4
+              class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2"
+            >
               Global
             </h4>
             <div class="space-y-1">
@@ -43,11 +45,17 @@
 
           <!-- Current page shortcuts - Always visible -->
           <div v-if="currentPageShortcuts.length > 0">
-            <h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">
+            <h4
+              class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2"
+            >
               {{ currentPageLabel }}
             </h4>
             <div class="space-y-1">
-              <div v-for="shortcut in currentPageShortcuts" :key="shortcut.label" class="flex justify-between">
+              <div
+                v-for="shortcut in currentPageShortcuts"
+                :key="shortcut.label"
+                class="flex justify-between"
+              >
                 <span class="text-sm text-gray-600 dark:text-gray-400">{{ shortcut.label }}</span>
                 <kbd class="kbd-small">{{ shortcut.key }}</kbd>
               </div>
@@ -64,14 +72,20 @@
               {{ section.label }}
             </button>
             <div v-if="expandedSections[section.name]" class="space-y-1">
-              <div v-for="shortcut in section.shortcuts" :key="shortcut.label" class="flex justify-between">
+              <div
+                v-for="shortcut in section.shortcuts"
+                :key="shortcut.label"
+                class="flex justify-between"
+              >
                 <span class="text-sm text-gray-600 dark:text-gray-400">{{ shortcut.label }}</span>
                 <kbd class="kbd-small">{{ shortcut.key }}</kbd>
               </div>
             </div>
           </div>
 
-          <div class="pt-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+          <div
+            class="pt-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400"
+          >
             Closes in {{ remainingSeconds }}s
           </div>
         </div>
@@ -123,7 +137,7 @@ const currentPageShortcuts = computed(() => {
 const otherSections = computed(() => {
   const pageName = route.name?.toString() || ''
   const sections = []
-  
+
   if (pageName !== 'DiveView') {
     sections.push({
       name: 'DiveView',
@@ -131,7 +145,7 @@ const otherSections = computed(() => {
       shortcuts: allShortcuts.DiveView,
     })
   }
-  
+
   if (pageName !== 'DiveList') {
     sections.push({
       name: 'DiveList',
@@ -139,7 +153,7 @@ const otherSections = computed(() => {
       shortcuts: allShortcuts.DiveList,
     })
   }
-  
+
   return sections
 })
 
@@ -196,7 +210,9 @@ onUnmounted(() => {
   border-radius: 0.25rem;
   font-size: 0.75rem;
   line-height: 1rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
   font-weight: 500;
 }
 

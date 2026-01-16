@@ -108,7 +108,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
+import { useNavigation } from '@/composables/useNavigation'
 
 interface Command {
   id: string
@@ -122,7 +123,7 @@ interface Command {
   closeOnExecute?: boolean
 }
 
-const router = useRouter()
+const { safeBack, safeForward, router } = useNavigation()
 const route = useRoute()
 
 const isOpen = defineModel<boolean>({ required: true })
@@ -249,7 +250,7 @@ const commands = computed<Command[]>(() => {
       label: 'Go Back',
       description: 'Navigate to previous page',
       icon: '⬅️',
-      action: () => router.back(),
+      action: () => safeBack(),
       keywords: ['back', 'previous'],
       shortcut: 'B',
       category: 'action',
@@ -259,7 +260,7 @@ const commands = computed<Command[]>(() => {
       label: 'Go Forward',
       description: 'Navigate to next page',
       icon: '➡️',
-      action: () => router.forward(),
+      action: () => safeForward(),
       keywords: ['forward', 'next'],
       shortcut: 'F',
       category: 'action',

@@ -54,7 +54,7 @@
         <div class="flex justify-end gap-3">
           <button
             class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
-            @click="goBack"
+            @click="safeBack"
           >
             Cancel
           </button>
@@ -111,14 +111,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import axios from 'axios'
 import { useApi } from '@/composables/useApi'
+import { useNavigation } from '@/composables/useNavigation'
 import CreateDiveSite from '@/components/CreateDiveSite.vue'
 import type { UploadDiveResult, DiveSite } from '@/lib/types/dive'
 import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
+import axios from 'axios'
 
-const router = useRouter()
+const { safeBack, router } = useNavigation()
 const { postWithToken } = useApi()
 
 const files = ref<File[]>([])
@@ -167,8 +167,6 @@ const clearFiles = () => {
   }
 }
 
-const goBack = () => router.back()
-
 // Keyboard shortcuts for DiveCreateView
 const handleDiveCreateKeydown = (event: KeyboardEvent) => {
   const target = event.target as HTMLElement
@@ -188,7 +186,7 @@ const handleDiveCreateKeydown = (event: KeyboardEvent) => {
   }
   // Escape to cancel
   if (event.key === 'Escape') {
-    router.back()
+    safeBack()
   }
 }
 

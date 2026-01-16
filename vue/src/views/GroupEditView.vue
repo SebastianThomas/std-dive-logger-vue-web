@@ -145,8 +145,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { useNavigation } from '@/composables/useNavigation'
 import { toast } from 'vue-sonner'
 import RoleMenu from '@/components/share/RoleMenu.vue'
 import type {
@@ -158,7 +159,7 @@ import type {
 } from '@/lib/types/user'
 
 const route = useRoute()
-const router = useRouter()
+const { safeBack } = useNavigation()
 const groupId = computed(() => Number(route.params.groupId))
 
 const { getWithToken, putWithToken, deleteWithToken } = useApi()
@@ -247,7 +248,7 @@ const leaveGroup = async () => {
     await deleteWithToken(`/v1/groups/${groupId.value}/members`, {})
     toast.success('Left group successfully')
     showLeaveConfirm.value = false
-    router.back()
+    safeBack()
   } catch (err) {
     console.error(err)
     error.value = 'Failed to leave group.'
@@ -281,7 +282,7 @@ const deleteGroup = async () => {
     await deleteWithToken(`/v1/groups/${groupName.value}`, {})
     toast.success('Group deleted successfully')
     showDeleteConfirm.value = false
-    router.back()
+    safeBack()
   } catch (err) {
     console.error(err)
     error.value = 'Failed to delete group.'
