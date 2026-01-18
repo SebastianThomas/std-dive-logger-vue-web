@@ -24,12 +24,15 @@
         </div>
 
         <!-- Account Section -->
-        <section class="space-y-2">
+        <section class="space-y-2" v-if="!user">
           <h2 class="text-lg font-medium">Account</h2>
+          <p >Loading...</p>
+        </section>
 
-          <p v-if="!user">Loading...</p>
-
-          <p v-if="user"><strong>User ID:</strong> {{ user.id }}</p>
+        <!-- Configurations Section -->
+        <section v-if="user" class="border-t pt-6 space-y-4">
+          <h2 class="text-lg font-medium">Equipment Configurations</h2>
+          <SuitManagement :user-id="user.id" />
         </section>
 
         <!-- Danger Zone -->
@@ -81,6 +84,7 @@ import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { type User } from '@/lib/types/user'
+import SuitManagement from '@/components/dive/SuitManagement.vue'
 
 const router = useRouter()
 const { getWithToken, postWithToken } = useApi()

@@ -9,10 +9,10 @@
       <MenuItem icon="home" text="Home" :is-visible="isVisible" />
     </router-link>
     <router-link :to="{ name: 'DiveList' }">
-      <MenuItem icon="list" text="Dive List" :is-visible="isVisible" />
+      <MenuItem icon="list" text="List" :is-visible="isVisible" />
     </router-link>
     <router-link :to="{ name: 'DiveCreate' }">
-      <MenuItem icon="pen-to-square" text="Upload Dive" :is-visible="isVisible" />
+      <MenuItem icon="pen-to-square" text="Upload" :is-visible="isVisible" />
     </router-link>
     <router-link :to="{ name: 'ShareOverview' }">
       <MenuItem icon="user-group" text="Groups" :is-visible="isVisible" />
@@ -21,7 +21,7 @@
       <MenuItem icon="user-pen" text="Profile" :is-visible="isVisible" />
     </router-link>
     <router-link :to="{ name: 'MapView' }">
-      <MenuItem icon="map" text="Dive Sites" :is-visible="isVisible" />
+      <MenuItem icon="map" text="Sites" :is-visible="isVisible" />
     </router-link>
     <router-link :to="{ name: 'Stats' }">
       <MenuItem icon="chart-line" text="Statistics" :is-visible="isVisible" />
