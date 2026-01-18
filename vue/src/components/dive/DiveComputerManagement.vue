@@ -1,14 +1,22 @@
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       <h3 class="text-lg font-semibold">My Dive Computers</h3>
-      <div class="flex gap-2">
+      <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
         <button
           type="button"
           class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
           @click="openCreateModal"
         >
           Create New
+        </button>
+        <button
+          type="button"
+          class="px-4 py-2 rounded bg-orange-600 text-white hover:bg-orange-700 transition-colors"
+          @click="cleanupUnusedComputers"
+          :disabled="cleaning"
+        >
+          {{ cleaning ? 'Cleaning...' : 'Cleanup Computers' }}
         </button>
         <button
           type="button"
@@ -155,6 +163,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import type { DiveComputer, DiveComputerManufacturer, PagedResult } from '@/lib/types/dive'
 
@@ -164,12 +173,13 @@ interface Props {
 
 defineProps<Props>()
 
-const { getWithToken, postWithToken, putWithToken } = useApi()
+const { getWithToken, postWithToken, putWithToken, deleteWithToken } = useApi()
 const router = useRouter()
 
 const diveComputers = ref<DiveComputer[]>([])
 const manufacturers = ref<DiveComputerManufacturer[]>([])
 const loading = ref(false)
+const cleaning = ref(false)
 
 const showModal = ref(false)
 const modalMode = ref<'create' | 'edit'>('create')
@@ -243,6 +253,25 @@ const closeModal = () => {
 
 const viewDivesForComputer = (computerId: number) => {
   router.push({ name: 'DiveList', query: { computerId: computerId.toString() } })
+}
+const cleanupUnusedComputers = async () => {
+  cleaning.value = true
+  try {
+    const res = await deleteWithToken<{ deletedCount: number }>('/v1/computers/unused')
+    const count = res.data.deletedCount ?? 0
+    
+    if (count > 0) {
+      toast.success(`Deleted ${count} unused dive computer${count === 1 ? '' : 's'}`)
+      await loadDiveComputers()
+    } else {
+      toast.info('No unused dive computers found')
+    }
+  } catch (err) {
+    console.error('Failed to cleanup unused dive computers:', err)
+    toast.error('Failed to cleanup unused dive computers')
+  } finally {
+    cleaning.value = false
+  }
 }
 
 const saveDiveComputer = async () => {
