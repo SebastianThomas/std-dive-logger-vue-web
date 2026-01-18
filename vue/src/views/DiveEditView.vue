@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen p-4 flex justify-center items-center">
+  <div class="h-full p-4 flex justify-center items-center">
     <div
       class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-3xl w-full max-h-[90vh] flex flex-col"
     >
@@ -17,7 +17,7 @@
       </div>
 
       <div v-else class="flex-1 overflow-auto">
-        <EditDiveForm v-model="formData" />
+        <EditDiveForm v-if="currentUserId" v-model="formData" :user-id="currentUserId" />
       </div>
 
       <div class="mt-6 pt-4 border-t flex justify-end gap-3">
@@ -59,6 +59,7 @@ const { safeBack } = useNavigation()
 const { getWithToken, putWithToken, postWithToken } = useApi()
 
 const diveId = computed(() => Number(route.params.diveId))
+const currentUserId = ref<number | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const submitting = ref(false)
@@ -86,6 +87,8 @@ const fetchDive = async () => {
   try {
     const res = await getWithToken<Dive>(`/v1/dives/${diveId.value}`)
     const dive = res.data
+
+    currentUserId.value = dive.user.id
 
     formData.value = {
       diveNumber: dive.number,
@@ -215,6 +218,7 @@ const handleSubmit = async () => {
     visibility: formData.value.visibility ?? null,
     gasConsumption: formData.value.gasConsumption ?? null,
     configuration: formData.value.configuration ?? null,
+    suitId: formData.value.configuration?.suit?.id ?? null,
   }
 
   try {

@@ -355,9 +355,7 @@
               Base Configuration
             </h3>
             <InfoCard title="Setup">
-              <span class="capitalize">{{
-                dive.configuration.base?.toLowerCase().replace(/_/g, ' ')
-              }}</span>
+              <span>{{ BASE_CONFIGURATION_LABELS[dive.configuration.base] }}</span>
             </InfoCard>
           </div>
 
@@ -432,6 +430,7 @@ import InfoCard from '@/components/InfoCard.vue'
 import InfoCardRow from '@/components/InfoCardRow.vue'
 import SharePopover from '@/components/share/SharePopover.vue'
 import type { Dive, DiveComputer, Gas } from '@/lib/types/dive'
+import { BASE_CONFIGURATION_LABELS } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
 
 const router = useRouter()

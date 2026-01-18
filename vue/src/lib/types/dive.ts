@@ -124,6 +124,7 @@ export type SuitType =
 
 export type Suit = {
   id: number
+  userId: number
   type: SuitType
   thickness?: number | null
   notes: string
@@ -138,6 +139,18 @@ export type BaseConfiguration =
   | 'SIDEMOUNT_CCR'
   | 'CHESTMOUNT_CCR'
   | 'OTHER'
+
+// Display labels for BaseConfiguration values
+export const BASE_CONFIGURATION_LABELS: Record<BaseConfiguration, string> = {
+  SINGLE_TANK: 'Single Tank',
+  SINGLE_TANK_AVELO: 'Single Tank (Avelo)',
+  SIDEMOUNT: 'Sidemount',
+  BACKMOUNT_DOUBLES: 'Backmount Doubles',
+  BACKMOUNT_CCR: 'Backmount CCR',
+  SIDEMOUNT_CCR: 'Sidemount CCR',
+  CHESTMOUNT_CCR: 'Chestmount CCR',
+  OTHER: 'Other',
+}
 
 export type WeightFeeling = 'LIGHT' | 'GOOD' | 'HEAVY'
 

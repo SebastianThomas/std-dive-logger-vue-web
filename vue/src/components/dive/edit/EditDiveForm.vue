@@ -192,49 +192,32 @@
       <fieldset v-if="modelValue.configuration" class="border rounded p-4 space-y-4">
         <legend class="font-medium mb-3">Configuration</legend>
 
-        <!-- Suit -->
-        <div v-if="modelValue.configuration.suit" class="border-t pt-4">
-          <h3 class="font-medium mb-3">Suit</h3>
-          <div class="space-y-3">
+        <!-- Suit (managed via external entity) -->
+        <div class="border-t pt-4">
+          <div class="flex items-center justify-between">
             <div>
-              <label for="suit-type" class="block mb-2">Type</label>
-              <select
-                id="suit-type"
-                :value="modelValue.configuration.suit.type ?? ''"
-                class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                @change="updateConfigSuitField('type', ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="NONE">None</option>
-                <option value="RASHGUARD">Rashguard</option>
-                <option value="THERMOCLINE">Thermocline</option>
-                <option value="NEOPRENE">Neoprene</option>
-                <option value="MEMBRANE_DRY">Membrane Dry</option>
-                <option value="NEOPRENE_DRY">Neoprene Dry</option>
-                <option value="OTHER">Other</option>
-              </select>
+              <h3 class="font-medium">Suit</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                Select an existing suit or create a new one.
+              </p>
             </div>
-            <div>
-              <label for="suit-thickness" class="block mb-2">Thickness (mm)</label>
-              <input
-                id="suit-thickness"
-                :value="modelValue.configuration.suit.thickness ?? ''"
-                type="number"
-                step="0.5"
-                class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                placeholder="Optional"
-                @input="handleNumberInput('configuration.suit.thickness', $event)"
-              />
+            <button
+              type="button"
+              class="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+              @click="showSuitModal = true"
+            >
+              Choose / Create Suit
+            </button>
+          </div>
+
+          <div v-if="modelValue.configuration.suit" class="mt-3 text-sm space-y-1">
+            <div><span class="font-semibold">Type:</span> {{ modelValue.configuration.suit.type }}</div>
+            <div v-if="modelValue.configuration.suit.thickness !== undefined && modelValue.configuration.suit.thickness !== null">
+              <span class="font-semibold">Thickness:</span> {{ modelValue.configuration.suit.thickness }} mm
             </div>
-            <div>
-              <label for="suit-notes" class="block mb-2">Notes</label>
-              <input
-                id="suit-notes"
-                :value="modelValue.configuration.suit.notes ?? ''"
-                type="text"
-                class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                placeholder="Optional"
-                @input="updateConfigSuitField('notes', ($event.target as HTMLInputElement).value)"
-              />
+            <div v-if="modelValue.configuration.suit.notes">
+              <span class="font-semibold">Name:</span>
+              {{ formatSuitNotesPreview(modelValue.configuration.suit.notes) }}
             </div>
           </div>
         </div>
@@ -245,18 +228,11 @@
             <label for="base-config" class="block mb-2">Base Configuration</label>
             <select
               id="base-config"
-              :value="modelValue.configuration.base ?? ''"
+              :value="modelValue.configuration.base ?? BASE_CONFIGURATION_LABELS['OTHER']"
               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
               @change="updateConfigField('base', ($event.target as HTMLSelectElement).value)"
             >
-              <option value="SINGLE_TANK">Single Tank</option>
-              <option value="SINGLE_TANK_AVELO">Single Tank (Avelo)</option>
-              <option value="SIDEMOUNT">Sidemount</option>
-              <option value="BACKMOUNT_DOUBLES">Backmount Doubles</option>
-              <option value="BACKMOUNT_CCR">Backmount CCR</option>
-              <option value="SIDEMOUNT_CCR">Sidemount CCR</option>
-              <option value="CHESTMOUNT_CCR">Chestmount CCR</option>
-              <option value="OTHER">Other</option>
+              <option v-for="(c, k) in BASE_CONFIGURATION_LABELS" :value="k" :key="k">{{ c }}</option>
             </select>
           </div>
         </div>
@@ -293,6 +269,15 @@
         </div>
       </fieldset>
     </form>
+
+    <!-- Suit modal -->
+    <SuitSelector
+      v-if="showSuitModal"
+      :current-suit="modelValue.configuration?.suit ?? null"
+      :user-id="userId"
+      @suit-selected="handleSuitSelected"
+      @close="showSuitModal = false"
+    />
 
     <!-- Map Modal -->
     <div
@@ -340,12 +325,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
-import type {
-  DiveSite,
-  Visibility,
-  GasConsumption,
-  DiveConfiguration,
-  Suit,
+import SuitSelector from '@/components/dive/edit/SuitSelector.vue'
+import {
+  type DiveSite,
+  type Visibility,
+  type GasConsumption,
+  type DiveConfiguration,
+  type Suit,
+  BASE_CONFIGURATION_LABELS,
 } from '@/lib/types/dive'
 
 interface DiveFormData {
@@ -361,6 +348,7 @@ interface DiveFormData {
 
 const props = defineProps<{
   modelValue: DiveFormData
+  userId: number
 }>()
 
 const emit = defineEmits<{
@@ -370,6 +358,24 @@ const emit = defineEmits<{
 const showMap = ref(false)
 const buddyInput = ref('')
 const selectedCoords = ref<{ lat: number; lon: number } | null>(null)
+const showSuitModal = ref(false)
+// Notes preview formatter: first three words, ensure >= 20 chars
+const formatSuitNotesPreview = (notes?: string) => {
+  const text = (notes ?? '').trim()
+  if (!text) return ''
+  const words = text.split(/\s+/)
+  const firstThree = words.slice(0, 3).join(' ')
+  if (firstThree.length >= 20 || words.length <= 3) {
+    return firstThree
+  }
+  let acc = firstThree
+  let idx = 3
+  while (acc.length < 20 && idx < words.length) {
+    acc += ' ' + words[idx]
+    idx++
+  }
+  return acc.length > text.length ? text : acc
+}
 
 const updateField = <K extends keyof DiveFormData>(field: K, value: DiveFormData[K]) => {
   emit('update:modelValue', { ...props.modelValue, [field]: value })
@@ -485,6 +491,22 @@ const updateConfigSuitField = (field: string, value: string | number | undefined
     configuration: {
       ...props.modelValue.configuration,
       suit: updatedSuit,
+    },
+  })
+}
+
+// Suit management helpers
+const handleSuitSelected = (suit: Suit) => {
+  applySuitToModel(suit)
+  showSuitModal.value = false
+}
+
+const applySuitToModel = (suit: Suit) => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    configuration: {
+      ...props.modelValue.configuration!,
+      suit,
     },
   })
 }
