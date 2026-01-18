@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import StatCard from '@/components/StatCard.vue'
@@ -257,7 +257,7 @@ onMounted(() => {
 // Watch for query parameter changes (e.g., browser back/forward)
 watch(
   () => route.query.type,
-  (newType) => {
+  () => {
     const stat = getInitialStatType()
     selectedStat.value = stat
     loadStat(stat)
