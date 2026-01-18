@@ -132,6 +132,8 @@ const pageSize = ref(20)
 const searchQuery = ref((route.query.search as string) || '')
 const viewShared = ref(route.query.shared === 'true')
 const searchInputRef = ref<HTMLInputElement | null>(null)
+const computerId = ref(route.query.computerId ? Number(route.query.computerId) : null)
+const suitId = ref(route.query.suitId ? Number(route.query.suitId) : null)
 
 const sortColumn = ref<SortColumn>((route.query.sortCol as SortColumn) || 'NUMBER')
 const sortDirection = ref<SortDirection>((route.query.sortDir as SortDirection) || 'DESCENDING')
@@ -177,6 +179,12 @@ const fetchDives = async () => {
     if (searchQuery.value.trim()) {
       // Search mode - no sorting applied, best match from server
       url = `/v1/dives/search?page=${currentPage.value - 1}&query=${encodeURIComponent(searchQuery.value)}`
+    } else if (computerId.value) {
+      // Filter by dive computer
+      url = `/v1/dives/computer?computerId=${computerId.value}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
+    } else if (suitId.value) {
+      // Filter by suit
+      url = `/v1/dives/suit?suitId=${suitId.value}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
     } else {
       // Normal mode - apply server-side sorting
       url = `/v1/dives?page=${currentPage.value - 1}&includeReader=${viewShared.value}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`

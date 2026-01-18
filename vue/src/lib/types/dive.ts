@@ -6,12 +6,14 @@ export type PagedResult<T> = {
   result: T[]
 }
 
+export type DiveComputerManufacturer = {
+  id: number
+  name: string
+}
+
 export type DiveComputer = {
   id: number
-  manufacturer: {
-    id: number
-    name: string
-  }
+  manufacturer: DiveComputerManufacturer
   serialNumber: string
   customIdentifier: string
 }

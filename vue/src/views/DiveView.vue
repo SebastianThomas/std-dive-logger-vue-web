@@ -155,13 +155,14 @@
               </ul>
             </InfoCard>
             <InfoCard title="Dive Computers">
-              <p
-                class="text-xs text-gray-600 dark:text-gray-400"
+              <button
+                class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-left block"
                 v-for="computer in uniqueComputers"
                 :key="computer.id"
+                @click="viewDivesForComputer(computer.id)"
               >
                 {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
-              </p>
+              </button>
             </InfoCard>
             <InfoCard title="Buddies">
               <p
@@ -327,7 +328,15 @@
         <div class="space-y-4">
           <!-- Suit Info -->
           <div v-if="dive.configuration.suit && dive.configuration.suit.type">
-            <h3 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">Suit</h3>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-semibold text-sm text-gray-700 dark:text-gray-300">Suit</h3>
+              <button
+                @click="viewDivesForSuit(dive.configuration.suit.id)"
+                class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+              >
+                View all dives with this suit →
+              </button>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InfoCard v-if="dive.configuration.suit.type" title="Type">
                 <span>{{ SUIT_TYPE_LABELS[dive.configuration.suit.type] }}</span>
@@ -447,6 +456,14 @@ const myUserId = ref<number | null>(null)
 
 const summary = computed(() => dive.value?.summary)
 const isMine = computed(() => dive.value?.user.id === myUserId.value)
+
+const viewDivesForSuit = (suitId: number) => {
+  router.push({ name: 'DiveList', query: { suitId: suitId.toString() } })
+}
+
+const viewDivesForComputer = (computerId: number) => {
+  router.push({ name: 'DiveList', query: { computerId: computerId.toString() } })
+}
 
 const firstProfileSummary = computed(() => dive.value?.profiles[0]?.summary)
 const lastProfileSummary = computed(() => {

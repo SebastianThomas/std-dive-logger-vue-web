@@ -39,7 +39,14 @@
               {{ suit.thickness }}mm
             </p>
           </div>
-          <div>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="px-2 py-1 text-xs rounded border border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+              @click="viewDivesForSuit(suit.id)"
+            >
+              View Dives
+            </button>
             <button
               type="button"
               class="px-2 py-1 text-xs rounded border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
@@ -126,6 +133,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import type { Suit, PagedResult } from '@/lib/types/dive'
 import { SUIT_TYPE_LABELS } from '@/lib/types/dive'
@@ -137,6 +145,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const { getWithToken, postWithToken, putWithToken } = useApi()
+const router = useRouter()
 
 const suits = ref<Suit[]>([])
 const loading = ref(false)
@@ -194,6 +203,10 @@ const editSuit = (suit: Suit) => {
 
 const closeModal = () => {
   showModal.value = false
+}
+
+const viewDivesForSuit = (suitId: number) => {
+  router.push({ name: 'DiveList', query: { suitId: suitId.toString() } })
 }
 
 const saveSuit = async () => {
