@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import StatCard from '@/components/StatCard.vue'
@@ -239,16 +239,6 @@ const loadStat = async (stat: StatType) => {
   }
 }
 
-// Clear cache when navigating away
-const handleRouteChange = () => {
-  cache.value = {
-    overall: null,
-    year: null,
-    site: null,
-    buddy: null,
-  }
-}
-
 const getInitialStatType = (): StatType => {
   const queryType = route.query.type as string | undefined
   if (queryType && ['overall', 'year', 'site', 'buddy'].includes(queryType)) {
@@ -258,14 +248,19 @@ const getInitialStatType = (): StatType => {
 }
 
 onMounted(() => {
-  router.afterEach(handleRouteChange)
   // Load stat from query param or default to overall
   const initialStat = getInitialStatType()
   selectedStat.value = initialStat
   loadStat(initialStat)
 })
 
-onBeforeUnmount(() => {
-  router.afterEach(handleRouteChange)
-})
+// Watch for query parameter changes (e.g., browser back/forward)
+watch(
+  () => route.query.type,
+  (newType) => {
+    const stat = getInitialStatType()
+    selectedStat.value = stat
+    loadStat(stat)
+  },
+)
 </script>

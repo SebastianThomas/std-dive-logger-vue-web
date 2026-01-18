@@ -38,6 +38,7 @@
             v-model="searchQuery"
             type="text"
             placeholder="Search dives..."
+            autofocus
             class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
             @input="handleSearch"
             @keydown.esc="handleSearchEscape"
