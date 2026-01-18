@@ -363,7 +363,8 @@ const onPopState = async () => {
 const onFullscreenChange = () => {
   const inFullscreen = Boolean(document.fullscreenElement)
   if (!inFullscreen && !isClosing.value) {
-    handleClose()
+    isClosing.value = true
+    emit('close')
   }
 }
 
