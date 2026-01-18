@@ -62,7 +62,9 @@
       @click.self="closeModal"
     >
       <div class="w-[90vw] max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-        <h4 class="text-lg font-semibold mb-4">{{ modalMode === 'create' ? 'Create Suit' : 'Edit Suit' }}</h4>
+        <h4 class="text-lg font-semibold mb-4">
+          {{ modalMode === 'create' ? 'Create Suit' : 'Edit Suit' }}
+        </h4>
 
         <div class="grid gap-4 mb-4">
           <div>
@@ -71,7 +73,9 @@
               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
               v-model="form.type"
             >
-              <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">{{ label }}</option>
+              <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">
+                {{ label }}
+              </option>
             </select>
           </div>
           <div>
@@ -155,7 +159,9 @@ const form = ref<{
 const loadSuits = async () => {
   loading.value = true
   try {
-    const res = await getWithToken<PagedResult<Suit>>('/v1/dives/configuration/suit?page=0&size=100')
+    const res = await getWithToken<PagedResult<Suit>>(
+      '/v1/dives/configuration/suit?page=0&size=100',
+    )
     suits.value = res.data.result ?? []
   } catch (err) {
     console.error('Failed to load suits:', err)
@@ -221,7 +227,7 @@ loadSuits()
 // Keyboard shortcuts
 const handleKeyDown = (e: KeyboardEvent) => {
   if (!showModal.value) return
-  
+
   // Ctrl+Enter to save
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault()
@@ -229,7 +235,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
     saveSuit()
     return
   }
-  
+
   // Esc to close
   if (e.key === 'Escape') {
     e.preventDefault()

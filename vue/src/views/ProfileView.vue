@@ -26,7 +26,7 @@
         <!-- Account Section -->
         <section class="space-y-2" v-if="!user">
           <h2 class="text-lg font-medium">Account</h2>
-          <p >Loading...</p>
+          <p>Loading...</p>
         </section>
 
         <!-- Configurations Section -->

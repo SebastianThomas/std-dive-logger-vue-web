@@ -45,12 +45,12 @@
           ]"
           @click="startEditSuit"
         >
-        Edit selected
-      </button>
-    </div>
-    <div v-if="mode === 'edit'" class="text-red-400 mb-4">
-      WARNING: Editing this suit also changes its value for all other associated dives.
-    </div>
+          Edit selected
+        </button>
+      </div>
+      <div v-if="mode === 'edit'" class="text-red-400 mb-4">
+        WARNING: Editing this suit also changes its value for all other associated dives.
+      </div>
 
       <!-- Select mode -->
       <div v-if="mode === 'select'" class="space-y-3 mb-4">
@@ -65,8 +65,13 @@
             >
               <option value="" disabled>Select a suit</option>
               <option v-for="s in suits" :key="s.id" :value="s.id">
-                {{ SUIT_TYPE_LABELS[s.type] }}<span v-if="s.thickness !== undefined && s.thickness !== null"> - {{ s.thickness }}mm</span>
-                <span v-if="s.notes" class="text-gray-600 dark:text-gray-400"> — {{ formatNotesPreview(s.notes) }}</span>
+                {{ SUIT_TYPE_LABELS[s.type]
+                }}<span v-if="s.thickness !== undefined && s.thickness !== null">
+                  - {{ s.thickness }}mm</span
+                >
+                <span v-if="s.notes" class="text-gray-600 dark:text-gray-400">
+                  — {{ formatNotesPreview(s.notes) }}</span
+                >
               </option>
             </select>
             <button
@@ -91,7 +96,9 @@
             class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
             v-model="form.type"
           >
-            <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">{{ label }}</option>
+            <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">
+              {{ label }}
+            </option>
           </select>
         </div>
         <div>
@@ -135,7 +142,9 @@
           ]"
           @click="saveSuit"
         >
-          {{ mode === 'select' ? 'Apply' : mode === 'create' ? 'Create & Apply' : 'Update & Apply' }}
+          {{
+            mode === 'select' ? 'Apply' : mode === 'create' ? 'Create & Apply' : 'Update & Apply'
+          }}
         </button>
       </div>
     </div>
@@ -182,7 +191,7 @@ const form = ref<{
   type: 'NONE',
   thickness: null,
   notes: '',
-  userId: props.userId
+  userId: props.userId,
 })
 
 const currentSuitNotes = computed(() => {
@@ -212,7 +221,9 @@ const formatNotesPreview = (notes?: string) => {
 const loadSuits = async () => {
   loading.value = true
   try {
-    const res = await getWithToken<PagedResult<Suit>>('/v1/dives/configuration/suit?page=0&size=100')
+    const res = await getWithToken<PagedResult<Suit>>(
+      '/v1/dives/configuration/suit?page=0&size=100',
+    )
     suits.value = res.data.result ?? []
   } catch (err) {
     console.error('Failed to load suits:', err)
@@ -236,7 +247,7 @@ const startEditSuit = () => {
     type: existing.type,
     thickness: existing.thickness ?? null,
     notes: existing.notes ?? '',
-    userId: props.userId
+    userId: props.userId,
   }
 }
 
@@ -264,7 +275,10 @@ const saveSuit = async () => {
       await loadSuits()
       emit('suit-selected', res.data)
     } else if (mode.value === 'edit') {
-      const res = await putWithToken<Suit>(`/v1/dives/configuration/suit/${form.value.id}`, form.value)
+      const res = await putWithToken<Suit>(
+        `/v1/dives/configuration/suit/${form.value.id}`,
+        form.value,
+      )
       // Reload suits to update the dropdown
       await loadSuits()
       emit('suit-selected', res.data)

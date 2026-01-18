@@ -211,9 +211,18 @@
           </div>
 
           <div v-if="modelValue.configuration.suit" class="mt-3 text-sm space-y-1">
-            <div><span class="font-semibold">Type:</span> {{ SUIT_TYPE_LABELS[modelValue.configuration.suit.type] }}</div>
-            <div v-if="modelValue.configuration.suit.thickness !== undefined && modelValue.configuration.suit.thickness !== null">
-              <span class="font-semibold">Thickness:</span> {{ modelValue.configuration.suit.thickness }} mm
+            <div>
+              <span class="font-semibold">Type:</span>
+              {{ SUIT_TYPE_LABELS[modelValue.configuration.suit.type] }}
+            </div>
+            <div
+              v-if="
+                modelValue.configuration.suit.thickness !== undefined &&
+                modelValue.configuration.suit.thickness !== null
+              "
+            >
+              <span class="font-semibold">Thickness:</span>
+              {{ modelValue.configuration.suit.thickness }} mm
             </div>
             <div v-if="modelValue.configuration.suit.notes">
               <span class="font-semibold">Name:</span>
@@ -232,7 +241,9 @@
               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
               @change="updateConfigField('base', ($event.target as HTMLSelectElement).value)"
             >
-              <option v-for="(c, k) in BASE_CONFIGURATION_LABELS" :value="k" :key="k">{{ c }}</option>
+              <option v-for="(c, k) in BASE_CONFIGURATION_LABELS" :value="k" :key="k">
+                {{ c }}
+              </option>
             </select>
           </div>
         </div>

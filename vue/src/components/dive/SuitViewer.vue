@@ -70,7 +70,9 @@
               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
               v-model="editForm.type"
             >
-              <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">{{ label }}</option>
+              <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">
+                {{ label }}
+              </option>
             </select>
           </div>
           <div>
@@ -155,7 +157,9 @@ const editForm = ref<{
 const loadSuits = async () => {
   loading.value = true
   try {
-    const res = await getWithToken<PagedResult<Suit>>('/v1/dives/configuration/suit?page=0&size=100')
+    const res = await getWithToken<PagedResult<Suit>>(
+      '/v1/dives/configuration/suit?page=0&size=100',
+    )
     suits.value = res.data.result ?? []
   } catch (err) {
     console.error('Failed to load suits:', err)
