@@ -1,7 +1,7 @@
 <template>
   <div
     class="flex justify-center items-start pt-20 px-6 md:mx-10"
-    :style="{ minHeight: 'calc(100vh - 80px)' }"
+    :style="{ minHeight: 'calc(100dvh - 80px)' }"
   >
     <main class="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-3xl w-full flex flex-col gap-4">
       <h1 class="text-2xl font-bold">Edit Group</h1>

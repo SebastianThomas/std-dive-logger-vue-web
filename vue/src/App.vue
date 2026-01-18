@@ -10,9 +10,9 @@
 
   <Toaster position="top-right" richColors closeButton />
   <div
-    class="grid app-grid min-h-screen w-full transition-all duration-300"
+    class="grid app-grid min-h-dvh w-full transition-all duration-300"
     :style="{
-      gridTemplateRows: `${headerHeight}px calc(100vh - ${headerHeight}px)`,
+      gridTemplateRows: `${headerHeight}px calc(100dvh - ${headerHeight}px)`,
       gridTemplateColumns: `${sidebarWidth}px calc(100vw - ${sidebarWidth}px)`,
     }"
   >

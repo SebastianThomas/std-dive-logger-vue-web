@@ -1,7 +1,7 @@
 <template>
   <div
     class="flex justify-center items-start pt-20 px-6 md:mx-10"
-    :style="{ minHeight: 'calc(100vh - 80px)' }"
+    :style="{ minHeight: 'calc(100dvh - 80px)' }"
   >
     <main class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 max-w-md w-full">
       <article>

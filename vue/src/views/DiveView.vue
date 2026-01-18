@@ -1,7 +1,7 @@
 <template>
   <div
     class="dive-view-shell flex justify-center items-start pt-20 px-6 md:mx-10"
-    :style="{ minHeight: 'calc(100vh - 80px)' }"
+    :style="{ minHeight: 'calc(100dvh - 80px)' }"
   >
     <DiveGraphContainer
       v-if="graphOpen && dive?.profiles"

@@ -490,7 +490,7 @@ onBeforeUnmount(() => {
 .graph-modal-card {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   background: var(--card-bg, #ffffff);
   border-radius: 0;
   box-shadow: none;

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[calc(100vh-70px)] flex justify-center items-start pt-10 px-4 md:px-8">
+  <div class="min-h-full flex justify-center items-start pt-10 px-4 md:px-8">
     <div class="w-full max-w-4xl">
       <!-- Stat Type Selector -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
