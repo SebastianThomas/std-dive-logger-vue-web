@@ -29,9 +29,7 @@
       </div>
     </div>
 
-    <p v-if="loading" class="text-sm text-gray-600 dark:text-gray-400">
-      Loading dive computers...
-    </p>
+    <p v-if="loading" class="text-sm text-gray-600 dark:text-gray-400">Loading dive computers...</p>
     <p v-else-if="diveComputers.length === 0" class="text-sm text-gray-600 dark:text-gray-400">
       No dive computers found. Create one to get started.
     </p>
@@ -94,13 +92,17 @@
                 'w-full p-2 border rounded',
                 modalMode === 'edit'
                   ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                  : 'dark:bg-gray-700 dark:text-white dark:border-gray-600'
+                  : 'dark:bg-gray-700 dark:text-white dark:border-gray-600',
               ]"
               v-model="form.manufacturerId"
               :disabled="modalMode === 'edit'"
             >
               <option :value="null" disabled>Select manufacturer</option>
-              <option v-for="manufacturer in manufacturers" :value="manufacturer.id" :key="manufacturer.id">
+              <option
+                v-for="manufacturer in manufacturers"
+                :value="manufacturer.id"
+                :key="manufacturer.id"
+              >
                 {{ manufacturer.name }}
               </option>
             </select>
@@ -113,7 +115,7 @@
                 'w-full p-2 border rounded',
                 modalMode === 'edit'
                   ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                  : 'dark:bg-gray-700 dark:text-white dark:border-gray-600'
+                  : 'dark:bg-gray-700 dark:text-white dark:border-gray-600',
               ]"
               v-model="form.serialNumber"
               placeholder="Enter serial number"
@@ -203,9 +205,7 @@ const isFormValid = computed(() => {
 const loadDiveComputers = async () => {
   loading.value = true
   try {
-    const res = await getWithToken<PagedResult<DiveComputer>>(
-      '/v1/computers?page=0',
-    )
+    const res = await getWithToken<PagedResult<DiveComputer>>('/v1/computers?page=0')
     diveComputers.value = res.data.result ?? []
   } catch (err) {
     console.error('Failed to load dive computers:', err)
@@ -259,7 +259,7 @@ const cleanupUnusedComputers = async () => {
   try {
     const res = await deleteWithToken<{ deletedCount: number }>('/v1/computers/unused')
     const count = res.data.deletedCount ?? 0
-    
+
     if (count > 0) {
       toast.success(`Deleted ${count} unused dive computer${count === 1 ? '' : 's'}`)
       await loadDiveComputers()
