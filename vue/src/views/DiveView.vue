@@ -330,9 +330,7 @@
             <h3 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">Suit</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InfoCard v-if="dive.configuration.suit.type" title="Type">
-                <span class="capitalize">{{
-                  dive.configuration.suit.type?.toLowerCase().replace(/_/g, ' ')
-                }}</span>
+                <span>{{ SUIT_TYPE_LABELS[dive.configuration.suit.type] }}</span>
               </InfoCard>
               <InfoCard
                 v-if="
@@ -430,7 +428,7 @@ import InfoCard from '@/components/InfoCard.vue'
 import InfoCardRow from '@/components/InfoCardRow.vue'
 import SharePopover from '@/components/share/SharePopover.vue'
 import type { Dive, DiveComputer, Gas } from '@/lib/types/dive'
-import { BASE_CONFIGURATION_LABELS } from '@/lib/types/dive'
+import { BASE_CONFIGURATION_LABELS, SUIT_TYPE_LABELS } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
 
 const router = useRouter()

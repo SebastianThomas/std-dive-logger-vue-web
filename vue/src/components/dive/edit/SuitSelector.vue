@@ -3,13 +3,6 @@
     <div class="w-[90vw] max-w-3xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold">Manage Suit</h3>
-        <button
-          type="button"
-          class="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-          @click="close"
-        >
-          Close
-        </button>
       </div>
 
       <!-- Mode selector -->
@@ -52,9 +45,12 @@
           ]"
           @click="startEditSuit"
         >
-          Edit selected
-        </button>
-      </div>
+        Edit selected
+      </button>
+    </div>
+    <div v-if="mode === 'edit'" class="text-red-400 mb-4">
+      WARNING: Editing this suit also changes its value for all other associated dives.
+    </div>
 
       <!-- Select mode -->
       <div v-if="mode === 'select'" class="space-y-3 mb-4">
@@ -69,7 +65,7 @@
             >
               <option value="" disabled>Select a suit</option>
               <option v-for="s in suits" :key="s.id" :value="s.id">
-                {{ s.type }}<span v-if="s.thickness !== undefined && s.thickness !== null"> - {{ s.thickness }}mm</span>
+                {{ SUIT_TYPE_LABELS[s.type] }}<span v-if="s.thickness !== undefined && s.thickness !== null"> - {{ s.thickness }}mm</span>
                 <span v-if="s.notes" class="text-gray-600 dark:text-gray-400"> — {{ formatNotesPreview(s.notes) }}</span>
               </option>
             </select>
@@ -95,13 +91,7 @@
             class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
             v-model="form.type"
           >
-            <option value="NONE">None</option>
-            <option value="RASHGUARD">Rashguard</option>
-            <option value="THERMOCLINE">Thermocline</option>
-            <option value="NEOPRENE">Neoprene</option>
-            <option value="MEMBRANE_DRY">Membrane Dry</option>
-            <option value="NEOPRENE_DRY">Neoprene Dry</option>
-            <option value="OTHER">Other</option>
+            <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">{{ label }}</option>
           </select>
         </div>
         <div>
@@ -156,6 +146,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useApi } from '@/composables/useApi'
 import type { Suit, PagedResult } from '@/lib/types/dive'
+import { SUIT_TYPE_LABELS } from '@/lib/types/dive'
 
 interface Props {
   currentSuit?: Suit | null

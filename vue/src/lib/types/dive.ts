@@ -152,6 +152,17 @@ export const BASE_CONFIGURATION_LABELS: Record<BaseConfiguration, string> = {
   OTHER: 'Other',
 }
 
+// Display labels for SuitType values
+export const SUIT_TYPE_LABELS: Record<SuitType, string> = {
+  NONE: 'None',
+  RASHGUARD: 'Rashguard',
+  THERMOCLINE: 'Thermocline',
+  NEOPRENE: 'Neoprene',
+  MEMBRANE_DRY: 'Membrane Dry',
+  NEOPRENE_DRY: 'Neoprene Dry',
+  OTHER: 'Other',
+}
+
 export type WeightFeeling = 'LIGHT' | 'GOOD' | 'HEAVY'
 
 export type CylinderSizeUnit = 'LITER' | 'CUFT'

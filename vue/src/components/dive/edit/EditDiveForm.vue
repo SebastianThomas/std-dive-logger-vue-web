@@ -211,7 +211,7 @@
           </div>
 
           <div v-if="modelValue.configuration.suit" class="mt-3 text-sm space-y-1">
-            <div><span class="font-semibold">Type:</span> {{ modelValue.configuration.suit.type }}</div>
+            <div><span class="font-semibold">Type:</span> {{ SUIT_TYPE_LABELS[modelValue.configuration.suit.type] }}</div>
             <div v-if="modelValue.configuration.suit.thickness !== undefined && modelValue.configuration.suit.thickness !== null">
               <span class="font-semibold">Thickness:</span> {{ modelValue.configuration.suit.thickness }} mm
             </div>
@@ -333,6 +333,7 @@ import {
   type DiveConfiguration,
   type Suit,
   BASE_CONFIGURATION_LABELS,
+  SUIT_TYPE_LABELS,
 } from '@/lib/types/dive'
 
 interface DiveFormData {

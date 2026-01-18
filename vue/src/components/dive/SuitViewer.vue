@@ -25,7 +25,7 @@
       >
         <div class="flex items-start justify-between mb-2">
           <div>
-            <h4 class="font-semibold">{{ suit.type }}</h4>
+            <h4 class="font-semibold">{{ SUIT_TYPE_LABELS[suit.type] }}</h4>
             <p v-if="suit.thickness" class="text-xs text-gray-600 dark:text-gray-400">
               {{ suit.thickness }}mm
             </p>
@@ -70,13 +70,7 @@
               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
               v-model="editForm.type"
             >
-              <option value="NONE">None</option>
-              <option value="RASHGUARD">Rashguard</option>
-              <option value="THERMOCLINE">Thermocline</option>
-              <option value="NEOPRENE">Neoprene</option>
-              <option value="MEMBRANE_DRY">Membrane Dry</option>
-              <option value="NEOPRENE_DRY">Neoprene Dry</option>
-              <option value="OTHER">Other</option>
+              <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">{{ label }}</option>
             </select>
           </div>
           <div>
@@ -129,6 +123,7 @@
 import { ref } from 'vue'
 import { useApi } from '@/composables/useApi'
 import type { Suit, PagedResult } from '@/lib/types/dive'
+import { SUIT_TYPE_LABELS } from '@/lib/types/dive'
 
 interface Props {
   userId: number
