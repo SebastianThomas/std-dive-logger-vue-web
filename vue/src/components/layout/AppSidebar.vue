@@ -17,14 +17,14 @@
     <router-link :to="{ name: 'ShareOverview' }">
       <MenuItem icon="user-group" text="Groups" :is-visible="isVisible" />
     </router-link>
-    <router-link :to="{ name: 'Profile' }">
-      <MenuItem icon="user-pen" text="Profile" :is-visible="isVisible" />
-    </router-link>
     <router-link :to="{ name: 'MapView' }">
       <MenuItem icon="map" text="Sites" :is-visible="isVisible" />
     </router-link>
     <router-link :to="{ name: 'Stats' }">
       <MenuItem icon="chart-line" text="Statistics" :is-visible="isVisible" />
+    </router-link>
+    <router-link :to="{ name: 'Profile' }">
+      <MenuItem icon="user-pen" text="Profile" :is-visible="isVisible" />
     </router-link>
   </aside>
   <div v-else></div>

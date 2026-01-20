@@ -229,21 +229,28 @@ const handleSubmit = async () => {
     }
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
-      const data = err.response.data as {
-        title?: string
-        field?: string
-        additionalMessage?: string
-        status?: number
-        name?: string
-        reason?: string
-        detail?: string
-      }
-      if (data.reason === 'MISSING_VALUE' && data.field === 'DIVE_SITE') {
+      const data = err.response.data as
+        | {
+            title?: string
+            field?: string
+            additionalMessage?: string
+            status?: number
+            name?: string
+            reason?: string
+            detail?: string
+          }
+        | UploadDiveResult
+      if ('reason' in data && data.reason === 'MISSING_VALUE' && data.field === 'DIVE_SITE') {
         missingSiteName.value = data.name ?? null
         showCreateSite.value = true
         return
       }
-      status.value = `Error: ${data.title ?? 'Upload failed'} (${data.detail})`
+      console.log(data)
+      if ('dives' in data && 'errors' in data) {
+        status.value = `Error: Uploaded ${data.dives.length} dives, but failed uploading ${data.errors.length} dives: \n${data.errors.join('\n')}`
+      } else {
+        status.value = `Error: ${data.title ?? 'Upload failed'} (${data.detail ?? 'No more information'})`
+      }
     } else {
       status.value = 'Error: Upload failed'
     }
