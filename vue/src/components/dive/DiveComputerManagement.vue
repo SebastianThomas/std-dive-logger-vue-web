@@ -13,10 +13,10 @@
         <button
           type="button"
           class="px-4 py-2 rounded bg-orange-600 text-white hover:bg-orange-700 transition-colors"
-          @click="cleanupUnusedComputers"
+          @click="showCleanupConfirmation = true"
           :disabled="cleaning"
         >
-          {{ cleaning ? 'Cleaning...' : 'Cleanup Computers' }}
+          {{ cleaning ? 'Cleaning...' : 'Cleanup' }}
         </button>
         <button
           type="button"
@@ -34,44 +34,22 @@
       No dive computers found. Create one to get started.
     </p>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div
+    <ItemCardGrid v-else>
+      <ItemCard
         v-for="computer in diveComputers"
         :key="computer.id"
-        class="border dark:border-gray-600 rounded-lg p-4 hover:shadow-md dark:hover:shadow-gray-700/50 transition-shadow"
+        :title="computer.manufacturer.name"
+        @view-dives="viewDivesForComputer(computer.id)"
+        @edit="editDiveComputer(computer)"
       >
-        <div class="flex items-start justify-between mb-2">
-          <div class="flex-1">
-            <h4 class="font-semibold">{{ computer.manufacturer.name }}</h4>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              Serial: {{ computer.serialNumber || 'N/A' }}
-            </p>
-            <p
-              v-if="computer.customIdentifier"
-              class="text-xs text-gray-600 dark:text-gray-400 mt-1"
-            >
-              Name: {{ computer.customIdentifier }}
-            </p>
-          </div>
-          <div class="flex gap-2">
-            <button
-              type="button"
-              class="px-2 py-1 text-xs rounded border border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
-              @click="viewDivesForComputer(computer.id)"
-            >
-              View Dives
-            </button>
-            <button
-              type="button"
-              class="px-2 py-1 text-xs rounded border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-              @click="editDiveComputer(computer)"
-            >
-              Edit
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+        <p class="text-xs text-gray-600 dark:text-gray-400">
+          Serial: {{ computer.serialNumber || 'N/A' }}
+        </p>
+        <p v-if="computer.customIdentifier" class="text-xs text-gray-600 dark:text-gray-400">
+          Name: {{ computer.customIdentifier }}
+        </p>
+      </ItemCard>
+    </ItemCardGrid>
 
     <!-- Create/Edit Modal -->
     <div
@@ -94,7 +72,7 @@
                   ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                   : 'dark:bg-gray-700 dark:text-white dark:border-gray-600',
               ]"
-              v-model="form.manufacturerId"
+              v-model="manufacturerId"
               :disabled="modalMode === 'edit'"
             >
               <option :value="null" disabled>Select manufacturer</option>
@@ -117,7 +95,7 @@
                   ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                   : 'dark:bg-gray-700 dark:text-white dark:border-gray-600',
               ]"
-              v-model="form.serialNumber"
+              v-model="serialNumber"
               placeholder="Enter serial number"
               :disabled="modalMode === 'edit'"
             />
@@ -129,7 +107,7 @@
             <input
               type="text"
               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              v-model="form.customIdentifier"
+              v-model="customIdentifier"
               placeholder="Optional custom name or ID"
             />
           </div>
@@ -159,6 +137,16 @@
         </div>
       </div>
     </div>
+
+    <!-- Cleanup Confirmation Modal -->
+    <DeletionConfirmation
+      v-model="showCleanupConfirmation"
+      title="Cleanup Unused Dive Computers"
+      message="Are you sure you want to delete all dive computers that don't have any associated dives? This action cannot be undone."
+      confirm-text="Cleanup"
+      :loading="cleaning"
+      @confirm="cleanupUnusedComputers"
+    />
   </div>
 </template>
 
@@ -167,6 +155,9 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import ItemCard from '@/components/ItemCard.vue'
+import ItemCardGrid from '@/components/ItemCardGrid.vue'
+import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import type { DiveComputer, DiveComputerManufacturer, PagedResult } from '@/lib/types/dive'
 
 interface Props {
@@ -182,24 +173,18 @@ const diveComputers = ref<DiveComputer[]>([])
 const manufacturers = ref<DiveComputerManufacturer[]>([])
 const loading = ref(false)
 const cleaning = ref(false)
+const showCleanupConfirmation = ref(false)
 
 const showModal = ref(false)
 const modalMode = ref<'create' | 'edit'>('create')
 const saving = ref(false)
-const form = ref<{
-  id: number | null
-  manufacturerId: number | null
-  serialNumber: string
-  customIdentifier: string
-}>({
-  id: null,
-  manufacturerId: null,
-  serialNumber: '',
-  customIdentifier: '',
-})
+const id = ref<number | null>(null)
+const manufacturerId = ref<number | null>(null)
+const serialNumber = ref<string>('')
+const customIdentifier = ref<string>('')
 
 const isFormValid = computed(() => {
-  return form.value.manufacturerId !== null && form.value.serialNumber.trim() !== ''
+  return manufacturerId.value !== null && serialNumber.value.trim() !== ''
 })
 
 const loadDiveComputers = async () => {
@@ -225,25 +210,22 @@ const loadManufacturers = async () => {
   }
 }
 
+const resetValue = (computer?: DiveComputer) => {
+  id.value = computer?.id ?? null
+  manufacturerId.value = computer?.manufacturer.id ?? null
+  serialNumber.value = computer?.serialNumber ?? ''
+  customIdentifier.value = computer?.customIdentifier ?? ''
+}
+
 const openCreateModal = () => {
   modalMode.value = 'create'
-  form.value = {
-    id: null,
-    manufacturerId: null,
-    serialNumber: '',
-    customIdentifier: '',
-  }
+  resetValue()
   showModal.value = true
 }
 
 const editDiveComputer = (computer: DiveComputer) => {
   modalMode.value = 'edit'
-  form.value = {
-    id: computer.id ?? null,
-    manufacturerId: computer.manufacturer.id ?? null,
-    serialNumber: computer.serialNumber ?? '',
-    customIdentifier: computer.customIdentifier ?? '',
-  }
+  resetValue(computer)
   showModal.value = true
 }
 
@@ -259,6 +241,8 @@ const cleanupUnusedComputers = async () => {
   try {
     const res = await deleteWithToken<{ deletedCount: number }>('/v1/computers/unused')
     const count = res.data.deletedCount ?? 0
+
+    showCleanupConfirmation.value = false
 
     if (count > 0) {
       toast.success(`Deleted ${count} unused dive computer${count === 1 ? '' : 's'}`)
@@ -281,21 +265,23 @@ const saveDiveComputer = async () => {
   try {
     if (modalMode.value === 'create') {
       await postWithToken('/v1/computers', {
-        manufacturerId: form.value.manufacturerId,
-        serialNumber: form.value.serialNumber,
-        customIdentifier: form.value.customIdentifier,
+        manufacturerId: manufacturerId.value,
+        serialNumber: serialNumber.value,
+        customIdentifier: customIdentifier.value,
       })
     } else {
-      await putWithToken(`/v1/computers/${form.value.id}`, {
-        manufacturerId: form.value.manufacturerId,
-        serialNumber: form.value.serialNumber,
-        customIdentifier: form.value.customIdentifier,
+      if (!id.value) {
+        toast.error(`Cannot update this computer, please reload the page.`)
+      }
+      await putWithToken(`/v1/computers/${id.value}`, {
+        customIdentifier: customIdentifier.value,
       })
     }
     closeModal()
     await loadDiveComputers()
   } catch (err) {
     console.error('Failed to save dive computer:', err)
+    toast.error(`Failed to save the computer`)
   } finally {
     saving.value = false
   }

@@ -41,7 +41,7 @@
             <button
               type="button"
               class="px-2 py-1 text-xs rounded border border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-              @click="deleteSuit(suit.id)"
+              @click="showDeleteConfirmation(suit.id)"
               :disabled="deleting === suit.id"
             >
               {{ deleting === suit.id ? 'Deleting...' : 'Delete' }}
@@ -118,12 +118,22 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <DeletionConfirmation
+      v-model="showDeleteModal"
+      title="Delete Suit"
+      message="Are you sure you want to delete this suit?"
+      :loading="deleting !== null"
+      @confirm="confirmDeleteSuit"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useApi } from '@/composables/useApi'
+import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import type { Suit, PagedResult } from '@/lib/types/dive'
 import { SUIT_TYPE_LABELS } from '@/lib/types/dive'
 
@@ -138,6 +148,8 @@ const { getWithToken, putWithToken, deleteWithToken } = useApi()
 const suits = ref<Suit[]>([])
 const loading = ref(false)
 const deleting = ref<number | null>(null)
+const suitToDelete = ref<number | null>(null)
+const showDeleteModal = ref(false)
 
 const showEditModal = ref(false)
 const editingSuit = ref<Suit | null>(null)
@@ -200,18 +212,24 @@ const saveEdit = async () => {
   }
 }
 
-const deleteSuit = async (id: number) => {
-  if (!window.confirm('Are you sure you want to delete this suit?')) {
-    return
-  }
-  deleting.value = id
+const showDeleteConfirmation = (id: number) => {
+  suitToDelete.value = id
+  showDeleteModal.value = true
+}
+
+const confirmDeleteSuit = async () => {
+  if (!suitToDelete.value) return
+
+  deleting.value = suitToDelete.value
   try {
-    await deleteWithToken(`/v1/dives/configuration/suit/${id}`)
+    await deleteWithToken(`/v1/dives/configuration/suit/${suitToDelete.value}`)
+    showDeleteModal.value = false
     await loadSuits()
   } catch (err) {
     console.error('Failed to delete suit:', err)
   } finally {
     deleting.value = null
+    suitToDelete.value = null
   }
 }
 

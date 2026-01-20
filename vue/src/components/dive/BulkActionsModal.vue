@@ -78,32 +78,12 @@
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div
-      v-if="showDeleteConfirm"
-      class="fixed inset-0 z-60 flex items-center justify-center bg-black/60"
-      @click.self="showDeleteConfirm = false"
-    >
-      <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-sm">
-        <h3 class="text-lg font-bold mb-3">Confirm Deletion</h3>
-        <p class="text-sm text-gray-700 dark:text-gray-300 mb-6">
-          Are you sure you want to delete {{ selectedCount }} dive(s)? This action cannot be undone.
-        </p>
-        <div class="flex gap-3 justify-end">
-          <button
-            @click="showDeleteConfirm = false"
-            class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            Cancel
-          </button>
-          <button
-            @click="handleBulkDelete"
-            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
+    <DeletionConfirmation
+      v-model="showDeleteConfirm"
+      title="Confirm Deletion"
+      :message="`Are you sure you want to delete ${selectedCount} dive(s)? This action cannot be undone.`"
+      @confirm="handleBulkDelete"
+    />
 
     <!-- Second Delete Confirmation Modal -->
     <div

@@ -26,41 +26,24 @@
       No suits found. Create one to get started.
     </p>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div
+    <ItemCardGrid v-else>
+      <ItemCard
         v-for="suit in suits"
         :key="suit.id"
-        class="border dark:border-gray-600 rounded-lg p-4 hover:shadow-md dark:hover:shadow-gray-700/50 transition-shadow"
+        :title="SUIT_TYPE_LABELS[suit.type]"
+        @view-dives="viewDivesForSuit(suit.id)"
+        @edit="editSuit(suit)"
       >
-        <div class="flex items-start justify-between mb-2">
-          <div>
-            <h4 class="font-semibold">{{ SUIT_TYPE_LABELS[suit.type] }}</h4>
-            <p v-if="suit.thickness" class="text-xs text-gray-600 dark:text-gray-400">
-              {{ suit.thickness }}mm
-            </p>
-          </div>
-          <div class="flex gap-2">
-            <button
-              type="button"
-              class="px-2 py-1 text-xs rounded border border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
-              @click="viewDivesForSuit(suit.id)"
-            >
-              View Dives
-            </button>
-            <button
-              type="button"
-              class="px-2 py-1 text-xs rounded border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-              @click="editSuit(suit)"
-            >
-              Edit
-            </button>
-          </div>
-        </div>
+        <template #header-details>
+          <p v-if="suit.thickness" class="text-xs text-gray-600 dark:text-gray-400">
+            {{ suit.thickness }}mm
+          </p>
+        </template>
         <p v-if="suit.notes" class="text-xs text-gray-600 dark:text-gray-400">
           Name: {{ formatNotesPreview(suit.notes) }}
         </p>
-      </div>
-    </div>
+      </ItemCard>
+    </ItemCardGrid>
 
     <!-- Create/Edit Modal -->
     <div
@@ -135,6 +118,8 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import ItemCard from '@/components/ItemCard.vue'
+import ItemCardGrid from '@/components/ItemCardGrid.vue'
 import type { Suit, PagedResult } from '@/lib/types/dive'
 import { SUIT_TYPE_LABELS } from '@/lib/types/dive'
 

@@ -54,31 +54,12 @@
       </div>
 
       <!-- Delete Modal -->
-      <div
-        v-if="showDeleteModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      >
-        <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-[90%] max-w-md">
-          <h2 class="text-lg font-semibold mb-4 text-gray-800">Confirm Delete</h2>
-          <p class="text-gray-600 dark:text-gray-400 mb-6">
-            Are you sure you want to delete dive #{{ dive.number }}? This action cannot be undone.
-          </p>
-          <div class="flex justify-end gap-3">
-            <button
-              @click="showDeleteModal = false"
-              class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              Cancel
-            </button>
-            <button
-              @click="handleDelete"
-              class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
+      <DeletionConfirmation
+        v-model="showDeleteModal"
+        title="Confirm Delete"
+        :message="`Are you sure you want to delete dive #${dive.number}? This action cannot be undone.`"
+        @confirm="handleDelete"
+      />
 
       <!-- Link Modal -->
       <div
@@ -436,6 +417,7 @@ import GasDisplay from '@/components/dive/view/GasDisplay.vue'
 import InfoCard from '@/components/InfoCard.vue'
 import InfoCardRow from '@/components/InfoCardRow.vue'
 import SharePopover from '@/components/share/SharePopover.vue'
+import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import type { Dive, DiveComputer, Gas } from '@/lib/types/dive'
 import { BASE_CONFIGURATION_LABELS, SUIT_TYPE_LABELS } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'

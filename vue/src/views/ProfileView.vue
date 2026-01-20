@@ -51,31 +51,13 @@
     </main>
 
     <!-- Deregister Modal -->
-    <div
-      v-if="showDeregisterModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-    >
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6 space-y-4">
-        <h3 class="text-lg font-semibold text-red-600">Deregister Account</h3>
-
-        <p class="text-gray-700">
-          Are you sure you want to permanently delete your account? This action cannot be undone.
-        </p>
-
-        <div class="flex justify-end gap-3">
-          <button @click="showDeregisterModal = false" class="px-4 py-2 rounded border">
-            Cancel
-          </button>
-
-          <button
-            @click="confirmDeregister"
-            class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Deregister
-          </button>
-        </div>
-      </div>
-    </div>
+    <DeletionConfirmation
+      v-model="showDeregisterModal"
+      title="Deregister Account"
+      message="Are you sure you want to permanently delete your account? This action cannot be undone."
+      confirm-text="Deregister"
+      @confirm="confirmDeregister"
+    />
   </div>
 </template>
 
@@ -87,6 +69,7 @@ import { useApi } from '@/composables/useApi'
 import { type User } from '@/lib/types/user'
 import SuitManagement from '@/components/dive/SuitManagement.vue'
 import DiveComputerManagement from '@/components/dive/DiveComputerManagement.vue'
+import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 
 const router = useRouter()
 const { getWithToken, postWithToken } = useApi()
