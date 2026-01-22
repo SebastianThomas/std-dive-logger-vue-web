@@ -1,4 +1,4 @@
-import type { DiveSite, Temperature } from './dive'
+import type { BaseConfiguration, DiveSite, Temperature } from './dive'
 
 export type Duration = string
 
@@ -21,5 +21,6 @@ export type UserDiveStatsByYear = {
 }
 
 export type UserDiveStatsByBuddy = UserDiveStatsBy<string>
+export type UserDiveStatsByBaseConfiguration = UserDiveStatsBy<BaseConfiguration>
 
 export type UserDiveStatsBySite = UserDiveStatsBy<DiveSite>

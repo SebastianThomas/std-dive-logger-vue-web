@@ -76,6 +76,26 @@
               </div>
             </div>
           </button>
+
+          <button
+            :class="[
+              'p-4 rounded-lg border-2 transition-all',
+              selectedStat === 'base'
+                ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
+                : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400',
+            ]"
+            @click="selectStat('base')"
+          >
+            <div class="flex items-center gap-3">
+              <i class="fas fa-gears text-2xl text-indigo-600"></i>
+              <div class="text-left">
+                <h3 class="font-semibold">By Base Configuration</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                  Stats per Configuration
+                </p>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -139,6 +159,20 @@
           <StatCard :stats="item.stats" />
         </div>
       </div>
+
+      <!-- Base Configuration Stats -->
+      <div v-else-if="selectedStat === 'base'" class="space-y-6">
+        <div
+          v-for="item in baseStats"
+          :key="item.key"
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+        >
+          <h2 class="text-xl font-bold mb-4">
+            <i class="fas fa-gear mr-2 text-indigo-600"></i>{{ baseConfigLabel(item.key) }}
+          </h2>
+          <StatCard :stats="item.stats" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -153,13 +187,15 @@ import type {
   UserDiveStatsByYear,
   UserDiveStatsBySite,
   UserDiveStatsByBuddy,
+  UserDiveStatsByBaseConfiguration,
 } from '@/lib/types/stats'
+import { BASE_CONFIGURATION_LABELS, type BaseConfiguration } from '@/lib/types/dive'
 
 const router = useRouter()
 const route = useRoute()
 const { getWithToken } = useApi()
 
-type StatType = 'overall' | 'year' | 'site' | 'buddy'
+type StatType = 'overall' | 'year' | 'site' | 'buddy' | 'base'
 
 const selectedStat = ref<StatType>('overall')
 const loading = ref(false)
@@ -171,17 +207,22 @@ const cache = ref<{
   year: UserDiveStatsByYear | null
   site: UserDiveStatsBySite[] | null
   buddy: UserDiveStatsByBuddy[] | null
+  base: UserDiveStatsByBaseConfiguration[] | null
 }>({
   overall: null,
   year: null,
   site: null,
   buddy: null,
+  base: null,
 })
 
 const overallStats = computed(() => cache.value.overall)
 const yearStats = computed(() => cache.value.year || [])
 const siteStats = computed(() => cache.value.site || [])
 const buddyStats = computed(() => cache.value.buddy || [])
+const baseStats = computed(() => cache.value.base || [])
+
+const baseConfigLabel = (key: BaseConfiguration) => BASE_CONFIGURATION_LABELS[key]
 
 const selectStat = async (stat: StatType) => {
   // Ignore if clicking the same stat that's already selected
@@ -214,6 +255,8 @@ const loadStat = async (stat: StatType) => {
       url += '/dive-site'
     } else if (stat === 'buddy') {
       url += '/buddy'
+    } else if (stat === 'base') {
+      url += '/base-configuration'
     }
 
     type StatsResponse =
@@ -221,6 +264,7 @@ const loadStat = async (stat: StatType) => {
       | UserDiveStatsByYear
       | UserDiveStatsBySite[]
       | UserDiveStatsByBuddy[]
+      | UserDiveStatsByBaseConfiguration
     const response = await getWithToken<StatsResponse>(url)
 
     if (stat === 'overall') {
@@ -231,6 +275,8 @@ const loadStat = async (stat: StatType) => {
       cache.value.site = response.data as UserDiveStatsBySite[]
     } else if (stat === 'buddy') {
       cache.value.buddy = response.data as UserDiveStatsByBuddy[]
+    } else if (stat === 'base') {
+      cache.value.base = response.data as UserDiveStatsByBaseConfiguration[]
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load statistics'
@@ -241,7 +287,7 @@ const loadStat = async (stat: StatType) => {
 
 const getInitialStatType = (): StatType => {
   const queryType = route.query.type as string | undefined
-  if (queryType && ['overall', 'year', 'site', 'buddy'].includes(queryType)) {
+  if (queryType && ['overall', 'year', 'site', 'buddy', 'base'].includes(queryType)) {
     return queryType as StatType
   }
   return 'overall'
