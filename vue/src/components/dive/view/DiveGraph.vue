@@ -616,7 +616,7 @@ function renderAll() {
     const leftAxis = axisLeft(leftScale).tickFormat((d): string =>
       formatAxisTick(leftAxisMetric.value, Number(d)),
     )
-    // For temperature, show ticks every 5 degrees
+    // Temperature uses dynamic tick steps to keep label count reasonable
     if (leftAxisMetric.value === 'temp') {
       const domain = leftScale.domain() as [number, number]
       leftAxis.tickValues(generateTemperatureTicks(domain))
@@ -627,7 +627,7 @@ function renderAll() {
     const rightAxis = axisRight(rightScale).tickFormat((d): string =>
       formatAxisTick(rightAxisMetric.value, Number(d)),
     )
-    // For temperature, show ticks every 5 degrees
+    // Temperature uses dynamic tick steps to keep label count reasonable
     if (rightAxisMetric.value === 'temp') {
       const domain = rightScale.domain() as [number, number]
       rightAxis.tickValues(generateTemperatureTicks(domain))

@@ -123,6 +123,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import type { DiveWithoutProfiles } from '@/lib/types/dive'
 
 const props = defineProps<{

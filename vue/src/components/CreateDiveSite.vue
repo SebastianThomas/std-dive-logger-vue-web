@@ -165,6 +165,7 @@ const clearSelection = () => {
 }
 
 const confirmSelection = async () => {
+  console.log('Confirm Selection')
   status.value = ''
 
   // Use siteNameInput if siteName is empty

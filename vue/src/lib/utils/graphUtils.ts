@@ -97,16 +97,40 @@ export function formatAxisTick(metric: MetricType, value: number): string {
 }
 
 /**
- * Generates tick values for temperature axis with 5-degree intervals.
- * @param domain - The temperature scale domain [min, max]
- * @returns Array of tick values at 5-degree intervals
+ * Generates temperature ticks targeting ~6 readable labels using “nice” steps.
+ * Adapts the step (1, 2, 2.5, 5, 10, 20, ...) based on the domain width so the
+ * axis does not become cluttered when the range is large.
  */
 export function generateTemperatureTicks(domain: [number, number]): number[] {
-  const tempTicks: number[] = []
-  for (let t = Math.ceil(domain[0] / 5) * 5; t <= domain[1]; t += 5) {
-    tempTicks.push(t)
+  const [min, max] = domain
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return [min]
+
+  const range = Math.abs(max - min)
+  const targetLabels = 6
+  const rawStep = range / targetLabels
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep))
+  const fraction = rawStep / magnitude
+
+  // Choose a “nice” fraction to keep tick steps human-friendly
+  let niceFraction: number
+  if (fraction <= 1) niceFraction = 1
+  else if (fraction <= 2) niceFraction = 2
+  else if (fraction <= 2.5) niceFraction = 2.5
+  else if (fraction <= 5) niceFraction = 5
+  else niceFraction = 10
+
+  let step = niceFraction * magnitude
+  // Prevent over-dense ticks if the range is extremely large
+  while (range / step > 10) step *= 2
+
+  const ticks: number[] = []
+  // Align ticks to the chosen step to avoid fractional boundaries
+  for (let t = Math.ceil(min / step) * step; t <= max + step * 0.001; t += step) {
+    // Avoid floating-point artifacts
+    ticks.push(Number(t.toFixed(6)))
   }
-  return tempTicks
+
+  return ticks
 }
 
 /**

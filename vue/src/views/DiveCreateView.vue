@@ -53,16 +53,21 @@
 
         <div class="flex justify-end gap-3">
           <button
-            class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
+            :disabled="loading"
+            class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             @click="safeBack"
           >
             Cancel
           </button>
           <button
-            class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+            :disabled="loading"
+            class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             @click="handleSubmit"
           >
-            Submit
+            <span v-if="loading" class="inline-block animate-spin">
+              <i class="fas fa-spinner"></i>
+            </span>
+            {{ loading ? 'Uploading...' : 'Submit' }}
           </button>
         </div>
 
@@ -73,6 +78,9 @@
         >
           {{ status }}
         </p>
+        <div v-if="errors">
+          <p class="text-sm" :class="'text-red-600'" v-for="e in errors" :key="e">{{ e }}</p>
+        </div>
 
         <!-- Hints & Tips -->
         <div
@@ -98,13 +106,11 @@
       </div>
     </div>
 
-    <CreateDiveSite
-      v-if="showCreateSite"
-      :auto-open="true"
-      :hide-trigger="true"
-      :initial-name="missingSiteName || undefined"
-      @created="onSiteCreated"
-      @close="showCreateSite = false"
+    <DiveSiteSelector
+      v-if="showSelectSite"
+      @site-selected="onSiteSelected"
+      @site-created="onSiteCreated"
+      @close="handleSelectSiteClose"
     />
   </div>
 </template>
@@ -113,7 +119,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useNavigation } from '@/composables/useNavigation'
-import CreateDiveSite from '@/components/CreateDiveSite.vue'
+import { toast } from 'vue-sonner'
+import DiveSiteSelector from '@/components/DiveSiteSelector.vue'
 import type { UploadDiveResult, DiveSite } from '@/lib/types/dive'
 import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
 import axios from 'axios'
@@ -123,10 +130,12 @@ const { postWithToken } = useApi()
 
 const files = ref<File[]>([])
 const status = ref('')
+const errors = ref<string[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
-const showCreateSite = ref(false)
+const showSelectSite = ref(false)
 const missingSiteName = ref<string | null>(null)
 const createdSiteId = ref<number | null>(null)
+const loading = ref(false)
 
 const handleDrop = (e: DragEvent) => {
   if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
@@ -196,6 +205,12 @@ const handleSubmit = async () => {
     status.value = 'Error: Please add at least one file.'
     return
   }
+
+  loading.value = true
+  const toastId = toast.loading('Uploading dive files... This may take a few minutes.', {
+    duration: 10000,
+  })
+
   try {
     const formDataObj = new FormData()
     const body: { diveSiteId?: number } = {}
@@ -216,18 +231,34 @@ const handleSubmit = async () => {
     ).data
     const isErrors = res.errors && res.errors.length > 0
     const isDives = res.dives && res.dives.length > 0
-    if (isErrors) {
-      status.value = `Upload tried, no dives successful, but got errors: \n${res.errors.join('\n')}`
-    } else if (isErrors && isDives) {
-      status.value = `Upload tried, successfully uploaded dives ${res.dives.map((d) => d.number).join(', ')}, but got errors: \n${res.errors.join('\n')}`
+    if (isErrors && isDives) {
+      status.value = `Upload tried, successfully uploaded dives ${res.dives.map((d) => d.number).join(', ')}, but got errors.`
+      errors.value = res.errors
+      toast.dismiss(toastId)
+      toast.success(
+        `Uploaded dives: ${res.dives.map((d) => d.number).join(', ')} with some errors`,
+        { duration: 10000 },
+      )
+    } else if (isErrors) {
+      status.value = `Upload tried, no dives successful, but got errors`
+      errors.value = res.errors
+      toast.dismiss(toastId)
+      toast.error('Upload completed with errors', { duration: 10000 })
     } else {
       status.value = `Upload complete: Uploaded ${res.dives.map((d) => d.number).join(', ')}`
+      toast.dismiss(toastId)
+      toast.success(
+        `Successfully uploaded ${res.dives.length} dive(s): ${res.dives.map((d) => d.number).join(', ')}`,
+        { duration: 10000 },
+      )
       if (res.dives.length === 1) {
         router.push({ name: 'DiveView', params: { diveId: res.dives[0]!.id } })
       }
       files.value = []
+      createdSiteId.value = null
     }
   } catch (err) {
+    toast.dismiss(toastId)
     if (axios.isAxiosError(err) && err.response) {
       const data = err.response.data as
         | {
@@ -242,26 +273,52 @@ const handleSubmit = async () => {
         | UploadDiveResult
       if ('reason' in data && data.reason === 'MISSING_VALUE' && data.field === 'DIVE_SITE') {
         missingSiteName.value = data.name ?? null
-        showCreateSite.value = true
+        // Show site selector instead of just create
+        showSelectSite.value = true
         return
       }
       console.log(data)
       if ('dives' in data && 'errors' in data) {
-        status.value = `Error: Uploaded ${data.dives.length} dives, but failed uploading ${data.errors.length} dives: \n${data.errors.join('\n')}`
+        status.value = `Error: Upload for ${data.dives.length} dives would work, but failed uploading ${data.errors.length} dives: \n${data.errors.join('\n')}`
       } else {
         status.value = `Error: ${data.title ?? 'Upload failed'} (${data.detail ?? 'No more information'})`
       }
+      toast.error(`Upload failed: ${status.value}`, { duration: 10000 })
     } else {
       status.value = 'Error: Upload failed'
+      toast.error('Upload failed. Please try again.', { duration: 10000 })
     }
+  } finally {
+    loading.value = false
   }
 }
 
 const onSiteCreated = async (site: DiveSite) => {
-  showCreateSite.value = false
+  showSelectSite.value = false
   missingSiteName.value = null
   createdSiteId.value = site.id ?? null
-  await handleSubmit()
+  try {
+    await handleSubmit()
+  } catch (err) {
+    console.error('Error submitting after site creation:', err)
+    status.value = 'Error: Failed to upload dives after site creation. Please try again.'
+  }
+}
+
+const onSiteSelected = async (site: DiveSite) => {
+  showSelectSite.value = false
+  createdSiteId.value = site.id ?? null
+  try {
+    await handleSubmit()
+  } catch (err) {
+    console.error('Error submitting after site selection:', err)
+    status.value = 'Error: Failed to upload dives after site selection. Please try again.'
+  }
+}
+
+const handleSelectSiteClose = () => {
+  showSelectSite.value = false
+  missingSiteName.value = null
 }
 
 onMounted(() => {
