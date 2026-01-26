@@ -284,9 +284,10 @@ const openBulkActions = () => {
   showBulkActions.value = true
 }
 
-const handleBulkActionComplete = () => {
-  selectedIds.value = []
-  fetchDives()
+const handleBulkActionComplete = async () => {
+  await fetchDives()
+  const currentIds = new Set(dives.value.map((d) => d.id))
+  selectedIds.value = selectedIds.value.filter((id) => currentIds.has(id))
 }
 
 const onRowClick = (diveId: number) => {
