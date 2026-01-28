@@ -90,9 +90,7 @@
               <i class="fas fa-gears text-2xl text-indigo-600"></i>
               <div class="text-left">
                 <h3 class="font-semibold">By Base Configuration</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">
-                  Stats per Configuration
-                </p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Stats per Configuration</p>
               </div>
             </div>
           </button>

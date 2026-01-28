@@ -73,81 +73,83 @@
             </p>
 
             <div class="space-y-3">
-            <div class="space-y-2">
-              <label for="bulk-base" class="text-sm font-medium">Base Configuration</label>
-              <div class="flex gap-2">
-                <select
-                  id="bulk-base"
-                  v-model="selectedBaseConfiguration"
-                  class="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                >
-                  <option value="">Select configuration</option>
-                  <option
-                    v-for="(label, key) in BASE_CONFIGURATION_LABELS"
-                    :key="key"
-                    :value="key"
+              <div class="space-y-2">
+                <label for="bulk-base" class="text-sm font-medium">Base Configuration</label>
+                <div class="flex gap-2">
+                  <select
+                    id="bulk-base"
+                    v-model="selectedBaseConfiguration"
+                    class="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   >
-                    {{ label }}
-                  </option>
-                </select>
-                <button
-                  :disabled="!canUpdateBase"
-                  @click="handleBaseConfigurationUpdate"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  {{ updatingBaseConfiguration ? 'Updating...' : 'Update' }}
-                </button>
+                    <option value="">Select configuration</option>
+                    <option
+                      v-for="(label, key) in BASE_CONFIGURATION_LABELS"
+                      :key="key"
+                      :value="key"
+                    >
+                      {{ label }}
+                    </option>
+                  </select>
+                  <button
+                    :disabled="!canUpdateBase"
+                    @click="handleBaseConfigurationUpdate"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {{ updatingBaseConfiguration ? 'Updating...' : 'Update' }}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div class="space-y-2">
-              <label for="bulk-suit" class="text-sm font-medium">Suit</label>
-              <div class="flex gap-2">
-                <select
-                  id="bulk-suit"
-                  v-model.number="selectedSuitId"
-                  class="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                >
-                  <option value="">Select suit</option>
-                  <option v-for="suit in suits" :key="suit.id" :value="suit.id">
-                    {{ formatSuitLabel(suit) }}
-                  </option>
-                </select>
-                <button
-                  :disabled="!canUpdateSuit"
-                  @click="handleSuitUpdate"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  {{ updatingSuit ? 'Updating...' : 'Update' }}
-                </button>
+              <div class="space-y-2">
+                <label for="bulk-suit" class="text-sm font-medium">Suit</label>
+                <div class="flex gap-2">
+                  <select
+                    id="bulk-suit"
+                    v-model.number="selectedSuitId"
+                    class="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  >
+                    <option value="">Select suit</option>
+                    <option v-for="suit in suits" :key="suit.id" :value="suit.id">
+                      {{ formatSuitLabel(suit) }}
+                    </option>
+                  </select>
+                  <button
+                    :disabled="!canUpdateSuit"
+                    @click="handleSuitUpdate"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {{ updatingSuit ? 'Updating...' : 'Update' }}
+                  </button>
+                </div>
+                <p v-if="suitsLoading" class="text-xs text-gray-500">Loading suits...</p>
+                <p v-else-if="!suits.length" class="text-xs text-gray-500">
+                  No suits found. Create one in your profile first.
+                </p>
               </div>
-              <p v-if="suitsLoading" class="text-xs text-gray-500">Loading suits...</p>
-              <p v-else-if="!suits.length" class="text-xs text-gray-500">
-                No suits found. Create one in your profile first.
-              </p>
-            </div>
 
-            <div class="space-y-2">
-              <label for="bulk-weight" class="text-sm font-medium">Weight (kg)</label>
-              <div class="flex gap-2">
-                <input
-                  id="bulk-weight"
-                  v-model.number="weightInput"
-                  type="number"
-                  step="0.5"
-                  class="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                  placeholder="Enter weight"
-                />
-                <button
-                  :disabled="!canUpdateWeight"
-                  @click="handleWeightUpdate"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  {{ updatingWeight ? 'Updating...' : 'Update' }}
-                </button>
+              <div class="space-y-2">
+                <label for="bulk-weight" class="text-sm font-medium">Weight (kg)</label>
+                <div class="flex gap-2">
+                  <input
+                    id="bulk-weight"
+                    v-model.number="weightInput"
+                    type="number"
+                    step="0.5"
+                    class="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                    placeholder="Enter weight"
+                  />
+                  <button
+                    :disabled="!canUpdateWeight"
+                    @click="handleWeightUpdate"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {{ updatingWeight ? 'Updating...' : 'Update' }}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>          </div>        </div>
+          </div>
+        </div>
 
         <!-- Bulk Delete -->
         <div class="border border-red-300 dark:border-red-700 rounded-lg overflow-hidden">
@@ -231,7 +233,13 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
-import type { DiveWithoutProfiles, PagedResult, Suit, BaseConfiguration, DiveConfiguration } from '@/lib/types/dive'
+import type {
+  DiveWithoutProfiles,
+  PagedResult,
+  Suit,
+  BaseConfiguration,
+  DiveConfiguration,
+} from '@/lib/types/dive'
 import { BASE_CONFIGURATION_LABELS, SUIT_TYPE_LABELS } from '@/lib/types/dive'
 
 const props = defineProps<{
@@ -265,7 +273,10 @@ const hasValidWeight = computed(
   () => weightInput.value !== null && !Number.isNaN(weightInput.value as number),
 )
 const canUpdateBase = computed(
-  () => Boolean(selectedBaseConfiguration.value) && selectedIds.value.length > 0 && !updatingBaseConfiguration.value,
+  () =>
+    Boolean(selectedBaseConfiguration.value) &&
+    selectedIds.value.length > 0 &&
+    !updatingBaseConfiguration.value,
 )
 const canUpdateSuit = computed(
   () =>
@@ -292,7 +303,9 @@ const toggleSection = (section: 'merge' | 'config' | 'delete') => {
 const loadSuits = async () => {
   suitsLoading.value = true
   try {
-    const res = await getWithToken<PagedResult<Suit>>('/v1/dives/configuration/suit?page=0&size=100')
+    const res = await getWithToken<PagedResult<Suit>>(
+      '/v1/dives/configuration/suit?page=0&size=100',
+    )
     suits.value = res.data.result ?? []
   } catch (err) {
     console.error('Failed to load suits', err)
@@ -339,7 +352,7 @@ watch(
 const prefillCommonValues = async () => {
   if (selectedIds.value.length === 0) return
 
-  const allSameOrNull = <T>(values: Array<T | undefined | null>): T | null => {
+  const allSameOrNull = <T,>(values: Array<T | undefined | null>): T | null => {
     if (!values.length) return null
     const first = values[0]
     if (first === undefined || first === null) return null
