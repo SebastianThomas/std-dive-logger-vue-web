@@ -1,5 +1,12 @@
 import type { User } from './user'
 
+export type TagDefinition = {
+  id: number
+  name: string
+  autoDetectRule?: string | null
+  userId?: number | null
+}
+
 export type PagedResult<T> = {
   pageSize: number
   totalPages: number
@@ -208,6 +215,7 @@ export type Dive = {
   }[]
   namedBuddies: string[]
   summary: DiveSummary
+  tags: TagDefinition[]
 }
 
 export type DiveWithoutProfiles = {
@@ -223,6 +231,7 @@ export type DiveWithoutProfiles = {
   }[]
   namedBuddies: string[]
   summary: DiveSummary
+  tags: TagDefinition[]
 }
 export type UploadDiveResult = { dives: DiveWithoutProfiles[]; errors: string[] }
 

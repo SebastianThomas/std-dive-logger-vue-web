@@ -32,6 +32,7 @@
               </span>
             </div>
           </th>
+          <th class="border border-gray-400 px-3 py-2 text-left min-w-32">Tags</th>
         </tr>
       </thead>
       <tbody class="bg-white">
@@ -79,14 +80,24 @@
           <td class="border border-gray-400 px-3 py-2 w-32">
             {{ dive.user.id === myUserId ? 'You' : dive.user?.name || 'Unknown' }}
           </td>
+          <td class="border border-gray-400 px-3 py-2 min-w-32">
+            <div class="flex flex-wrap gap-1">
+              <TagBadge
+                v-for="tag in dive.tags ?? []"
+                :key="tag.id"
+                :name="tag.name"
+                :auto-detected="!!tag.autoDetectRule"
+              />
+            </div>
+          </td>
         </tr>
         <tr v-if="!dives.length && !isLoading">
-          <td colspan="9" class="border border-gray-400 px-3 py-4 text-center text-gray-500">
+          <td colspan="10" class="border border-gray-400 px-3 py-4 text-center text-gray-500">
             {{ status || 'No dives found' }}
           </td>
         </tr>
         <tr v-if="isLoading">
-          <td colspan="9" class="border border-gray-400 px-3 py-4 text-center text-gray-500">
+          <td colspan="10" class="border border-gray-400 px-3 py-4 text-center text-gray-500">
             Loading...
           </td>
         </tr>
@@ -98,6 +109,7 @@
 <script setup lang="ts">
 import DiveSitePreview from '@/components/DiveSitePreview.vue'
 import type { DiveWithoutProfiles } from '@/lib/types/dive'
+import TagBadge from '@/components/dive/TagBadge.vue'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
 import { formatISoDurationToTime, formatDate } from '@/lib/utils/timeUtils'
 

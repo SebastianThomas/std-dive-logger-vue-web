@@ -30,6 +30,22 @@
         </div>
       </div>
 
+      <!-- Tag filter banner -->
+      <div
+        v-if="tagId"
+        class="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg text-sm"
+      >
+        <span class="text-purple-700 dark:text-purple-300">
+          Filtering by tag: <strong>{{ tagName || `#${tagId}` }}</strong>
+        </span>
+        <button
+          @click="clearTagFilter"
+          class="ml-auto text-xs text-purple-500 hover:text-purple-700 dark:hover:text-purple-200 underline"
+        >
+          Clear
+        </button>
+      </div>
+
       <!-- Search Bar -->
       <div class="flex gap-4 items-center">
         <div class="flex-1">
@@ -135,6 +151,8 @@ const viewShared = ref(route.query.shared === 'true')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const computerId = ref(route.query.computerId ? Number(route.query.computerId) : null)
 const suitId = ref(route.query.suitId ? Number(route.query.suitId) : null)
+const tagId = ref(route.query.tagId ? Number(route.query.tagId) : null)
+const tagName = ref((route.query.tagName as string) || '')
 
 const sortColumn = ref<SortColumn>((route.query.sortCol as SortColumn) || 'NUMBER')
 const sortDirection = ref<SortDirection>((route.query.sortDir as SortDirection) || 'DESCENDING')
@@ -186,6 +204,9 @@ const fetchDives = async () => {
     } else if (suitId.value) {
       // Filter by suit
       url = `/v1/dives/suit?suitId=${suitId.value}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
+    } else if (tagId.value) {
+      // Filter by tag
+      url = `/v1/dives/tag?tagId=${tagId.value}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
     } else {
       // Normal mode - apply server-side sorting
       url = `/v1/dives?page=${currentPage.value - 1}&includeReader=${viewShared.value}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
@@ -367,12 +388,20 @@ const updateUrlQuery = () => {
       shared: viewShared.value ? 'true' : undefined,
       sortCol: sortColumn.value !== 'NUMBER' ? sortColumn.value : undefined,
       sortDir: sortDirection.value !== 'DESCENDING' ? sortDirection.value : undefined,
+      tagId: tagId.value ? String(tagId.value) : undefined,
+      tagName: tagName.value || undefined,
     },
   })
 }
 
+const clearTagFilter = () => {
+  tagId.value = null
+  tagName.value = ''
+  currentPage.value = 1
+}
+
 // Watchers
-watch([currentPage, searchQuery, viewShared, sortColumn, sortDirection], () => {
+watch([currentPage, searchQuery, viewShared, sortColumn, sortDirection, tagId], () => {
   updateUrlQuery()
   fetchDives()
 })
