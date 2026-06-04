@@ -30,20 +30,34 @@
         </div>
       </div>
 
-      <!-- Tag filter banner -->
-      <div
-        v-if="tagId"
-        class="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg text-sm"
-      >
-        <span class="text-purple-700 dark:text-purple-300">
-          Filtering by tag: <strong>{{ tagName || `#${tagId}` }}</strong>
-        </span>
-        <button
-          @click="clearTagFilter"
-          class="ml-auto text-xs text-purple-500 hover:text-purple-700 dark:hover:text-purple-200 underline"
-        >
-          Clear
-        </button>
+      <!-- Tag filter panel -->
+      <div v-if="availableTags.length" class="space-y-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-medium text-gray-500 dark:text-gray-400 shrink-0">
+            Filter by tag:
+          </span>
+          <button
+            v-for="tag in availableTags"
+            :key="tag.id"
+            type="button"
+            :class="[
+              'px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors',
+              selectedTagIds.has(tag.id)
+                ? 'bg-purple-600 text-white border-purple-600'
+                : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:border-purple-400 hover:text-purple-700 dark:hover:text-purple-300',
+            ]"
+            @click="toggleTagFilter(tag.id)"
+          >
+            {{ tag.name }}
+          </button>
+          <button
+            v-if="selectedTagIds.size"
+            @click="clearTagFilter"
+            class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline ml-1"
+          >
+            Clear
+          </button>
+        </div>
       </div>
 
       <!-- Search Bar -->
@@ -127,7 +141,7 @@ import { useApi } from '../composables/useApi'
 import BulkActionsModal from '@/components/dive/BulkActionsModal.vue'
 import DiveListTable from '@/components/DiveListTable.vue'
 import PageSelector from '@/components/PageSelector.vue'
-import type { DiveWithoutProfiles, PagedResult } from '../lib/types/dive'
+import type { DiveWithoutProfiles, PagedResult, TagDefinition } from '../lib/types/dive'
 import debounce from '../lib/utils/debounce'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
 
@@ -151,8 +165,20 @@ const viewShared = ref(route.query.shared === 'true')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const computerId = ref(route.query.computerId ? Number(route.query.computerId) : null)
 const suitId = ref(route.query.suitId ? Number(route.query.suitId) : null)
-const tagId = ref(route.query.tagId ? Number(route.query.tagId) : null)
-const tagName = ref((route.query.tagName as string) || '')
+
+// Multi-tag filter: initialise from URL (supports legacy single ?tagId= and new ?tagIds=1&tagIds=2)
+const availableTags = ref<TagDefinition[]>([])
+const initTagIds = (): Set<number> => {
+  const single = route.query.tagId ? Number(route.query.tagId) : null
+  const multi = Array.isArray(route.query.tagIds)
+    ? (route.query.tagIds as string[]).map(Number)
+    : route.query.tagIds
+      ? [Number(route.query.tagIds)]
+      : []
+  const ids = multi.length ? multi : single ? [single] : []
+  return new Set(ids.filter((n) => !isNaN(n) && n > 0))
+}
+const selectedTagIds = ref<Set<number>>(initTagIds())
 
 const sortColumn = ref<SortColumn>((route.query.sortCol as SortColumn) || 'NUMBER')
 const sortDirection = ref<SortDirection>((route.query.sortDir as SortDirection) || 'DESCENDING')
@@ -181,6 +207,26 @@ const columns: {
 ]
 
 // Functions
+const fetchAvailableTags = async () => {
+  try {
+    const res = await getWithToken<TagDefinition[]>('/v1/tags')
+    availableTags.value = res.data ?? []
+  } catch (err) {
+    console.error('Failed to fetch tags', err)
+  }
+}
+
+const toggleTagFilter = (id: number) => {
+  const next = new Set(selectedTagIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  selectedTagIds.value = next
+  currentPage.value = 1
+}
+
 const fetchUserId = async () => {
   try {
     const res = await getWithToken<{ id: number }>('/v1/users/')
@@ -204,9 +250,10 @@ const fetchDives = async () => {
     } else if (suitId.value) {
       // Filter by suit
       url = `/v1/dives/suit?suitId=${suitId.value}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
-    } else if (tagId.value) {
-      // Filter by tag
-      url = `/v1/dives/tag?tagId=${tagId.value}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
+    } else if (selectedTagIds.value.size) {
+      // Filter by one or more tags (AND: dive must have all selected tags)
+      const tagParams = [...selectedTagIds.value].map((id) => `tagIds=${id}`).join('&')
+      url = `/v1/dives/tags?${tagParams}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
     } else {
       // Normal mode - apply server-side sorting
       url = `/v1/dives?page=${currentPage.value - 1}&includeReader=${viewShared.value}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
@@ -381,6 +428,9 @@ const goToPage = (page: number) => {
 
 // Sync state to URL query params
 const updateUrlQuery = () => {
+  const tagIds = selectedTagIds.value.size
+    ? [...selectedTagIds.value].map(String)
+    : undefined
   router.replace({
     query: {
       page: currentPage.value > 1 ? String(currentPage.value) : undefined,
@@ -388,20 +438,18 @@ const updateUrlQuery = () => {
       shared: viewShared.value ? 'true' : undefined,
       sortCol: sortColumn.value !== 'NUMBER' ? sortColumn.value : undefined,
       sortDir: sortDirection.value !== 'DESCENDING' ? sortDirection.value : undefined,
-      tagId: tagId.value ? String(tagId.value) : undefined,
-      tagName: tagName.value || undefined,
+      tagIds,
     },
   })
 }
 
 const clearTagFilter = () => {
-  tagId.value = null
-  tagName.value = ''
+  selectedTagIds.value = new Set()
   currentPage.value = 1
 }
 
 // Watchers
-watch([currentPage, searchQuery, viewShared, sortColumn, sortDirection, tagId], () => {
+watch([currentPage, searchQuery, viewShared, sortColumn, sortDirection, selectedTagIds], () => {
   updateUrlQuery()
   fetchDives()
 })
@@ -409,6 +457,7 @@ watch([currentPage, searchQuery, viewShared, sortColumn, sortDirection, tagId], 
 // Initial load
 onMounted(() => {
   fetchUserId()
+  fetchAvailableTags()
   fetchDives()
   window.addEventListener('keydown', handleDiveListKeydown)
 })

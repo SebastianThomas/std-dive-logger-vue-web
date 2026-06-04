@@ -244,7 +244,7 @@
             :key="tag.id"
             :name="tag.name"
             :auto-detected="!!tag.autoDetectRule"
-            @click="viewDivesByTag(tag.id, tag.name)"
+            @click="viewDivesByTag(tag.id)"
             class="cursor-pointer"
           />
         </div>
@@ -462,8 +462,8 @@ const viewDivesForSuit = (suitId: number) => {
   router.push({ name: 'DiveList', query: { suitId: suitId.toString() } })
 }
 
-const viewDivesByTag = (tagId: number, name: string) => {
-  router.push({ name: 'DiveList', query: { tagId: tagId.toString(), tagName: name } })
+const viewDivesByTag = (tagId: number) => {
+  router.push({ name: 'DiveList', query: { tagIds: String(tagId) } })
 }
 
 const viewDivesForComputer = (computerId: number) => {
