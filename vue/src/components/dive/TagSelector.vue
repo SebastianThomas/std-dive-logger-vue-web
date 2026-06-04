@@ -124,8 +124,9 @@ const createAndSelect = async () => {
 }
 
 const handleEnter = () => {
-  if (suggestions.value.length === 1) {
-    selectTag(suggestions.value[0])
+  const first = suggestions.value[0]
+  if (suggestions.value.length === 1 && first) {
+    selectTag(first)
   } else if (canCreate.value) {
     createAndSelect()
   }
