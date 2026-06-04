@@ -232,6 +232,24 @@
         </div>
       </div>
 
+      <!-- Tags Panel -->
+      <div
+        v-if="dive.tags?.length"
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
+      >
+        <h2 class="text-lg font-semibold mb-3">Tags</h2>
+        <div class="flex flex-wrap gap-2">
+          <TagBadge
+            v-for="tag in dive.tags"
+            :key="tag.id"
+            :name="tag.name"
+            :auto-detected="!!tag.autoDetectRule"
+            @click="viewDivesByTag(tag.id, tag.name)"
+            class="cursor-pointer"
+          />
+        </div>
+      </div>
+
       <!-- Notes Panel -->
       <div
         v-if="dive.notes"
@@ -420,6 +438,7 @@ import SharePopover from '@/components/share/SharePopover.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import type { Dive, DiveComputer, Gas } from '@/lib/types/dive'
 import { BASE_CONFIGURATION_LABELS, SUIT_TYPE_LABELS } from '@/lib/types/dive'
+import TagBadge from '@/components/dive/TagBadge.vue'
 import type { User } from '@/lib/types/user'
 
 const router = useRouter()
@@ -441,6 +460,10 @@ const isMine = computed(() => dive.value?.user.id === myUserId.value)
 
 const viewDivesForSuit = (suitId: number) => {
   router.push({ name: 'DiveList', query: { suitId: suitId.toString() } })
+}
+
+const viewDivesByTag = (tagId: number, name: string) => {
+  router.push({ name: 'DiveList', query: { tagId: tagId.toString(), tagName: name } })
 }
 
 const viewDivesForComputer = (computerId: number) => {

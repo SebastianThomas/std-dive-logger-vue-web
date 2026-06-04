@@ -16,8 +16,17 @@
         <p class="text-red-600">{{ error }}</p>
       </div>
 
-      <div v-else class="flex-1 overflow-auto">
+      <div v-else class="flex-1 overflow-auto space-y-6">
         <EditDiveForm v-if="currentUserId" v-model="formData" :user-id="currentUserId" />
+
+        <!-- Tags -->
+        <div class="border rounded p-4">
+          <h3 class="font-medium mb-3">Tags</h3>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            Auto-detected tags (CCR, Deco, …) are applied automatically and not shown here.
+          </p>
+          <TagSelector v-model="selectedTags" />
+        </div>
       </div>
 
       <div class="mt-6 pt-4 border-t flex justify-end gap-3">
@@ -52,7 +61,9 @@ import type {
   Visibility,
   GasConsumption,
   DiveConfiguration,
+  TagDefinition,
 } from '@/lib/types/dive'
+import TagSelector from '@/components/dive/TagSelector.vue'
 
 const route = useRoute()
 const { safeBack } = useNavigation()
@@ -79,6 +90,8 @@ const formData = ref<DiveFormData>({
   diveBuddies: [],
 })
 
+const selectedTags = ref<TagDefinition[]>([])
+
 const originalSite = ref<DiveSite | null>(null)
 
 const fetchDive = async () => {
@@ -101,6 +114,8 @@ const fetchDive = async () => {
       configuration: dive.configuration,
     }
     originalSite.value = dive.site
+    // Only keep manual tags in the editor (auto-detected ones are read-only)
+    selectedTags.value = (dive.tags ?? []).filter((t) => !t.autoDetectRule)
   } catch (err) {
     error.value = 'Could not load dive data.'
     console.error(err)
@@ -225,6 +240,9 @@ const handleSubmit = async () => {
     await putWithToken('/v1/dives', payload, {
       headers: { 'Content-Type': 'application/json' },
     })
+    // Update tags (manual tag IDs only)
+    const tagIds = selectedTags.value.map((t) => t.id)
+    await putWithToken(`/v1/dives/${diveId.value}/tags`, tagIds)
     toast.success('Dive updated successfully!')
     safeBack()
   } catch (err) {
