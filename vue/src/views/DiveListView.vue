@@ -253,7 +253,7 @@ const fetchDives = async () => {
     } else if (selectedTagIds.value.size) {
       // Filter by one or more tags (AND: dive must have all selected tags)
       const tagParams = [...selectedTagIds.value].map((id) => `tagIds=${id}`).join('&')
-      url = `/v1/dives/tags?${tagParams}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
+      url = `/v1/dives/tags?${tagParams}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}&includeReader=${viewShared.value}`
     } else {
       // Normal mode - apply server-side sorting
       url = `/v1/dives?page=${currentPage.value - 1}&includeReader=${viewShared.value}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
@@ -373,16 +373,8 @@ const handleSearchEscape = () => {
 // Keyboard shortcuts for DiveListView
 const handleDiveListKeydown = (event: KeyboardEvent) => {
   const target = event.target as HTMLElement
-  // Don't trigger if typing in input
+  // Don't intercept keyboard shortcuts while the user is typing in a field
   if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-    // '/' to focus search
-    if (event.key === '/' && !event.ctrlKey && !event.metaKey) {
-      event.preventDefault()
-      const searchInput = document.querySelector(
-        'input[placeholder="Search dives..."]',
-      ) as HTMLInputElement
-      searchInput?.focus()
-    }
     return
   }
 

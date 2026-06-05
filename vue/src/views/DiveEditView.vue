@@ -17,32 +17,32 @@
       </div>
 
       <div v-else class="flex-1 overflow-auto space-y-6">
-        <EditDiveForm v-if="currentUserId" v-model="formData" :user-id="currentUserId" />
+        <EditDiveForm v-if="currentUserId" v-model="formData" :user-id="currentUserId">
+          <!-- Tags — placed between Buddies and Notes via the form's slot -->
+          <div class="border rounded p-4">
+            <h3 class="font-medium mb-3">Tags</h3>
 
-        <!-- Tags -->
-        <div class="border rounded p-4">
-          <h3 class="font-medium mb-3">Tags</h3>
-
-          <!-- Auto-detected tags -->
-          <div v-if="activeAutoTags.length > 0" class="mb-3">
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              Auto-detected — click ✕ to dismiss
-            </p>
-            <div class="flex flex-wrap gap-1">
-              <TagBadge
-                v-for="tag in activeAutoTags"
-                :key="tag.id"
-                :name="tag.name"
-                :auto-detected="true"
-                :removable="true"
-                @remove="dismissAutoTag(tag.id)"
-              />
+            <!-- Auto-detected tags -->
+            <div v-if="activeAutoTags.length > 0" class="mb-3">
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                Auto-detected — click ✕ to dismiss
+              </p>
+              <div class="flex flex-wrap gap-1">
+                <TagBadge
+                  v-for="tag in activeAutoTags"
+                  :key="tag.id"
+                  :name="tag.name"
+                  :auto-detected="true"
+                  :removable="true"
+                  @remove="dismissAutoTag(tag.id)"
+                />
+              </div>
             </div>
-          </div>
 
-          <!-- Manual tags -->
-          <TagSelector v-model="selectedTags" />
-        </div>
+            <!-- Manual tags -->
+            <TagSelector v-model="selectedTags" />
+          </div>
+        </EditDiveForm>
       </div>
 
       <div class="mt-6 pt-4 border-t flex justify-end gap-3">
@@ -128,7 +128,9 @@ const fetchDive = async () => {
   loading.value = true
   error.value = null
   try {
-    const res = await getWithToken<Dive>(`/v1/dives/${diveId.value}`)
+    // POST /refresh-tags: refreshes auto-detected tags server-side and returns the
+    // up-to-date dive in one round-trip, so the edit page always starts with current tags.
+    const res = await postWithToken<Dive>(`/v1/dives/${diveId.value}/refresh-tags`, {})
     const dive = res.data
 
     currentUserId.value = dive.user.id

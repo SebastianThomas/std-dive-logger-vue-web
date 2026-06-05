@@ -53,6 +53,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { resolveAutocompleteUrl } from '@/lib/globals/url/resolveUrl'
 import type { TagDefinition } from '@/lib/types/dive'
@@ -120,6 +121,7 @@ const createAndSelect = async () => {
     selectTag(res.data)
   } catch (e) {
     console.error('Failed to create tag', e)
+    toast.error('Failed to create tag. Please try again.')
   }
 }
 

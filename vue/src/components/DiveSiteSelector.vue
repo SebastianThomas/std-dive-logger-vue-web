@@ -221,10 +221,18 @@ const confirmSelection = async () => {
       lon: mapLon.value,
     }
 
-    const res = await postWithToken<DiveSite>('/v1/dives/sites', body)
-    const data = res.data
-    toast.success(`Dive site "${data.name}" created successfully`)
-    emit('site-created', data)
+    loading.value = true
+    try {
+      const res = await postWithToken<DiveSite>('/v1/dives/sites', body)
+      const data = res.data
+      toast.success(`Dive site "${data.name}" created successfully`)
+      emit('site-created', data)
+    } catch (err) {
+      console.error('Failed to create dive site:', err)
+      toast.error('Failed to create dive site. Please try again.')
+    } finally {
+      loading.value = false
+    }
   } else {
     emit('site-selected', selectedSite.value)
   }

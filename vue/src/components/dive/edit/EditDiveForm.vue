@@ -90,6 +90,9 @@
         />
       </div>
 
+      <!-- Slot for caller to inject content between Buddies and Notes (e.g. Tags) -->
+      <slot />
+
       <!-- Notes -->
       <div>
         <label for="notes" class="block mb-2 font-medium">Notes</label>
