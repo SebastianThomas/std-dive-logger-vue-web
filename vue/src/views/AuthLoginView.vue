@@ -114,7 +114,11 @@ const handleSubmitLogin = async () => {
     redirectAfterLogin()
   } catch (err) {
     console.error(err)
-    toast.error('Could not log in, please check your email and password.')
+    if (axios.isAxiosError(err) && (!err.response || [502, 503, 504].includes(err.response.status))) {
+      toast.error('The server is not reachable. Please try again later.')
+    } else {
+      toast.error('Could not log in, please check your email and password.')
+    }
   } finally {
     isLoading.value = false
   }

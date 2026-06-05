@@ -2,6 +2,19 @@ import { refreshAccessToken } from '@/lib/globals/auth/refreshToken'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
 import { useAuthStore } from '@/stores/auth'
 import axios, { AxiosError, AxiosHeaders, type AxiosRequestConfig, type AxiosResponse } from 'axios'
+import { toast } from 'vue-sonner'
+
+/** Returns true and shows a toast when the error indicates the server is unreachable. */
+function handleServerUnreachable(err: unknown): boolean {
+  if (!axios.isAxiosError(err)) return false
+  const status = err.response?.status
+  // No response at all (network error / ECONNREFUSED) or gateway-level errors
+  if (!err.response || status === 502 || status === 503 || status === 504) {
+    toast.error('The server is not reachable. Please try again later.')
+    return true
+  }
+  return false
+}
 
 export type BodyType = object | string | number
 
@@ -73,6 +86,7 @@ export function useApi() {
       if (!axios.isAxiosError(err)) {
         throw err
       }
+      if (handleServerUnreachable(err)) throw err
       const status = err.response?.status
       if (!status || status !== 401) {
         throw err
@@ -95,6 +109,7 @@ export function useApi() {
         if (!(err instanceof AxiosError)) {
           throw err
         }
+        if (handleServerUnreachable(err)) throw err
         if (err.response?.status === 401) {
           throw new Error('Unauthorized')
         }
