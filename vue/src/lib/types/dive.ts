@@ -5,11 +5,13 @@ export type TagDefinition = {
   name: string
   autoDetectRule?: string | null
   userId?: number | null
+  diveCount?: number
 }
 
 export type PagedResult<T> = {
   pageSize: number
   totalPages: number
+  totalElements: number
   result: T[]
 }
 

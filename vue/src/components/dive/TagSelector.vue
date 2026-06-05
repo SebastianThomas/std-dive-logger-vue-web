@@ -55,7 +55,6 @@
 import { ref, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
-import { resolveAutocompleteUrl } from '@/lib/globals/url/resolveUrl'
 import type { TagDefinition } from '@/lib/types/dive'
 import TagBadge from './TagBadge.vue'
 
@@ -96,7 +95,7 @@ const handleInput = () => {
   debounceTimer = setTimeout(async () => {
     try {
       const res = await getWithToken<TagDefinition[]>(
-        resolveAutocompleteUrl(`/v1/autocomplete/tag?query=${encodeURIComponent(query)}`),
+        `/v1/tags?query=${encodeURIComponent(query)}`,
       )
       suggestions.value = (res.data ?? []).filter((t) => !selectedIds.value.has(t.id))
     } catch {

@@ -5,8 +5,14 @@
     >
       <!-- Header -->
       <div class="flex items-center justify-between flex-wrap gap-4">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
           <h1 class="text-2xl font-bold">Dive List</h1>
+          <span
+            v-if="!isLoading && totalElements > 0"
+            class="px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm border border-gray-200 dark:border-gray-600"
+          >
+            {{ totalElements }} {{ totalElements === 1 ? 'dive' : 'dives' }}
+          </span>
           <span
             v-if="isSelectionMode"
             class="px-2 py-1 rounded-full bg-sky-100 text-sky-800 text-sm border border-sky-300"
@@ -158,6 +164,7 @@ const myUserId = ref<number | null>(null)
 // Initialize state from URL query params
 const currentPage = ref(Number(route.query.page) || 1)
 const totalPages = ref(0)
+const totalElements = ref(0)
 const pageSize = ref(20)
 
 const searchQuery = ref((route.query.search as string) || '')
@@ -262,6 +269,7 @@ const fetchDives = async () => {
     const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(url)
     dives.value = res.data.result ?? []
     totalPages.value = res.data.totalPages ?? 0
+    totalElements.value = res.data.totalElements ?? dives.value.length
     pageSize.value = res.data.pageSize ?? 20
 
     if (!dives.value.length) {

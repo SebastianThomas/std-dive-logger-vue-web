@@ -80,14 +80,33 @@
             </button>
           </span>
         </div>
-        <input
-          id="buddies"
-          v-model="buddyInput"
-          type="text"
-          class="w-full p-2 border rounded"
-          placeholder="Enter a buddy and press Enter"
-          @keydown.enter.prevent="addBuddy"
-        />
+        <div class="relative">
+          <input
+            id="buddies"
+            v-model="buddyInput"
+            type="text"
+            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            placeholder="Enter a buddy and press Enter"
+            autocomplete="off"
+            @input="fetchBuddySuggestions"
+            @focus="showBuddyDropdown = true"
+            @blur="hideBuddyDropdown"
+            @keydown.enter.prevent="addBuddy"
+          />
+          <div
+            v-if="showBuddyDropdown && buddySuggestions.length"
+            class="absolute top-full left-0 right-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg mt-1 z-20 max-h-48 overflow-y-auto shadow-lg"
+          >
+            <div
+              v-for="name in buddySuggestions"
+              :key="name"
+              class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm"
+              @mousedown.prevent="selectBuddySuggestion(name)"
+            >
+              {{ name }}
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Slot for caller to inject content between Buddies and Notes (e.g. Tags) -->
@@ -338,6 +357,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useApi } from '@/composables/useApi'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
 import SuitSelector from '@/components/dive/edit/SuitSelector.vue'
 import {
@@ -370,8 +390,13 @@ const emit = defineEmits<{
   'update:modelValue': [value: DiveFormData]
 }>()
 
+const { getWithToken } = useApi()
+
 const showMap = ref(false)
 const buddyInput = ref('')
+const buddySuggestions = ref<string[]>([])
+const showBuddyDropdown = ref(false)
+let buddyDebounce: ReturnType<typeof setTimeout> | null = null
 const selectedCoords = ref<{ lat: number; lon: number } | null>(null)
 const showSuitModal = ref(false)
 // Notes preview formatter: first three words, ensure >= 20 chars
@@ -419,6 +444,45 @@ const handleMapConfirm = () => {
   }
 }
 
+const fetchBuddySuggestions = () => {
+  if (buddyDebounce) clearTimeout(buddyDebounce)
+  const q = buddyInput.value.trim()
+  if (!q) {
+    buddySuggestions.value = []
+    return
+  }
+  buddyDebounce = setTimeout(async () => {
+    try {
+      const res = await getWithToken<string[]>(
+        `/v1/dives/buddies/autocomplete?query=${encodeURIComponent(q)}`,
+      )
+      buddySuggestions.value = (res.data ?? []).filter(
+        (n) => !(props.modelValue.diveBuddies ?? []).includes(n),
+      )
+    } catch {
+      buddySuggestions.value = []
+    }
+  }, 200)
+}
+
+const selectBuddySuggestion = (name: string) => {
+  if (!props.modelValue.diveBuddies?.includes(name)) {
+    emit('update:modelValue', {
+      ...props.modelValue,
+      diveBuddies: [...(props.modelValue.diveBuddies || []), name],
+    })
+  }
+  buddyInput.value = ''
+  buddySuggestions.value = []
+  showBuddyDropdown.value = false
+}
+
+const hideBuddyDropdown = () => {
+  setTimeout(() => {
+    showBuddyDropdown.value = false
+  }, 150)
+}
+
 const addBuddy = () => {
   const name = buddyInput.value.trim()
   if (name && !props.modelValue.diveBuddies?.includes(name)) {
@@ -426,6 +490,8 @@ const addBuddy = () => {
     emit('update:modelValue', { ...props.modelValue, diveBuddies: newBuddies })
   }
   buddyInput.value = ''
+  buddySuggestions.value = []
+  showBuddyDropdown.value = false
 }
 
 const removeBuddy = (name: string) => {
