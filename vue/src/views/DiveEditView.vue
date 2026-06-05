@@ -22,9 +22,25 @@
         <!-- Tags -->
         <div class="border rounded p-4">
           <h3 class="font-medium mb-3">Tags</h3>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            Auto-detected tags (CCR, Deco, …) are applied automatically and not shown here.
-          </p>
+
+          <!-- Auto-detected tags -->
+          <div v-if="activeAutoTags.length > 0" class="mb-3">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              Auto-detected — click ✕ to dismiss
+            </p>
+            <div class="flex flex-wrap gap-1">
+              <TagBadge
+                v-for="tag in activeAutoTags"
+                :key="tag.id"
+                :name="tag.name"
+                :auto-detected="true"
+                :removable="true"
+                @remove="dismissAutoTag(tag.id)"
+              />
+            </div>
+          </div>
+
+          <!-- Manual tags -->
           <TagSelector v-model="selectedTags" />
         </div>
       </div>
@@ -64,6 +80,7 @@ import type {
   TagDefinition,
 } from '@/lib/types/dive'
 import TagSelector from '@/components/dive/TagSelector.vue'
+import TagBadge from '@/components/dive/TagBadge.vue'
 
 const route = useRoute()
 const { safeBack } = useNavigation()
@@ -91,6 +108,19 @@ const formData = ref<DiveFormData>({
 })
 
 const selectedTags = ref<TagDefinition[]>([])
+/** Auto-detected tags fetched fresh from the backend on load. */
+const autoTags = ref<TagDefinition[]>([])
+/** IDs of auto-detected tags the user has explicitly dismissed in this editing session. */
+const dismissedAutoTagIds = ref<Set<number>>(new Set())
+
+/** Auto-tags that are currently visible (not dismissed). */
+const activeAutoTags = computed(() =>
+  autoTags.value.filter((t) => !dismissedAutoTagIds.value.has(t.id)),
+)
+
+const dismissAutoTag = (id: number) => {
+  dismissedAutoTagIds.value = new Set([...dismissedAutoTagIds.value, id])
+}
 
 const originalSite = ref<DiveSite | null>(null)
 
@@ -114,8 +144,10 @@ const fetchDive = async () => {
       configuration: dive.configuration,
     }
     originalSite.value = dive.site
-    // Only keep manual tags in the editor (auto-detected ones are read-only)
+    // Split tags: manual ones go into the selector, auto-detected ones are shown separately
     selectedTags.value = (dive.tags ?? []).filter((t) => !t.autoDetectRule)
+    autoTags.value = (dive.tags ?? []).filter((t) => !!t.autoDetectRule)
+    dismissedAutoTagIds.value = new Set()
   } catch (err) {
     error.value = 'Could not load dive data.'
     console.error(err)
@@ -240,9 +272,12 @@ const handleSubmit = async () => {
     await putWithToken('/v1/dives', payload, {
       headers: { 'Content-Type': 'application/json' },
     })
-    // Update tags (manual tag IDs only)
-    const tagIds = selectedTags.value.map((t) => t.id)
-    await putWithToken(`/v1/dives/${diveId.value}/tags`, tagIds)
+    // Update tags: send manual tag IDs and explicitly dismissed auto-tag IDs
+    const tagsBody = {
+      manualTagIds: selectedTags.value.map((t) => t.id),
+      dismissedAutoTagIds: [...dismissedAutoTagIds.value],
+    }
+    await putWithToken(`/v1/dives/${diveId.value}/tags`, tagsBody)
     toast.success('Dive updated successfully!')
     safeBack()
   } catch (err) {
