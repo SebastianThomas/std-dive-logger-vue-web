@@ -23,6 +23,9 @@
     <router-link :to="{ name: 'Stats' }">
       <MenuItem icon="chart-line" text="Statistics" :is-visible="isVisible" />
     </router-link>
+    <router-link :to="{ name: 'StatsTimeline' }">
+      <MenuItem icon="chart-area" text="Trends" :is-visible="isVisible" />
+    </router-link>
     <router-link :to="{ name: 'TagManager' }">
       <MenuItem icon="tags" text="Tags" :is-visible="isVisible" />
     </router-link>

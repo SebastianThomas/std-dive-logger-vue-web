@@ -109,6 +109,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/stats/timeline',
+      name: 'StatsTimeline',
+      component: () => import('../views/StatsTimelineView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/tags',
       name: 'TagManager',
       component: () => import('../views/TagManagerView.vue'),

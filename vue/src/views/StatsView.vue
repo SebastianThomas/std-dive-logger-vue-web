@@ -3,7 +3,15 @@
     <div class="w-full max-w-4xl">
       <!-- Stat Type Selector -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
-        <h1 class="text-2xl font-bold mb-6">Dive Statistics</h1>
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-6">
+          <h1 class="text-2xl font-bold">Dive Statistics</h1>
+          <RouterLink
+            :to="{ name: 'StatsTimeline' }"
+            class="text-sm text-blue-600 hover:underline flex items-center gap-1"
+          >
+            <i class="fa fa-chart-area"></i> View trends over time →
+          </RouterLink>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             :class="[
