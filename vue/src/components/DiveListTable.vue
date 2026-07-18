@@ -4,11 +4,9 @@
       <thead>
         <tr class="bg-blue-200">
           <th class="border border-gray-400 px-2 py-2 text-left w-12">
-            <input
-              type="checkbox"
-              :checked="selectedIds.length === dives.length && dives.length > 0"
-              @change="$emit('toggle-all')"
-              class="cursor-pointer"
+            <StyledCheckbox
+              :model-value="selectedIds.length === dives.length && dives.length > 0"
+              @update:model-value="$emit('toggle-all')"
             />
           </th>
           <th
@@ -50,12 +48,9 @@
           @click="$emit('row-click', dive.id)"
         >
           <td class="border border-gray-400 px-2 py-2 text-center" @click.stop>
-            <input
-              type="checkbox"
-              :checked="selectedIds.includes(dive.id)"
-              @click.stop
-              @change="$emit('toggle-row', dive.id)"
-              class="cursor-pointer"
+            <StyledCheckbox
+              :model-value="selectedIds.includes(dive.id)"
+              @update:model-value="$emit('toggle-row', dive.id)"
             />
           </td>
           <td class="border border-gray-400 px-3 py-2 w-16">{{ dive.number }}</td>
@@ -108,6 +103,7 @@
 
 <script setup lang="ts">
 import DiveSitePreview from '@/components/DiveSitePreview.vue'
+import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 import type { DiveWithoutProfiles } from '@/lib/types/dive'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'

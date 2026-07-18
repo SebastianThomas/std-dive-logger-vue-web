@@ -54,14 +54,15 @@
         <div class="form-group">
           <label>Select Profiles to Reset</label>
           <div class="checkbox-group">
-            <label v-for="(profile, idx) in profiles" :key="profile.id" class="checkbox-label">
-              <input
-                type="checkbox"
-                :checked="selectedResetProfiles.includes(profile.id)"
-                @change="toggleResetProfile(profile.id)"
-              />
+            <StyledCheckbox
+              v-for="(profile, idx) in profiles"
+              :key="profile.id"
+              class="checkbox-label"
+              :model-value="selectedResetProfiles.includes(profile.id)"
+              @update:model-value="toggleResetProfile(profile.id)"
+            >
               <span>Profile {{ idx + 1 }} ({{ formatDate(profile.start) }})</span>
-            </label>
+            </StyledCheckbox>
           </div>
         </div>
 
@@ -99,6 +100,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import type { AlignmentType, Dive, DiveProfile } from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
 import { formatDate } from '@/lib/utils/timeUtils'
+import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 
 interface Props {
   profiles: DiveProfile[]
@@ -448,13 +450,6 @@ onBeforeUnmount(() => {
 
 [data-theme='dark'] .checkbox-label:hover {
   background: rgba(107, 114, 128, 0.1);
-}
-
-.checkbox-label input[type='checkbox'] {
-  cursor: pointer;
-  width: 16px;
-  height: 16px;
-  accent-color: #3b82f6;
 }
 
 .error-message {

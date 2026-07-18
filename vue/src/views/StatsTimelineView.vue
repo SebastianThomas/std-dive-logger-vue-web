@@ -21,51 +21,40 @@
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
         <div class="flex flex-wrap gap-4 items-start justify-between mb-4">
           <div class="space-y-2">
-            <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-300">Metrics</h3>
+            <div class="flex items-center gap-3">
+              <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-300">Metrics</h3>
+              <StyledCheckbox v-model="combineMode" title="Tap multiple same-unit metrics without holding shift">
+                <span class="text-xs text-gray-500 dark:text-gray-400">Combine</span>
+              </StyledCheckbox>
+            </div>
             <div class="flex flex-wrap gap-3">
-              <label
+              <StyledCheckbox
                 v-for="metric in NUMERIC_METRICS"
                 :key="metric"
-                class="flex items-center gap-1.5 cursor-pointer"
+                :model-value="selectedMetrics.has(metric)"
+                :color="DEFAULT_TIMELINE_METRIC_CONFIGS[metric].color"
+                @click="handleMetricClick(metric, $event)"
               >
-                <input
-                  type="checkbox"
-                  class="w-4 h-4"
-                  :checked="selectedMetrics.has(metric)"
-                  @change="toggleMetric(metric)"
-                />
                 <span
                   class="font-medium text-sm"
                   :style="{ color: DEFAULT_TIMELINE_METRIC_CONFIGS[metric].color }"
                 >
                   {{ timelineMetricDisplayNames[metric] }}
                 </span>
-              </label>
+              </StyledCheckbox>
             </div>
           </div>
 
           <div class="space-y-2">
-            <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-300">Breakdown</h3>
-            <div class="flex flex-wrap gap-3">
-              <label
-                v-for="metric in CATEGORICAL_METRICS"
-                :key="metric"
-                class="flex items-center gap-1.5 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  class="w-4 h-4"
-                  :checked="selectedCategorical.has(metric)"
-                  @change="toggleCategorical(metric)"
-                />
-                <span
-                  class="font-medium text-sm"
-                  :style="{ color: DEFAULT_TIMELINE_CATEGORICAL_CONFIGS[metric].color }"
-                >
-                  {{ timelineCategoricalDisplayNames[metric] }}
-                </span>
-              </label>
-            </div>
+            <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-300">Break down by</h3>
+            <select
+              v-model="breakdownBy"
+              class="border rounded px-2 py-1 text-sm dark:bg-gray-900 dark:text-white dark:border-gray-600"
+            >
+              <option v-for="opt in BREAKDOWN_DIMENSIONS" :key="opt.label" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
           </div>
         </div>
 
@@ -106,9 +95,10 @@
             :series="series"
             :granularity="granularity"
             :selected-metrics="[...selectedMetrics]"
-            :selected-categorical="[...selectedCategorical]"
+            :breakdown-by="breakdownBy"
             v-model:left-axis-metric="leftAxisMetric"
             v-model:right-axis-metric="rightAxisMetric"
+            @point-click="handlePointClick"
           />
         </div>
       </div>
@@ -118,22 +108,25 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import StatsFilterBar from '@/components/stats/StatsFilterBar.vue'
 import StatsTimelineChart from '@/components/stats/StatsTimelineChart.vue'
+import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 import type {
   StatsTimeSeries,
+  StatsTimeSeriesPoint,
   StatsTimelineFilters,
   TimelineGranularity,
   TimelineMetric,
-  TimelineCategoricalMetric,
+  StatsBreakdownDimension,
 } from '@/lib/types/statsTimeline'
 import {
   EMPTY_TIMELINE_FILTERS,
   DEFAULT_TIMELINE_METRIC_CONFIGS,
-  DEFAULT_TIMELINE_CATEGORICAL_CONFIGS,
+  BREAKDOWN_DIMENSIONS,
   timelineMetricDisplayNames,
-  timelineCategoricalDisplayNames,
+  timelineMetricUnits,
 } from '@/lib/types/statsTimeline'
 
 const NUMERIC_METRICS: TimelineMetric[] = [
@@ -149,45 +142,124 @@ const NUMERIC_METRICS: TimelineMetric[] = [
   'avgWeight',
 ]
 
-const CATEGORICAL_METRICS: TimelineCategoricalMetric[] = ['suitUsage', 'baseConfigUsage']
-
 const { getWithToken } = useApi()
+const router = useRouter()
 
-const granularity = ref<TimelineGranularity>('MONTH')
-const filters = ref<StatsTimelineFilters>({ ...EMPTY_TIMELINE_FILTERS })
+// Settings are kept for the browser session (sessionStorage) so navigating away from this page
+// and back — e.g. to /stats or a linked dive list — doesn't reset granularity/filters/metrics.
+const TIMELINE_SETTINGS_KEY = 'stats-timeline-settings'
+type PersistedSettings = {
+  granularity: TimelineGranularity
+  filters: StatsTimelineFilters
+  selectedMetrics: TimelineMetric[]
+  breakdownBy: StatsBreakdownDimension | null
+  leftAxisMetric: TimelineMetric
+  rightAxisMetric: TimelineMetric
+  combineMode: boolean
+}
+
+const loadPersistedSettings = (): Partial<PersistedSettings> => {
+  if (typeof sessionStorage === 'undefined' || sessionStorage === null) return {}
+  try {
+    const raw = sessionStorage.getItem(TIMELINE_SETTINGS_KEY)
+    return raw ? (JSON.parse(raw) as Partial<PersistedSettings>) : {}
+  } catch {
+    return {}
+  }
+}
+
+const persisted = loadPersistedSettings()
+
+const granularity = ref<TimelineGranularity>(persisted.granularity ?? 'MONTH')
+const filters = ref<StatsTimelineFilters>(persisted.filters ?? { ...EMPTY_TIMELINE_FILTERS })
 
 const selectedMetrics = ref<Set<TimelineMetric>>(
   new Set(
-    NUMERIC_METRICS.filter((m) => DEFAULT_TIMELINE_METRIC_CONFIGS[m].show),
+    persisted.selectedMetrics ??
+      NUMERIC_METRICS.filter((m) => DEFAULT_TIMELINE_METRIC_CONFIGS[m].show),
   ),
 )
-const selectedCategorical = ref<Set<TimelineCategoricalMetric>>(new Set())
+const breakdownBy = ref<StatsBreakdownDimension | null>(persisted.breakdownBy ?? null)
+const combineMode = ref<boolean>(persisted.combineMode ?? false)
 
-const leftAxisMetric = ref<TimelineMetric>('maxDepth')
-const rightAxisMetric = ref<TimelineMetric>('diveCount')
+const leftAxisMetric = ref<TimelineMetric>(persisted.leftAxisMetric ?? 'maxDepth')
+const rightAxisMetric = ref<TimelineMetric>(persisted.rightAxisMetric ?? 'diveCount')
 
 const series = ref<StatsTimeSeries | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-const toggleMetric = (metric: TimelineMetric) => {
+const persistSettings = () => {
+  if (typeof sessionStorage === 'undefined' || sessionStorage === null) return
+  try {
+    const toPersist: PersistedSettings = {
+      granularity: granularity.value,
+      filters: filters.value,
+      selectedMetrics: [...selectedMetrics.value],
+      breakdownBy: breakdownBy.value,
+      leftAxisMetric: leftAxisMetric.value,
+      rightAxisMetric: rightAxisMetric.value,
+      combineMode: combineMode.value,
+    }
+    sessionStorage.setItem(TIMELINE_SETTINGS_KEY, JSON.stringify(toPersist))
+  } catch {
+    // Silently fail if sessionStorage is not available
+  }
+}
+
+watch(
+  [granularity, filters, selectedMetrics, breakdownBy, leftAxisMetric, rightAxisMetric, combineMode],
+  persistSettings,
+  { deep: true },
+)
+
+// Plain click selects only that metric (and deselects a lone selection); shift+click (or the
+// "Combine" toggle, for touch devices without a shift key) adds/removes it, but only if its unit
+// matches what's already selected — otherwise it falls back to a plain single-select rather than
+// silently doing nothing.
+const handleMetricClick = (metric: TimelineMetric, event: MouseEvent) => {
   const next = new Set(selectedMetrics.value)
-  if (next.has(metric)) {
-    next.delete(metric)
+  const wantsCombine = event.shiftKey || combineMode.value
+  if (!wantsCombine) {
+    if (next.size === 1 && next.has(metric)) {
+      next.clear()
+    } else {
+      next.clear()
+      next.add(metric)
+    }
   } else {
-    next.add(metric)
+    const currentUnit = next.size ? timelineMetricUnits[[...next][0] as TimelineMetric] : null
+    if (next.size === 0 || currentUnit === timelineMetricUnits[metric]) {
+      if (next.has(metric)) {
+        next.delete(metric)
+      } else {
+        next.add(metric)
+      }
+    } else {
+      next.clear()
+      next.add(metric)
+    }
   }
   selectedMetrics.value = next
 }
 
-const toggleCategorical = (metric: TimelineCategoricalMetric) => {
-  const next = new Set(selectedCategorical.value)
-  if (next.has(metric)) {
-    next.delete(metric)
-  } else {
-    next.add(metric)
+const handlePointClick = (point: StatsTimeSeriesPoint, bucketEndMs: number) => {
+  if (point.diveId !== undefined) {
+    router.push({ name: 'DiveView', params: { diveId: point.diveId } })
+    return
   }
-  selectedCategorical.value = next
+  router.push({
+    name: 'DiveList',
+    query: {
+      startDate: new Date(point.bucketStart).toISOString(),
+      endDate: new Date(bucketEndMs).toISOString(),
+      tagIds: filters.value.tagIds.length ? filters.value.tagIds.map(String) : undefined,
+      diveSiteId: filters.value.diveSiteId ? String(filters.value.diveSiteId) : undefined,
+      suitId: filters.value.suitId ? String(filters.value.suitId) : undefined,
+      baseConfiguration: filters.value.baseConfiguration ?? undefined,
+      search: filters.value.query || undefined,
+    },
+  })
 }
 
 const buildQuery = (): string => {
@@ -197,6 +269,7 @@ const buildQuery = (): string => {
   if (filters.value.suitId) params.push(`suitId=${filters.value.suitId}`)
   if (filters.value.baseConfiguration)
     params.push(`baseConfiguration=${filters.value.baseConfiguration}`)
+  if (breakdownBy.value) params.push(`breakdownBy=${breakdownBy.value}`)
   filters.value.tagIds.forEach((id) => params.push(`tagIds=${id}`))
   return params.join('&')
 }
@@ -215,7 +288,7 @@ const fetchSeries = async () => {
   }
 }
 
-watch([granularity, filters], fetchSeries, { deep: true })
+watch([granularity, filters, breakdownBy], fetchSeries, { deep: true })
 
 onMounted(fetchSeries)
 </script>

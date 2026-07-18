@@ -8,19 +8,19 @@
     }"
   >
     <span class="opacity-80">Analytics:</span>
-    <label class="flex items-center gap-1.5 cursor-pointer">
-      <input
-        type="checkbox"
-        class="w-4 h-4 checkbox-green"
-        :checked="showSegments"
-        @change="$emit('update:showSegments', !showSegments)"
-      />
+    <StyledCheckbox
+      :model-value="showSegments"
+      color="#10b981"
+      @update:model-value="$emit('update:showSegments', $event)"
+    >
       <span>Segments</span>
-    </label>
+    </StyledCheckbox>
   </div>
 </template>
 
 <script setup lang="ts">
+import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
+
 defineProps<{
   showSegments: boolean
 }>()
@@ -29,9 +29,3 @@ defineEmits<{
   'update:showSegments': [value: boolean]
 }>()
 </script>
-
-<style scoped>
-.checkbox-green {
-  accent-color: #10b981;
-}
-</style>

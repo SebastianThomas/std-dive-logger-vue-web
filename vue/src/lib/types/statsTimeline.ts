@@ -22,9 +22,6 @@ export type TimelineMetric =
   | 'avgVisibility'
   | 'avgWeight'
 
-/** Categorical metrics: plotted as one line per category (suit / base configuration) rather than a single series. */
-export type TimelineCategoricalMetric = 'suitUsage' | 'baseConfigUsage'
-
 export type TimelineMetricConfig = {
   show: boolean
   color: string
@@ -43,13 +40,14 @@ export const DEFAULT_TIMELINE_METRIC_CONFIGS: Record<TimelineMetric, TimelineMet
   avgWeight: { show: false, color: '#f97316' },
 }
 
-export const DEFAULT_TIMELINE_CATEGORICAL_CONFIGS: Record<
-  TimelineCategoricalMetric,
-  TimelineMetricConfig
-> = {
-  suitUsage: { show: false, color: '#06b6d4' },
-  baseConfigUsage: { show: false, color: '#d946ef' },
-}
+/** Dimension the currently-selected metric(s) can be split into one line per category by. */
+export type StatsBreakdownDimension = 'SUIT' | 'BASE_CONFIGURATION'
+
+export const BREAKDOWN_DIMENSIONS: { value: StatsBreakdownDimension | null; label: string }[] = [
+  { value: null, label: 'None' },
+  { value: 'SUIT', label: 'Suit' },
+  { value: 'BASE_CONFIGURATION', label: 'Base Setup' },
+]
 
 export const timelineMetricUnits: Record<TimelineMetric, string | null> = {
   diveCount: null,
@@ -77,15 +75,12 @@ export const timelineMetricDisplayNames: Record<TimelineMetric, string> = {
   avgWeight: 'Avg Weight',
 }
 
-export const timelineCategoricalDisplayNames: Record<TimelineCategoricalMetric, string> = {
-  suitUsage: 'Suit Usage',
-  baseConfigUsage: 'Base Setup Usage',
-}
-
 export type StatsTimeSeriesPoint = {
   bucketStart: number
   /** Only set for PER_DIVE granularity, where each bucket is exactly one dive. */
   diveId?: number
+  /** Only set on entries in StatsTimeSeries.breakdown, never on .points. */
+  category?: string
   diveCount: number
   avgRmvLiters?: number
   maxDepth?: number
@@ -98,16 +93,10 @@ export type StatsTimeSeriesPoint = {
   avgWeightKg?: number
 }
 
-export type StatsCategoryPoint = {
-  bucketStart: number
-  category: string
-  diveCount: number
-}
-
 export type StatsTimeSeries = {
   points: StatsTimeSeriesPoint[]
-  suitUsage: StatsCategoryPoint[]
-  baseConfigurationUsage: StatsCategoryPoint[]
+  /** Same shape as points, one entry per (bucket, category) when a breakdown dimension was requested. */
+  breakdown: StatsTimeSeriesPoint[]
 }
 
 export type StatsTimelineFilters = {

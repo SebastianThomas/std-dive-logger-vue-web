@@ -11,19 +11,15 @@
     }"
   >
     <span class="opacity-80">Profiles:</span>
-    <label
+    <StyledCheckbox
       v-for="(profile, idx) in profiles"
       :key="profile.id"
-      class="flex items-center gap-1.5 cursor-pointer"
+      :model-value="!!visibleProfiles[idx]"
+      color="#10b981"
+      @update:model-value="$emit('toggleProfile', idx)"
     >
-      <input
-        type="checkbox"
-        class="w-4 h-4 checkbox-green"
-        :checked="visibleProfiles[idx]"
-        @change="$emit('toggleProfile', idx)"
-      />
       <span>{{ idx + 1 }}</span>
-    </label>
+    </StyledCheckbox>
     <button
       v-if="!vertical"
       class="align-button"
@@ -37,6 +33,7 @@
 
 <script setup lang="ts">
 import type { DiveProfile } from '@/lib/types/dive'
+import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 
 defineProps<{
   profiles: DiveProfile[]
@@ -51,10 +48,6 @@ defineEmits<{
 </script>
 
 <style scoped>
-.checkbox-green {
-  accent-color: #10b981;
-}
-
 .align-button {
   background: none;
   border: none;

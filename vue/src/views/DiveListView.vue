@@ -36,6 +36,23 @@
         </div>
       </div>
 
+      <!-- Time-range filter chip (present when arriving from a stats-timeline chart click) -->
+      <div v-if="isTimelineFiltered" class="flex items-center gap-2">
+        <span
+          class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 flex items-center gap-1.5"
+        >
+          📅 {{ formatDate(startDate) }} – {{ formatDate(endDate) }}
+          <button
+            type="button"
+            title="Clear time range filter"
+            class="hover:text-red-600 dark:hover:text-red-400"
+            @click="clearTimelineFilters"
+          >
+            ✕
+          </button>
+        </span>
+      </div>
+
       <!-- Tag filter panel -->
       <div v-if="availableTags.length" class="space-y-1">
         <div class="flex items-center gap-2 flex-wrap">
@@ -147,9 +164,15 @@ import { useApi } from '../composables/useApi'
 import BulkActionsModal from '@/components/dive/BulkActionsModal.vue'
 import DiveListTable from '@/components/DiveListTable.vue'
 import PageSelector from '@/components/PageSelector.vue'
-import type { DiveWithoutProfiles, PagedResult, TagDefinition } from '../lib/types/dive'
+import type {
+  DiveWithoutProfiles,
+  PagedResult,
+  TagDefinition,
+  BaseConfiguration,
+} from '../lib/types/dive'
 import debounce from '../lib/utils/debounce'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
+import { formatDate } from '@/lib/utils/timeUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -172,6 +195,16 @@ const viewShared = ref(route.query.shared === 'true')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const computerId = ref(route.query.computerId ? Number(route.query.computerId) : null)
 const suitId = ref(route.query.suitId ? Number(route.query.suitId) : null)
+
+// Set only when arriving from the "view dives in this time range" link on the stats timeline —
+// combines with whatever other filters (tags/suit/site/base config/search) came along with it.
+const startDate = ref<string | null>((route.query.startDate as string) || null)
+const endDate = ref<string | null>((route.query.endDate as string) || null)
+const diveSiteId = ref(route.query.diveSiteId ? Number(route.query.diveSiteId) : null)
+const baseConfiguration = ref<BaseConfiguration | null>(
+  (route.query.baseConfiguration as BaseConfiguration) || null,
+)
+const isTimelineFiltered = computed(() => !!(startDate.value && endDate.value))
 
 // Multi-tag filter: initialise from URL (supports legacy single ?tagId= and new ?tagIds=1&tagIds=2)
 const availableTags = ref<TagDefinition[]>([])
@@ -248,7 +281,22 @@ const fetchDives = async () => {
   status.value = ''
   try {
     let url = ''
-    if (searchQuery.value.trim()) {
+    if (isTimelineFiltered.value) {
+      // Combines every active filter with AND semantics, unlike the standalone modes below.
+      const params: string[] = [
+        `page=${currentPage.value - 1}`,
+        `startDate=${encodeURIComponent(startDate.value!)}`,
+        `endDate=${encodeURIComponent(endDate.value!)}`,
+        `sortCol=${sortColumn.value}`,
+        `sortDirection=${sortDirection.value}`,
+      ]
+      if (searchQuery.value.trim()) params.push(`query=${encodeURIComponent(searchQuery.value.trim())}`)
+      if (diveSiteId.value) params.push(`diveSiteId=${diveSiteId.value}`)
+      if (suitId.value) params.push(`suitId=${suitId.value}`)
+      if (baseConfiguration.value) params.push(`baseConfiguration=${baseConfiguration.value}`)
+      selectedTagIds.value.forEach((id) => params.push(`tagIds=${id}`))
+      url = `/v1/dives/filtered?${params.join('&')}`
+    } else if (searchQuery.value.trim()) {
       // Search mode - no sorting applied, best match from server
       url = `/v1/dives/search?page=${currentPage.value - 1}&query=${encodeURIComponent(searchQuery.value)}`
     } else if (computerId.value) {
@@ -439,8 +487,24 @@ const updateUrlQuery = () => {
       sortCol: sortColumn.value !== 'NUMBER' ? sortColumn.value : undefined,
       sortDir: sortDirection.value !== 'DESCENDING' ? sortDirection.value : undefined,
       tagIds,
+      startDate: startDate.value ?? undefined,
+      endDate: endDate.value ?? undefined,
+      diveSiteId: diveSiteId.value ? String(diveSiteId.value) : undefined,
+      suitId: suitId.value ? String(suitId.value) : undefined,
+      baseConfiguration: baseConfiguration.value ?? undefined,
     },
   })
+}
+
+const clearTimelineFilters = () => {
+  startDate.value = null
+  endDate.value = null
+  diveSiteId.value = null
+  baseConfiguration.value = null
+  suitId.value = null
+  selectedTagIds.value = new Set()
+  searchQuery.value = ''
+  currentPage.value = 1
 }
 
 const clearTagFilter = () => {
@@ -449,10 +513,25 @@ const clearTagFilter = () => {
 }
 
 // Watchers
-watch([currentPage, searchQuery, viewShared, sortColumn, sortDirection, selectedTagIds], () => {
-  updateUrlQuery()
-  fetchDives()
-})
+watch(
+  [
+    currentPage,
+    searchQuery,
+    viewShared,
+    sortColumn,
+    sortDirection,
+    selectedTagIds,
+    startDate,
+    endDate,
+    diveSiteId,
+    suitId,
+    baseConfiguration,
+  ],
+  () => {
+    updateUrlQuery()
+    fetchDives()
+  },
+)
 
 // Initial load
 onMounted(() => {

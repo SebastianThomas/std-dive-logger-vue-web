@@ -21,173 +21,143 @@
         </button>
       </div>
       <div v-show="showMetrics" class="flex flex-wrap gap-3 items-center">
-        <label class="flex items-center gap-1.5 cursor-pointer">
+        <span class="flex items-center gap-1.5">
           <span class="font-bold text-sm" style="color: #ffffff">Depth</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showTemp"
-            :disabled="disableTemp"
-            :title="disableTemp ? 'No temperature data' : ''"
-            @change="$emit('update:showTemp', !showTemp)"
-          />
+        </span>
+        <StyledCheckbox
+          :model-value="showTemp"
+          color="#ef4444"
+          :disabled="disableTemp"
+          :title="disableTemp ? 'No temperature data' : ''"
+          @update:model-value="$emit('update:showTemp', $event)"
+        >
           <span class="font-bold text-sm" style="color: #ef4444">Temperature</span>
-        </label>
-        <label v-if="showSegmentsToggle !== false" class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showSegments"
-            @change="$emit('update:showSegments', !showSegments)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          v-if="showSegmentsToggle !== false"
+          :model-value="showSegments"
+          color="var(--foreground)"
+          @update:model-value="$emit('update:showSegments', $event)"
+        >
           <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }"
             >Segments</span
           >
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showNdl"
-            :disabled="disableNdl"
-            :title="disableNdl ? 'No NDL data' : ''"
-            @change="$emit('update:showNdl', !showNdl)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showNdl"
+          color="#7c3aed"
+          :disabled="disableNdl"
+          :title="disableNdl ? 'No NDL data' : ''"
+          @update:model-value="$emit('update:showNdl', $event)"
+        >
           <span class="font-bold text-sm" style="color: #7c3aed">NDL</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showOtu"
-            :disabled="disableOtu"
-            :title="disableOtu ? 'No OTU data' : ''"
-            @change="$emit('update:showOtu', !showOtu)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showOtu"
+          color="#ec4899"
+          :disabled="disableOtu"
+          :title="disableOtu ? 'No OTU data' : ''"
+          @update:model-value="$emit('update:showOtu', $event)"
+        >
           <span class="font-bold text-sm" style="color: #ec4899">OTUs</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showCns"
-            :disabled="disableCns"
-            :title="disableCns ? 'No CNS data' : ''"
-            @change="$emit('update:showCns', !showCns)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showCns"
+          color="#fbbf24"
+          :disabled="disableCns"
+          :title="disableCns ? 'No CNS data' : ''"
+          @update:model-value="$emit('update:showCns', $event)"
+        >
           <span class="font-bold text-sm" style="color: #fbbf24">CNS</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showGf"
-            :disabled="disableGf"
-            :title="disableGf ? 'No GF99 data' : ''"
-            @change="$emit('update:showGf', !showGf)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showGf"
+          color="#8b5cf6"
+          :disabled="disableGf"
+          :title="disableGf ? 'No GF99 data' : ''"
+          @update:model-value="$emit('update:showGf', $event)"
+        >
           <span class="font-bold text-sm" style="color: #8b5cf6">GF99</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showPo2Measured"
-            :disabled="disablePo2Measured"
-            :title="disablePo2Measured ? 'No PO2 measured data' : ''"
-            @change="$emit('update:showPo2Measured', !showPo2Measured)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showPo2Measured"
+          color="#1d4ed8"
+          :disabled="disablePo2Measured"
+          :title="disablePo2Measured ? 'No PO2 measured data' : ''"
+          @update:model-value="$emit('update:showPo2Measured', $event)"
+        >
           <span class="font-bold text-sm" style="color: #1d4ed8">PO2 measured</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showPo2Calculated"
-            :disabled="disablePo2Calculated"
-            :title="disablePo2Calculated ? 'No PO2 calculated data' : ''"
-            @change="$emit('update:showPo2Calculated', !showPo2Calculated)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showPo2Calculated"
+          color="#d946ef"
+          :disabled="disablePo2Calculated"
+          :title="disablePo2Calculated ? 'No PO2 calculated data' : ''"
+          @update:model-value="$emit('update:showPo2Calculated', $event)"
+        >
           <span class="font-bold text-sm" style="color: #d946ef">PO2 calculated</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showPo2Setpoint"
-            :disabled="disablePo2Setpoint"
-            :title="disablePo2Setpoint ? 'No PO2 setpoint data' : ''"
-            @change="$emit('update:showPo2Setpoint', !showPo2Setpoint)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showPo2Setpoint"
+          color="#22c55e"
+          :disabled="disablePo2Setpoint"
+          :title="disablePo2Setpoint ? 'No PO2 setpoint data' : ''"
+          @update:model-value="$emit('update:showPo2Setpoint', $event)"
+        >
           <span class="font-bold text-sm" style="color: #22c55e">PO2 setpoint</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showRmv"
-            :disabled="disableRmv"
-            :title="disableRmv ? 'No RMV data' : ''"
-            @change="$emit('update:showRmv', !showRmv)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showRmv"
+          color="#14b8a6"
+          :disabled="disableRmv"
+          :title="disableRmv ? 'No RMV data' : ''"
+          @update:model-value="$emit('update:showRmv', $event)"
+        >
           <span class="font-bold text-sm" style="color: #14b8a6">RMV</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showGasO2"
-            :disabled="disableGasO2"
-            :title="disableGasO2 ? 'No Gas O2 data' : ''"
-            @change="$emit('update:showGasO2', !showGasO2)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showGasO2"
+          color="#06b6d4"
+          :disabled="disableGasO2"
+          :title="disableGasO2 ? 'No Gas O2 data' : ''"
+          @update:model-value="$emit('update:showGasO2', $event)"
+        >
           <span class="font-bold text-sm" style="color: #06b6d4">Gas O2</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showGasN2"
-            :disabled="disableGasN2"
-            :title="disableGasN2 ? 'No Gas N2 data' : ''"
-            @change="$emit('update:showGasN2', !showGasN2)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showGasN2"
+          color="#84cc16"
+          :disabled="disableGasN2"
+          :title="disableGasN2 ? 'No Gas N2 data' : ''"
+          @update:model-value="$emit('update:showGasN2', $event)"
+        >
           <span class="font-bold text-sm" style="color: #84cc16">Gas N2</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showGasHe"
-            :disabled="disableGasHe"
-            :title="disableGasHe ? 'No Gas He data' : ''"
-            @change="$emit('update:showGasHe', !showGasHe)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showGasHe"
+          color="#f97316"
+          :disabled="disableGasHe"
+          :title="disableGasHe ? 'No Gas He data' : ''"
+          @update:model-value="$emit('update:showGasHe', $event)"
+        >
           <span class="font-bold text-sm" style="color: #f97316">Gas He</span>
-        </label>
-        <label for="show-grid" class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            id="show-grid"
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showGrid"
-            @change="$emit('update:showGrid', !showGrid)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showGrid"
+          color="var(--foreground)"
+          @update:model-value="$emit('update:showGrid', $event)"
+        >
           <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">Grid</span>
-        </label>
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            class="w-4 h-4"
-            :checked="showDecoZone"
-            :disabled="disableDecoZone"
-            :title="disableDecoZone ? 'No mandatory decompression stops' : ''"
-            @change="$emit('update:showDecoZone', !showDecoZone)"
-          />
+        </StyledCheckbox>
+        <StyledCheckbox
+          :model-value="showDecoZone"
+          color="#dc2626"
+          :disabled="disableDecoZone"
+          :title="disableDecoZone ? 'No mandatory decompression stops' : ''"
+          @update:model-value="$emit('update:showDecoZone', $event)"
+        >
           <span class="font-bold text-sm" style="color: #dc2626">Deco Ceiling</span>
-        </label>
+        </StyledCheckbox>
       </div>
     </div>
     <!-- Tooltip profile selector placed between Metrics and Axis sections -->
@@ -294,6 +264,7 @@
 <script setup lang="ts">
 import { metricDisplayNames, type MetricType } from '@/lib/types/graph'
 import { ref } from 'vue'
+import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 
 const props = defineProps<{
   selectedProfiles: number[]
@@ -366,13 +337,3 @@ function handleRightAxisChange(event: Event): void {
   emit('update:rightAxisMetric', value)
 }
 </script>
-
-<style scoped>
-label input:disabled + span {
-  opacity: 0.5;
-}
-label input:disabled + span,
-label input:not(:checked) + span {
-  font-weight: 400;
-}
-</style>

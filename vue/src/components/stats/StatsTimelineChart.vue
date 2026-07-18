@@ -17,14 +17,14 @@
         <span>{{ row.label }}: {{ row.value }}</span>
       </div>
       <div
-        v-if="tooltip.clickable"
+        v-if="tooltip.clickLabel"
         class="mt-1 text-blue-500 dark:text-blue-400 font-medium pointer-events-none"
       >
-        Click to view dive
+        {{ tooltip.clickLabel }}
       </div>
     </div>
 
-    <!-- Legend for categorical metrics -->
+    <!-- Legend for breakdown-by-category lines -->
     <div
       v-if="categoricalLegend.length"
       class="absolute top-1 right-1 flex flex-col gap-0.5 bg-white/80 dark:bg-gray-800/80 rounded px-2 py-1 text-[11px] z-10"
@@ -45,7 +45,6 @@ div {
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   select,
   line,
@@ -65,15 +64,13 @@ import {
 import type {
   StatsTimeSeries,
   StatsTimeSeriesPoint,
-  StatsCategoryPoint,
   TimelineMetric,
-  TimelineCategoricalMetric,
+  StatsBreakdownDimension,
   TimelineGranularity,
 } from '@/lib/types/statsTimeline'
 import {
   DEFAULT_TIMELINE_METRIC_CONFIGS,
   timelineMetricDisplayNames,
-  timelineCategoricalDisplayNames,
   timelineMetricUnits,
 } from '@/lib/types/statsTimeline'
 
@@ -81,7 +78,7 @@ type Props = {
   series: StatsTimeSeries
   granularity: TimelineGranularity
   selectedMetrics: TimelineMetric[]
-  selectedCategorical: TimelineCategoricalMetric[]
+  breakdownBy: StatsBreakdownDimension | null
   leftAxisMetric?: TimelineMetric
   rightAxisMetric?: TimelineMetric
 }
@@ -90,9 +87,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:leftAxisMetric': [value: TimelineMetric]
   'update:rightAxisMetric': [value: TimelineMetric]
+  pointClick: [point: StatsTimeSeriesPoint, bucketEndMs: number]
 }>()
-
-const router = useRouter()
 
 const container = ref<HTMLElement | null>(null)
 const width = ref(600)
@@ -101,12 +97,14 @@ const margin = { top: 10, right: 46, bottom: 28, left: 46 }
 const innerWidth = computed(() => Math.max(10, width.value - margin.left - margin.right))
 const innerHeight = computed(() => Math.max(10, height.value - margin.top - margin.bottom))
 
-const hasAnySelection = computed(
-  () => props.selectedMetrics.length > 0 || props.selectedCategorical.length > 0,
+const isBreakdownActive = computed(
+  () => !!props.breakdownBy && props.series.breakdown.length > 0,
 )
 
+const hasAnySelection = computed(() => props.selectedMetrics.length > 0)
+
 type TooltipRow = { label: string; value: string; color: string }
-const tooltip = ref<{ label: string; rows: TooltipRow[]; clickable: boolean } | null>(null)
+const tooltip = ref<{ label: string; rows: TooltipRow[]; clickLabel: string | null } | null>(null)
 const tooltipLeft = ref(0)
 const tooltipTop = ref(0)
 
@@ -168,6 +166,31 @@ function formatMetricValue(metric: TimelineMetric, value: number): string {
   const unit = timelineMetricUnits[metric]
   const formatted = Number.isInteger(value) ? value.toString() : value.toFixed(1)
   return unit ? `${formatted} ${unit}` : formatted
+}
+
+/** The end (exclusive) of the bucket starting at `bucketStartMs`, used only when there's no next
+ * point to read the boundary from (i.e. the last bucket in the series). */
+function calendarBucketEnd(granularity: TimelineGranularity, bucketStartMs: number): number {
+  const d = new Date(bucketStartMs)
+  switch (granularity) {
+    case 'PER_DIVE':
+      return bucketStartMs + 24 * 60 * 60 * 1000
+    case 'WEEK':
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7).getTime()
+    case 'MONTH':
+      return new Date(d.getFullYear(), d.getMonth() + 1, d.getDate()).getTime()
+    case 'QUARTER':
+      return new Date(d.getFullYear(), d.getMonth() + 3, d.getDate()).getTime()
+    case 'YEAR':
+      return new Date(d.getFullYear() + 1, d.getMonth(), d.getDate()).getTime()
+    default:
+      return bucketStartMs
+  }
+}
+
+function bucketEndFor(point: StatsTimeSeriesPoint, idx: number): number {
+  const next = sortedPointsRef[idx + 1]
+  return next ? next.bucketStart : calendarBucketEnd(props.granularity, point.bucketStart)
 }
 
 function initSvg() {
@@ -275,10 +298,13 @@ function renderAll() {
   g.selectAll('.grid-x line').attr('stroke', '#e5e7eb').attr('stroke-opacity', 0.25)
   g.select('.grid-x .domain').remove()
 
-  // Build a scale per selected numeric metric
+  const breakdownActive = isBreakdownActive.value
+  const scaleSource = breakdownActive ? props.series.breakdown : points
+
+  // Build a scale per selected numeric metric, from whichever data set is actually being plotted.
   const scales = new Map<TimelineMetric, ScaleLinear<number, number>>()
   for (const metric of props.selectedMetrics) {
-    const values = points
+    const values = scaleSource
       .map((p) => metricValue(p, metric))
       .filter((v): v is number => v !== null && !Number.isNaN(v))
     scales.set(metric, buildScale(values))
@@ -313,7 +339,6 @@ function renderAll() {
     g.select<SVGGElement>('.y-right').call(axisRight(rightScale))
   }
 
-  // Draw numeric metric lines + points
   const linesGroup = g.select('.lines')
   const pointsGroup = g.select('.points')
   linesGroup.selectAll('*').remove()
@@ -324,14 +349,11 @@ function renderAll() {
       .x((d) => xScale(new Date(d[0])))
       .y((d) => scale(d[1]))
 
-  for (const metric of props.selectedMetrics) {
-    const scale = scales.get(metric)
-    if (!scale) continue
-    const color = DEFAULT_TIMELINE_METRIC_CONFIGS[metric].color
-    const seriesPoints: [number, number | null][] = points.map((p) => [
-      p.bucketStart,
-      metricValue(p, metric),
-    ])
+  const drawLine = (
+    seriesPoints: [number, number | null][],
+    scale: ScaleLinear<number, number>,
+    color: string,
+  ) => {
     const definedPoints = seriesPoints.filter((d): d is [number, number] => d[1] !== null)
     const gen = lineGen(scale)
     linesGroup
@@ -343,8 +365,7 @@ function renderAll() {
       .attr('stroke-width', 2)
       .attr('opacity', 0.85)
 
-    seriesPoints.forEach(([t, v]) => {
-      if (v === null) return
+    definedPoints.forEach(([t, v]) => {
       pointsGroup
         .append('circle')
         .attr('cx', xScale(new Date(t)))
@@ -355,49 +376,46 @@ function renderAll() {
     })
   }
 
-  // Categorical metrics
   const legend: { label: string; color: string }[] = []
-  for (const catMetric of props.selectedCategorical) {
-    const data: StatsCategoryPoint[] =
-      catMetric === 'suitUsage' ? props.series.suitUsage : props.series.baseConfigurationUsage
-    if (!data.length) continue
 
-    const categories = [...new Set(data.map((d) => d.category))]
+  if (breakdownActive) {
+    // Split each selected metric into one line per category, instead of one aggregate line.
+    const categories = [...new Set(props.series.breakdown.map((d) => d.category ?? 'Unknown'))]
     const colorScale = scaleOrdinal<string, string>().domain(categories).range(schemeCategory10)
-    const maxCount = Math.max(1, ...data.map((d) => d.diveCount))
-    const countScale = scaleLinear().domain([0, maxCount]).nice().range([innerHeight.value, 0])
 
-    for (const category of categories) {
-      const catPoints = data
-        .filter((d) => d.category === category)
-        .sort((a, b) => a.bucketStart - b.bucketStart)
-      const color = colorScale(category)
-      legend.push({ label: `${timelineCategoricalDisplayNames[catMetric]}: ${category}`, color })
-
-      const gen = line<StatsCategoryPoint>()
-        .x((d) => xScale(new Date(d.bucketStart)))
-        .y((d) => countScale(d.diveCount))
-      linesGroup
-        .append('path')
-        .datum(catPoints)
-        .attr('d', gen(catPoints) ?? '')
-        .attr('fill', 'none')
-        .attr('stroke', color)
-        .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '3,2')
-        .attr('opacity', 0.8)
-
-      catPoints.forEach((p) => {
-        pointsGroup
-          .append('circle')
-          .attr('cx', xScale(new Date(p.bucketStart)))
-          .attr('cy', countScale(p.diveCount))
-          .attr('r', 3)
-          .attr('fill', color)
-          .style('pointer-events', 'none')
-      })
+    for (const metric of props.selectedMetrics) {
+      const scale = scales.get(metric)
+      if (!scale) continue
+      for (const category of categories) {
+        const catPoints = props.series.breakdown
+          .filter((d) => (d.category ?? 'Unknown') === category)
+          .sort((a, b) => a.bucketStart - b.bucketStart)
+        if (!catPoints.length) continue
+        const color = colorScale(category)
+        legend.push({
+          label: props.selectedMetrics.length > 1 ? `${timelineMetricDisplayNames[metric]}: ${category}` : category,
+          color,
+        })
+        const seriesPoints: [number, number | null][] = catPoints.map((p) => [
+          p.bucketStart,
+          metricValue(p, metric),
+        ])
+        drawLine(seriesPoints, scale, color)
+      }
+    }
+  } else {
+    for (const metric of props.selectedMetrics) {
+      const scale = scales.get(metric)
+      if (!scale) continue
+      const color = DEFAULT_TIMELINE_METRIC_CONFIGS[metric].color
+      const seriesPoints: [number, number | null][] = points.map((p) => [
+        p.bucketStart,
+        metricValue(p, metric),
+      ])
+      drawLine(seriesPoints, scale, color)
     }
   }
+
   categoricalLegend.value = legend
 
   emitAxisDefaults(leftMetric, rightMetric)
@@ -428,39 +446,57 @@ function onMouseMove(event: MouseEvent) {
   const point = sortedPointsRef[idx]
   if (!point) return
 
-  const rows: TooltipRow[] = props.selectedMetrics
-    .map((metric) => {
-      const value = metricValue(point, metric)
-      if (value === null) return null
-      return {
-        label: timelineMetricDisplayNames[metric],
-        value: formatMetricValue(metric, value),
-        color: DEFAULT_TIMELINE_METRIC_CONFIGS[metric].color,
+  // When breakdown is active, only the per-category lines are actually drawn (see renderAll) —
+  // so the tooltip shows category rows for every selected metric instead of the (undrawn)
+  // aggregate values, using the same category list + color scale as renderAll so colors match.
+  const rows: TooltipRow[] = []
+  if (isBreakdownActive.value) {
+    const categories = [...new Set(props.series.breakdown.map((d) => d.category ?? 'Unknown'))]
+    const colorScale = scaleOrdinal<string, string>().domain(categories).range(schemeCategory10)
+    const atBucket = props.series.breakdown.filter((d) => d.bucketStart === point.bucketStart)
+    for (const metric of props.selectedMetrics) {
+      for (const category of categories) {
+        const entry = atBucket.find((d) => (d.category ?? 'Unknown') === category)
+        const value = entry ? metricValue(entry, metric) : null
+        if (value === null) continue
+        rows.push({
+          label:
+            props.selectedMetrics.length > 1
+              ? `${timelineMetricDisplayNames[metric]}: ${category}`
+              : category,
+          value: formatMetricValue(metric, value),
+          color: colorScale(category),
+        })
       }
-    })
-    .filter((r): r is TooltipRow => r !== null)
-
-  for (const catMetric of props.selectedCategorical) {
-    const data =
-      catMetric === 'suitUsage' ? props.series.suitUsage : props.series.baseConfigurationUsage
-    const atBucket = data.filter((d) => d.bucketStart === point.bucketStart)
-    for (const entry of atBucket) {
-      rows.push({
-        label: entry.category,
-        value: String(entry.diveCount),
-        color:
-          categoricalLegend.value.find((l) => l.label.endsWith(entry.category))?.color ?? '#999',
-      })
     }
+  } else {
+    rows.push(
+      ...props.selectedMetrics
+        .map((metric) => {
+          const value = metricValue(point, metric)
+          if (value === null) return null
+          return {
+            label: timelineMetricDisplayNames[metric],
+            value: formatMetricValue(metric, value),
+            color: DEFAULT_TIMELINE_METRIC_CONFIGS[metric].color,
+          }
+        })
+        .filter((r): r is TooltipRow => r !== null),
+    )
   }
 
   const px = xScaleRef(new Date(point.bucketStart))
   crosshairRef?.attr('x1', px).attr('x2', px).style('display', null)
 
+  const clickLabel =
+    point.diveId !== undefined
+      ? 'Click to view dive'
+      : `Click to view ${point.diveCount} dive${point.diveCount === 1 ? '' : 's'} in this range`
+
   tooltip.value = {
     label: formatBucketLabel(props.granularity, point.bucketStart),
     rows,
-    clickable: props.granularity === 'PER_DIVE' && point.diveId !== undefined,
+    clickLabel,
   }
 
   nextTick(() => {
@@ -476,16 +512,14 @@ function onMouseLeave() {
 
 function onClick(event: MouseEvent) {
   if (!xScaleRef || !container.value || !sortedPointsRef.length) return
-  if (props.granularity !== 'PER_DIVE') return
   const rect = container.value.getBoundingClientRect()
   const mx = event.clientX - rect.left - margin.left
   const targetTime = xScaleRef.invert(mx).getTime()
   const bisect = bisector((p: StatsTimeSeriesPoint) => p.bucketStart).center
   const idx = Math.min(sortedPointsRef.length - 1, Math.max(0, bisect(sortedPointsRef, targetTime)))
   const point = sortedPointsRef[idx]
-  if (point?.diveId !== undefined) {
-    router.push({ name: 'DiveView', params: { diveId: point.diveId } })
-  }
+  if (!point) return
+  emit('pointClick', point, bucketEndFor(point, idx))
 }
 
 onMounted(() => {
@@ -505,7 +539,7 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => [props.series, props.granularity, props.selectedMetrics, props.selectedCategorical],
+  () => [props.series, props.granularity, props.selectedMetrics, props.breakdownBy],
   () => renderAll(),
   { deep: true },
 )
