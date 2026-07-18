@@ -16,6 +16,7 @@ export type ProfileMetricAvailability = {
   hasGasO2: boolean
   hasGasN2: boolean
   hasGasHe: boolean
+  hasDeco: boolean
 }
 
 export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
@@ -35,6 +36,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
     showGasO2,
     showGasN2,
     showGasHe,
+    showDecoZone,
   } = storeToRefs(graphStore)
 
   // Per-profile availability check
@@ -54,6 +56,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
         hasGasO2: false,
         hasGasN2: false,
         hasGasHe: false,
+        hasDeco: false,
       }
     }
 
@@ -76,6 +79,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
       hasGasHe: measurements.some(
         (m) => m.measurement.gas?.he !== undefined && m.measurement.gas.he > 0,
       ),
+      hasDeco: measurements.some((m) => (m.measurement.deco?.length ?? 0) > 0),
     }
   }
 
@@ -96,6 +100,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
       hasGasO2: availabilities.some((a) => a.hasGasO2),
       hasGasN2: availabilities.some((a) => a.hasGasN2),
       hasGasHe: availabilities.some((a) => a.hasGasHe),
+      hasDeco: availabilities.some((a) => a.hasDeco),
     }
   }
 
@@ -114,6 +119,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
     showGasO2,
     showGasN2,
     showGasHe,
+    showDecoZone,
     getProfileMetricAvailability,
     getCombinedMetricAvailability,
   }

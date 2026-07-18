@@ -36,6 +36,8 @@ import { ref, watch, computed, onMounted, onBeforeUnmount, nextTick, toRef } fro
 import {
   select,
   line,
+  area,
+  curveStepAfter,
   scaleLinear,
   axisLeft,
   axisRight,
@@ -46,6 +48,7 @@ import {
   type Selection,
   type ScaleLinear,
   type Line,
+  type Area,
   type ZoomBehavior,
   type ZoomTransform,
 } from 'd3'
@@ -89,6 +92,7 @@ type Props = {
   showGasO2?: boolean
   showGasN2?: boolean
   showGasHe?: boolean
+  showDecoZone?: boolean
   leftAxisMetric?: MetricType
   rightAxisMetric?: MetricType
   hasTemp?: boolean
@@ -103,6 +107,7 @@ type Props = {
   hasGasO2?: boolean
   hasGasN2?: boolean
   hasGasHe?: boolean
+  hasDeco?: boolean
   selectedProfiles?: number[]
 }
 
@@ -185,6 +190,8 @@ const crosshairLine = ref<Selection<SVGLineElement, unknown, null, undefined> | 
 const segmentsData = ref<DiveProfileSegmentWithId[] | null>(null)
 const segmentsLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
+const decoZoneLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
+const decoZoneArea = ref<Area<[number, number]> | null>(null)
 const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
 const currentZoomLevel = ref(1)
@@ -277,6 +284,12 @@ function setupScales() {
     .x((d: [number, number]) => (timeScale.value ? timeScale.value(d[0]) : 0))
     .y((d: [number, number]) => (depthScale.value ? depthScale.value(d[1]) : 0))
 
+  decoZoneArea.value = area<[number, number]>()
+    .x((d) => (timeScale.value ? timeScale.value(d[0]) : 0))
+    .y0(() => (depthScale.value ? depthScale.value(0) : 0))
+    .y1((d) => (depthScale.value ? depthScale.value(d[1]) : 0))
+    .curve(curveStepAfter)
+
   const makeMetricLine = (scale: ScaleLinear<number, number> | null): Line<[number, number]> =>
     line()
       .x((d: [number, number]) => (timeScale.value ? timeScale.value(d[0]) : 0))
@@ -355,6 +368,7 @@ watch(
     props.showGasO2,
     props.showGasN2,
     props.showGasHe,
+    props.showDecoZone,
     leftAxisMetric.value,
     rightAxisMetric.value,
   ],
@@ -393,9 +407,10 @@ function initSvg() {
     .attr('height', innerHeight.value)
     .attr('fill', 'var(--card-bg, #ffffff)')
 
-  // Layers: segments above background, lines over segments
+  // Layers: segments above background, deco keep-out zone above segments, lines over both
   const clipPathUrl = `url(#${clipPathId})`
   segmentsLayer.value = g.append('g').attr('class', 'segments').attr('clip-path', clipPathUrl)
+  decoZoneLayer.value = g.append('g').attr('class', 'deco-zone').attr('clip-path', clipPathUrl)
 
   // Gridlines
   grid.y.value = g.append('g').attr('class', 'grid-y').attr('clip-path', clipPathUrl)
@@ -722,6 +737,37 @@ function renderAll() {
 
   // Draw all metric lines
   METRICS_TO_RENDER.forEach(drawMetricLines)
+
+  renderDecoZone()
+}
+
+// Renders the mandatory decompression "keep-out zone": a red shaded area from the
+// surface down to the current ceiling depth (the deepest active mandatory deco stop).
+function renderDecoZone() {
+  if (!decoZoneLayer.value) return
+  decoZoneLayer.value.selectAll('path').remove()
+  if (!props.showDecoZone || !decoZoneArea.value) return
+
+  props.profiles.forEach((profile, idx) => {
+    if (!visibleMask.value[idx]) return
+    const points: [number, number][] = profile.measurements.map((m) => {
+      const stops = m.measurement.deco
+      const ceiling = stops?.length ? Math.max(...stops.map((s) => s.depth)) : 0
+      return [m.measurement.time, ceiling]
+    })
+    if (!points.some((p) => p[1] > 0)) return
+
+    decoZoneLayer.value
+      ?.append('path')
+      .datum(points)
+      .attr('d', decoZoneArea.value?.(points) ?? '')
+      .attr('fill', '#dc2626')
+      .attr('fill-opacity', 0.28)
+      .attr('stroke', '#dc2626')
+      .attr('stroke-width', 1)
+      .attr('stroke-opacity', 0.5)
+      .style('pointer-events', 'none')
+  })
 }
 
 async function maybeFetchSegments() {

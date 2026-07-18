@@ -40,6 +40,7 @@
                 v-model:show-gas-o2="showGasO2"
                 v-model:show-gas-n2="showGasN2"
                 v-model:show-gas-he="showGasHe"
+                v-model:show-deco-zone="showDecoZone"
                 :disable-temp="!combinedMetricsAvailability.hasTemp"
                 :disable-ndl="!combinedMetricsAvailability.hasNdl"
                 :disable-otu="!combinedMetricsAvailability.hasOtu"
@@ -52,6 +53,7 @@
                 :disable-gas-o2="!combinedMetricsAvailability.hasGasO2"
                 :disable-gas-n2="!combinedMetricsAvailability.hasGasN2"
                 :disable-gas-he="!combinedMetricsAvailability.hasGasHe"
+                :disable-deco-zone="!combinedMetricsAvailability.hasDeco"
                 :show-segments-toggle="true"
                 v-model:left-axis-metric="leftAxisMetric"
                 v-model:right-axis-metric="rightAxisMetric"
@@ -82,6 +84,7 @@
             :show-gas-o2="showGasO2"
             :show-gas-n2="showGasN2"
             :show-gas-he="showGasHe"
+            :show-deco-zone="showDecoZone"
             :has-temp="combinedMetricsAvailability.hasTemp"
             :has-ndl="combinedMetricsAvailability.hasNdl"
             :has-otu="combinedMetricsAvailability.hasOtu"
@@ -94,6 +97,7 @@
             :has-gas-o2="combinedMetricsAvailability.hasGasO2"
             :has-gas-n2="combinedMetricsAvailability.hasGasN2"
             :has-gas-he="combinedMetricsAvailability.hasGasHe"
+            :has-deco="combinedMetricsAvailability.hasDeco"
             :selected-profiles="selectedProfiles"
             v-model:left-axis-metric="leftAxisMetric"
             v-model:right-axis-metric="rightAxisMetric"
@@ -133,6 +137,7 @@
       v-model:show-gas-o2="showGasO2"
       v-model:show-gas-n2="showGasN2"
       v-model:show-gas-he="showGasHe"
+      v-model:show-deco-zone="showDecoZone"
       :disable-temp="!combinedMetricsAvailability.hasTemp"
       :disable-ndl="!combinedMetricsAvailability.hasNdl"
       :disable-otu="!combinedMetricsAvailability.hasOtu"
@@ -145,6 +150,7 @@
       :disable-gas-o2="!combinedMetricsAvailability.hasGasO2"
       :disable-gas-n2="!combinedMetricsAvailability.hasGasN2"
       :disable-gas-he="!combinedMetricsAvailability.hasGasHe"
+      :disable-deco-zone="!combinedMetricsAvailability.hasDeco"
       :show-segments-toggle="false"
       v-model:left-axis-metric="leftAxisMetric"
       v-model:right-axis-metric="rightAxisMetric"
@@ -168,6 +174,7 @@
         :show-gas-o2="showGasO2"
         :show-gas-n2="showGasN2"
         :show-gas-he="showGasHe"
+        :show-deco-zone="showDecoZone"
         :has-temp="combinedMetricsAvailability.hasTemp"
         :has-ndl="combinedMetricsAvailability.hasNdl"
         :has-otu="combinedMetricsAvailability.hasOtu"
@@ -180,6 +187,7 @@
         :has-gas-o2="combinedMetricsAvailability.hasGasO2"
         :has-gas-n2="combinedMetricsAvailability.hasGasN2"
         :has-gas-he="combinedMetricsAvailability.hasGasHe"
+        :has-deco="combinedMetricsAvailability.hasDeco"
         :selected-profiles="selectedProfiles"
         v-model:left-axis-metric="leftAxisMetric"
         v-model:right-axis-metric="rightAxisMetric"
@@ -240,6 +248,7 @@ const {
   showGasO2,
   showGasN2,
   showGasHe,
+  showDecoZone,
   getCombinedMetricAvailability,
 } = useDiveGraphMetrics(profilesRef)
 
@@ -306,6 +315,9 @@ watch(
 
     if (!availability.hasGasHe) showGasHe.value = false
     else if (showGasHe.value === false) showGasHe.value = true
+
+    if (!availability.hasDeco) showDecoZone.value = false
+    else if (showDecoZone.value === false) showDecoZone.value = true
   },
   { deep: true },
 )

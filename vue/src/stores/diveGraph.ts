@@ -21,6 +21,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
   const showGasO2 = ref(false)
   const showGasN2 = ref(false)
   const showGasHe = ref(false)
+  const showDecoZone = ref(true)
 
   const load = () => {
     if (configLoaded.value) return
@@ -46,6 +47,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
         showGasO2?: boolean
         showGasN2?: boolean
         showGasHe?: boolean
+        showDecoZone?: boolean
         timestamp?: number
       }
 
@@ -71,6 +73,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       if (typeof parsed.showGasO2 === 'boolean') showGasO2.value = parsed.showGasO2
       if (typeof parsed.showGasN2 === 'boolean') showGasN2.value = parsed.showGasN2
       if (typeof parsed.showGasHe === 'boolean') showGasHe.value = parsed.showGasHe
+      if (typeof parsed.showDecoZone === 'boolean') showDecoZone.value = parsed.showDecoZone
     } catch {
       /* ignore malformed */
     } finally {
@@ -95,6 +98,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       showGasO2: showGasO2.value,
       showGasN2: showGasN2.value,
       showGasHe: showGasHe.value,
+      showDecoZone: showDecoZone.value,
       timestamp: Date.now(),
     }
     window.localStorage.setItem(GRAPH_CONFIG_KEY, JSON.stringify(payload))
@@ -118,6 +122,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       showGasO2,
       showGasN2,
       showGasHe,
+      showDecoZone,
     ],
     persist,
     { deep: true },
@@ -138,5 +143,6 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
     showGasO2,
     showGasN2,
     showGasHe,
+    showDecoZone,
   }
 })

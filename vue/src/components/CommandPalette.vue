@@ -110,6 +110,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useNavigation } from '@/composables/useNavigation'
+import { useProfileReimportStore } from '@/stores/profileReimport'
 
 interface Command {
   id: string
@@ -125,6 +126,7 @@ interface Command {
 
 const { safeBack, safeForward, router } = useNavigation()
 const route = useRoute()
+const profileReimportStore = useProfileReimportStore()
 
 const isOpen = defineModel<boolean>({ required: true })
 const searchQuery = ref('')
@@ -321,18 +323,43 @@ const commands = computed<Command[]>(() => {
   return [...baseCommands, ...contextCommands]
 })
 
+// Commands that never show up when browsing the palette — they only appear once the search
+// query matches one of their keywords. Not linked from any menu or button; power-user only.
+const secretCommands = computed<Command[]>(() => {
+  if (route.name !== 'DiveView' || !route.params.diveId) {
+    return []
+  }
+  return [
+    {
+      id: 'dive-reimport-profile',
+      label: 'Reimport Dive Profile',
+      description:
+        "Re-parse the original file and replace only this profile's raw measurements — every other dive property is left untouched",
+      icon: '🛠️',
+      action: () => profileReimportStore.requestOpen(),
+      keywords: ['reimport', 'reparse', 'refresh profile', 'deco backfill'],
+      category: 'hidden',
+    },
+  ]
+})
+
+const matchesQuery = (cmd: Command, query: string): boolean => {
+  const labelMatch = cmd.label.toLowerCase().includes(query)
+  const descMatch = cmd.description.toLowerCase().includes(query)
+  const keywordMatch = cmd.keywords?.some((kw) => kw.toLowerCase().includes(query)) ?? false
+  return labelMatch || descMatch || keywordMatch
+}
+
 const filteredCommands = computed(() => {
-  if (!searchQuery.value.trim()) {
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) {
     return commands.value
   }
 
-  const query = searchQuery.value.toLowerCase()
-  return commands.value.filter((cmd) => {
-    const labelMatch = cmd.label.toLowerCase().includes(query)
-    const descMatch = cmd.description.toLowerCase().includes(query)
-    const keywordMatch = cmd.keywords?.some((kw) => kw.toLowerCase().includes(query))
-    return labelMatch || descMatch || keywordMatch
-  })
+  return [
+    ...commands.value.filter((cmd) => matchesQuery(cmd, query)),
+    ...secretCommands.value.filter((cmd) => matchesQuery(cmd, query)),
+  ]
 })
 
 const moveSelection = (direction: number) => {

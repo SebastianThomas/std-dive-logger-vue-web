@@ -177,6 +177,17 @@
           />
           <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">Grid</span>
         </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            class="w-4 h-4"
+            :checked="showDecoZone"
+            :disabled="disableDecoZone"
+            :title="disableDecoZone ? 'No mandatory decompression stops' : ''"
+            @change="$emit('update:showDecoZone', !showDecoZone)"
+          />
+          <span class="font-bold text-sm" style="color: #dc2626">Deco Ceiling</span>
+        </label>
       </div>
     </div>
     <!-- Tooltip profile selector placed between Metrics and Axis sections -->
@@ -302,6 +313,7 @@ const props = defineProps<{
   showGasO2: boolean
   showGasN2: boolean
   showGasHe: boolean
+  showDecoZone: boolean
   disableTemp?: boolean
   disableNdl?: boolean
   disableOtu?: boolean
@@ -314,6 +326,7 @@ const props = defineProps<{
   disableGasO2?: boolean
   disableGasN2?: boolean
   disableGasHe?: boolean
+  disableDecoZone?: boolean
   showSegmentsToggle?: boolean
   leftAxisMetric?: MetricType
   rightAxisMetric?: MetricType
@@ -335,6 +348,7 @@ const emit = defineEmits<{
   'update:showGasO2': [value: boolean]
   'update:showGasN2': [value: boolean]
   'update:showGasHe': [value: boolean]
+  'update:showDecoZone': [value: boolean]
   'update:leftAxisMetric': [value: MetricType]
   'update:rightAxisMetric': [value: MetricType]
 }>()

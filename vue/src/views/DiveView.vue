@@ -95,6 +95,16 @@
         @close="showShareModal = false"
       />
 
+      <!-- Reimport Profile Modal (hidden power-user tool, opened via command palette) -->
+      <ProfileReimportModal
+        v-if="dive.profiles"
+        :profiles="dive.profiles"
+        :dive-id="diveId"
+        :is-open="showReimportModal"
+        @close="showReimportModal = false"
+        @reimported="handleProfileReimported"
+      />
+
       <!-- Main Content -->
       <div class="flex flex-col md:flex-row gap-6">
         <!-- Map -->
@@ -436,14 +446,19 @@ import InfoCard from '@/components/InfoCard.vue'
 import InfoCardRow from '@/components/InfoCardRow.vue'
 import SharePopover from '@/components/share/SharePopover.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
+import ProfileReimportModal from '@/components/dive/view/ProfileReimportModal.vue'
 import type { Dive, DiveComputer, Gas } from '@/lib/types/dive'
 import { BASE_CONFIGURATION_LABELS, SUIT_TYPE_LABELS } from '@/lib/types/dive'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { User } from '@/lib/types/user'
+import { useProfileReimportStore } from '@/stores/profileReimport'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
 const route = useRoute()
 const { getWithToken, deleteWithToken } = useApi()
+const profileReimportStore = useProfileReimportStore()
+const { requestId: reimportRequestId } = storeToRefs(profileReimportStore)
 
 const diveId = computed(() => Number(route.params.diveId))
 const dive = ref<Dive | null>(null)
@@ -453,6 +468,7 @@ const graphOpen = ref(false)
 const showDeleteModal = ref(false)
 const showLinkModal = ref(false)
 const showShareModal = ref(false)
+const showReimportModal = ref(false)
 const myUserId = ref<number | null>(null)
 
 const summary = computed(() => dive.value?.summary)
@@ -564,6 +580,11 @@ const handleProfilesAligned = (updatedDive: Dive) => {
   toast.success('Profiles aligned successfully')
 }
 
+const handleProfileReimported = (updatedDive: Dive) => {
+  dive.value = updatedDive
+  toast.success('Profile reimported successfully')
+}
+
 const formatDiveTime = (duration?: string): string => {
   return formatISoDurationToTime(duration)
 }
@@ -601,6 +622,12 @@ onMounted(() => {
 })
 
 watch(() => diveId.value, fetchDive)
+
+watch(reimportRequestId, () => {
+  if (dive.value?.profiles?.length && isMine.value) {
+    showReimportModal.value = true
+  }
+})
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleDiveViewKeydown)

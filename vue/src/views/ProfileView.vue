@@ -36,6 +36,11 @@
           <DiveComputerManagement :user-id="user.id" />
         </section>
 
+        <!-- Buddies Section -->
+        <section v-if="user" class="border-t pt-6 space-y-4">
+          <BuddyManagement />
+        </section>
+
         <!-- Danger Zone -->
         <section class="border-t pt-6 space-y-4">
           <h2 class="text-lg font-medium text-red-600">Permanently Delete Account</h2>
@@ -69,6 +74,7 @@ import { useApi } from '@/composables/useApi'
 import { type User } from '@/lib/types/user'
 import SuitManagement from '@/components/dive/SuitManagement.vue'
 import DiveComputerManagement from '@/components/dive/DiveComputerManagement.vue'
+import BuddyManagement from '@/components/dive/BuddyManagement.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 
 const router = useRouter()
