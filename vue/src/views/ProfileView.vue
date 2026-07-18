@@ -63,12 +63,29 @@
       confirm-text="Deregister"
       @confirm="confirmDeregister"
     />
+
+    <!-- Icon Upload Modal (hidden power-user tool, opened via command palette) -->
+    <UserIconUploadModal
+      :is-open="showIconUploadModal"
+      :current-icon-url="user?.customIconUrl"
+      @close="showIconUploadModal = false"
+      @updated="handleIconUpdated"
+    />
+
+    <!-- Background Upload Modal (hidden power-user tool, opened via command palette) -->
+    <UserBackgroundUploadModal
+      :is-open="showBackgroundUploadModal"
+      :current-background-url="user?.customBackgroundUrl"
+      @close="showBackgroundUploadModal = false"
+      @updated="handleBackgroundUpdated"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { type User } from '@/lib/types/user'
@@ -76,11 +93,43 @@ import SuitManagement from '@/components/dive/SuitManagement.vue'
 import DiveComputerManagement from '@/components/dive/DiveComputerManagement.vue'
 import BuddyManagement from '@/components/dive/BuddyManagement.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
+import UserIconUploadModal from '@/components/UserIconUploadModal.vue'
+import UserBackgroundUploadModal from '@/components/UserBackgroundUploadModal.vue'
+import { useUserIconUploadStore } from '@/stores/userIconUpload'
+import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
 
 const router = useRouter()
 const { getWithToken, postWithToken } = useApi()
-const user = ref<{ id: number; name: string } | null>(null)
+const user = ref<User | null>(null)
 const showDeregisterModal = ref(false)
+const showIconUploadModal = ref(false)
+const showBackgroundUploadModal = ref(false)
+
+const userIconUploadStore = useUserIconUploadStore()
+const { requestId: iconUploadRequestId } = storeToRefs(userIconUploadStore)
+const backgroundUploadStore = useBackgroundUploadStore()
+const { requestId: backgroundUploadRequestId } = storeToRefs(backgroundUploadStore)
+
+const handleIconUpdated = (updatedUser: User) => {
+  user.value = updatedUser
+}
+
+const handleBackgroundUpdated = (updatedUser: User) => {
+  user.value = updatedUser
+  backgroundUploadStore.notifyUpdated()
+}
+
+watch(iconUploadRequestId, () => {
+  if (user.value) {
+    showIconUploadModal.value = true
+  }
+})
+
+watch(backgroundUploadRequestId, () => {
+  if (user.value) {
+    showBackgroundUploadModal.value = true
+  }
+})
 
 onMounted(async () => {
   try {

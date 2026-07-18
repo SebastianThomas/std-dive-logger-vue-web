@@ -25,7 +25,7 @@
           v-for="item in props.sites"
           :key="item.site.id"
           :lat-lng="[item.site.latitude, item.site.longitude]"
-          :icon="defaultIcon"
+          :icon="createDiveSiteIcon(item.diveInfo.length, customIconUrl)"
         >
           <l-popup>
             <DiveSiteMapPopup :site="item.site" :dive-info="item.diveInfo" />
@@ -37,14 +37,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
 import { LMarkerClusterGroup } from 'vue-leaflet-markercluster'
 import { divIcon } from 'leaflet'
 import { usePersistentMapView } from '@/composables/mapViewState'
 import { useThemeStore } from '@/stores/theme'
+import { useApi } from '@/composables/useApi'
 import type { SiteWithDives } from '@/lib/types/dive'
-import { defaultIcon } from '@/lib/map/leafletIcon'
+import type { User } from '@/lib/types/user'
+import { createDiveSiteIcon } from '@/lib/map/leafletIcon'
 import DiveSiteMapPopup from './DiveSiteMapPopup.vue'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -61,6 +63,8 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const themeStore = useThemeStore()
+const { getWithToken } = useApi()
+const customIconUrl = ref<string | null>(null)
 const mapRef = ref<InstanceType<typeof LMap> | null>(null)
 const [mapView, setMapView] = usePersistentMapView('map-picker-view', {
   lat: 46,
@@ -113,6 +117,16 @@ const onMapUpdate = (center?: { lat: number; lng: number }, zoom?: number) => {
     zoom: zoom || mapView.value.zoom,
   })
 }
+
+onMounted(async () => {
+  try {
+    const res = await getWithToken<User>('/v1/users/')
+    customIconUrl.value = res.data.customIconUrl ?? null
+  } catch {
+    // Not logged in or request failed — fall back to the default diver icon.
+    customIconUrl.value = null
+  }
+})
 </script>
 
 <style scoped>
@@ -168,5 +182,49 @@ const onMapUpdate = (center?: { lat: number; lng: number }, zoom?: number) => {
   font-weight: 700;
   border: 2px solid white;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+:deep(.leaflet-div-icon.site-marker) {
+  background: transparent;
+  border: none;
+}
+
+:deep(.site-marker-halo) {
+  position: relative;
+  width: 56px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.site-marker-diver) {
+  width: 46px;
+  height: 28px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+:deep(.site-marker-badge) {
+  position: absolute;
+  left: 54%;
+  top: 4%;
+  transform: translate(-30%, -55%);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 </style>

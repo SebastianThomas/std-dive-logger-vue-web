@@ -28,9 +28,10 @@
     <main
       id="main-content"
       class="transition-all duration-300 overflow-auto min-h-full min-w-full grid-main bg-gray-100 dark:bg-gray-900 relative"
+      :style="mainBackgroundStyle"
     >
       <router-view class="router-content" />
-      <CopyrightNotice />
+      <CopyrightNotice v-if="!customBackgroundUrl" />
     </main>
   </div>
 </template>
@@ -40,12 +41,16 @@ import 'vue-sonner/style.css'
 
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { Toaster } from 'vue-sonner'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { useNavigation } from '@/composables/useNavigation'
+import { useApi } from '@/composables/useApi'
+import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
+import type { User } from '@/lib/types/user'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppSidebar from './components/layout/AppSidebar.vue'
 import CopyrightNotice from './components/CopyrightNotice.vue'
@@ -58,11 +63,15 @@ const expandedWidth = 130 as const
 const collapsedWidth = 50 as const
 const SM_BREAKPOINT = 640 as const
 const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed'
+const BACKGROUND_STORAGE_KEY = 'custom-background-url'
 
 // Auth store
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const { safeBack, safeForward, router } = useNavigation()
+const { getWithToken } = useApi()
+const backgroundUploadStore = useBackgroundUploadStore()
+const { updatedId: backgroundUpdatedId } = storeToRefs(backgroundUploadStore)
 
 // Page name - can be empty or use current route path
 const route = useRoute()
@@ -94,6 +103,34 @@ const saveSidebarState = (collapsed: boolean) => {
   }
 }
 
+// Cache the last-known custom background URL so it can be applied immediately on the next
+// load, before the /v1/users/ request that confirms whether it's still current has returned.
+const getCachedBackgroundUrl = (): string | null => {
+  if (typeof localStorage === 'undefined' || localStorage === null) {
+    return null
+  }
+  try {
+    return localStorage.getItem(BACKGROUND_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+const saveCachedBackgroundUrl = (url: string | null) => {
+  if (typeof localStorage === 'undefined' || localStorage === null) {
+    return
+  }
+  try {
+    if (url) {
+      localStorage.setItem(BACKGROUND_STORAGE_KEY, url)
+    } else {
+      localStorage.removeItem(BACKGROUND_STORAGE_KEY)
+    }
+  } catch {
+    // Silently fail if localStorage is not available
+  }
+}
+
 const getInitialSidebarState = (): boolean => {
   const savedState = getSavedSidebarState()
 
@@ -113,6 +150,16 @@ const sidebarWidth = ref<0 | 50 | 130>(0)
 const showTitle = computed(() => windowWidth.value >= SM_BREAKPOINT)
 const showCommandPalette = ref(false)
 const showHelpMenu = ref(false)
+// Seeded synchronously from localStorage so the correct background shows on first paint,
+// before the API request below confirms it (or replaces it, if it's since changed).
+const customBackgroundUrl = ref<string | null>(getCachedBackgroundUrl())
+
+const mainBackgroundStyle = computed(() => {
+  const imageUrl = customBackgroundUrl.value || '/images/Karwela.png'
+  return {
+    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6)), url('${imageUrl}')`,
+  }
+})
 
 // Methods
 const handleLogout = async () => {
@@ -157,6 +204,39 @@ watch(
   },
   { immediate: true },
 )
+
+// Reconciles the (possibly stale, cache-seeded) background against the server's current
+// value. Only an authoritative response updates it — a transient network error just leaves
+// whatever's already showing in place rather than blanking it out.
+const fetchCustomBackground = async () => {
+  try {
+    const res = await getWithToken<User>('/v1/users/')
+    const fresh = res.data.customBackgroundUrl ?? null
+    customBackgroundUrl.value = fresh
+    saveCachedBackgroundUrl(fresh)
+  } catch {
+    // Keep the cached/default value that's already displayed.
+  }
+}
+
+// Refetch whenever login state changes, and whenever the user uploads/resets their
+// background image from the (hidden) Profile settings modal in a different component.
+watch(
+  () => [authStore.isLoggedIn, authStore.isInitialCheckDone] as const,
+  ([isLoggedIn, initialCheckDone]) => {
+    if (isLoggedIn) {
+      fetchCustomBackground()
+    } else if (initialCheckDone) {
+      // Confirmed logged out (as opposed to "auth check still pending", which is also
+      // isLoggedIn === false momentarily at boot) — clear the cache so a previous
+      // account's background photo can't leak into the next session on this device.
+      customBackgroundUrl.value = null
+      saveCachedBackgroundUrl(null)
+    }
+  },
+  { immediate: true },
+)
+watch(backgroundUpdatedId, fetchCustomBackground)
 
 // Global keyboard shortcuts
 const handleGlobalKeydown = (event: KeyboardEvent) => {
@@ -226,8 +306,6 @@ onUnmounted(() => {
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
-  background: linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6)), url('/images/Karwela.png');
-  background-size: cover;
 }
 
 .router-content {

@@ -111,6 +111,8 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useNavigation } from '@/composables/useNavigation'
 import { useProfileReimportStore } from '@/stores/profileReimport'
+import { useUserIconUploadStore } from '@/stores/userIconUpload'
+import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
 
 interface Command {
   id: string
@@ -127,6 +129,8 @@ interface Command {
 const { safeBack, safeForward, router } = useNavigation()
 const route = useRoute()
 const profileReimportStore = useProfileReimportStore()
+const userIconUploadStore = useUserIconUploadStore()
+const backgroundUploadStore = useBackgroundUploadStore()
 
 const isOpen = defineModel<boolean>({ required: true })
 const searchQuery = ref('')
@@ -326,11 +330,10 @@ const commands = computed<Command[]>(() => {
 // Commands that never show up when browsing the palette — they only appear once the search
 // query matches one of their keywords. Not linked from any menu or button; power-user only.
 const secretCommands = computed<Command[]>(() => {
-  if (route.name !== 'DiveView' || !route.params.diveId) {
-    return []
-  }
-  return [
-    {
+  const commands: Command[] = []
+
+  if (route.name === 'DiveView' && route.params.diveId) {
+    commands.push({
       id: 'dive-reimport-profile',
       label: 'Reimport Dive Profile',
       description:
@@ -339,8 +342,33 @@ const secretCommands = computed<Command[]>(() => {
       action: () => profileReimportStore.requestOpen(),
       keywords: ['reimport', 'reparse', 'refresh profile', 'deco backfill'],
       category: 'hidden',
-    },
-  ]
+    })
+  }
+
+  if (route.name === 'Profile') {
+    commands.push({
+      id: 'user-upload-icon',
+      label: 'Customize Dive Site Icon',
+      description:
+        'Upload a custom marker icon to replace the default diver icon on your dive-site maps',
+      icon: '🖼️',
+      action: () => userIconUploadStore.requestOpen(),
+      keywords: ['icon', 'marker', 'map pin', 'custom icon', 'dive site icon'],
+      category: 'hidden',
+    })
+    commands.push({
+      id: 'user-upload-background',
+      label: 'Customize Background Image',
+      description:
+        'Upload a custom background photo to replace the default underwater scene app-wide',
+      icon: '🌊',
+      action: () => backgroundUploadStore.requestOpen(),
+      keywords: ['background', 'wallpaper', 'custom background', 'photo'],
+      category: 'hidden',
+    })
+  }
+
+  return commands
 })
 
 const matchesQuery = (cmd: Command, query: string): boolean => {

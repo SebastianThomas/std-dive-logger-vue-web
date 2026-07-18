@@ -1,4 +1,9 @@
-export type User = { id: number; name: string }
+export type User = {
+  id: number
+  name: string
+  customIconUrl?: string | null
+  customBackgroundUrl?: string | null
+}
 
 export type Group = { id: number; name: string }
 
