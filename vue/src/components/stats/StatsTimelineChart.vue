@@ -53,7 +53,6 @@ import {
   scaleOrdinal,
   schemeCategory10,
   axisLeft,
-  axisRight,
   axisBottom,
   bisector,
   type Selection,
@@ -79,14 +78,10 @@ type Props = {
   granularity: TimelineGranularity
   selectedMetrics: TimelineMetric[]
   breakdownBy: StatsBreakdownDimension | null
-  leftAxisMetric?: TimelineMetric
-  rightAxisMetric?: TimelineMetric
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
-  'update:leftAxisMetric': [value: TimelineMetric]
-  'update:rightAxisMetric': [value: TimelineMetric]
   pointClick: [point: StatsTimeSeriesPoint, bucketEndMs: number]
 }>()
 
@@ -211,7 +206,6 @@ function initSvg() {
   g.append('g').attr('class', 'grid-y')
   g.append('g').attr('class', 'grid-x').attr('transform', `translate(0,${innerHeight.value})`)
   g.append('g').attr('class', 'y-left')
-  g.append('g').attr('class', 'y-right').attr('transform', `translate(${innerWidth.value},0)`)
   g.append('g').attr('class', 'x-axis').attr('transform', `translate(0,${innerHeight.value})`)
   g.append('g').attr('class', 'lines')
   g.append('g').attr('class', 'points')
@@ -274,7 +268,6 @@ function renderAll() {
     g.select('.points').selectAll('*').remove()
     g.select('.x-axis').selectAll('*').remove()
     g.select('.y-left').selectAll('*').remove()
-    g.select('.y-right').selectAll('*').remove()
     categoricalLegend.value = []
     return
   }
@@ -301,42 +294,26 @@ function renderAll() {
   const breakdownActive = isBreakdownActive.value
   const scaleSource = breakdownActive ? props.series.breakdown : points
 
-  // Build a scale per selected numeric metric, from whichever data set is actually being plotted.
-  const scales = new Map<TimelineMetric, ScaleLinear<number, number>>()
-  for (const metric of props.selectedMetrics) {
-    const values = scaleSource
+  // Metric selection is unit-grouped upstream (see StatsTimelineView's handleMetricClick) — every
+  // currently-selected metric always shares the same unit, so they all share ONE y-axis scale,
+  // built from their combined value range, rather than each getting its own independently-scaled
+  // axis (which would make same-unit lines visually incomparable).
+  const sharedValues = props.selectedMetrics.flatMap((metric) =>
+    scaleSource
       .map((p) => metricValue(p, metric))
-      .filter((v): v is number => v !== null && !Number.isNaN(v))
-    scales.set(metric, buildScale(values))
-  }
+      .filter((v): v is number => v !== null && !Number.isNaN(v)),
+  )
+  const sharedScale = buildScale(sharedValues)
 
-  const leftMetric =
-    props.leftAxisMetric && scales.has(props.leftAxisMetric)
-      ? props.leftAxisMetric
-      : props.selectedMetrics[0]
-  const rightMetric =
-    props.rightAxisMetric && scales.has(props.rightAxisMetric) && props.rightAxisMetric !== leftMetric
-      ? props.rightAxisMetric
-      : props.selectedMetrics.find((m) => m !== leftMetric)
-
-  const leftScale = leftMetric ? scales.get(leftMetric) : undefined
-  g.select<SVGGElement>('.y-left')
-    .selectAll('*')
-    .remove()
-  if (leftScale) {
-    g.select<SVGGElement>('.y-left').call(axisLeft(leftScale))
+  g.select<SVGGElement>('.y-left').selectAll('*').remove()
+  if (props.selectedMetrics.length) {
+    g.select<SVGGElement>('.y-left').call(axisLeft(sharedScale))
     g.select<SVGGElement>('.grid-y')
-      .call(axisLeft(leftScale).tickSize(-innerWidth.value).tickFormat(() => ''))
+      .call(axisLeft(sharedScale).tickSize(-innerWidth.value).tickFormat(() => ''))
     g.selectAll('.grid-y line').attr('stroke', '#e5e7eb').attr('stroke-opacity', 0.25)
     g.select('.grid-y .domain').remove()
   } else {
     g.select('.grid-y').selectAll('*').remove()
-  }
-
-  const rightScale = rightMetric ? scales.get(rightMetric) : undefined
-  g.select<SVGGElement>('.y-right').selectAll('*').remove()
-  if (rightScale) {
-    g.select<SVGGElement>('.y-right').call(axisRight(rightScale))
   }
 
   const linesGroup = g.select('.lines')
@@ -384,8 +361,6 @@ function renderAll() {
     const colorScale = scaleOrdinal<string, string>().domain(categories).range(schemeCategory10)
 
     for (const metric of props.selectedMetrics) {
-      const scale = scales.get(metric)
-      if (!scale) continue
       for (const category of categories) {
         const catPoints = props.series.breakdown
           .filter((d) => (d.category ?? 'Unknown') === category)
@@ -400,34 +375,21 @@ function renderAll() {
           p.bucketStart,
           metricValue(p, metric),
         ])
-        drawLine(seriesPoints, scale, color)
+        drawLine(seriesPoints, sharedScale, color)
       }
     }
   } else {
     for (const metric of props.selectedMetrics) {
-      const scale = scales.get(metric)
-      if (!scale) continue
       const color = DEFAULT_TIMELINE_METRIC_CONFIGS[metric].color
       const seriesPoints: [number, number | null][] = points.map((p) => [
         p.bucketStart,
         metricValue(p, metric),
       ])
-      drawLine(seriesPoints, scale, color)
+      drawLine(seriesPoints, sharedScale, color)
     }
   }
 
   categoricalLegend.value = legend
-
-  emitAxisDefaults(leftMetric, rightMetric)
-}
-
-function emitAxisDefaults(leftMetric?: TimelineMetric, rightMetric?: TimelineMetric) {
-  if (leftMetric && leftMetric !== props.leftAxisMetric) {
-    emit('update:leftAxisMetric', leftMetric)
-  }
-  if (rightMetric && rightMetric !== props.rightAxisMetric) {
-    emit('update:rightAxisMetric', rightMetric)
-  }
 }
 
 function onMouseMove(event: MouseEvent) {

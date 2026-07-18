@@ -36,21 +36,124 @@
         </div>
       </div>
 
-      <!-- Time-range filter chip (present when arriving from a stats-timeline chart click) -->
-      <div v-if="isTimelineFiltered" class="flex items-center gap-2">
-        <span
-          class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 flex items-center gap-1.5"
+      <!-- Date & Time filters -->
+      <div class="border rounded-lg border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300"
+          @click="showDateTimeFilters = !showDateTimeFilters"
         >
-          📅 {{ formatDate(startDate) }} – {{ formatDate(endDate) }}
-          <button
-            type="button"
-            title="Clear time range filter"
-            class="hover:text-red-600 dark:hover:text-red-400"
-            @click="clearTimelineFilters"
-          >
-            ✕
-          </button>
-        </span>
+          <span class="flex items-center gap-2">
+            Date &amp; Time Filters
+            <span
+              v-if="hasDateTimeFilter"
+              class="w-2 h-2 rounded-full bg-blue-500"
+              title="A date or time filter is active"
+            />
+          </span>
+          <span class="flex items-center gap-3">
+            <span
+              v-if="hasDateTimeFilter || diveSiteId || baseConfiguration"
+              class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+              @click.stop="clearTimelineFilters"
+            >
+              Reset
+            </span>
+            <i :class="showDateTimeFilters ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+          </span>
+        </button>
+        <div
+          v-show="showDateTimeFilters"
+          class="px-3 pb-3 pt-3 space-y-3 border-t border-gray-100 dark:border-gray-700"
+        >
+          <!-- Date range -->
+          <div class="space-y-1.5">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs font-medium text-gray-500 dark:text-gray-400 shrink-0"
+                >Date range:</span
+              >
+              <input
+                v-model="startDateInput"
+                type="date"
+                class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
+              />
+              <span class="text-gray-400">–</span>
+              <input
+                v-model="endDateInput"
+                type="date"
+                class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
+              />
+              <button
+                v-if="startDate || endDate"
+                type="button"
+                class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+                @click="clearDateRange"
+              >
+                Clear
+              </button>
+            </div>
+            <div v-if="availableYears.length" class="flex flex-wrap gap-1.5">
+              <button
+                v-for="year in availableYears"
+                :key="year"
+                type="button"
+                :class="[
+                  'px-2 py-0.5 rounded-full text-xs font-medium border transition-colors',
+                  selectedYear === year
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:border-blue-400',
+                ]"
+                @click="selectYear(year)"
+              >
+                {{ year }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Time of day -->
+          <div class="space-y-1.5 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs font-medium text-gray-500 dark:text-gray-400 shrink-0"
+                >Time of day:</span
+              >
+              <input
+                v-model="startTimeOfDayInput"
+                type="time"
+                class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
+              />
+              <span class="text-gray-400">–</span>
+              <input
+                v-model="endTimeOfDayInput"
+                type="time"
+                class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
+              />
+              <button
+                v-if="startTimeOfDay || endTimeOfDay"
+                type="button"
+                class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+                @click="clearTimeOfDay"
+              >
+                Clear
+              </button>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="preset in timePresets"
+                :key="preset.label"
+                type="button"
+                :class="[
+                  'px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors',
+                  startTimeOfDay === preset.start && endTimeOfDay === preset.end
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:border-blue-400',
+                ]"
+                @click="applyTimePreset(preset.start, preset.end)"
+              >
+                {{ preset.label }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Tag filter panel -->
@@ -170,9 +273,9 @@ import type {
   TagDefinition,
   BaseConfiguration,
 } from '../lib/types/dive'
+import type { UserDiveStatsByYear } from '@/lib/types/stats'
 import debounce from '../lib/utils/debounce'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
-import { formatDate } from '@/lib/utils/timeUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -196,15 +299,120 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const computerId = ref(route.query.computerId ? Number(route.query.computerId) : null)
 const suitId = ref(route.query.suitId ? Number(route.query.suitId) : null)
 
-// Set only when arriving from the "view dives in this time range" link on the stats timeline —
-// combines with whatever other filters (tags/suit/site/base config/search) came along with it.
+// Set either by manually picking a date range / time-of-day range below, or by arriving from the
+// "view dives in this time range" link on the stats timeline — either way, combines with whatever
+// other filters (tags/suit/site/base config/search) are also active.
 const startDate = ref<string | null>((route.query.startDate as string) || null)
 const endDate = ref<string | null>((route.query.endDate as string) || null)
+const startTimeOfDay = ref<string | null>((route.query.startTime as string) || null)
+const endTimeOfDay = ref<string | null>((route.query.endTime as string) || null)
 const diveSiteId = ref(route.query.diveSiteId ? Number(route.query.diveSiteId) : null)
 const baseConfiguration = ref<BaseConfiguration | null>(
   (route.query.baseConfiguration as BaseConfiguration) || null,
 )
-const isTimelineFiltered = computed(() => !!(startDate.value && endDate.value))
+const hasDateTimeFilter = computed(
+  () => !!(startDate.value && endDate.value) || !!(startTimeOfDay.value && endTimeOfDay.value),
+)
+const showDateTimeFilters = ref(hasDateTimeFilter.value)
+
+// <input type="date"> needs plain "YYYY-MM-DD"; endDate is stored exclusive (matches the
+// stats-timeline click-through semantics), so picking "28 Feb" as the end date in the UI must
+// store "1 Mar 00:00" to include all of the 28th. Both sides only ever land on UTC-midnight
+// boundaries, so the +/-1 day adjustment round-trips cleanly either way.
+const startDateInput = computed({
+  get: () => (startDate.value ? startDate.value.slice(0, 10) : ''),
+  set: (value: string) => {
+    startDate.value = value ? `${value}T00:00:00.000Z` : null
+  },
+})
+const endDateInput = computed({
+  get: () => {
+    if (!endDate.value) return ''
+    const d = new Date(endDate.value)
+    d.setUTCDate(d.getUTCDate() - 1)
+    return d.toISOString().slice(0, 10)
+  },
+  set: (value: string) => {
+    if (!value) {
+      endDate.value = null
+      return
+    }
+    const d = new Date(`${value}T00:00:00.000Z`)
+    d.setUTCDate(d.getUTCDate() + 1)
+    endDate.value = d.toISOString()
+  },
+})
+
+// <input type="time"> can't bind directly to a possibly-null ref (DOM would render the literal
+// text "null"), so coerce null <-> '' at the edges.
+const startTimeOfDayInput = computed({
+  get: () => startTimeOfDay.value ?? '',
+  set: (value: string) => {
+    startTimeOfDay.value = value || null
+  },
+})
+const endTimeOfDayInput = computed({
+  get: () => endTimeOfDay.value ?? '',
+  set: (value: string) => {
+    endTimeOfDay.value = value || null
+  },
+})
+
+// Years the user actually has dives in, most recent first — sourced from the same aggregate the
+// overview stats page uses, so there's no separate "earliest dive" lookup or guessed fallback.
+const availableYears = ref<number[]>([])
+const fetchAvailableYears = async () => {
+  try {
+    const res = await getWithToken<UserDiveStatsByYear>('/v1/stats/year')
+    availableYears.value = Object.keys(res.data ?? {})
+      .map(Number)
+      .filter((y) => !Number.isNaN(y))
+      .sort((a, b) => b - a)
+  } catch (err) {
+    console.error('Failed to fetch dive years', err)
+  }
+}
+
+const selectedYear = computed<number | null>(() => {
+  if (!startDate.value || !endDate.value) return null
+  const s = new Date(startDate.value)
+  const e = new Date(endDate.value)
+  const isYearStart = s.getUTCMonth() === 0 && s.getUTCDate() === 1
+  const isNextYearStart =
+    e.getUTCMonth() === 0 && e.getUTCDate() === 1 && e.getUTCFullYear() === s.getUTCFullYear() + 1
+  return isYearStart && isNextYearStart ? s.getUTCFullYear() : null
+})
+
+const selectYear = (year: number) => {
+  startDate.value = `${year}-01-01T00:00:00.000Z`
+  endDate.value = `${year + 1}-01-01T00:00:00.000Z`
+  currentPage.value = 1
+}
+
+const clearDateRange = () => {
+  startDate.value = null
+  endDate.value = null
+  currentPage.value = 1
+}
+
+const timePresets: { label: string; start: string; end: string }[] = [
+  { label: 'Morning', start: '06:00', end: '12:00' },
+  { label: 'Afternoon', start: '12:00', end: '18:00' },
+  { label: 'Evening', start: '18:00', end: '22:00' },
+  { label: 'Night', start: '22:00', end: '06:00' },
+]
+
+const applyTimePreset = (start: string, end: string) => {
+  startTimeOfDay.value = start
+  endTimeOfDay.value = end
+  currentPage.value = 1
+}
+
+const clearTimeOfDay = () => {
+  startTimeOfDay.value = null
+  endTimeOfDay.value = null
+  currentPage.value = 1
+}
 
 // Multi-tag filter: initialise from URL (supports legacy single ?tagId= and new ?tagIds=1&tagIds=2)
 const availableTags = ref<TagDefinition[]>([])
@@ -281,15 +489,17 @@ const fetchDives = async () => {
   status.value = ''
   try {
     let url = ''
-    if (isTimelineFiltered.value) {
+    if (hasDateTimeFilter.value) {
       // Combines every active filter with AND semantics, unlike the standalone modes below.
       const params: string[] = [
         `page=${currentPage.value - 1}`,
-        `startDate=${encodeURIComponent(startDate.value!)}`,
-        `endDate=${encodeURIComponent(endDate.value!)}`,
         `sortCol=${sortColumn.value}`,
         `sortDirection=${sortDirection.value}`,
       ]
+      if (startDate.value) params.push(`startDate=${encodeURIComponent(startDate.value)}`)
+      if (endDate.value) params.push(`endDate=${encodeURIComponent(endDate.value)}`)
+      if (startTimeOfDay.value) params.push(`startTime=${encodeURIComponent(startTimeOfDay.value)}`)
+      if (endTimeOfDay.value) params.push(`endTime=${encodeURIComponent(endTimeOfDay.value)}`)
       if (searchQuery.value.trim()) params.push(`query=${encodeURIComponent(searchQuery.value.trim())}`)
       if (diveSiteId.value) params.push(`diveSiteId=${diveSiteId.value}`)
       if (suitId.value) params.push(`suitId=${suitId.value}`)
@@ -489,6 +699,8 @@ const updateUrlQuery = () => {
       tagIds,
       startDate: startDate.value ?? undefined,
       endDate: endDate.value ?? undefined,
+      startTime: startTimeOfDay.value ?? undefined,
+      endTime: endTimeOfDay.value ?? undefined,
       diveSiteId: diveSiteId.value ? String(diveSiteId.value) : undefined,
       suitId: suitId.value ? String(suitId.value) : undefined,
       baseConfiguration: baseConfiguration.value ?? undefined,
@@ -499,6 +711,8 @@ const updateUrlQuery = () => {
 const clearTimelineFilters = () => {
   startDate.value = null
   endDate.value = null
+  startTimeOfDay.value = null
+  endTimeOfDay.value = null
   diveSiteId.value = null
   baseConfiguration.value = null
   suitId.value = null
@@ -523,6 +737,8 @@ watch(
     selectedTagIds,
     startDate,
     endDate,
+    startTimeOfDay,
+    endTimeOfDay,
     diveSiteId,
     suitId,
     baseConfiguration,
@@ -537,6 +753,7 @@ watch(
 onMounted(() => {
   fetchUserId()
   fetchAvailableTags()
+  fetchAvailableYears()
   fetchDives()
   window.addEventListener('keydown', handleDiveListKeydown)
 })

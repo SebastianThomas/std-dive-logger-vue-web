@@ -58,31 +58,6 @@
           </div>
         </div>
 
-        <div v-if="selectedMetrics.size > 1" class="flex flex-wrap gap-4 items-center mb-4 text-sm">
-          <div class="flex items-center gap-2">
-            <span class="text-gray-500 dark:text-gray-400">Left axis:</span>
-            <select
-              v-model="leftAxisMetric"
-              class="border rounded px-2 py-1 dark:bg-gray-900 dark:text-white dark:border-gray-600"
-            >
-              <option v-for="metric in [...selectedMetrics]" :key="metric" :value="metric">
-                {{ timelineMetricDisplayNames[metric] }}
-              </option>
-            </select>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-gray-500 dark:text-gray-400">Right axis:</span>
-            <select
-              v-model="rightAxisMetric"
-              class="border rounded px-2 py-1 dark:bg-gray-900 dark:text-white dark:border-gray-600"
-            >
-              <option v-for="metric in [...selectedMetrics]" :key="metric" :value="metric">
-                {{ timelineMetricDisplayNames[metric] }}
-              </option>
-            </select>
-          </div>
-        </div>
-
         <div v-if="loading" class="text-center py-16 text-gray-500 dark:text-gray-400">
           Loading...
         </div>
@@ -96,8 +71,6 @@
             :granularity="granularity"
             :selected-metrics="[...selectedMetrics]"
             :breakdown-by="breakdownBy"
-            v-model:left-axis-metric="leftAxisMetric"
-            v-model:right-axis-metric="rightAxisMetric"
             @point-click="handlePointClick"
           />
         </div>
@@ -153,8 +126,6 @@ type PersistedSettings = {
   filters: StatsTimelineFilters
   selectedMetrics: TimelineMetric[]
   breakdownBy: StatsBreakdownDimension | null
-  leftAxisMetric: TimelineMetric
-  rightAxisMetric: TimelineMetric
   combineMode: boolean
 }
 
@@ -182,9 +153,6 @@ const selectedMetrics = ref<Set<TimelineMetric>>(
 const breakdownBy = ref<StatsBreakdownDimension | null>(persisted.breakdownBy ?? null)
 const combineMode = ref<boolean>(persisted.combineMode ?? false)
 
-const leftAxisMetric = ref<TimelineMetric>(persisted.leftAxisMetric ?? 'maxDepth')
-const rightAxisMetric = ref<TimelineMetric>(persisted.rightAxisMetric ?? 'diveCount')
-
 const series = ref<StatsTimeSeries | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -197,8 +165,6 @@ const persistSettings = () => {
       filters: filters.value,
       selectedMetrics: [...selectedMetrics.value],
       breakdownBy: breakdownBy.value,
-      leftAxisMetric: leftAxisMetric.value,
-      rightAxisMetric: rightAxisMetric.value,
       combineMode: combineMode.value,
     }
     sessionStorage.setItem(TIMELINE_SETTINGS_KEY, JSON.stringify(toPersist))
@@ -208,7 +174,7 @@ const persistSettings = () => {
 }
 
 watch(
-  [granularity, filters, selectedMetrics, breakdownBy, leftAxisMetric, rightAxisMetric, combineMode],
+  [granularity, filters, selectedMetrics, breakdownBy, combineMode],
   persistSettings,
   { deep: true },
 )
