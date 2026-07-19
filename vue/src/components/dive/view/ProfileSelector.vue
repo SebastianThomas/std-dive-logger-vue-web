@@ -54,6 +54,10 @@ defineEmits<{
   cursor: pointer;
   color: #10b981;
   font-size: 16px;
+  /* Padding + matching negative margin grows the touch target without changing the button's
+     visual size or the row's layout. */
+  padding: 10px;
+  margin: -10px;
   transition:
     transform 0.2s,
     opacity 0.2s;

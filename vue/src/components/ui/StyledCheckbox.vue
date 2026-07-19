@@ -1,6 +1,6 @@
 <template>
   <label
-    class="inline-flex items-center gap-1.5 select-none"
+    class="inline-flex items-center gap-1.5 select-none py-1.5 -my-1.5"
     :class="disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'"
     :title="title"
   >

@@ -36,124 +36,31 @@
         </div>
       </div>
 
-      <!-- Date & Time filters -->
-      <div class="border rounded-lg border-gray-200 dark:border-gray-700">
-        <button
-          type="button"
-          class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300"
-          @click="showDateTimeFilters = !showDateTimeFilters"
-        >
-          <span class="flex items-center gap-2">
-            Date &amp; Time Filters
-            <span
-              v-if="hasDateTimeFilter"
-              class="w-2 h-2 rounded-full bg-blue-500"
-              title="A date or time filter is active"
-            />
-          </span>
-          <span class="flex items-center gap-3">
-            <span
-              v-if="hasDateTimeFilter || diveSiteId || baseConfiguration"
-              class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
-              @click.stop="clearTimelineFilters"
-            >
-              Reset
-            </span>
-            <i :class="showDateTimeFilters ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
-          </span>
-        </button>
-        <div
-          v-show="showDateTimeFilters"
-          class="px-3 pb-3 pt-3 space-y-3 border-t border-gray-100 dark:border-gray-700"
-        >
-          <!-- Date range -->
-          <div class="space-y-1.5">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-xs font-medium text-gray-500 dark:text-gray-400 shrink-0"
-                >Date range:</span
-              >
-              <input
-                v-model="startDateInput"
-                type="date"
-                class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
-              />
-              <span class="text-gray-400">–</span>
-              <input
-                v-model="endDateInput"
-                type="date"
-                class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
-              />
-              <button
-                v-if="startDate || endDate"
-                type="button"
-                class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
-                @click="clearDateRange"
-              >
-                Clear
-              </button>
-            </div>
-            <div v-if="availableYears.length" class="flex flex-wrap gap-1.5">
-              <button
-                v-for="year in availableYears"
-                :key="year"
-                type="button"
-                :class="[
-                  'px-2 py-0.5 rounded-full text-xs font-medium border transition-colors',
-                  selectedYear === year
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:border-blue-400',
-                ]"
-                @click="selectYear(year)"
-              >
-                {{ year }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Time of day -->
-          <div class="space-y-1.5 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-xs font-medium text-gray-500 dark:text-gray-400 shrink-0"
-                >Time of day:</span
-              >
-              <input
-                v-model="startTimeOfDayInput"
-                type="time"
-                class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
-              />
-              <span class="text-gray-400">–</span>
-              <input
-                v-model="endTimeOfDayInput"
-                type="time"
-                class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
-              />
-              <button
-                v-if="startTimeOfDay || endTimeOfDay"
-                type="button"
-                class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
-                @click="clearTimeOfDay"
-              >
-                Clear
-              </button>
-            </div>
-            <div class="flex flex-wrap gap-1.5">
-              <button
-                v-for="preset in timePresets"
-                :key="preset.label"
-                type="button"
-                :class="[
-                  'px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors',
-                  startTimeOfDay === preset.start && endTimeOfDay === preset.end
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:border-blue-400',
-                ]"
-                @click="applyTimePreset(preset.start, preset.end)"
-              >
-                {{ preset.label }}
-              </button>
-            </div>
-          </div>
+      <!-- Search Bar -->
+      <div class="flex gap-4 items-center">
+        <div class="flex-1">
+          <input
+            ref="searchInputRef"
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search dives..."
+            autofocus
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
+            @input="handleSearch"
+            @keydown.esc="handleSearchEscape"
+          />
         </div>
+        <button
+          @click="toggleSharedDives"
+          :class="[
+            'px-4 py-2 rounded-md border text-sm font-medium transition',
+            viewShared
+              ? 'bg-sky-600 text-white border-sky-600'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700',
+          ]"
+        >
+          {{ viewShared ? 'Viewing shared dives' : 'View shared dives' }}
+        </button>
       </div>
 
       <!-- Tag filter panel -->
@@ -186,30 +93,106 @@
         </div>
       </div>
 
-      <!-- Search Bar -->
-      <div class="flex gap-4 items-center">
-        <div class="flex-1">
-          <input
-            ref="searchInputRef"
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search dives..."
-            autofocus
-            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
-            @input="handleSearch"
-            @keydown.esc="handleSearchEscape"
-          />
-        </div>
+      <!-- Date & Time filters (popover — doesn't push the table down when opened) -->
+      <div class="flex items-center gap-3">
+        <FilterDropdown label="Date & Time" :active="hasDateTimeFilter">
+          <div class="space-y-3 w-full">
+            <!-- Date range -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Date range</span>
+                <button
+                  v-if="startDate || endDate"
+                  type="button"
+                  class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+                  @click="clearDateRange"
+                >
+                  Clear
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <input
+                  v-model="startDateInput"
+                  type="date"
+                  class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
+                />
+                <span class="text-gray-400">–</span>
+                <input
+                  v-model="endDateInput"
+                  type="date"
+                  class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
+                />
+              </div>
+              <div v-if="availableYears.length" class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="year in availableYears"
+                  :key="year"
+                  type="button"
+                  :class="[
+                    'px-2 py-0.5 rounded-full text-xs font-medium border transition-colors',
+                    selectedYear === year
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:border-blue-400',
+                  ]"
+                  @click="selectYear(year)"
+                >
+                  {{ year }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Time of day -->
+            <div class="space-y-1.5 pt-2 border-t border-gray-100 dark:border-gray-700">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Time of day</span>
+                <button
+                  v-if="startTimeOfDay || endTimeOfDay"
+                  type="button"
+                  class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+                  @click="clearTimeOfDay"
+                >
+                  Clear
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <input
+                  v-model="startTimeOfDayInput"
+                  type="time"
+                  class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
+                />
+                <span class="text-gray-400">–</span>
+                <input
+                  v-model="endTimeOfDayInput"
+                  type="time"
+                  class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-900 dark:text-white"
+                />
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="preset in timePresets"
+                  :key="preset.label"
+                  type="button"
+                  :class="[
+                    'px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors',
+                    startTimeOfDay === preset.start && endTimeOfDay === preset.end
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:border-blue-400',
+                  ]"
+                  @click="applyTimePreset(preset.start, preset.end)"
+                >
+                  {{ preset.label }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </FilterDropdown>
         <button
-          @click="toggleSharedDives"
-          :class="[
-            'px-4 py-2 rounded-md border text-sm font-medium transition',
-            viewShared
-              ? 'bg-sky-600 text-white border-sky-600'
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700',
-          ]"
+          v-if="hasDateTimeFilter || diveSiteId || baseConfiguration"
+          type="button"
+          class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+          @click="clearTimelineFilters"
         >
-          {{ viewShared ? 'Viewing shared dives' : 'View shared dives' }}
+          Reset all filters
         </button>
       </div>
 
@@ -267,6 +250,7 @@ import { useApi } from '../composables/useApi'
 import BulkActionsModal from '@/components/dive/BulkActionsModal.vue'
 import DiveListTable from '@/components/DiveListTable.vue'
 import PageSelector from '@/components/PageSelector.vue'
+import FilterDropdown from '@/components/ui/FilterDropdown.vue'
 import type {
   DiveWithoutProfiles,
   PagedResult,
@@ -313,7 +297,6 @@ const baseConfiguration = ref<BaseConfiguration | null>(
 const hasDateTimeFilter = computed(
   () => !!(startDate.value && endDate.value) || !!(startTimeOfDay.value && endTimeOfDay.value),
 )
-const showDateTimeFilters = ref(hasDateTimeFilter.value)
 
 // <input type="date"> needs plain "YYYY-MM-DD"; endDate is stored exclusive (matches the
 // stats-timeline click-through semantics), so picking "28 Feb" as the end date in the UI must

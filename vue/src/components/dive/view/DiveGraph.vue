@@ -19,7 +19,7 @@
       v-if="showZoomHint"
       class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/75 text-white px-4 py-2 rounded-lg text-sm font-medium pointer-events-none z-20"
     >
-      Ctrl+Scroll • 2-finger pinch to zoom to zoom
+      Ctrl+Scroll • 2-finger pinch to zoom
     </div>
   </div>
 </template>
@@ -212,8 +212,11 @@ let ro: ResizeObserver | null = null
 function updateSize() {
   if (!container.value) return
   const rect = container.value.getBoundingClientRect()
-  width.value = Math.max(300, Math.floor(rect.width))
-  height.value = Math.max(200, Math.floor(rect.height))
+  // Floor is just a guard against a degenerate 0-width SVG, not a design minimum — forcing the
+  // SVG wider than its actual container (as a higher floor like 300 would on narrow phones)
+  // causes the whole page to overflow horizontally.
+  width.value = Math.max(200, Math.floor(rect.width))
+  height.value = Math.max(150, Math.floor(rect.height))
 }
 
 function setupScales() {

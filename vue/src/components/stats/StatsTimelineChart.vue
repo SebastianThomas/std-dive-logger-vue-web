@@ -83,6 +83,7 @@ type Props = {
 const props = defineProps<Props>()
 const emit = defineEmits<{
   pointClick: [point: StatsTimeSeriesPoint, bucketEndMs: number]
+  rangeSelect: [startMs: number, endMs: number]
 }>()
 
 const container = ref<HTMLElement | null>(null)
@@ -220,12 +221,21 @@ function initSvg() {
     .attr('y2', innerHeight.value)
     .style('display', 'none')
 
+  dragSelectionRef = g.append('g').attr('class', 'drag-selection')
+
   g.append('rect')
     .attr('width', innerWidth.value)
     .attr('height', innerHeight.value)
     .attr('fill', 'transparent')
-    .on('mousemove', onMouseMove)
-    .on('mouseleave', onMouseLeave)
+    // touch-action: none on just this rect (not the whole component) stops a touch-drag here
+    // from being hijacked as a page scroll, without affecting scrolling anywhere else on the
+    // page — Pointer Events unify mouse/touch/pen so the same handlers drive both.
+    .style('touch-action', 'none')
+    .on('pointermove', onPointerMove)
+    .on('pointerleave', onPointerLeave)
+    .on('pointerdown', onPointerDown)
+    .on('pointerup', onPointerUp)
+    .on('pointercancel', onPointerCancel)
     .on('click', onClick)
 
   crosshairRef = crosshair
@@ -235,11 +245,156 @@ let crosshairRef: Selection<SVGLineElement, unknown, null, undefined> | null = n
 let xScaleRef: ScaleTime<number, number> | null = null
 let sortedPointsRef: StatsTimeSeriesPoint[] = []
 
+// Click-and-drag (mouse, touch, or pen — Pointer Events unify all three) selects an arbitrary
+// custom range, as opposed to a plain click/tap, which still snaps to the nearest single
+// point/bucket (see onClick). Pointer capture (set in onPointerDown) keeps pointermove/pointerup
+// routed to this element even if the cursor/finger leaves its bounds mid-gesture, so no
+// window-level listeners are needed.
+let dragSelectionRef: Selection<SVGGElement, unknown, null, undefined> | null = null
+let dragStartX: number | null = null
+let dragPointerId: number | null = null
+let isDragging = false
+let justDragged = false
+const DRAG_THRESHOLD_PX = 5
+
+function clampX(x: number): number {
+  return Math.max(0, Math.min(innerWidth.value, x))
+}
+
+function localX(event: PointerEvent): number | null {
+  if (!container.value) return null
+  const rect = container.value.getBoundingClientRect()
+  return clampX(event.clientX - rect.left - margin.left)
+}
+
+function drawDragSelection(x0: number, x1: number) {
+  if (!dragSelectionRef) return
+  dragSelectionRef.selectAll('*').remove()
+  dragSelectionRef
+    .append('rect')
+    .attr('x', x0)
+    .attr('y', 0)
+    .attr('width', Math.max(0, x1 - x0))
+    .attr('height', innerHeight.value)
+    .attr('fill', '#3b82f6')
+    .attr('opacity', 0.15)
+    .attr('stroke', '#3b82f6')
+    .attr('stroke-width', 1)
+    .style('pointer-events', 'none')
+
+  if (xScaleRef) {
+    const startLabel = formatBucketLabel(props.granularity, xScaleRef.invert(x0).getTime())
+    const endLabel = formatBucketLabel(props.granularity, xScaleRef.invert(x1).getTime())
+    dragSelectionRef
+      .append('text')
+      .attr('x', (x0 + x1) / 2)
+      .attr('y', -2)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', 11)
+      .attr('fill', 'currentColor')
+      .style('pointer-events', 'none')
+      .text(`${startLabel} – ${endLabel}`)
+  }
+}
+
+function onPointerDown(event: PointerEvent) {
+  if (event.pointerType === 'mouse' && event.button !== 0) return
+  if (!event.isPrimary) return
+  const mx = localX(event)
+  if (mx === null) return
+  event.preventDefault()
+  dragStartX = mx
+  dragPointerId = event.pointerId
+  isDragging = false
+  try {
+    ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
+  } catch {
+    // Capture is best-effort (browsers can reject it, e.g. for a pointerId that's no longer
+    // considered active) — the drag still works via this element's own listeners as long as the
+    // pointer stays over it, it just won't keep tracking if the pointer leaves mid-gesture.
+  }
+  // Touch/pen have no hover state, so without this a tap shows nothing at all until the user
+  // either lifts (navigating away immediately) or drags past the threshold — give immediate
+  // value-preview feedback right on contact, same as what a mouse gets for free on hover.
+  if (event.pointerType !== 'mouse') {
+    handleHoverMove(event)
+  }
+}
+
+function onPointerMove(event: PointerEvent) {
+  if (dragStartX !== null && event.pointerId === dragPointerId) {
+    const mx = localX(event)
+    if (mx === null) return
+    if (!isDragging && Math.abs(mx - dragStartX) < DRAG_THRESHOLD_PX) return
+    isDragging = true
+    tooltip.value = null
+    crosshairRef?.style('display', 'none')
+    drawDragSelection(Math.min(dragStartX, mx), Math.max(dragStartX, mx))
+    return
+  }
+  handleHoverMove(event)
+}
+
+function onPointerUp(event: PointerEvent) {
+  if (dragStartX === null || event.pointerId !== dragPointerId) return
+  try {
+    ;(event.currentTarget as Element).releasePointerCapture(event.pointerId)
+  } catch {
+    // Nothing to release if capture was never established (see onPointerDown) — fine.
+  }
+
+  if (isDragging && xScaleRef) {
+    const mx = localX(event) ?? dragStartX
+    const x0 = Math.min(dragStartX, mx)
+    const x1 = Math.max(dragStartX, mx)
+    const startMs = xScaleRef.invert(x0).getTime()
+    const endMs = xScaleRef.invert(x1).getTime()
+    justDragged = true
+    // The browser only dispatches a trailing synthetic `click` (which reads justDragged) when
+    // the pointer releases back over the interactive rect. If it lands elsewhere (e.g. dragged
+    // past the chart edge), no click ever fires to clear the flag, which would otherwise swallow
+    // the user's next unrelated click. Clearing it on a macrotask still runs after any click that
+    // does fire (click follows pointerup synchronously within the same tick).
+    setTimeout(() => {
+      justDragged = false
+    }, 0)
+    if (endMs > startMs) {
+      emit('rangeSelect', startMs, endMs)
+    }
+  }
+
+  dragStartX = null
+  dragPointerId = null
+  isDragging = false
+  dragSelectionRef?.selectAll('*').remove()
+}
+
+// Fires if the browser cancels the gesture mid-drag (e.g. an OS-level swipe gesture takes over,
+// or an incoming call/notification interrupts) — treat exactly like an aborted drag.
+function onPointerCancel(event: PointerEvent) {
+  if (event.pointerId !== dragPointerId) return
+  abortDrag()
+}
+
+// A resize mid-drag (e.g. sidebar toggle, window resize) rebuilds xScaleRef for the new width,
+// which would otherwise leave dragStartX captured in the old, now-mismatched pixel coordinate
+// space. Abort cleanly rather than emit a range computed from two different coordinate frames.
+function abortDrag() {
+  if (dragStartX === null) return
+  dragStartX = null
+  dragPointerId = null
+  isDragging = false
+  dragSelectionRef?.selectAll('*').remove()
+}
+
 function updateSize() {
   if (!container.value) return
   const rect = container.value.getBoundingClientRect()
-  width.value = Math.max(300, Math.floor(rect.width))
-  height.value = Math.max(220, Math.floor(rect.height))
+  // Floor is just a guard against a degenerate 0-width SVG, not a design minimum — forcing the
+  // SVG wider than its actual container (as a higher floor like 300 would on narrow phones)
+  // causes the whole page to overflow horizontally.
+  width.value = Math.max(200, Math.floor(rect.width))
+  height.value = Math.max(180, Math.floor(rect.height))
 }
 
 function buildScale(values: number[]): ScaleLinear<number, number> {
@@ -281,13 +436,19 @@ function renderAll() {
     .nice()
   xScaleRef = xScale
 
+  // Cap the tick count to roughly one per 70px so labels stay legible instead of overlapping into
+  // an unreadable jumble on narrow (mobile) viewports.
+  const xTickCount = Math.max(2, Math.floor(innerWidth.value / 70))
+
   g.select<SVGGElement>('.x-axis').call(
-    axisBottom(xScale).tickFormat((d) => formatBucketLabel(props.granularity, (d as Date).getTime())),
+    axisBottom(xScale)
+      .ticks(xTickCount)
+      .tickFormat((d) => formatBucketLabel(props.granularity, (d as Date).getTime())),
   )
 
   g.select<SVGGElement>('.grid-x')
     .attr('transform', `translate(0,${innerHeight.value})`)
-    .call(axisBottom(xScale).tickSize(-innerHeight.value).tickFormat(() => ''))
+    .call(axisBottom(xScale).ticks(xTickCount).tickSize(-innerHeight.value).tickFormat(() => ''))
   g.selectAll('.grid-x line').attr('stroke', '#e5e7eb').attr('stroke-opacity', 0.25)
   g.select('.grid-x .domain').remove()
 
@@ -392,13 +553,13 @@ function renderAll() {
   categoricalLegend.value = legend
 }
 
-function onMouseMove(event: MouseEvent) {
+function handleHoverMove(event: PointerEvent) {
   if (!xScaleRef || !container.value || !sortedPointsRef.length) return
   const rect = container.value.getBoundingClientRect()
   const mx = event.clientX - rect.left - margin.left
   const my = event.clientY - rect.top - margin.top
   if (mx < 0 || mx > innerWidth.value || my < 0 || my > innerHeight.value) {
-    onMouseLeave()
+    onPointerLeave()
     return
   }
 
@@ -467,12 +628,20 @@ function onMouseMove(event: MouseEvent) {
   })
 }
 
-function onMouseLeave() {
+function onPointerLeave() {
+  // Boundary events (pointerleave) still fire based on the actual element under the pointer even
+  // while a drag has captured it, so this can run mid-drag — leave the drag's own state alone,
+  // just hide the hover chrome (already redundant with what onPointerMove does on drag-start).
+  if (dragStartX !== null) return
   tooltip.value = null
   crosshairRef?.style('display', 'none')
 }
 
 function onClick(event: MouseEvent) {
+  if (justDragged) {
+    justDragged = false
+    return
+  }
   if (!xScaleRef || !container.value || !sortedPointsRef.length) return
   const rect = container.value.getBoundingClientRect()
   const mx = event.clientX - rect.left - margin.left
@@ -489,6 +658,7 @@ onMounted(() => {
   initSvg()
   renderAll()
   ro = new ResizeObserver(() => {
+    abortDrag()
     updateSize()
     initSvg()
     renderAll()
@@ -498,6 +668,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (ro && container.value) ro.unobserve(container.value)
+  abortDrag()
 })
 
 watch(

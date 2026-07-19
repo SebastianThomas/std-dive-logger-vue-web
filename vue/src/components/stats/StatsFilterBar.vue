@@ -1,26 +1,5 @@
 <template>
   <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-4">
-    <!-- Granularity -->
-    <div>
-      <h3 class="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-300">Granularity</h3>
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="g in TIMELINE_GRANULARITIES"
-          :key="g.value"
-          type="button"
-          :class="[
-            'px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
-            granularity === g.value
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:border-blue-400',
-          ]"
-          @click="$emit('update:granularity', g.value)"
-        >
-          {{ g.label }}
-        </button>
-      </div>
-    </div>
-
     <!-- Text search -->
     <div>
       <h3 class="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-300">Search</h3>
@@ -53,66 +32,86 @@
       </div>
     </div>
 
-    <!-- Site / Suit / Base configuration -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <div>
-        <label class="block text-sm font-semibold mb-1 text-gray-600 dark:text-gray-300"
-          >Dive Site</label
+    <!-- Granularity — kept inline/prominent since it's the primary, frequently-changed control -->
+    <div>
+      <h3 class="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-300">Granularity</h3>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="g in TIMELINE_GRANULARITIES"
+          :key="g.value"
+          type="button"
+          :class="[
+            'px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+            granularity === g.value
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:border-blue-400',
+          ]"
+          @click="$emit('update:granularity', g.value)"
         >
-        <select
-          v-model="diveSiteInput"
-          class="w-full p-2 border rounded dark:bg-gray-900 dark:text-white dark:border-gray-600 text-sm"
-        >
-          <option :value="null">All sites</option>
-          <option v-for="site in availableSites" :key="site.id" :value="site.id">
-            {{ site.name }}
-          </option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block text-sm font-semibold mb-1 text-gray-600 dark:text-gray-300"
-          >Suit</label
-        >
-        <select
-          v-model="suitInput"
-          class="w-full p-2 border rounded dark:bg-gray-900 dark:text-white dark:border-gray-600 text-sm"
-        >
-          <option :value="null">All suits</option>
-          <option v-for="suit in availableSuits" :key="suit.id" :value="suit.id">
-            {{ formatSuitLabel(suit) }}
-          </option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block text-sm font-semibold mb-1 text-gray-600 dark:text-gray-300"
-          >Base Setup</label
-        >
-        <select
-          v-model="baseConfigurationInput"
-          class="w-full p-2 border rounded dark:bg-gray-900 dark:text-white dark:border-gray-600 text-sm"
-        >
-          <option :value="null">All setups</option>
-          <option
-            v-for="(label, key) in BASE_CONFIGURATION_LABELS"
-            :key="key"
-            :value="key"
-          >
-            {{ label }}
-          </option>
-        </select>
+          {{ g.label }}
+        </button>
       </div>
     </div>
 
-    <button
-      v-if="hasActiveFilters"
-      type="button"
-      class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
-      @click="clearFilters"
-    >
-      Clear all filters
-    </button>
+    <!-- Site / Suit / Base configuration — tucked behind a popover, rarely changed once set -->
+    <div class="flex items-center gap-3">
+      <FilterDropdown label="More Filters" :active="hasMoreFilters">
+        <div class="space-y-3 w-full">
+          <div>
+            <label class="block text-sm font-semibold mb-1 text-gray-600 dark:text-gray-300"
+              >Dive Site</label
+            >
+            <select
+              v-model="diveSiteInput"
+              class="w-full p-2 border rounded dark:bg-gray-900 dark:text-white dark:border-gray-600 text-sm"
+            >
+              <option :value="null">All sites</option>
+              <option v-for="site in availableSites" :key="site.id" :value="site.id">
+                {{ site.name }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold mb-1 text-gray-600 dark:text-gray-300"
+              >Suit</label
+            >
+            <select
+              v-model="suitInput"
+              class="w-full p-2 border rounded dark:bg-gray-900 dark:text-white dark:border-gray-600 text-sm"
+            >
+              <option :value="null">All suits</option>
+              <option v-for="suit in availableSuits" :key="suit.id" :value="suit.id">
+                {{ formatSuitLabel(suit) }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold mb-1 text-gray-600 dark:text-gray-300"
+              >Base Setup</label
+            >
+            <select
+              v-model="baseConfigurationInput"
+              class="w-full p-2 border rounded dark:bg-gray-900 dark:text-white dark:border-gray-600 text-sm"
+            >
+              <option :value="null">All setups</option>
+              <option v-for="(label, key) in BASE_CONFIGURATION_LABELS" :key="key" :value="key">
+                {{ label }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </FilterDropdown>
+      <button
+        v-if="hasActiveFilters"
+        type="button"
+        class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+        @click="clearFilters"
+      >
+        Clear all filters
+      </button>
+    </div>
   </div>
 </template>
 
@@ -120,6 +119,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import debounce from '@/lib/utils/debounce'
+import FilterDropdown from '@/components/ui/FilterDropdown.vue'
 import { TIMELINE_GRANULARITIES, type TimelineGranularity } from '@/lib/types/statsTimeline'
 import type { StatsTimelineFilters } from '@/lib/types/statsTimeline'
 import type { TagDefinition, DiveSite, Suit } from '@/lib/types/dive'
@@ -150,13 +150,13 @@ const diveSiteInput = ref<number | null>(props.modelValue.diveSiteId)
 const suitInput = ref<number | null>(props.modelValue.suitId)
 const baseConfigurationInput = ref<BaseConfiguration | null>(props.modelValue.baseConfiguration)
 
-const hasActiveFilters = computed(
+const hasMoreFilters = computed(
   () =>
-    queryInput.value.trim().length > 0 ||
-    selectedTagIds.value.size > 0 ||
-    diveSiteInput.value !== null ||
-    suitInput.value !== null ||
-    baseConfigurationInput.value !== null,
+    diveSiteInput.value !== null || suitInput.value !== null || baseConfigurationInput.value !== null,
+)
+
+const hasActiveFilters = computed(
+  () => queryInput.value.trim().length > 0 || selectedTagIds.value.size > 0 || hasMoreFilters.value,
 )
 
 const toggleTag = (id: number) => {

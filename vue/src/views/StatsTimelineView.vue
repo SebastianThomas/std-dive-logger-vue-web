@@ -10,6 +10,8 @@
         </div>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Pick a granularity, filter your dives, and combine any metrics you want to compare.
+          Click a point on the chart to jump to it, or drag across a range to open those dives in
+          the dive list.
         </p>
       </div>
 
@@ -33,6 +35,7 @@
                 :key="metric"
                 :model-value="selectedMetrics.has(metric)"
                 :color="DEFAULT_TIMELINE_METRIC_CONFIGS[metric].color"
+                :title="`Click to show only this metric. Shift+click (or Combine) to compare it with other ${timelineMetricUnits[metric] ?? 'count'}-based metrics.`"
                 @click="handleMetricClick(metric, $event)"
               >
                 <span
@@ -72,6 +75,7 @@
             :selected-metrics="[...selectedMetrics]"
             :breakdown-by="breakdownBy"
             @point-click="handlePointClick"
+            @range-select="handleRangeSelect"
           />
         </div>
       </div>
@@ -209,16 +213,12 @@ const handleMetricClick = (metric: TimelineMetric, event: MouseEvent) => {
   selectedMetrics.value = next
 }
 
-const handlePointClick = (point: StatsTimeSeriesPoint, bucketEndMs: number) => {
-  if (point.diveId !== undefined) {
-    router.push({ name: 'DiveView', params: { diveId: point.diveId } })
-    return
-  }
+const navigateToDiveList = (startMs: number, endMs: number) => {
   router.push({
     name: 'DiveList',
     query: {
-      startDate: new Date(point.bucketStart).toISOString(),
-      endDate: new Date(bucketEndMs).toISOString(),
+      startDate: new Date(startMs).toISOString(),
+      endDate: new Date(endMs).toISOString(),
       tagIds: filters.value.tagIds.length ? filters.value.tagIds.map(String) : undefined,
       diveSiteId: filters.value.diveSiteId ? String(filters.value.diveSiteId) : undefined,
       suitId: filters.value.suitId ? String(filters.value.suitId) : undefined,
@@ -226,6 +226,18 @@ const handlePointClick = (point: StatsTimeSeriesPoint, bucketEndMs: number) => {
       search: filters.value.query || undefined,
     },
   })
+}
+
+const handlePointClick = (point: StatsTimeSeriesPoint, bucketEndMs: number) => {
+  if (point.diveId !== undefined) {
+    router.push({ name: 'DiveView', params: { diveId: point.diveId } })
+    return
+  }
+  navigateToDiveList(point.bucketStart, bucketEndMs)
+}
+
+const handleRangeSelect = (startMs: number, endMs: number) => {
+  navigateToDiveList(startMs, endMs)
 }
 
 const buildQuery = (): string => {
