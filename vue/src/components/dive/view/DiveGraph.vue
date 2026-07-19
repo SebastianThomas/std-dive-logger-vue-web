@@ -940,6 +940,13 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
     // Calculate absolute time from the earliest profile start
     const graphStartTime = Math.min(...props.profiles.map((p) => p.start))
 
+    // Current mandatory stop, if any: the deepest active deco stop (the same "ceiling"
+    // depth the red deco zone on the chart is shaded to) and its remaining stop time.
+    const decoStops = m.measurement.deco
+    const decoDepth = decoStops?.length ? Math.max(...decoStops.map((s) => s.depth)) : undefined
+    const decoSeconds =
+      decoDepth !== undefined ? decoStops!.find((s) => s.depth === decoDepth)?.seconds : undefined
+
     profileDataList.push({
       profileIdx,
       profileNum: profileIdx + 1,
@@ -948,6 +955,8 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
       depth: m.measurement.depth,
       temp: m.measurement.temperature?.value,
       ndl: formatISoDurationToMinutes(m.measurement.ndl),
+      decoDepth,
+      decoSeconds,
       otu: m.measurement.o2Tox,
       cns: m.measurement.cns,
       gf: m.measurement.n2,

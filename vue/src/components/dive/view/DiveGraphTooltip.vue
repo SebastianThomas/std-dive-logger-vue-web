@@ -51,6 +51,9 @@
           <div v-if="data.metricAvailability.hasNdl">
             NDL: {{ profile.ndl !== undefined ? profile.ndl : '-' }}
           </div>
+          <div v-if="data.metricAvailability.hasDeco && formatDeco(profile)" class="text-red-500">
+            Deco: {{ formatDeco(profile) }}
+          </div>
           <div v-if="data.metricAvailability.hasOtu">
             OTU: {{ profile.otu !== undefined ? profile.otu.toFixed(0) : '-' }}
           </div>
@@ -91,6 +94,12 @@
       </div>
       <div v-if="data.metricAvailability.hasNdl">
         NDL: {{ currentProfile.ndl !== undefined ? currentProfile.ndl : '-' }}
+      </div>
+      <div
+        v-if="data.metricAvailability.hasDeco && formatDeco(currentProfile)"
+        class="text-red-500"
+      >
+        Deco stop: {{ formatDeco(currentProfile) }}
       </div>
       <div v-if="data.metricAvailability.hasOtu">
         OTUs: {{ currentProfile.otu !== undefined ? currentProfile.otu.toFixed(0) : '-' }}
@@ -161,6 +170,8 @@ export type TooltipProfileData = {
   depth: number
   temp?: number
   ndl?: string
+  decoDepth?: number
+  decoSeconds?: number
   otu?: number
   cns?: number
   gf?: number
@@ -177,6 +188,7 @@ export type TooltipProfileData = {
 export type MetricAvailability = {
   hasTemp: boolean
   hasNdl: boolean
+  hasDeco: boolean
   hasOtu: boolean
   hasCns: boolean
   hasGf: boolean
@@ -203,6 +215,15 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+// A stop is only "active" once its depth/time are actually set — deco.length > 0 with a
+// zero-depth entry means the diver has cleared their last stop, not that one is pending.
+const formatDeco = (profile: TooltipProfileData): string | null => {
+  if (profile.decoDepth === undefined || profile.decoDepth <= 0) return null
+  const minutes = Math.round((profile.decoSeconds ?? 0) / 60)
+  return `${profile.decoDepth.toFixed(0)} m / ${minutes} min`
+}
+
 const selectedProfile = computed(() => props.selectedProfiles?.[0] ?? 0)
 const currentProfile = computed(() => {
   // First try to find the selected profile
