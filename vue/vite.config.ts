@@ -11,7 +11,9 @@ export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
-    mkcert(),
+    // Skip under Vitest: it reuses this config but never serves over HTTPS, and mkcert's
+    // startup check calls GitHub's API, which flakes out CI with rate-limit 403s.
+    ...(process.env.VITEST ? [] : [mkcert()]),
     viteStaticCopy({
       targets: [
         {
