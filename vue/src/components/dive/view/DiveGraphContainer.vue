@@ -99,6 +99,8 @@
             :has-gas-he="combinedMetricsAvailability.hasGasHe"
             :has-deco="combinedMetricsAvailability.hasDeco"
             :selected-profiles="selectedProfiles"
+            :external-hover-time-ms="sharedHoverTimeMs"
+            @hover-time-change="sharedHoverTimeMs = $event"
             v-model:left-axis-metric="leftAxisMetric"
             v-model:right-axis-metric="rightAxisMetric"
           />
@@ -109,6 +111,8 @@
             :profiles="profiles"
             :visible-profiles="visibleProfiles"
             :selected-profiles="selectedProfiles"
+            :external-hover-time-ms="sharedHoverTimeMs"
+            @hover-time-change="sharedHoverTimeMs = $event"
           />
         </div>
       </div>
@@ -197,6 +201,8 @@
         :has-gas-he="combinedMetricsAvailability.hasGasHe"
         :has-deco="combinedMetricsAvailability.hasDeco"
         :selected-profiles="selectedProfiles"
+        :external-hover-time-ms="sharedHoverTimeMs"
+        @hover-time-change="sharedHoverTimeMs = $event"
         v-model:left-axis-metric="leftAxisMetric"
         v-model:right-axis-metric="rightAxisMetric"
       />
@@ -206,6 +212,8 @@
       :profiles="profiles"
       :visible-profiles="visibleProfiles"
       :selected-profiles="selectedProfiles"
+      :external-hover-time-ms="sharedHoverTimeMs"
+      @hover-time-change="sharedHoverTimeMs = $event"
     />
   </div>
 
@@ -269,6 +277,10 @@ const {
 
 const leftAxisMetric = ref<AxisUnitGroup>('depth')
 const rightAxisMetric = ref<AxisUnitGroup>('temp')
+
+// Shared between the main profile chart and the ascent-rate panel so hovering either one shows
+// a synced crosshair/tooltip on both, at the same point in time.
+const sharedHoverTimeMs = ref<number | null>(null)
 
 const toggleProfile = (idx: number) => {
   visibleProfiles.value[idx] = !visibleProfiles.value[idx]

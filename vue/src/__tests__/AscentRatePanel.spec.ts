@@ -47,15 +47,29 @@ function buildProfile(depths: number[], stepSeconds = 5): DiveProfile {
 }
 
 describe('AscentRatePanel', () => {
-  it('starts collapsed and shows a peak-rate summary badge without expanding', () => {
-    // A fast 20 m/min descent — comfortably over the warn threshold.
+  it('starts collapsed and shows a peak-descent summary badge without expanding', () => {
+    // A fast 20 m/min descent, no ascent at all.
     const depths = Array.from({ length: 25 }, (_, i) => (i * 5 * 20) / 60)
     const wrapper = mount(AscentRatePanel, {
       props: { profiles: [buildProfile(depths)] },
     })
     expect(wrapper.find('svg').exists()).toBe(false)
-    expect(wrapper.text()).toContain('descending')
+    expect(wrapper.text()).toContain('peak descent')
+    expect(wrapper.text()).not.toContain('peak ascent')
     expect(wrapper.text()).toContain('m/min')
+  })
+
+  it('shows separate peak badges for descent and ascent when a profile has both', () => {
+    const descent = Array.from({ length: 15 }, (_, i) => (i * 5 * 20) / 60)
+    const ascent = Array.from(
+      { length: 15 },
+      (_, i) => descent[descent.length - 1]! - (i * 5 * 12) / 60,
+    )
+    const wrapper = mount(AscentRatePanel, {
+      props: { profiles: [buildProfile([...descent, ...ascent])] },
+    })
+    expect(wrapper.text()).toContain('peak descent')
+    expect(wrapper.text()).toContain('peak ascent')
   })
 
   it('renders the chart once expanded', async () => {

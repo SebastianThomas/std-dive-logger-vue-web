@@ -109,6 +109,9 @@ type Props = {
   hasGasHe?: boolean
   hasDeco?: boolean
   selectedProfiles?: number[]
+  /** Time (ms) hovered on another synced chart (e.g. the ascent-rate panel) — draws this
+   * chart's crosshair/tooltip at that time too, matched by position rather than local input. */
+  externalHoverTimeMs?: number | null
 }
 
 const props = defineProps<Props>()
@@ -116,6 +119,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:leftAxisMetric': [value: AxisUnitGroup]
   'update:rightAxisMetric': [value: AxisUnitGroup]
+  /** Fired on local hover so a sibling chart can sync its own crosshair to this time. */
+  hoverTimeChange: [value: number | null]
 }>()
 
 // Visibility mask with safe defaults (all visible)
@@ -387,6 +392,23 @@ watch(
     renderSegments()
   },
   { deep: true },
+)
+
+// Mirrors a hover happening on a sibling chart (e.g. the ascent-rate panel) by showing this
+// chart's own crosshair/tooltip at the same time — but only while this chart isn't itself the
+// active hover source, so the two don't fight over the display.
+watch(
+  () => props.externalHoverTimeMs,
+  (t) => {
+    if (isLocalHover) return
+    if (t === null || t === undefined) {
+      focusCircle.value?.style('display', 'none')
+      crosshairLine.value?.style('display', 'none')
+      tooltip.value = null
+      return
+    }
+    renderTooltipAtTime(t, null)
+  },
 )
 
 function initSvg() {
@@ -946,13 +968,19 @@ function renderSegments() {
   })
 }
 
-function onMouseMoveD3(event: MouseEvent | TouchEvent) {
+// True while the pointer is actually over this chart — while so, this chart's own hover input
+// is the source of truth and an externally-driven hover update is ignored (avoids the two
+// fighting over the display when the mouse is legitimately here).
+let isLocalHover = false
+
+// Shared by both real pointer input (onMouseMoveD3) and a sibling chart's synced hover
+// (the externalHoverTimeMs watcher below) — everything here depends only on a time value, not
+// on where a real cursor happens to be.
+function renderTooltipAtTime(
+  tVal: number,
+  screenPos: { clientX: number; clientY: number } | null,
+): void {
   if (!timeScale.value || !depthScale.value || !gSel.value) return
-  const [mx, my] = pointerInG(event)
-  if (mx < 0 || mx > innerWidth.value || my < 0 || my > innerHeight.value) {
-    onMouseLeave()
-    return
-  }
 
   // Find closest measurement across visible profiles only to determine time
   const allMeasurements = props.profiles.flatMap((p, pIdx) =>
@@ -968,7 +996,6 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
   if (!allMeasurements.length) return
 
   const b = bisector((m: DiveMeasurementWithId) => m.measurement.time).center
-  const tVal = timeScale.value.invert(mx)
   const idx = Math.min(allMeasurements.length - 1, Math.max(0, b(allMeasurements, tVal)))
   const closestMeasurement = allMeasurements[idx]!
 
@@ -1065,11 +1092,11 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
     }
   }
 
-  const cx = mx // Use mouse X position directly instead of converting back from time
+  const cx = timeScale.value(tVal)
   const cy = depthScale.value(anchorDepth)
 
   // Show crosshair line at cursor x position
-  crosshairLine.value?.attr('x1', mx).attr('x2', mx).style('display', null)
+  crosshairLine.value?.attr('x1', cx).attr('x2', cx).style('display', null)
 
   // Show focus circle at data point
   focusCircle.value?.attr('cx', cx).attr('cy', cy).style('display', null)
@@ -1106,14 +1133,13 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
     let mouseX: number
     let mouseY: number
 
-    if (event instanceof TouchEvent) {
-      const touch = event.touches[0] || event.changedTouches[0]
-      if (!touch) return
-      mouseX = touch.clientX - rect.left
-      mouseY = touch.clientY - rect.top
+    if (screenPos) {
+      mouseX = screenPos.clientX - rect.left
+      mouseY = screenPos.clientY - rect.top
     } else {
-      mouseX = event.clientX - rect.left
-      mouseY = event.clientY - rect.top
+      // Externally driven (no real cursor) — anchor near the crosshair instead.
+      mouseX = cx
+      mouseY = cy
     }
 
     // Measure actual tooltip element if available, otherwise use estimates
@@ -1146,6 +1172,33 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
   })
 }
 
+function onMouseMoveD3(event: MouseEvent | TouchEvent) {
+  if (!timeScale.value || !depthScale.value || !gSel.value) return
+  const [mx, my] = pointerInG(event)
+  if (mx < 0 || mx > innerWidth.value || my < 0 || my > innerHeight.value) {
+    onMouseLeave()
+    return
+  }
+
+  isLocalHover = true
+  const tVal = timeScale.value.invert(mx)
+
+  let clientX: number
+  let clientY: number
+  if (event instanceof TouchEvent) {
+    const touch = event.touches[0] || event.changedTouches[0]
+    if (!touch) return
+    clientX = touch.clientX
+    clientY = touch.clientY
+  } else {
+    clientX = event.clientX
+    clientY = event.clientY
+  }
+
+  renderTooltipAtTime(tVal, { clientX, clientY })
+  emit('hoverTimeChange', tVal)
+}
+
 function pointerInG(event: MouseEvent | TouchEvent): [number, number] {
   const rect = container.value!.getBoundingClientRect()
   let clientX: number
@@ -1168,10 +1221,11 @@ function pointerInG(event: MouseEvent | TouchEvent): [number, number] {
 
 function onMouseLeave() {
   if (!container.value) return
+  isLocalHover = false
   focusCircle.value?.style('display', 'none')
   crosshairLine.value?.style('display', 'none')
   tooltip.value = null
-  // tooltipSelectedProfile.value = 0
+  emit('hoverTimeChange', null)
 }
 
 // selection controlled by parent via selectedProfile prop

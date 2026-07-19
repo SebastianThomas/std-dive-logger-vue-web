@@ -1,10 +1,38 @@
 import type { DiveProfile } from '@/lib/types/dive'
 
-// Widely-used recreational dive computer guideline values (e.g. Suunto/PADI-style defaults):
-// a "safe" ascent/descent rate around 10 m/min, with most computers starting to warn somewhere
-// around 15-20 m/min. These are reference lines for the visualization, not medical thresholds.
-export const SAFE_RATE_M_PER_MIN = 10
-export const WARN_RATE_M_PER_MIN = 18
+// Four-tier speed scale (m/min, by magnitude, direction-agnostic): under 3 reads as essentially
+// no concern ("slow"), 3-9 is ordinary swimming pace ("normal" — notably worth watching once
+// shallow, since percentage pressure change is steepest near the surface), 9-18 is brisk enough
+// to warrant attention ("quick"), and over 18 is squarely outside normal recreational practice —
+// very fast for a descent, and outright dangerous for an ascent (rapid decompression risk).
+// These are common-guideline reference values for the visualization, not medical thresholds.
+export const SLOW_RATE_M_PER_MIN = 3
+export const NORMAL_RATE_M_PER_MIN = 9
+export const QUICK_RATE_M_PER_MIN = 18
+
+export type RateTier = 'slow' | 'normal' | 'quick' | 'extreme'
+
+export function rateTier(rate: number): RateTier {
+  const abs = Math.abs(rate)
+  if (abs > QUICK_RATE_M_PER_MIN) return 'extreme'
+  if (abs > NORMAL_RATE_M_PER_MIN) return 'quick'
+  if (abs > SLOW_RATE_M_PER_MIN) return 'normal'
+  return 'slow'
+}
+
+export const RATE_TIER_COLORS: Record<RateTier, string> = {
+  slow: '#3b82f6',
+  normal: '#22c55e',
+  quick: '#f59e0b',
+  extreme: '#dc2626',
+}
+
+export const RATE_TIER_LABELS: Record<RateTier, string> = {
+  slow: 'slow',
+  normal: 'normal',
+  quick: 'quick',
+  extreme: 'very fast',
+}
 
 const MIN_HALF_WINDOW_MS = 6_000
 const MAX_HALF_WINDOW_MS = 30_000
@@ -99,11 +127,4 @@ export function computeAscentRates(profile: DiveProfile): RatePoint[] {
   }
 
   return result
-}
-
-export function rateSeverity(rate: number): 'safe' | 'warn' | 'danger' {
-  const abs = Math.abs(rate)
-  if (abs > WARN_RATE_M_PER_MIN) return 'danger'
-  if (abs > SAFE_RATE_M_PER_MIN) return 'warn'
-  return 'safe'
 }
