@@ -158,6 +158,50 @@ function formatBucketLabel(granularity: TimelineGranularity, ts: number): string
   }
 }
 
+// Rough px-per-character for the axis's ~10px sans-serif tick font, plus a fixed gap so
+// adjacent labels never touch even at that estimate's worst case. Good enough for spacing
+// purposes without needing an actual DOM text measurement.
+const TICK_CHAR_WIDTH_PX = 6.2
+const TICK_LABEL_GAP_PX = 14
+
+// d3's scaleTime.ticks(n) picks "nice" calendar intervals (hour/day/week/...) purely from the
+// domain span and n — it has no notion of the data's actual bucket granularity. With few points
+// clustered in a short span (e.g. a handful of dives all within one month), it can happily place
+// several ticks a few days apart, and formatBucketLabel('MONTH', ...) then prints the same
+// "Jun 2026" for every one of them. Ticking on the real, distinct bucket timestamps instead makes
+// duplicate labels structurally impossible (consecutive buckets are always a full granularity
+// step apart), and thinning by index (not by time) keeps the same duplicate-proof guarantee once
+// the width can't fit every bucket.
+//
+// The fit threshold itself is sized to the actual label text rather than a flat guess, since
+// e.g. WEEK's "01.06.2026" is noticeably wider than YEAR's "2026" and would still overlap at a
+// spacing tuned only for the shorter case.
+function computeXAxisTickValues(
+  bucketTimes: number[],
+  innerWidthPx: number,
+  granularity: TimelineGranularity,
+): Date[] {
+  const unique = [...new Set(bucketTimes)].sort((a, b) => a - b)
+  if (unique.length === 0) return []
+
+  const sampleLabel = formatBucketLabel(granularity, unique[0]!)
+  const minPxPerTick = sampleLabel.length * TICK_CHAR_WIDTH_PX + TICK_LABEL_GAP_PX
+  const maxTicks = Math.max(2, Math.floor(innerWidthPx / minPxPerTick))
+  if (unique.length <= maxTicks) return unique.map((t) => new Date(t))
+
+  const step = Math.ceil(unique.length / maxTicks)
+  const picked: number[] = []
+  for (let i = 0; i < unique.length; i += step) {
+    picked.push(unique[i]!)
+  }
+  // Always label the most recent bucket, even if the even spacing above landed just short of it.
+  const last = unique[unique.length - 1]!
+  if (picked[picked.length - 1] !== last) {
+    picked.push(last)
+  }
+  return picked.map((t) => new Date(t))
+}
+
 function formatMetricValue(metric: TimelineMetric, value: number): string {
   const unit = timelineMetricUnits[metric]
   const formatted = Number.isInteger(value) ? value.toString() : value.toFixed(1)
@@ -436,19 +480,19 @@ function renderAll() {
     .nice()
   xScaleRef = xScale
 
-  // Cap the tick count to roughly one per 70px so labels stay legible instead of overlapping into
-  // an unreadable jumble on narrow (mobile) viewports.
-  const xTickCount = Math.max(2, Math.floor(innerWidth.value / 70))
+  // Tick on the actual bucket timestamps (thinned to fit the width) rather than letting the time
+  // scale invent its own "nice" intervals — see computeXAxisTickValues for why that matters.
+  const tickValues = computeXAxisTickValues(times, innerWidth.value, props.granularity)
 
   g.select<SVGGElement>('.x-axis').call(
     axisBottom(xScale)
-      .ticks(xTickCount)
+      .tickValues(tickValues)
       .tickFormat((d) => formatBucketLabel(props.granularity, (d as Date).getTime())),
   )
 
   g.select<SVGGElement>('.grid-x')
     .attr('transform', `translate(0,${innerHeight.value})`)
-    .call(axisBottom(xScale).ticks(xTickCount).tickSize(-innerHeight.value).tickFormat(() => ''))
+    .call(axisBottom(xScale).tickValues(tickValues).tickSize(-innerHeight.value).tickFormat(() => ''))
   g.selectAll('.grid-x line').attr('stroke', '#e5e7eb').attr('stroke-opacity', 0.25)
   g.select('.grid-x .domain').remove()
 

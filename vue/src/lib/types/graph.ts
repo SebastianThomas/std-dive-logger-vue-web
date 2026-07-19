@@ -103,3 +103,47 @@ export const metricDisplayNames: Record<MetricType, string> = {
   gasN2: 'Gas N2',
   gasHe: 'Gas He',
 }
+
+// Y-axis selection is grouped by unit rather than by individual metric: metrics that share a
+// unit (e.g. the three PO2 variants, or the three gas fractions) share one axis and one scale,
+// so picking any one of them as an axis doesn't silently disagree with the others. CNS and OTU
+// are grouped together as "O2 exposure" even though OTU has no natural %, because both track
+// oxygen-toxicity accumulation over the dive and can legitimately exceed 100 on an aggressive
+// profile — they read naturally on a shared, uncapped scale. Gas fractions, by contrast, are
+// physically bounded to [0, 100] and are pinned there rather than auto-scaling to data, so a
+// single bad sample can't distort the whole axis.
+export type AxisUnitGroup =
+  | 'depth'
+  | 'temp'
+  | 'ndl'
+  | 'gf'
+  | 'o2Exposure'
+  | 'po2'
+  | 'gasFraction'
+  | 'rmv'
+
+export type AxisUnitGroupConfig = {
+  label: string
+  metrics: MetricType[]
+}
+
+export const AXIS_UNIT_GROUPS: Record<AxisUnitGroup, AxisUnitGroupConfig> = {
+  depth: { label: 'Depth (m)', metrics: ['depth'] },
+  temp: { label: 'Temperature (°C)', metrics: ['temp'] },
+  ndl: { label: 'NDL (min)', metrics: ['ndl'] },
+  gf: { label: 'GF99 (%)', metrics: ['gf'] },
+  o2Exposure: { label: 'O2 Exposure (CNS / OTU)', metrics: ['cns', 'otu'] },
+  po2: { label: 'PO2 (bar)', metrics: ['po2Measured', 'po2Calculated', 'po2Setpoint'] },
+  gasFraction: { label: 'Gas Fraction (%)', metrics: ['gasO2', 'gasN2', 'gasHe'] },
+  rmv: { label: 'RMV (l/min)', metrics: ['rmv'] },
+}
+
+const METRIC_TO_AXIS_GROUP: Record<MetricType, AxisUnitGroup> = Object.fromEntries(
+  Object.entries(AXIS_UNIT_GROUPS).flatMap(([group, config]) =>
+    config.metrics.map((metric) => [metric, group as AxisUnitGroup]),
+  ),
+) as Record<MetricType, AxisUnitGroup>
+
+export function axisGroupForMetric(metric: MetricType): AxisUnitGroup {
+  return METRIC_TO_AXIS_GROUP[metric]
+}

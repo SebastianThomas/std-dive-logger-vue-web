@@ -61,16 +61,16 @@ import { useApi } from '@/composables/useApi'
 import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
 import { formatISoDurationToMinutes, formatElapsedTime } from '@/lib/utils/timeUtils'
 import { generateId } from '@/lib/utils/cryptoUtils'
-import type { MetricType } from '@/lib/types/graph'
+import type { AxisUnitGroup, MetricType } from '@/lib/types/graph'
 import { DEFAULT_METRIC_CONFIGS } from '@/lib/types/graph'
 import { toKebabCase } from '@/lib/utils/stringUtils'
 import { getSegmentColor, findSegmentTypeAtIndex } from '@/lib/utils/diveSegmentUtils'
 import {
   generateTimeAxisTicks,
-  formatAxisTick,
+  formatAxisGroupTick,
   generateTemperatureTicks,
   calculateTemperatureExtent,
-  getScaleForMetric,
+  getScaleForAxisGroup,
 } from '@/lib/utils/graphUtils'
 import { createMetricConfigs, METRICS_TO_RENDER } from '@/lib/graph/metricExtractors'
 
@@ -93,8 +93,8 @@ type Props = {
   showGasN2?: boolean
   showGasHe?: boolean
   showDecoZone?: boolean
-  leftAxisMetric?: MetricType
-  rightAxisMetric?: MetricType
+  leftAxisMetric?: AxisUnitGroup
+  rightAxisMetric?: AxisUnitGroup
   hasTemp?: boolean
   hasNdl?: boolean
   hasOtu?: boolean
@@ -114,8 +114,8 @@ type Props = {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'update:leftAxisMetric': [value: MetricType]
-  'update:rightAxisMetric': [value: MetricType]
+  'update:leftAxisMetric': [value: AxisUnitGroup]
+  'update:rightAxisMetric': [value: AxisUnitGroup]
 }>()
 
 // Visibility mask with safe defaults (all visible)
@@ -134,7 +134,9 @@ const { getProfileMetricAvailability, getCombinedMetricAvailability } =
 const container = ref<HTMLElement | null>(null)
 const width = ref(600)
 const height = ref(300)
-const margin = { top: 10, right: 36, bottom: 24, left: 40 }
+// Right margin needs to fit the widest axis-group tick label ("1.80 bar"-style PO2 values,
+// ~46px at default axis font size) without clipping against the SVG's edge.
+const margin = { top: 10, right: 50, bottom: 24, left: 40 }
 const innerWidth = computed(() => Math.max(10, width.value - margin.left - margin.right))
 const innerHeight = computed(() => Math.max(10, height.value - margin.top - margin.bottom))
 
@@ -163,12 +165,18 @@ const depthScale = ref<ScaleLinear<number, number> | null>(null)
 const timeScale = ref<ScaleLinear<number, number> | null>(null)
 const tempScale = ref<ScaleLinear<number, number> | null>(null)
 const ndlScale = ref<ScaleLinear<number, number> | null>(null)
-const otuScale = ref<ScaleLinear<number, number> | null>(null)
-const cnsScale = ref<ScaleLinear<number, number> | null>(null)
+// CNS and OTU share one scale (see AXIS_UNIT_GROUPS.o2Exposure) so the two lines and the axis
+// they're plotted against always agree.
+const o2ExposureScale = ref<ScaleLinear<number, number> | null>(null)
 const gfScale = ref<ScaleLinear<number, number> | null>(null)
 const po2Scale = ref<ScaleLinear<number, number> | null>(null)
+// Whether any PO2 sample actually exceeds the common 1.6 bar guideline — drives the warning
+// band/line in renderPo2Reference(), so it only appears for genuine edge cases.
+const po2ExceedsSafeLimit = ref(false)
 const rmvScale = ref<ScaleLinear<number, number> | null>(null)
-const gasScale = ref<ScaleLinear<number, number> | null>(null)
+// Gas fractions are physically bounded to [0, 100]; the scale is pinned there rather than
+// scaled to data (see setupScales()).
+const gasFractionScale = ref<ScaleLinear<number, number> | null>(null)
 const timeScaleBase = ref<ScaleLinear<number, number> | null>(null)
 const depthScaleBase = ref<ScaleLinear<number, number> | null>(null)
 const depthLine = ref<Line<[number, number]> | null>(null)
@@ -192,6 +200,7 @@ const segmentsLayer = ref<Selection<SVGGElement, unknown, null, undefined> | nul
 const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
 const decoZoneLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const decoZoneArea = ref<Area<[number, number]> | null>(null)
+const po2ReferenceLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
 const currentZoomLevel = ref(1)
@@ -199,12 +208,12 @@ const { getWithToken } = useApi()
 
 const leftAxisMetric = computed({
   get: () => props.leftAxisMetric ?? 'depth',
-  set: (value: MetricType) => emit('update:leftAxisMetric', value),
+  set: (value: AxisUnitGroup) => emit('update:leftAxisMetric', value),
 })
 
 const rightAxisMetric = computed({
   get: () => props.rightAxisMetric ?? 'temp',
-  set: (value: MetricType) => emit('update:rightAxisMetric', value),
+  set: (value: AxisUnitGroup) => emit('update:rightAxisMetric', value),
 })
 
 let ro: ResizeObserver | null = null
@@ -253,12 +262,12 @@ function setupScales() {
   const otuValues = allMeasurements
     .map((m) => m.measurement.o2Tox)
     .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
-  const otuMax = Math.max(100, otuValues.length ? Math.max(...otuValues) : 0)
-
   const cnsValues = allMeasurements
     .map((m) => m.measurement.cns)
     .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
-  const cnsMax = Math.max(100, cnsValues.length ? Math.max(...cnsValues) : 0)
+  // Shared scale for both: legitimately exceeds 100 on an aggressive O2-exposure profile, so
+  // the domain tracks the real max across both series rather than being capped at 100.
+  const o2ExposureMax = Math.max(100, otuValues.length ? Math.max(...otuValues) : 0, cnsValues.length ? Math.max(...cnsValues) : 0)
 
   const gfValues = allMeasurements
     .map((m) => m.measurement.n2)
@@ -276,12 +285,9 @@ function setupScales() {
     .flatMap((p) => [p.measured, p.calculated, p.maxSetPoint])
     .filter((v): v is number => v !== undefined && v !== null && !Number.isNaN(v))
   const po2Max = Math.max(1.6, po2Values.length ? Math.max(...po2Values) : 0)
-
-  const gasValues = allMeasurements
-    .map((m) => m.measurement.gas)
-    .filter((g): g is { o2: number; n2: number; he: number } => !!g)
-    .flatMap((g) => [g.o2 * 100, g.n2 * 100, g.he * 100])
-  const gasMax = Math.max(100, gasValues.length ? Math.max(...gasValues) : 0)
+  // Only true when real data crosses the guideline — gates the warning band in
+  // renderPo2Reference() so it doesn't fire on the default 1.6 floor alone.
+  po2ExceedsSafeLimit.value = po2Max > 1.6
 
   depthLine.value = line()
     .x((d: [number, number]) => (timeScale.value ? timeScale.value(d[0]) : 0))
@@ -300,11 +306,8 @@ function setupScales() {
 
   tempScale.value = scaleLinear().domain(tempExtent).range([innerHeight.value, 0])
   ndlScale.value = scaleLinear().domain([0, 100]).range([innerHeight.value, 0])
-  otuScale.value = scaleLinear()
-    .domain([0, otuMax * 1.05])
-    .range([innerHeight.value, 0])
-  cnsScale.value = scaleLinear()
-    .domain([0, cnsMax * 1.05])
+  o2ExposureScale.value = scaleLinear()
+    .domain([0, o2ExposureMax * 1.05])
     .range([innerHeight.value, 0])
   gfScale.value = scaleLinear()
     .domain([0, gfMax * 1.05])
@@ -315,20 +318,22 @@ function setupScales() {
   rmvScale.value = scaleLinear()
     .domain([0, rmvMax * 1.05])
     .range([innerHeight.value, 0])
-  gasScale.value = scaleLinear().domain([0, gasMax]).range([innerHeight.value, 0])
+  // Gas fractions can't physically exceed 100% — pinned rather than data-driven so one bad
+  // sample can't stretch the whole axis.
+  gasFractionScale.value = scaleLinear().domain([0, 100]).range([innerHeight.value, 0])
 
   tempLine.value = makeMetricLine(tempScale.value)
   ndlLine.value = makeMetricLine(ndlScale.value)
-  otuLine.value = makeMetricLine(otuScale.value)
-  cnsLine.value = makeMetricLine(cnsScale.value)
+  otuLine.value = makeMetricLine(o2ExposureScale.value)
+  cnsLine.value = makeMetricLine(o2ExposureScale.value)
   gfLine.value = makeMetricLine(gfScale.value)
   po2MeasuredLine.value = makeMetricLine(po2Scale.value)
   po2CalculatedLine.value = makeMetricLine(po2Scale.value)
   po2SetpointLine.value = makeMetricLine(po2Scale.value)
   rmvLine.value = makeMetricLine(rmvScale.value)
-  gasO2Line.value = makeMetricLine(gasScale.value)
-  gasN2Line.value = makeMetricLine(gasScale.value)
-  gasHeLine.value = makeMetricLine(gasScale.value)
+  gasO2Line.value = makeMetricLine(gasFractionScale.value)
+  gasN2Line.value = makeMetricLine(gasFractionScale.value)
+  gasHeLine.value = makeMetricLine(gasFractionScale.value)
 }
 
 onMounted(async () => {
@@ -448,6 +453,10 @@ function initSvg() {
   g.append('g').attr('class', 'lines-gas-o2').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-gas-n2').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-gas-he').attr('clip-path', clipPathUrl)
+
+  // PO2 1.6 bar reference: drawn above the metric lines so the guideline stays legible
+  // regardless of how much data is plotted underneath it.
+  po2ReferenceLayer.value = g.append('g').attr('class', 'po2-reference').attr('clip-path', clipPathUrl)
 
   // Hover overlay
   // Vertical crosshair line
@@ -621,18 +630,17 @@ function renderAll() {
     depth: depthScale.value,
     temp: tempScale.value,
     ndl: ndlScale.value,
-    otu: otuScale.value,
-    cns: cnsScale.value,
     gf: gfScale.value,
+    o2Exposure: o2ExposureScale.value,
     po2: po2Scale.value,
     rmv: rmvScale.value,
-    gas: gasScale.value,
+    gasFraction: gasFractionScale.value,
   }
-  const leftScale = getScaleForMetric(leftAxisMetric.value, scales)
-  const rightScale = getScaleForMetric(rightAxisMetric.value, scales)
+  const leftScale = getScaleForAxisGroup(leftAxisMetric.value, scales)
+  const rightScale = getScaleForAxisGroup(rightAxisMetric.value, scales)
   if (leftScale) {
     const leftAxis = axisLeft(leftScale).tickFormat((d): string =>
-      formatAxisTick(leftAxisMetric.value, Number(d)),
+      formatAxisGroupTick(leftAxisMetric.value, Number(d)),
     )
     // Temperature uses dynamic tick steps to keep label count reasonable
     if (leftAxisMetric.value === 'temp') {
@@ -643,7 +651,7 @@ function renderAll() {
   }
   if (rightScale) {
     const rightAxis = axisRight(rightScale).tickFormat((d): string =>
-      formatAxisTick(rightAxisMetric.value, Number(d)),
+      formatAxisGroupTick(rightAxisMetric.value, Number(d)),
     )
     // Temperature uses dynamic tick steps to keep label count reasonable
     if (rightAxisMetric.value === 'temp') {
@@ -742,6 +750,60 @@ function renderAll() {
   METRICS_TO_RENDER.forEach(drawMetricLines)
 
   renderDecoZone()
+  renderPo2Reference()
+}
+
+// Renders the common 1.6 bar PO2 guideline as a dashed reference line whenever any PO2 line is
+// visible — regardless of which axis is currently selected, mirroring how the deco zone is
+// gated on its own toggle rather than on axis selection. A translucent band above the line only
+// appears once real data actually crosses it, so a normal dive stays visually uncluttered and
+// only genuine hyperoxic edge cases get called out.
+const PO2_SAFE_LIMIT_BAR = 1.6
+function renderPo2Reference() {
+  if (!po2ReferenceLayer.value) return
+  po2ReferenceLayer.value.selectAll('*').remove()
+
+  const showingPo2 = props.showPo2Measured || props.showPo2Calculated || props.showPo2Setpoint
+  if (!showingPo2 || !po2Scale.value) return
+
+  const y16 = po2Scale.value(PO2_SAFE_LIMIT_BAR)
+  const domainMax = po2Scale.value.domain()[1] as number
+  const yTop = po2Scale.value(domainMax)
+
+  if (po2ExceedsSafeLimit.value) {
+    po2ReferenceLayer.value
+      .append('rect')
+      .attr('x', 0)
+      .attr('y', yTop)
+      .attr('width', innerWidth.value)
+      .attr('height', Math.max(0, y16 - yTop))
+      .attr('fill', '#dc2626')
+      .attr('fill-opacity', 0.12)
+      .style('pointer-events', 'none')
+  }
+
+  po2ReferenceLayer.value
+    .append('line')
+    .attr('x1', 0)
+    .attr('x2', innerWidth.value)
+    .attr('y1', y16)
+    .attr('y2', y16)
+    .attr('stroke', '#dc2626')
+    .attr('stroke-width', 1)
+    .attr('stroke-dasharray', '4,3')
+    .attr('stroke-opacity', 0.6)
+    .style('pointer-events', 'none')
+
+  po2ReferenceLayer.value
+    .append('text')
+    .attr('x', innerWidth.value - 4)
+    .attr('y', y16 - 3)
+    .attr('text-anchor', 'end')
+    .attr('font-size', 9)
+    .attr('fill', '#dc2626')
+    .attr('opacity', 0.85)
+    .style('pointer-events', 'none')
+    .text(`${PO2_SAFE_LIMIT_BAR} bar`)
 }
 
 // Renders the mandatory decompression "keep-out zone": a red shaded area from the

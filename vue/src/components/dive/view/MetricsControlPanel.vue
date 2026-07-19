@@ -214,11 +214,13 @@
         </button>
       </div>
       <div v-show="showAxes" class="flex flex-wrap gap-4 items-center mt-2">
-        <div class="flex flex-wrap w-full items-center justify-between">
+        <div class="flex flex-wrap w-full items-center justify-between gap-3">
           <div class="flex items-center gap-2">
+            <span class="text-xs opacity-70" :style="{ color: 'var(--foreground)' }">Left:</span>
             <select
               :value="props.leftAxisMetric"
               @input="handleLeftAxisChange"
+              title="Metrics sharing a unit share this axis's scale"
               class="border rounded px-2 py-1 text-sm"
               :style="{
                 backgroundColor: 'var(--card-bg)',
@@ -227,18 +229,20 @@
               }"
             >
               <option
-                v-for="[metric, name] in Object.entries(metricDisplayNames)"
-                :key="metric"
-                :value="metric"
+                v-for="[group, config] in Object.entries(AXIS_UNIT_GROUPS)"
+                :key="group"
+                :value="group"
               >
-                {{ name }}
+                {{ config.label }}
               </option>
             </select>
           </div>
           <div class="flex items-center gap-2">
+            <span class="text-xs opacity-70" :style="{ color: 'var(--foreground)' }">Right:</span>
             <select
               :value="props.rightAxisMetric"
               @input="handleRightAxisChange"
+              title="Metrics sharing a unit share this axis's scale"
               class="border rounded px-2 py-1 text-sm"
               :style="{
                 backgroundColor: 'var(--card-bg)',
@@ -247,11 +251,11 @@
               }"
             >
               <option
-                v-for="[metric, name] in Object.entries(metricDisplayNames)"
-                :key="metric"
-                :value="metric"
+                v-for="[group, config] in Object.entries(AXIS_UNIT_GROUPS)"
+                :key="group"
+                :value="group"
               >
-                {{ name }}
+                {{ config.label }}
               </option>
             </select>
           </div>
@@ -262,7 +266,7 @@
 </template>
 
 <script setup lang="ts">
-import { metricDisplayNames, type MetricType } from '@/lib/types/graph'
+import { AXIS_UNIT_GROUPS, type AxisUnitGroup } from '@/lib/types/graph'
 import { ref } from 'vue'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 
@@ -299,8 +303,8 @@ const props = defineProps<{
   disableGasHe?: boolean
   disableDecoZone?: boolean
   showSegmentsToggle?: boolean
-  leftAxisMetric?: MetricType
-  rightAxisMetric?: MetricType
+  leftAxisMetric?: AxisUnitGroup
+  rightAxisMetric?: AxisUnitGroup
 }>()
 
 const emit = defineEmits<{
@@ -320,20 +324,20 @@ const emit = defineEmits<{
   'update:showGasN2': [value: boolean]
   'update:showGasHe': [value: boolean]
   'update:showDecoZone': [value: boolean]
-  'update:leftAxisMetric': [value: MetricType]
-  'update:rightAxisMetric': [value: MetricType]
+  'update:leftAxisMetric': [value: AxisUnitGroup]
+  'update:rightAxisMetric': [value: AxisUnitGroup]
 }>()
 
 const showMetrics = ref(true)
 const showAxes = ref(true)
 
 function handleLeftAxisChange(event: Event): void {
-  const value = (event.target as HTMLSelectElement).value as MetricType
+  const value = (event.target as HTMLSelectElement).value as AxisUnitGroup
   emit('update:leftAxisMetric', value)
 }
 
 function handleRightAxisChange(event: Event): void {
-  const value = (event.target as HTMLSelectElement).value as MetricType
+  const value = (event.target as HTMLSelectElement).value as AxisUnitGroup
   emit('update:rightAxisMetric', value)
 }
 </script>

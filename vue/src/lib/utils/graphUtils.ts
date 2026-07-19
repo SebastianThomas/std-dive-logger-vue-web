@@ -1,5 +1,4 @@
-import type { MetricType } from '@/lib/types/graph'
-import { metricUnits } from '@/lib/types/graph'
+import type { AxisUnitGroup, MetricType } from '@/lib/types/graph'
 import type { ScaleLinear } from 'd3'
 
 /**
@@ -61,36 +60,27 @@ export function generateTimeAxisTicks(
 }
 
 /**
- * Formats an axis tick value based on the metric type.
- * Applies appropriate precision and units for each metric.
- *
- * @param metric - The metric type being displayed
- * @param value - The numeric value to format
- * @returns Formatted string for display on the axis
+ * Formats an axis tick value for a unit-based axis group (the left/right axis selectors).
+ * O2 Exposure deliberately gets no unit suffix — it mixes CNS (%) and OTU (unitless) on one
+ * shared scale, so a single suffix would misrepresent one of the two.
  */
-export function formatAxisTick(metric: MetricType, value: number): string {
-  const unit = metricUnits[metric]
-
-  switch (metric) {
+export function formatAxisGroupTick(group: AxisUnitGroup, value: number): string {
+  switch (group) {
     case 'depth':
-      return `${value} ${unit ?? ''}`
+      return `${value} m`
     case 'temp':
-      return `${value.toFixed(0)}${unit ?? ''}`
+      return `${value.toFixed(0)}°C`
     case 'ndl':
-    case 'otu':
-      return `${value}`
-    case 'cns':
+      return `${value} min`
     case 'gf':
-    case 'gasO2':
-    case 'gasN2':
-    case 'gasHe':
-      return `${value}${unit ?? ''}`
-    case 'po2Measured':
-    case 'po2Calculated':
-    case 'po2Setpoint':
-      return `${value.toFixed(2)} ${unit ?? ''}`
+    case 'gasFraction':
+      return `${value}%`
+    case 'o2Exposure':
+      return `${value}`
+    case 'po2':
+      return `${value.toFixed(2)} bar`
     case 'rmv':
-      return `${value.toFixed(1)}`
+      return `${value.toFixed(1)} l/min`
     default:
       return `${value}`
   }
@@ -187,48 +177,43 @@ export function isMetricType(value: string): value is MetricType {
 }
 
 /**
- * Maps a metric type to its corresponding D3 scale.
- * @param metric - The metric type
+ * Maps a unit-based axis group to its corresponding D3 scale. Every metric that belongs to a
+ * group (e.g. all three PO2 variants) resolves to the same shared scale, so picking any one of
+ * them as an axis is guaranteed to agree with how the others are actually plotted.
+ * @param group - The axis unit group
  * @param scales - Object containing all available scales
- * @returns The scale for the metric, or null if not found
+ * @returns The scale for the group, or null if not found
  */
-export function getScaleForMetric<T extends ScaleLinear<number, number>>(
-  metric: MetricType,
+export function getScaleForAxisGroup<T extends ScaleLinear<number, number>>(
+  group: AxisUnitGroup,
   scales: {
     depth: T | null
     temp: T | null
     ndl: T | null
-    otu: T | null
-    cns: T | null
     gf: T | null
+    o2Exposure: T | null
     po2: T | null
+    gasFraction: T | null
     rmv: T | null
-    gas: T | null
   },
 ): T | null {
-  switch (metric) {
+  switch (group) {
     case 'depth':
       return scales.depth
     case 'temp':
       return scales.temp
     case 'ndl':
       return scales.ndl
-    case 'otu':
-      return scales.otu
-    case 'cns':
-      return scales.cns
     case 'gf':
       return scales.gf
-    case 'po2Measured':
-    case 'po2Calculated':
-    case 'po2Setpoint':
+    case 'o2Exposure':
+      return scales.o2Exposure
+    case 'po2':
       return scales.po2
+    case 'gasFraction':
+      return scales.gasFraction
     case 'rmv':
       return scales.rmv
-    case 'gasO2':
-    case 'gasN2':
-    case 'gasHe':
-      return scales.gas
     default:
       return null
   }

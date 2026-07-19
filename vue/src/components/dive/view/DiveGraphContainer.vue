@@ -103,6 +103,14 @@
             v-model:right-axis-metric="rightAxisMetric"
           />
         </div>
+
+        <div class="shrink-0 px-3 pb-3">
+          <AscentRatePanel
+            :profiles="profiles"
+            :visible-profiles="visibleProfiles"
+            :selected-profiles="selectedProfiles"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -193,6 +201,12 @@
         v-model:right-axis-metric="rightAxisMetric"
       />
     </div>
+    <AscentRatePanel
+      class="mt-2"
+      :profiles="profiles"
+      :visible-profiles="visibleProfiles"
+      :selected-profiles="selectedProfiles"
+    />
   </div>
 
   <ProfileAlignmentModal
@@ -212,10 +226,11 @@ import DiveGraph from '@/components/dive/view/DiveGraph.vue'
 import ProfileAlignmentModal from '@/components/dive/view/ProfileAlignmentModal.vue'
 import AnalyticsToggle from '@/components/dive/view/AnalyticsToggle.vue'
 import ProfileSelector from '@/components/dive/view/ProfileSelector.vue'
+import AscentRatePanel from '@/components/dive/view/AscentRatePanel.vue'
 import FullscreenGraphControls from '@/components/dive/view/FullscreenGraphControls.vue'
 import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
 import type { Dive, DiveProfile } from '@/lib/types/dive'
-import type { MetricType } from '@/lib/types/graph'
+import type { AxisUnitGroup } from '@/lib/types/graph'
 
 interface Props {
   profiles: DiveProfile[]
@@ -252,8 +267,8 @@ const {
   getCombinedMetricAvailability,
 } = useDiveGraphMetrics(profilesRef)
 
-const leftAxisMetric = ref<MetricType>('depth')
-const rightAxisMetric = ref<MetricType>('temp')
+const leftAxisMetric = ref<AxisUnitGroup>('depth')
+const rightAxisMetric = ref<AxisUnitGroup>('temp')
 
 const toggleProfile = (idx: number) => {
   visibleProfiles.value[idx] = !visibleProfiles.value[idx]
