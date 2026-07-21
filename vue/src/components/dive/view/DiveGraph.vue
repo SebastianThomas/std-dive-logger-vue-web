@@ -983,6 +983,48 @@ function buildMetricConfigs(): MetricConfigMap {
   })
 }
 
+// Per-profile, per-metric list of actually-logged [time, value] points (nulls filtered out) —
+// the same points the line itself is drawn through, independent of whether that line is
+// currently toggled visible (matching the tooltip's existing behavior of showing a metric's
+// value even while its line is hidden). Many metrics (PO2 calculated/setpoint, gas mix changes,
+// etc.) log far less often than depth, so reading straight off the nearest measurement makes
+// hovering "shaky": most nearby samples simply don't carry that field, so the hit test and the
+// tooltip value keep dropping out between real readings. Interpolating along this cached point
+// list instead makes hover behavior match what's actually drawn — a continuous line — rather
+// than the sparse underlying sample rate. Recomputed only when the profiles themselves change,
+// not on every mousemove.
+const metricPointsCache = computed<Array<Partial<Record<Exclude<MetricType, 'depth'>, [number, number][]>>>>(
+  () => {
+    const configs = buildMetricConfigs()
+    return props.profiles.map((profile) => {
+      const perMetric: Partial<Record<Exclude<MetricType, 'depth'>, [number, number][]>> = {}
+      for (const key of METRICS_TO_RENDER) {
+        perMetric[key] = profile.measurements
+          .map(configs[key].extractor)
+          .filter((p): p is [number, number] => p !== null)
+      }
+      return perMetric
+    })
+  },
+)
+
+// Linearly interpolates the value at time t from a sorted [time, value][] list — matching the
+// straight-line segments d3 draws between consecutive points (metric lines use the default
+// linear curve). Clamps to the first/last value outside the list's own range.
+function interpolateAt(points: [number, number][] | undefined, t: number): number | undefined {
+  if (!points || points.length === 0) return undefined
+  if (points.length === 1 || t <= points[0]![0]) return points[0]![1]
+  const last = points[points.length - 1]!
+  if (t >= last[0]) return last[1]
+  const bi = bisector((d: [number, number]) => d[0]).left
+  const i = Math.min(points.length - 1, Math.max(1, bi(points, t)))
+  const p0 = points[i - 1]!
+  const p1 = points[i]!
+  if (p1[0] === p0[0]) return p1[1]
+  const frac = (t - p0[0]) / (p1[0] - p0[0])
+  return p0[1] + frac * (p1[1] - p0[1])
+}
+
 // Maps a plotted (non-depth) metric to the scale it's drawn against, for the line-hover hit
 // test below. Depth is handled separately since it always uses depthScale.
 function metricScaleFor(metric: Exclude<MetricType, 'depth'>): ScaleLinear<number, number> | null {
@@ -1097,26 +1139,30 @@ function renderTooltipAtTime(
     const decoSeconds =
       decoDepth !== undefined ? decoStops!.find((s) => s.depth === decoDepth)?.seconds : undefined
 
+    // Interpolated at the hovered time rather than read off the nearest sample — several of
+    // these (PO2 calculated/setpoint especially) log far less often than depth, so the nearest
+    // sample frequently just doesn't carry them even though the line is drawn continuously.
+    const profilePoints = metricPointsCache.value[profileIdx]
     profileDataList.push({
       profileIdx,
       profileNum: profileIdx + 1,
       timeDisplay: formatElapsedTime(m.measurement.time, m.profileStart),
       absoluteTime: formatElapsedTime(m.measurement.time, graphStartTime),
       depth: m.measurement.depth,
-      temp: m.measurement.temperature?.value,
+      temp: interpolateAt(profilePoints?.temp, tVal) ?? m.measurement.temperature?.value,
       ndl: formatISoDurationToMinutes(m.measurement.ndl),
       decoDepth,
       decoSeconds,
-      otu: m.measurement.o2Tox,
-      cns: m.measurement.cns,
-      gf: m.measurement.n2,
-      po2Measured: m.measurement.po2?.measured,
-      po2Calculated: m.measurement.po2?.calculated,
-      po2Setpoint: m.measurement.po2?.maxSetPoint,
-      rmv: m.measurement.rmvLiters,
-      gasO2: m.measurement.gas?.o2 !== undefined ? m.measurement.gas.o2 * 100 : undefined,
-      gasN2: m.measurement.gas?.n2 !== undefined ? m.measurement.gas.n2 * 100 : undefined,
-      gasHe: m.measurement.gas?.he !== undefined ? m.measurement.gas.he * 100 : undefined,
+      otu: interpolateAt(profilePoints?.otu, tVal),
+      cns: interpolateAt(profilePoints?.cns, tVal),
+      gf: interpolateAt(profilePoints?.gf, tVal),
+      po2Measured: interpolateAt(profilePoints?.po2Measured, tVal),
+      po2Calculated: interpolateAt(profilePoints?.po2Calculated, tVal),
+      po2Setpoint: interpolateAt(profilePoints?.po2Setpoint, tVal),
+      rmv: interpolateAt(profilePoints?.rmv, tVal),
+      gasO2: interpolateAt(profilePoints?.gasO2, tVal),
+      gasN2: interpolateAt(profilePoints?.gasN2, tVal),
+      gasHe: interpolateAt(profilePoints?.gasHe, tVal),
       segmentType:
         m.measurementIndex !== undefined &&
         m.profileIdx !== undefined &&
@@ -1165,14 +1211,19 @@ function renderTooltipAtTime(
   if (hoverY !== null && selM) {
     let bestDist = Math.abs(bestY - hoverY)
     const HOVER_PIXEL_THRESHOLD = 18
+    const selProfilePoints = metricPointsCache.value[selIdx]
     for (const key of METRICS_TO_RENDER) {
       const config = hoverMetricConfigs[key]
       if (!config.showProp) continue
       const scale = metricScaleFor(key)
       if (!scale) continue
-      const point = config.extractor(selM)
-      if (!point) continue
-      const y = scale(point[1])
+      // Interpolated, not read straight off selM — some metrics (PO2 calculated/setpoint, gas
+      // changes, ...) log far less often than depth, so the nearest sample often just doesn't
+      // carry this field. Interpolating along the actually-drawn points keeps the hit test
+      // continuous instead of dropping in and out between real readings.
+      const value = interpolateAt(selProfilePoints?.[key], tVal)
+      if (value === undefined) continue
+      const y = scale(value)
       const dist = Math.abs(y - hoverY)
       if (dist < bestDist) {
         bestDist = dist
