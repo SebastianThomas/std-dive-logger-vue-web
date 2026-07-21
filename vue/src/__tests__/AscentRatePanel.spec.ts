@@ -106,16 +106,10 @@ describe('AscentRatePanel', () => {
   })
 
   it('flips the tooltip to the left when it would overflow the right edge', async () => {
-    const origOffsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth')!
     const origRect = HTMLElement.prototype.getBoundingClientRect
-    // A 300px-wide container (so the chart's own inner width is 300 - 40 - 36 = 224) with a
-    // 150px-wide tooltip — anchoring near the chart's right edge should overflow and flip.
-    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
-      configurable: true,
-      get(this: HTMLElement) {
-        return this.className?.toString().includes('bg-white') ? 150 : 300
-      },
-    })
+    // A 300px-wide container, so the chart's own inner width is 300 - 40 - 36 = 224. The
+    // tooltip's width is fixed (10rem / 160px, matching the DiveGraph tooltip) and known up
+    // front, so the flip is computed synchronously rather than measured from the DOM.
     HTMLElement.prototype.getBoundingClientRect = function () {
       return { width: 300, height: 110, left: 0, top: 0, right: 300, bottom: 110, x: 0, y: 0 } as DOMRect
     }
@@ -128,18 +122,34 @@ describe('AscentRatePanel', () => {
       // Hover right at the end of the profile — the far right edge of the chart.
       await wrapper.setProps({ externalHoverTimeMs: (depths.length - 1) * 5 * 1000 })
       await wrapper.vm.$nextTick()
-      await wrapper.vm.$nextTick()
 
       const tooltipDiv = wrapper.find('[class*="bg-white"][class*="dark:bg-gray"]')
       expect(tooltipDiv.exists()).toBe(true)
       const left = parseFloat((tooltipDiv.element as HTMLElement).style.left)
       // Unflipped, the anchor (~innerWidth = 224) plus the 8px offset would already sit past
-      // the 300px container before even adding the tooltip's own width — flipping pulls it
-      // well back to the left of that anchor instead.
-      expect(left).toBeLessThan(224 - 150)
+      // the 300px container before even adding the tooltip's own 160px width — flipping pulls
+      // it well back to the left of that anchor instead.
+      expect(left).toBeLessThan(224 - 160)
     } finally {
-      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', origOffsetWidth)
       HTMLElement.prototype.getBoundingClientRect = origRect
     }
+  })
+
+  it('gives the ascent-rate tooltip the same look as the main chart tooltip', async () => {
+    const depths = Array.from({ length: 10 }, (_, i) => i)
+    const wrapper = mount(AscentRatePanel, {
+      props: { profiles: [buildProfile(depths)], externalHoverTimeMs: null },
+    })
+    await wrapper.find('button').trigger('click')
+    await wrapper.setProps({ externalHoverTimeMs: 10_000 })
+    await wrapper.vm.$nextTick()
+
+    const tooltipDiv = wrapper.find('[class*="bg-white"][class*="dark:bg-gray"]')
+    expect(tooltipDiv.exists()).toBe(true)
+    // Same card chrome and fixed width as DiveGraphTooltip.vue's single-profile tooltip.
+    expect(tooltipDiv.classes()).toEqual(
+      expect.arrayContaining(['bg-white', 'dark:bg-gray-800', 'shadow', 'rounded', 'px-2', 'py-1']),
+    )
+    expect((tooltipDiv.element as HTMLElement).style.width).toBe('10rem')
   })
 })

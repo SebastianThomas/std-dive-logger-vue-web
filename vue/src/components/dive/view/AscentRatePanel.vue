@@ -34,13 +34,15 @@
       <div ref="container" class="w-full relative" style="height: 110px">
         <div
           v-if="tooltip"
-          class="absolute z-10 pointer-events-none bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 shadow rounded px-2 py-1 whitespace-nowrap"
-          :style="{ left: tooltip.left + 'px', top: '4px' }"
+          class="absolute z-10 pointer-events-none bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 shadow rounded px-2 py-1"
+          :style="{ left: tooltip.left + 'px', top: '4px', width: '10rem', maxWidth: '10rem' }"
         >
-          {{ formatElapsedTime(tooltip.time, earliestStart) }} —
-          {{ Math.abs(tooltip.rate).toFixed(1) }} m/min
-          {{ tooltip.rate >= 0 ? 'descending' : 'ascending' }}
-          ({{ RATE_TIER_LABELS[rateTier(tooltip.rate)] }})
+          <div class="font-semibold mb-1">{{ formatElapsedTime(tooltip.time, earliestStart) }}</div>
+          <div>
+            {{ Math.abs(tooltip.rate).toFixed(1) }} m/min
+            {{ tooltip.rate >= 0 ? 'descending' : 'ascending' }}
+          </div>
+          <div>{{ RATE_TIER_LABELS[rateTier(tooltip.rate)] }}</div>
         </div>
       </div>
       <p class="text-xs opacity-60 mt-1">
@@ -55,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { select, scaleLinear, area, axisLeft, curveMonotoneX, bisector } from 'd3'
 import type { Area } from 'd3'
 import type { DiveProfile } from '@/lib/types/dive'
@@ -92,6 +94,12 @@ const height = ref(110)
 // Left/right match DiveGraph.vue's margin exactly so this panel's plot area lines up on the
 // same time axis as the main chart stacked above it.
 const margin = { top: 6, right: 36, bottom: 4, left: 40 }
+// Matches the tooltip's fixed 10rem width below (at the standard 16px root font size) — known
+// up front, so the flip-to-the-left check can run synchronously instead of measuring the DOM a
+// frame late, which used to let an overflowing position flash onto the page (and, since the
+// panel sits directly in the page's flow, briefly trigger a horizontal scrollbar) before the
+// correction landed.
+const TOOLTIP_WIDTH_PX = 160
 const innerWidth = computed(() => Math.max(10, width.value - margin.left - margin.right))
 const innerHeight = computed(() => Math.max(10, height.value - margin.top - margin.bottom))
 
@@ -332,26 +340,16 @@ function render() {
     const cx = xScale(point.time)
     crosshair.attr('x1', cx).attr('x2', cx).style('display', null)
     const anchorX = screenLeftPx ?? cx
-    tooltip.value = { time: point.time, rate: point.rate, left: anchorX + 8 }
 
-    // Flip to the left of the anchor when it would overflow the right edge — same approach as
-    // DiveGraphTooltip: measure the actual (content-dependent) rendered width after the DOM
-    // updates, rather than guessing a fixed width up front.
-    nextTick(() => {
-      const containerEl = container.value
-      if (!containerEl || !tooltip.value) return
-      const tooltipEl = containerEl.querySelector(
-        '[class*="bg-white"][class*="dark:bg-gray"]',
-      ) as HTMLElement | null
-      const tooltipWidth = tooltipEl?.offsetWidth || 200
-      const containerWidth = containerEl.offsetWidth
-      let xPos = anchorX + 8
-      if (xPos + tooltipWidth > containerWidth) {
-        xPos = anchorX - tooltipWidth - 8
-        if (xPos < 0) xPos = Math.max(0, containerWidth - tooltipWidth)
-      }
-      tooltip.value = { ...tooltip.value, left: xPos }
-    })
+    // Flip to the left of the anchor when it would overflow the right edge — same idea as
+    // DiveGraphTooltip, but computed synchronously against the fixed tooltip width instead of
+    // measuring the DOM a frame late (see TOOLTIP_WIDTH_PX above).
+    let xPos = anchorX + 8
+    if (xPos + TOOLTIP_WIDTH_PX > width.value) {
+      xPos = anchorX - TOOLTIP_WIDTH_PX - 8
+      if (xPos < 0) xPos = Math.max(0, width.value - TOOLTIP_WIDTH_PX)
+    }
+    tooltip.value = { time: point.time, rate: point.rate, left: xPos }
   }
 
   clearHoverDisplay = () => {
