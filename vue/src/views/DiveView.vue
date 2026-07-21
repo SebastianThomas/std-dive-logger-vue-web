@@ -12,7 +12,7 @@
       @profiles-aligned="handleProfilesAligned"
     />
 
-    <div v-else-if="!loading && dive" class="space-y-6 md:space-y-8">
+    <div v-else-if="!loading && dive" class="space-y-3 md:space-y-4">
       <!-- Header -->
       <div
         class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 flex flex-col"

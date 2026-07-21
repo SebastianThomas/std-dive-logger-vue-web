@@ -124,6 +124,26 @@ export function generateTemperatureTicks(domain: [number, number]): number[] {
 }
 
 /**
+ * Generates PO2 axis ticks on a readable 0.4 bar step, always including the given safety
+ * threshold (e.g. 1.6 bar) exactly — even if it doesn't fall on a step boundary — so the
+ * guideline is legible directly on the axis instead of needing a separate floating label.
+ */
+export function generatePo2AxisTicks(domain: [number, number], threshold: number): number[] {
+  const [min, max] = domain
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return [min]
+
+  const step = 0.4
+  const ticks: number[] = []
+  for (let t = Math.ceil(min / step) * step; t <= max + step * 0.001; t += step) {
+    ticks.push(Number(t.toFixed(2)))
+  }
+  if (max + 0.001 >= threshold && !ticks.some((t) => Math.abs(t - threshold) < 0.001)) {
+    ticks.push(Number(threshold.toFixed(2)))
+  }
+  return Array.from(new Set(ticks)).sort((a, b) => a - b)
+}
+
+/**
  * Calculates optimal temperature scale extent with rounding to multiples of 5.
  * Ensures a minimum range of 10 degrees for better visualization.
  *

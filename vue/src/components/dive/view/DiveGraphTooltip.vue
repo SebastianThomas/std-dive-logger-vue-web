@@ -44,38 +44,43 @@
       >
         <div class="font-semibold text-xs mb-1">Profile {{ profile.profileNum }}</div>
         <div class="profile-data">
-          <div>Depth: {{ profile.depth != null ? profile.depth.toFixed(1) : '-' }} m</div>
-          <div v-if="data.metricAvailability.hasTemp">
+          <div :class="rowClass('depth')">
+            Depth: {{ profile.depth != null ? profile.depth.toFixed(1) : '-' }} m
+          </div>
+          <div v-if="data.metricAvailability.hasTemp" :class="rowClass('temp')">
             Temp: {{ profile.temp !== undefined ? profile.temp.toFixed(1) : '-' }} °C
           </div>
-          <div v-if="data.metricAvailability.hasNdl">
+          <div v-if="data.metricAvailability.hasNdl" :class="rowClass('ndl')">
             NDL: {{ profile.ndl !== undefined ? profile.ndl : '-' }}
           </div>
           <div v-if="data.metricAvailability.hasDeco && formatDeco(profile)" class="text-red-500">
             Deco: {{ formatDeco(profile) }}
           </div>
-          <div v-if="data.metricAvailability.hasOtu">
+          <div v-if="data.metricAvailability.hasOtu" :class="rowClass('otu')">
             OTU: {{ profile.otu !== undefined ? profile.otu.toFixed(0) : '-' }}
           </div>
-          <div v-if="data.metricAvailability.hasCns">
+          <div v-if="data.metricAvailability.hasCns" :class="rowClass('cns')">
             CNS: {{ profile.cns !== undefined ? profile.cns.toFixed(0) : '-' }}%
           </div>
-          <div v-if="data.metricAvailability.hasGf">
+          <div v-if="data.metricAvailability.hasGf" :class="rowClass('gf')">
             GF: {{ profile.gf !== undefined ? profile.gf.toFixed(0) : '-' }}%
           </div>
-          <div v-if="data.metricAvailability.hasRmv">
+          <div v-if="data.metricAvailability.hasRmv" :class="rowClass('rmv')">
             RMV: {{ profile.rmv ? profile.rmv.toFixed(0) : '-' }} L/m
           </div>
-          <div v-if="data.metricAvailability.hasPo2Measured">
+          <div v-if="data.metricAvailability.hasPo2Measured" :class="rowClass('po2Measured')">
             PO2(m): {{ profile.po2Measured ? profile.po2Measured.toFixed(2) : '-' }}
           </div>
-          <div v-if="data.metricAvailability.hasPo2Calculated">
+          <div v-if="data.metricAvailability.hasPo2Calculated" :class="rowClass('po2Calculated')">
             PO2(c): {{ profile.po2Calculated ? profile.po2Calculated.toFixed(2) : '-' }}
           </div>
-          <div v-if="data.metricAvailability.hasPo2Setpoint">
+          <div v-if="data.metricAvailability.hasPo2Setpoint" :class="rowClass('po2Setpoint')">
             PO2(s): {{ profile.po2Setpoint ? profile.po2Setpoint.toFixed(2) : '-' }}
           </div>
-          <div v-if="data.metricAvailability.hasGasO2 || data.metricAvailability.hasGasHe">
+          <div
+            v-if="data.metricAvailability.hasGasO2 || data.metricAvailability.hasGasHe"
+            :class="isGasHovered ? 'font-bold' : ''"
+          >
             <div v-if="profile.gasO2 !== undefined && profile.gasHe !== undefined">
               Gas: {{ profile.gasO2.toFixed(0) }}/{{ profile.gasHe.toFixed(0) }}
             </div>
@@ -87,12 +92,14 @@
 
     <!-- Show selected profile data (original view) -->
     <div v-else-if="currentProfile" class="profile-data">
-      <div>Depth: {{ currentProfile.depth != null ? currentProfile.depth.toFixed(1) : '-' }} m</div>
-      <div v-if="data.metricAvailability.hasTemp">
+      <div :class="rowClass('depth')">
+        Depth: {{ currentProfile.depth != null ? currentProfile.depth.toFixed(1) : '-' }} m
+      </div>
+      <div v-if="data.metricAvailability.hasTemp" :class="rowClass('temp')">
         Temperature:
         {{ currentProfile.temp !== undefined ? currentProfile.temp.toFixed(1) : '-' }} °C
       </div>
-      <div v-if="data.metricAvailability.hasNdl">
+      <div v-if="data.metricAvailability.hasNdl" :class="rowClass('ndl')">
         NDL: {{ currentProfile.ndl !== undefined ? currentProfile.ndl : '-' }}
       </div>
       <div
@@ -101,31 +108,34 @@
       >
         Deco stop: {{ formatDeco(currentProfile) }}
       </div>
-      <div v-if="data.metricAvailability.hasOtu">
+      <div v-if="data.metricAvailability.hasOtu" :class="rowClass('otu')">
         OTUs: {{ currentProfile.otu !== undefined ? currentProfile.otu.toFixed(0) : '-' }}
       </div>
-      <div v-if="data.metricAvailability.hasCns">
+      <div v-if="data.metricAvailability.hasCns" :class="rowClass('cns')">
         CNS: {{ currentProfile.cns !== undefined ? currentProfile.cns.toFixed(0) : '-' }}%
       </div>
-      <div v-if="data.metricAvailability.hasGf">
+      <div v-if="data.metricAvailability.hasGf" :class="rowClass('gf')">
         GF99: {{ currentProfile.gf !== undefined ? currentProfile.gf.toFixed(0) : '-' }}%
       </div>
-      <div v-if="data.metricAvailability.hasRmv">
+      <div v-if="data.metricAvailability.hasRmv" :class="rowClass('rmv')">
         RMV: {{ currentProfile.rmv ? currentProfile.rmv.toFixed(0) : '-' }} L/min
       </div>
-      <div v-if="data.metricAvailability.hasPo2Measured">
+      <div v-if="data.metricAvailability.hasPo2Measured" :class="rowClass('po2Measured')">
         PO2 (measured):
         {{ currentProfile.po2Measured ? currentProfile.po2Measured.toFixed(2) : '-' }} bar
       </div>
-      <div v-if="data.metricAvailability.hasPo2Calculated">
+      <div v-if="data.metricAvailability.hasPo2Calculated" :class="rowClass('po2Calculated')">
         PO2 (calculated):
         {{ currentProfile.po2Calculated ? currentProfile.po2Calculated.toFixed(2) : '-' }} bar
       </div>
-      <div v-if="data.metricAvailability.hasPo2Setpoint">
+      <div v-if="data.metricAvailability.hasPo2Setpoint" :class="rowClass('po2Setpoint')">
         PO2 (setpoint):
         {{ currentProfile.po2Setpoint ? currentProfile.po2Setpoint.toFixed(2) : '-' }} bar
       </div>
-      <div v-if="data.metricAvailability.hasGasO2 || data.metricAvailability.hasGasHe">
+      <div
+        v-if="data.metricAvailability.hasGasO2 || data.metricAvailability.hasGasHe"
+        :class="isGasHovered ? 'font-bold' : ''"
+      >
         <div
           v-if="
             currentProfile.gasO2 !== undefined ||
@@ -161,6 +171,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { MetricType } from '@/lib/types/graph'
 
 export type TooltipProfileData = {
   profileIdx: number
@@ -212,9 +223,19 @@ interface Props {
   left: number
   top: number
   selectedProfiles?: number[]
+  /** Which line the cursor is currently closest to on the chart — bolds the matching row. */
+  hoveredMetric?: MetricType | null
 }
 
 const props = defineProps<Props>()
+
+const rowClass = (metric: MetricType): string => (props.hoveredMetric === metric ? 'font-bold' : '')
+const isGasHovered = computed(
+  () =>
+    props.hoveredMetric === 'gasO2' ||
+    props.hoveredMetric === 'gasN2' ||
+    props.hoveredMetric === 'gasHe',
+)
 
 // A stop is only "active" once its depth/time are actually set — deco.length > 0 with a
 // zero-depth entry means the diver has cleared their last stop, not that one is pending.

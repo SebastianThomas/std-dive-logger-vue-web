@@ -44,17 +44,18 @@
         </div>
       </div>
       <p class="text-xs opacity-60 mt-1">
-        Ascent is plotted above the line, descent below. Colored by speed: under
-        {{ SLOW_RATE_M_PER_MIN }} slow, up to {{ NORMAL_RATE_M_PER_MIN }} normal, up to
-        {{ QUICK_RATE_M_PER_MIN }} quick — beyond that is very fast for a descent and dangerous
-        for an ascent.
+        Ascent is plotted above the line, descent below. Color shows how fast depth is changing,
+        in either direction: under {{ SLOW_RATE_M_PER_MIN }} m/min is slow, up to
+        {{ NORMAL_RATE_M_PER_MIN }} m/min is normal, up to {{ QUICK_RATE_M_PER_MIN }} m/min is
+        quick, and beyond that is very fast — dangerous on an ascent, unusually fast on a
+        descent.
       </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { select, scaleLinear, area, axisLeft, curveMonotoneX, bisector } from 'd3'
 import type { Area } from 'd3'
 import type { DiveProfile } from '@/lib/types/dive'
@@ -102,7 +103,9 @@ const visibleMask = computed<boolean[]>(() => {
   return props.visibleProfiles
 })
 
-const earliestStart = computed(() => Math.min(...props.profiles.map((p) => p.start), 0))
+const earliestStart = computed(() =>
+  props.profiles.length ? Math.min(...props.profiles.map((p) => p.start)) : 0,
+)
 
 // Precompute once per profile set change — the adaptive window search is the expensive part,
 // no need to redo it on every render/resize.
@@ -302,15 +305,23 @@ function render() {
     .attr('stroke-dasharray', '4,2')
     .style('display', 'none')
 
-  // Prefer the profile selected in the main chart (matches its tooltip precedent), falling
-  // back to whichever profile is visible first.
-  const preferredProfileIdx = props.selectedProfiles?.[0]
-  const hoverProfileIdx =
-    preferredProfileIdx !== undefined && visibleMask.value[preferredProfileIdx]
-      ? preferredProfileIdx
-      : props.profiles.findIndex((_, idx) => visibleMask.value[idx])
+  // Which profile to read at a given hovered time: prefer the profile selected in the main
+  // chart, but only if it actually has data there — otherwise fall back to whichever visible
+  // profile does. Mirrors DiveGraph's own tooltip-profile resolution so both panels agree on
+  // the same profile (and therefore the same time) instead of one clamping to a stale profile's
+  // edge when profiles don't share the same time range (e.g. multiple dive computers/mergers).
+  const resolveProfileIdxForTime = (tVal: number): number => {
+    const inRange = (idx: number): boolean => {
+      const p = props.profiles[idx]
+      return !!p && visibleMask.value[idx] === true && tVal >= p.start && tVal <= p.end
+    }
+    const preferredProfileIdx = props.selectedProfiles?.[0]
+    if (preferredProfileIdx !== undefined && inRange(preferredProfileIdx)) return preferredProfileIdx
+    return props.profiles.findIndex((_, idx) => inRange(idx))
+  }
 
   showAtTime = (tVal: number, screenLeftPx: number | null) => {
+    const hoverProfileIdx = resolveProfileIdxForTime(tVal)
     if (hoverProfileIdx < 0) return
     const rates = ratesByProfile.value[hoverProfileIdx]
     if (!rates?.length) return
@@ -320,7 +331,27 @@ function render() {
     if (!point) return
     const cx = xScale(point.time)
     crosshair.attr('x1', cx).attr('x2', cx).style('display', null)
-    tooltip.value = { time: point.time, rate: point.rate, left: screenLeftPx ?? cx }
+    const anchorX = screenLeftPx ?? cx
+    tooltip.value = { time: point.time, rate: point.rate, left: anchorX + 8 }
+
+    // Flip to the left of the anchor when it would overflow the right edge — same approach as
+    // DiveGraphTooltip: measure the actual (content-dependent) rendered width after the DOM
+    // updates, rather than guessing a fixed width up front.
+    nextTick(() => {
+      const containerEl = container.value
+      if (!containerEl || !tooltip.value) return
+      const tooltipEl = containerEl.querySelector(
+        '[class*="bg-white"][class*="dark:bg-gray"]',
+      ) as HTMLElement | null
+      const tooltipWidth = tooltipEl?.offsetWidth || 200
+      const containerWidth = containerEl.offsetWidth
+      let xPos = anchorX + 8
+      if (xPos + tooltipWidth > containerWidth) {
+        xPos = anchorX - tooltipWidth - 8
+        if (xPos < 0) xPos = Math.max(0, containerWidth - tooltipWidth)
+      }
+      tooltip.value = { ...tooltip.value, left: xPos }
+    })
   }
 
   clearHoverDisplay = () => {

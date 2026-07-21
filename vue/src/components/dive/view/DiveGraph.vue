@@ -14,6 +14,7 @@
       :left="tooltipLeft"
       :top="tooltipTop"
       :selected-profiles="props.selectedProfiles"
+      :hovered-metric="hoveredMetric"
     />
     <div
       v-if="showZoomHint"
@@ -69,10 +70,15 @@ import {
   generateTimeAxisTicks,
   formatAxisGroupTick,
   generateTemperatureTicks,
+  generatePo2AxisTicks,
   calculateTemperatureExtent,
   getScaleForAxisGroup,
 } from '@/lib/utils/graphUtils'
-import { createMetricConfigs, METRICS_TO_RENDER } from '@/lib/graph/metricExtractors'
+import {
+  createMetricConfigs,
+  METRICS_TO_RENDER,
+  type MetricConfigMap,
+} from '@/lib/graph/metricExtractors'
 
 type Props = {
   profiles: DiveProfile[]
@@ -149,6 +155,11 @@ const tooltip = ref<TooltipData | null>(null)
 const tooltipTime = ref(0)
 const tooltipLeft = ref(0)
 const tooltipTop = ref(0)
+// Which line the cursor is currently closest to (by pixel distance at the hovered time), so the
+// red focus indicator and tooltip row can follow whichever metric the user is actually pointing
+// at instead of always the depth line. Only set from real local pointer input — an externally
+// synced hover (no actual cursor position) has no Y to test against, so it stays on depth.
+const hoveredMetric = ref<MetricType | null>(null)
 const selectedProfile = computed(() => props.selectedProfiles?.[0] ?? 0)
 const showZoomHint = ref(false)
 let zoomHintTimer: ReturnType<typeof setTimeout> | null = null
@@ -175,8 +186,11 @@ const ndlScale = ref<ScaleLinear<number, number> | null>(null)
 const o2ExposureScale = ref<ScaleLinear<number, number> | null>(null)
 const gfScale = ref<ScaleLinear<number, number> | null>(null)
 const po2Scale = ref<ScaleLinear<number, number> | null>(null)
-// Whether any PO2 sample actually exceeds the common 1.6 bar guideline — drives the warning
-// band/line in renderPo2Reference(), so it only appears for genuine edge cases.
+// The common 1.6 bar PO2 guideline. Shown directly on the axis (as a highlighted tick) whenever
+// PO2 is the selected axis unit, rather than as a floating label independent of axis selection.
+const PO2_SAFE_LIMIT_BAR = 1.6
+// Whether any PO2 sample actually exceeds the guideline — drives the warning band in
+// renderPo2OverageBand(), so it only appears for genuine edge cases.
 const po2ExceedsSafeLimit = ref(false)
 const rmvScale = ref<ScaleLinear<number, number> | null>(null)
 // Gas fractions are physically bounded to [0, 100]; the scale is pinned there rather than
@@ -668,8 +682,13 @@ function renderAll() {
     if (leftAxisMetric.value === 'temp') {
       const domain = leftScale.domain() as [number, number]
       leftAxis.tickValues(generateTemperatureTicks(domain))
+    } else if (leftAxisMetric.value === 'po2') {
+      // Always include the 1.6 bar guideline exactly, so it's legible directly on the axis.
+      const domain = leftScale.domain() as [number, number]
+      leftAxis.tickValues(generatePo2AxisTicks(domain, PO2_SAFE_LIMIT_BAR))
     }
     axes.yDepth.value?.call(leftAxis)
+    if (leftAxisMetric.value === 'po2') highlightPo2AxisTick(axes.yDepth.value)
   }
   if (rightScale) {
     const rightAxis = axisRight(rightScale).tickFormat((d): string =>
@@ -679,8 +698,12 @@ function renderAll() {
     if (rightAxisMetric.value === 'temp') {
       const domain = rightScale.domain() as [number, number]
       rightAxis.tickValues(generateTemperatureTicks(domain))
+    } else if (rightAxisMetric.value === 'po2') {
+      const domain = rightScale.domain() as [number, number]
+      rightAxis.tickValues(generatePo2AxisTicks(domain, PO2_SAFE_LIMIT_BAR))
     }
     axes.yAux.value?.call(rightAxis)
+    if (rightAxisMetric.value === 'po2') highlightPo2AxisTick(axes.yAux.value)
   }
   // Gridlines (optional)
   if (props.showGrid ?? true) {
@@ -723,20 +746,7 @@ function renderAll() {
   })
 
   // Metric configuration: maps metric type to its data extractor and line generator
-  const metricConfigs = createMetricConfigs(props, {
-    temp: tempLine,
-    ndl: ndlLine,
-    otu: otuLine,
-    cns: cnsLine,
-    gf: gfLine,
-    po2Measured: po2MeasuredLine,
-    po2Calculated: po2CalculatedLine,
-    po2Setpoint: po2SetpointLine,
-    rmv: rmvLine,
-    gasO2: gasO2Line,
-    gasN2: gasN2Line,
-    gasHe: gasHeLine,
-  })
+  const metricConfigs = buildMetricConfigs()
 
   // Helper to draw multiple lines (one per profile) for a metric
   const drawMetricLines = (metric: Exclude<MetricType, 'depth'>): void => {
@@ -772,60 +782,45 @@ function renderAll() {
   METRICS_TO_RENDER.forEach(drawMetricLines)
 
   renderDecoZone()
-  renderPo2Reference()
+  renderPo2OverageBand()
 }
 
-// Renders the common 1.6 bar PO2 guideline as a dashed reference line whenever any PO2 line is
-// visible — regardless of which axis is currently selected, mirroring how the deco zone is
-// gated on its own toggle rather than on axis selection. A translucent band above the line only
-// appears once real data actually crosses it, so a normal dive stays visually uncluttered and
-// only genuine hyperoxic edge cases get called out.
-const PO2_SAFE_LIMIT_BAR = 1.6
-function renderPo2Reference() {
+// Recolors the axis tick sitting exactly at the 1.6 bar guideline (added via
+// generatePo2AxisTicks) so it reads as the safety threshold rather than just another tick.
+function highlightPo2AxisTick(axisGroup: Selection<SVGGElement, unknown, null, undefined> | null) {
+  axisGroup
+    ?.selectAll('.tick')
+    .filter((d) => Math.abs(Number(d) - PO2_SAFE_LIMIT_BAR) < 0.001)
+    .call((tick) => {
+      tick.select('text').attr('fill', '#dc2626').attr('font-weight', 'bold')
+      tick.select('line').attr('stroke', '#dc2626')
+    })
+}
+
+// A translucent band above the 1.6 bar guideline, shown only once real PO2 data actually
+// crosses it (so a normal dive stays visually uncluttered) and only while PO2 is the selected
+// axis unit on one side — the guideline itself now lives on that axis as a highlighted tick
+// (see the axis-rendering block above), so this band is purely the "how far over" indicator.
+function renderPo2OverageBand() {
   if (!po2ReferenceLayer.value) return
   po2ReferenceLayer.value.selectAll('*').remove()
 
-  const showingPo2 = props.showPo2Measured || props.showPo2Calculated || props.showPo2Setpoint
-  if (!showingPo2 || !po2Scale.value) return
+  const po2OnAxis = leftAxisMetric.value === 'po2' || rightAxisMetric.value === 'po2'
+  if (!po2OnAxis || !po2ExceedsSafeLimit.value || !po2Scale.value) return
 
   const y16 = po2Scale.value(PO2_SAFE_LIMIT_BAR)
   const domainMax = po2Scale.value.domain()[1] as number
   const yTop = po2Scale.value(domainMax)
 
-  if (po2ExceedsSafeLimit.value) {
-    po2ReferenceLayer.value
-      .append('rect')
-      .attr('x', 0)
-      .attr('y', yTop)
-      .attr('width', innerWidth.value)
-      .attr('height', Math.max(0, y16 - yTop))
-      .attr('fill', '#dc2626')
-      .attr('fill-opacity', 0.12)
-      .style('pointer-events', 'none')
-  }
-
   po2ReferenceLayer.value
-    .append('line')
-    .attr('x1', 0)
-    .attr('x2', innerWidth.value)
-    .attr('y1', y16)
-    .attr('y2', y16)
-    .attr('stroke', '#dc2626')
-    .attr('stroke-width', 1)
-    .attr('stroke-dasharray', '4,3')
-    .attr('stroke-opacity', 0.6)
-    .style('pointer-events', 'none')
-
-  po2ReferenceLayer.value
-    .append('text')
-    .attr('x', innerWidth.value - 4)
-    .attr('y', y16 - 3)
-    .attr('text-anchor', 'end')
-    .attr('font-size', 9)
+    .append('rect')
+    .attr('x', 0)
+    .attr('y', yTop)
+    .attr('width', innerWidth.value)
+    .attr('height', Math.max(0, y16 - yTop))
     .attr('fill', '#dc2626')
-    .attr('opacity', 0.85)
+    .attr('fill-opacity', 0.12)
     .style('pointer-events', 'none')
-    .text(`${PO2_SAFE_LIMIT_BAR} bar`)
 }
 
 // Renders the mandatory decompression "keep-out zone": a red shaded area from the
@@ -968,6 +963,71 @@ function renderSegments() {
   })
 }
 
+// Rebuilds the metric config map (extractors + current visibility) fresh each call, since
+// showProp is a snapshot of props at build time rather than a live binding — cheap object
+// construction, no data-sized work.
+function buildMetricConfigs(): MetricConfigMap {
+  return createMetricConfigs(props, {
+    temp: tempLine,
+    ndl: ndlLine,
+    otu: otuLine,
+    cns: cnsLine,
+    gf: gfLine,
+    po2Measured: po2MeasuredLine,
+    po2Calculated: po2CalculatedLine,
+    po2Setpoint: po2SetpointLine,
+    rmv: rmvLine,
+    gasO2: gasO2Line,
+    gasN2: gasN2Line,
+    gasHe: gasHeLine,
+  })
+}
+
+// Maps a plotted (non-depth) metric to the scale it's drawn against, for the line-hover hit
+// test below. Depth is handled separately since it always uses depthScale.
+function metricScaleFor(metric: Exclude<MetricType, 'depth'>): ScaleLinear<number, number> | null {
+  switch (metric) {
+    case 'temp':
+      return tempScale.value
+    case 'ndl':
+      return ndlScale.value
+    case 'otu':
+    case 'cns':
+      return o2ExposureScale.value
+    case 'gf':
+      return gfScale.value
+    case 'po2Measured':
+    case 'po2Calculated':
+    case 'po2Setpoint':
+      return po2Scale.value
+    case 'rmv':
+      return rmvScale.value
+    case 'gasO2':
+    case 'gasN2':
+    case 'gasHe':
+      return gasFractionScale.value
+    default:
+      return null
+  }
+}
+
+// Restores every plotted line to its normal stroke width, then thickens whichever one the
+// cursor is currently closest to — cheap DOM attribute updates only, no re-render.
+function highlightHoveredLine(metric: MetricType | null, metricConfigs: MetricConfigMap): void {
+  if (!gSel.value) return
+  const DEPTH_BASE_WIDTH = 2
+  const HOVER_EXTRA_WIDTH = 1.6
+  gSel.value
+    .select('.lines-depth')
+    .selectAll('path')
+    .attr('stroke-width', metric === 'depth' ? DEPTH_BASE_WIDTH + HOVER_EXTRA_WIDTH : DEPTH_BASE_WIDTH)
+  METRICS_TO_RENDER.forEach((key) => {
+    const baseWidth = metricConfigs[key].width ?? 1.5
+    const width = key === metric ? baseWidth + HOVER_EXTRA_WIDTH : baseWidth
+    gSel.value?.select(`.lines-${toKebabCase(key)}`).selectAll('path').attr('stroke-width', width)
+  })
+}
+
 // True while the pointer is actually over this chart — while so, this chart's own hover input
 // is the source of truth and an externally-driven hover update is ignored (avoids the two
 // fighting over the display when the mouse is legitimately here).
@@ -979,6 +1039,7 @@ let isLocalHover = false
 function renderTooltipAtTime(
   tVal: number,
   screenPos: { clientX: number; clientY: number } | null,
+  hoverY: number | null = null,
 ): void {
   if (!timeScale.value || !depthScale.value || !gSel.value) return
 
@@ -1073,6 +1134,7 @@ function renderTooltipAtTime(
   if (profileDataList.length === 0) return
 
   let anchorDepth = closestMeasurement.measurement.depth
+  let selM: DiveMeasurementWithId | undefined
 
   // Find the depth at the current time for the selected profile
   const selIdx = selectedProfile.value
@@ -1086,14 +1148,46 @@ function renderTooltipAtTime(
           selMeasurements.length - 1,
           Math.max(0, bSel(selMeasurements, tVal)),
         )
-        const selM = selMeasurements[selMIdx]!
+        selM = selMeasurements[selMIdx]!
         anchorDepth = selM.measurement.depth
       }
     }
   }
 
   const cx = timeScale.value(tVal)
-  const cy = depthScale.value(anchorDepth)
+
+  // Which line is the cursor actually closest to? Only real local pointer input carries a Y to
+  // test against — a handful of scale lookups (one per visible metric), not path geometry, so
+  // this stays cheap on every mousemove.
+  const hoverMetricConfigs = buildMetricConfigs()
+  let bestMetric: MetricType = 'depth'
+  let bestY = depthScale.value(anchorDepth)
+  if (hoverY !== null && selM) {
+    let bestDist = Math.abs(bestY - hoverY)
+    const HOVER_PIXEL_THRESHOLD = 18
+    for (const key of METRICS_TO_RENDER) {
+      const config = hoverMetricConfigs[key]
+      if (!config.showProp) continue
+      const scale = metricScaleFor(key)
+      if (!scale) continue
+      const point = config.extractor(selM)
+      if (!point) continue
+      const y = scale(point[1])
+      const dist = Math.abs(y - hoverY)
+      if (dist < bestDist) {
+        bestDist = dist
+        bestMetric = key
+        bestY = y
+      }
+    }
+    if (bestDist > HOVER_PIXEL_THRESHOLD) {
+      bestMetric = 'depth'
+      bestY = depthScale.value(anchorDepth)
+    }
+  }
+  hoveredMetric.value = bestMetric
+  highlightHoveredLine(bestMetric, hoverMetricConfigs)
+  const cy = bestY
 
   // Show crosshair line at cursor x position
   crosshairLine.value?.attr('x1', cx).attr('x2', cx).style('display', null)
@@ -1195,7 +1289,7 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
     clientY = event.clientY
   }
 
-  renderTooltipAtTime(tVal, { clientX, clientY })
+  renderTooltipAtTime(tVal, { clientX, clientY }, my)
   emit('hoverTimeChange', tVal)
 }
 
@@ -1225,6 +1319,8 @@ function onMouseLeave() {
   focusCircle.value?.style('display', 'none')
   crosshairLine.value?.style('display', 'none')
   tooltip.value = null
+  hoveredMetric.value = null
+  highlightHoveredLine(null, buildMetricConfigs())
   emit('hoverTimeChange', null)
 }
 
