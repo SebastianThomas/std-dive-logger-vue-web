@@ -41,12 +41,13 @@ export const DEFAULT_TIMELINE_METRIC_CONFIGS: Record<TimelineMetric, TimelineMet
 }
 
 /** Dimension the currently-selected metric(s) can be split into one line per category by. */
-export type StatsBreakdownDimension = 'SUIT' | 'BASE_CONFIGURATION'
+export type StatsBreakdownDimension = 'SUIT' | 'BASE_CONFIGURATION' | 'CCR_UNIT'
 
 export const BREAKDOWN_DIMENSIONS: { value: StatsBreakdownDimension | null; label: string }[] = [
   { value: null, label: 'None' },
   { value: 'SUIT', label: 'Suit' },
   { value: 'BASE_CONFIGURATION', label: 'Base Setup' },
+  { value: 'CCR_UNIT', label: 'CCR Unit' },
 ]
 
 export const timelineMetricUnits: Record<TimelineMetric, string | null> = {
@@ -103,6 +104,7 @@ export type StatsTimelineFilters = {
   tagIds: number[]
   diveSiteId: number | null
   suitId: number | null
+  ccrUnitId: number | null
   baseConfiguration: BaseConfiguration | null
   query: string
 }
@@ -111,6 +113,7 @@ export const EMPTY_TIMELINE_FILTERS: StatsTimelineFilters = {
   tagIds: [],
   diveSiteId: null,
   suitId: null,
+  ccrUnitId: null,
   baseConfiguration: null,
   query: '',
 }

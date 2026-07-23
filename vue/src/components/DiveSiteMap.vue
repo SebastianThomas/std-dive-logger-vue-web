@@ -25,7 +25,7 @@
           v-for="item in props.sites"
           :key="item.site.id"
           :lat-lng="[item.site.latitude, item.site.longitude]"
-          :icon="createDiveSiteIcon(item.diveInfo.length, customIconUrl)"
+          :icon="createDiveSiteIcon(item.diveInfo.length, customIconUrl, props.showDiveCountBadge)"
         >
           <l-popup>
             <DiveSiteMapPopup :site="item.site" :dive-info="item.diveInfo" />
@@ -56,10 +56,15 @@ interface Props {
   sites?: SiteWithDives[]
   center?: [number, number]
   zoom?: number
+  /** Whether markers show a badge with their dive count. Off by default makes sense wherever
+   * `sites` was built from just the one dive being viewed — its "count" is always 1 there and
+   * isn't a real count of anything. */
+  showDiveCountBadge?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   sites: () => [],
+  showDiveCountBadge: true,
 })
 
 const themeStore = useThemeStore()

@@ -149,6 +149,11 @@ export type BaseConfiguration =
   | 'BACKMOUNT_CCR'
   | 'SIDEMOUNT_CCR'
   | 'CHESTMOUNT_CCR'
+  | 'DUAL_CCR_BACKMOUNT'
+  | 'DUAL_CCR_SIDEMOUNT'
+  | 'DUAL_CCR_BACKMOUNT_SIDEMOUNT'
+  | 'DUAL_CCR_BACKMOUNT_CHESTMOUNT'
+  | 'DUAL_CCR_SIDEMOUNT_CHESTMOUNT'
   | 'OTHER'
 
 // Display labels for BaseConfiguration values
@@ -160,7 +165,25 @@ export const BASE_CONFIGURATION_LABELS: Record<BaseConfiguration, string> = {
   BACKMOUNT_CCR: 'Backmount CCR',
   SIDEMOUNT_CCR: 'Sidemount CCR',
   CHESTMOUNT_CCR: 'Chestmount CCR',
+  DUAL_CCR_BACKMOUNT: 'Dual CCR (Backmount)',
+  DUAL_CCR_SIDEMOUNT: 'Dual CCR (Sidemount)',
+  DUAL_CCR_BACKMOUNT_SIDEMOUNT: 'Dual CCR (Backmount + Sidemount)',
+  DUAL_CCR_BACKMOUNT_CHESTMOUNT: 'Dual CCR (Backmount + Chestmount)',
+  DUAL_CCR_SIDEMOUNT_CHESTMOUNT: 'Dual CCR (Sidemount + Chestmount)',
   OTHER: 'Other',
+}
+
+// A CCR unit only ever applies when the rig itself is some closed-circuit rebreather variant.
+export function isCcrBaseConfiguration(base: BaseConfiguration): boolean {
+  return base.includes('CCR')
+}
+
+export type CcrUnit = {
+  id: number
+  userId: number
+  name: string
+  notes: string
+  isPublic: boolean
 }
 
 // Display labels for SuitType values
@@ -197,6 +220,8 @@ export type DiveConfiguration = {
   weight: number
   weightFeeling?: WeightFeeling
   cylinders: DiveConfigurationCylinder[]
+  /** Only meaningful when `base` is a CCR variant — see {@link isCcrBaseConfiguration}. */
+  ccrUnit?: CcrUnit | null
 }
 
 export type Dive = {

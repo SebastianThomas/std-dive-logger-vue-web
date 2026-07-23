@@ -89,6 +89,21 @@
 
           <div>
             <label class="block text-sm font-semibold mb-1 text-gray-600 dark:text-gray-300"
+              >CCR Unit</label
+            >
+            <select
+              v-model="ccrUnitInput"
+              class="w-full p-2 border rounded dark:bg-gray-900 dark:text-white dark:border-gray-600 text-sm"
+            >
+              <option :value="null">All CCR units</option>
+              <option v-for="unit in availableCcrUnits" :key="unit.id" :value="unit.id">
+                {{ formatCcrUnitLabel(unit) }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold mb-1 text-gray-600 dark:text-gray-300"
               >Base Setup</label
             >
             <select
@@ -122,7 +137,7 @@ import debounce from '@/lib/utils/debounce'
 import FilterDropdown from '@/components/ui/FilterDropdown.vue'
 import { TIMELINE_GRANULARITIES, type TimelineGranularity } from '@/lib/types/statsTimeline'
 import type { StatsTimelineFilters } from '@/lib/types/statsTimeline'
-import type { TagDefinition, DiveSite, Suit } from '@/lib/types/dive'
+import type { TagDefinition, DiveSite, Suit, CcrUnit } from '@/lib/types/dive'
 import { BASE_CONFIGURATION_LABELS, SUIT_TYPE_LABELS, type BaseConfiguration } from '@/lib/types/dive'
 import type { UserDiveStatsBySite } from '@/lib/types/stats'
 import type { PagedResult } from '@/lib/types/dive'
@@ -143,16 +158,21 @@ const { getWithToken } = useApi()
 const availableTags = ref<TagDefinition[]>([])
 const availableSites = ref<DiveSite[]>([])
 const availableSuits = ref<Suit[]>([])
+const availableCcrUnits = ref<CcrUnit[]>([])
 
 const queryInput = ref(props.modelValue.query)
 const selectedTagIds = ref<Set<number>>(new Set(props.modelValue.tagIds))
 const diveSiteInput = ref<number | null>(props.modelValue.diveSiteId)
 const suitInput = ref<number | null>(props.modelValue.suitId)
+const ccrUnitInput = ref<number | null>(props.modelValue.ccrUnitId)
 const baseConfigurationInput = ref<BaseConfiguration | null>(props.modelValue.baseConfiguration)
 
 const hasMoreFilters = computed(
   () =>
-    diveSiteInput.value !== null || suitInput.value !== null || baseConfigurationInput.value !== null,
+    diveSiteInput.value !== null ||
+    suitInput.value !== null ||
+    ccrUnitInput.value !== null ||
+    baseConfigurationInput.value !== null,
 )
 
 const hasActiveFilters = computed(
@@ -174,6 +194,7 @@ const clearFilters = () => {
   selectedTagIds.value = new Set()
   diveSiteInput.value = null
   suitInput.value = null
+  ccrUnitInput.value = null
   baseConfigurationInput.value = null
 }
 
@@ -185,32 +206,37 @@ const formatSuitLabel = (suit: Suit): string => {
   return parts.join(' - ')
 }
 
+const formatCcrUnitLabel = (unit: CcrUnit): string => unit.name
+
 const emitFilters = debounce(() => {
   emit('update:modelValue', {
     query: queryInput.value.trim(),
     tagIds: [...selectedTagIds.value],
     diveSiteId: diveSiteInput.value,
     suitId: suitInput.value,
+    ccrUnitId: ccrUnitInput.value,
     baseConfiguration: baseConfigurationInput.value,
   })
 }, 300)
 
 watch(
-  [queryInput, selectedTagIds, diveSiteInput, suitInput, baseConfigurationInput],
+  [queryInput, selectedTagIds, diveSiteInput, suitInput, ccrUnitInput, baseConfigurationInput],
   emitFilters,
   { deep: true },
 )
 
 const loadFilterOptions = async () => {
   try {
-    const [tagsRes, sitesRes, suitsRes] = await Promise.all([
+    const [tagsRes, sitesRes, suitsRes, ccrUnitsRes] = await Promise.all([
       getWithToken<TagDefinition[]>('/v1/tags'),
       getWithToken<UserDiveStatsBySite[]>('/v1/stats/dive-site'),
       getWithToken<PagedResult<Suit>>('/v1/dives/configuration/suit?page=0&size=100'),
+      getWithToken<PagedResult<CcrUnit>>('/v1/dives/configuration/ccrUnit?page=0&size=100'),
     ])
     availableTags.value = tagsRes.data ?? []
     availableSites.value = (sitesRes.data ?? []).map((entry) => entry.key)
     availableSuits.value = suitsRes.data.result ?? []
+    availableCcrUnits.value = ccrUnitsRes.data.result ?? []
   } catch (err) {
     console.error('Failed to load stats filter options', err)
   }

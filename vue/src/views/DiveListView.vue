@@ -282,6 +282,7 @@ const viewShared = ref(route.query.shared === 'true')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const computerId = ref(route.query.computerId ? Number(route.query.computerId) : null)
 const suitId = ref(route.query.suitId ? Number(route.query.suitId) : null)
+const ccrUnitId = ref(route.query.ccrUnitId ? Number(route.query.ccrUnitId) : null)
 
 // Set either by manually picking a date range / time-of-day range below, or by arriving from the
 // "view dives in this time range" link on the stats timeline — either way, combines with whatever
@@ -486,6 +487,7 @@ const fetchDives = async () => {
       if (searchQuery.value.trim()) params.push(`query=${encodeURIComponent(searchQuery.value.trim())}`)
       if (diveSiteId.value) params.push(`diveSiteId=${diveSiteId.value}`)
       if (suitId.value) params.push(`suitId=${suitId.value}`)
+      if (ccrUnitId.value) params.push(`ccrUnitId=${ccrUnitId.value}`)
       if (baseConfiguration.value) params.push(`baseConfiguration=${baseConfiguration.value}`)
       selectedTagIds.value.forEach((id) => params.push(`tagIds=${id}`))
       url = `/v1/dives/filtered?${params.join('&')}`
@@ -498,6 +500,9 @@ const fetchDives = async () => {
     } else if (suitId.value) {
       // Filter by suit
       url = `/v1/dives/suit?suitId=${suitId.value}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
+    } else if (ccrUnitId.value) {
+      // Filter by CCR unit
+      url = `/v1/dives/ccrUnit?ccrUnitId=${ccrUnitId.value}&page=${currentPage.value - 1}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
     } else if (selectedTagIds.value.size) {
       // Filter by one or more tags (AND: dive must have all selected tags)
       const tagParams = [...selectedTagIds.value].map((id) => `tagIds=${id}`).join('&')
@@ -686,6 +691,7 @@ const updateUrlQuery = () => {
       endTime: endTimeOfDay.value ?? undefined,
       diveSiteId: diveSiteId.value ? String(diveSiteId.value) : undefined,
       suitId: suitId.value ? String(suitId.value) : undefined,
+      ccrUnitId: ccrUnitId.value ? String(ccrUnitId.value) : undefined,
       baseConfiguration: baseConfiguration.value ?? undefined,
     },
   })
@@ -699,6 +705,7 @@ const clearTimelineFilters = () => {
   diveSiteId.value = null
   baseConfiguration.value = null
   suitId.value = null
+  ccrUnitId.value = null
   selectedTagIds.value = new Set()
   searchQuery.value = ''
   currentPage.value = 1
@@ -724,6 +731,7 @@ watch(
     endTimeOfDay,
     diveSiteId,
     suitId,
+    ccrUnitId,
     baseConfiguration,
   ],
   () => {

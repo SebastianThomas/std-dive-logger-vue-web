@@ -222,6 +222,7 @@ const navigateToDiveList = (startMs: number, endMs: number) => {
       tagIds: filters.value.tagIds.length ? filters.value.tagIds.map(String) : undefined,
       diveSiteId: filters.value.diveSiteId ? String(filters.value.diveSiteId) : undefined,
       suitId: filters.value.suitId ? String(filters.value.suitId) : undefined,
+      ccrUnitId: filters.value.ccrUnitId ? String(filters.value.ccrUnitId) : undefined,
       baseConfiguration: filters.value.baseConfiguration ?? undefined,
       search: filters.value.query || undefined,
     },
@@ -245,6 +246,7 @@ const buildQuery = (): string => {
   if (filters.value.query) params.push(`query=${encodeURIComponent(filters.value.query)}`)
   if (filters.value.diveSiteId) params.push(`diveSiteId=${filters.value.diveSiteId}`)
   if (filters.value.suitId) params.push(`suitId=${filters.value.suitId}`)
+  if (filters.value.ccrUnitId) params.push(`ccrUnitId=${filters.value.ccrUnitId}`)
   if (filters.value.baseConfiguration)
     params.push(`baseConfiguration=${filters.value.baseConfiguration}`)
   if (breakdownBy.value) params.push(`breakdownBy=${breakdownBy.value}`)

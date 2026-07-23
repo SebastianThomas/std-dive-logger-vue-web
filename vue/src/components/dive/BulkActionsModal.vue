@@ -127,6 +127,38 @@
                 </p>
               </div>
 
+              <!-- CCR Unit: only relevant for (and only ever applied to) CCR-configured dives -->
+              <div v-if="ccrEligibleCount > 0" class="space-y-2">
+                <label for="bulk-ccr-unit" class="text-sm font-medium">CCR Unit</label>
+                <div class="flex gap-2">
+                  <select
+                    id="bulk-ccr-unit"
+                    v-model.number="selectedCcrUnitId"
+                    class="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  >
+                    <option value="">Select CCR unit</option>
+                    <option v-for="unit in ccrUnits" :key="unit.id" :value="unit.id">
+                      {{ formatCcrUnitLabel(unit) }}
+                    </option>
+                  </select>
+                  <button
+                    :disabled="!canUpdateCcrUnit"
+                    @click="handleCcrUnitUpdate"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {{ updatingCcrUnit ? 'Updating...' : 'Update' }}
+                  </button>
+                </div>
+                <p v-if="ccrUnitsLoading" class="text-xs text-gray-500">Loading CCR units...</p>
+                <p v-else-if="!ccrUnits.length" class="text-xs text-gray-500">
+                  No CCR units found. Create one in your profile first.
+                </p>
+                <p v-if="ccrEligibleCount < selectedCount" class="text-xs text-gray-500">
+                  Only applies to the {{ ccrEligibleCount }} of {{ selectedCount }} selected dives
+                  that are CCR-configured.
+                </p>
+              </div>
+
               <div class="space-y-2">
                 <label for="bulk-weight" class="text-sm font-medium">Weight (kg)</label>
                 <div class="flex gap-2">
@@ -237,10 +269,15 @@ import type {
   DiveWithoutProfiles,
   PagedResult,
   Suit,
+  CcrUnit,
   BaseConfiguration,
   DiveConfiguration,
 } from '@/lib/types/dive'
-import { BASE_CONFIGURATION_LABELS, SUIT_TYPE_LABELS } from '@/lib/types/dive'
+import {
+  BASE_CONFIGURATION_LABELS,
+  SUIT_TYPE_LABELS,
+  isCcrBaseConfiguration,
+} from '@/lib/types/dive'
 
 const props = defineProps<{
   open: boolean
@@ -259,11 +296,18 @@ const showDeleteConfirm = ref(false)
 const showSecondDeleteConfirm = ref(false)
 const selectedBaseConfiguration = ref<BaseConfiguration | ''>('')
 const selectedSuitId = ref<number | null>(null)
+const selectedCcrUnitId = ref<number | null>(null)
 const weightInput = ref<number | null>(null)
 const suits = ref<Suit[]>([])
 const suitsLoading = ref(false)
+const ccrUnits = ref<CcrUnit[]>([])
+const ccrUnitsLoading = ref(false)
+/** How many of the currently-selected dives are CCR-configured — the bulk CCR-unit update only
+ * ever touches this subset, mirroring the backend's own silent-skip-non-CCR behavior. */
+const ccrEligibleCount = ref(0)
 const updatingBaseConfiguration = ref(false)
 const updatingSuit = ref(false)
+const updatingCcrUnit = ref(false)
 const updatingWeight = ref(false)
 const expandedSection = ref<'merge' | 'config' | 'delete' | null>(null)
 
@@ -285,6 +329,13 @@ const canUpdateSuit = computed(
     !updatingSuit.value &&
     !suitsLoading.value,
 )
+const canUpdateCcrUnit = computed(
+  () =>
+    Boolean(selectedCcrUnitId.value) &&
+    ccrEligibleCount.value > 0 &&
+    !updatingCcrUnit.value &&
+    !ccrUnitsLoading.value,
+)
 const canUpdateWeight = computed(
   () => hasValidWeight.value && selectedIds.value.length > 0 && !updatingWeight.value,
 )
@@ -292,7 +343,9 @@ const canUpdateWeight = computed(
 const resetForm = () => {
   selectedBaseConfiguration.value = ''
   selectedSuitId.value = null
+  selectedCcrUnitId.value = null
   weightInput.value = null
+  ccrEligibleCount.value = 0
   expandedSection.value = null
 }
 
@@ -312,6 +365,21 @@ const loadSuits = async () => {
     toast.error('Failed to load suits')
   } finally {
     suitsLoading.value = false
+  }
+}
+
+const loadCcrUnits = async () => {
+  ccrUnitsLoading.value = true
+  try {
+    const res = await getWithToken<PagedResult<CcrUnit>>(
+      '/v1/dives/configuration/ccrUnit?page=0&size=100',
+    )
+    ccrUnits.value = res.data.result ?? []
+  } catch (err) {
+    console.error('Failed to load CCR units', err)
+    toast.error('Failed to load CCR units')
+  } finally {
+    ccrUnitsLoading.value = false
   }
 }
 
@@ -343,6 +411,9 @@ watch(
       resetForm()
       if (!suits.value.length) {
         loadSuits()
+      }
+      if (!ccrUnits.value.length) {
+        loadCcrUnits()
       }
       await prefillCommonValues()
     }
@@ -377,6 +448,17 @@ const prefillCommonValues = async () => {
       selectedSuitId.value = sameSuitId
     }
 
+    const ccrEligibleDives = dives.filter((d) =>
+      d.configuration?.base ? isCcrBaseConfiguration(d.configuration.base) : false,
+    )
+    ccrEligibleCount.value = ccrEligibleDives.length
+    const sameCcrUnitId = allSameOrNull<number>(
+      ccrEligibleDives.map((d) => d.configuration?.ccrUnit?.id),
+    )
+    if (sameCcrUnitId !== null) {
+      selectedCcrUnitId.value = sameCcrUnitId
+    }
+
     const sameWeight = allSameOrNull<number>(dives.map((d) => d.configuration?.weight))
     if (sameWeight !== null) {
       weightInput.value = sameWeight
@@ -394,6 +476,14 @@ const formatSuitLabel = (suit: Suit) => {
   }
   if (suit.notes) {
     parts.push(suit.notes)
+  }
+  return parts.join(' - ')
+}
+
+const formatCcrUnitLabel = (unit: CcrUnit) => {
+  const parts = [unit.name]
+  if (unit.notes) {
+    parts.push(unit.notes)
   }
   return parts.join(' - ')
 }
@@ -445,6 +535,33 @@ const handleSuitUpdate = async () => {
     toast.error('Failed to update suit')
   } finally {
     updatingSuit.value = false
+  }
+}
+
+const handleCcrUnitUpdate = async () => {
+  if (!selectedCcrUnitId.value) {
+    toast.error('Select a CCR unit')
+    return
+  }
+  if (!selectedIds.value.length) {
+    toast.error('No dives selected')
+    return
+  }
+  updatingCcrUnit.value = true
+  try {
+    // The backend only ever applies this to the subset of these dives that are themselves
+    // CCR-configured — any others in the selection are left untouched.
+    await putWithToken('/v1/dives/ccrUnit', {
+      newValue: selectedCcrUnitId.value,
+      diveIds: selectedIds.value,
+    })
+    toast.success('CCR unit updated')
+    emit('refresh')
+  } catch (err) {
+    console.error('Failed to update CCR unit', err)
+    toast.error('Failed to update CCR unit')
+  } finally {
+    updatingCcrUnit.value = false
   }
 }
 

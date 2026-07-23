@@ -121,6 +121,7 @@
             ]"
             :center="[dive.site.latitude, dive.site.longitude]"
             :zoom="13"
+            :show-dive-count-badge="false"
           />
         </div>
 
@@ -375,6 +376,25 @@
             </InfoCard>
           </div>
 
+          <!-- CCR Unit Info (only relevant for CCR rigs) -->
+          <div
+            v-if="isCcrBaseConfiguration(dive.configuration.base) && dive.configuration.ccrUnit"
+          >
+            <h3 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">CCR Unit</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <InfoCard title="Name">
+                <span>{{ dive.configuration.ccrUnit.name }}</span>
+              </InfoCard>
+              <InfoCard
+                v-if="dive.configuration.ccrUnit.notes"
+                title="Notes"
+                class="md:col-span-2"
+              >
+                {{ dive.configuration.ccrUnit.notes }}
+              </InfoCard>
+            </div>
+          </div>
+
           <!-- Weight Info -->
           <div v-if="dive.configuration.weight !== undefined && dive.configuration.weight !== null">
             <h3 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">Weight</h3>
@@ -448,7 +468,11 @@ import SharePopover from '@/components/share/SharePopover.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import ProfileReimportModal from '@/components/dive/view/ProfileReimportModal.vue'
 import type { Dive, DiveComputer, Gas } from '@/lib/types/dive'
-import { BASE_CONFIGURATION_LABELS, SUIT_TYPE_LABELS } from '@/lib/types/dive'
+import {
+  BASE_CONFIGURATION_LABELS,
+  SUIT_TYPE_LABELS,
+  isCcrBaseConfiguration,
+} from '@/lib/types/dive'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { User } from '@/lib/types/user'
 import { useProfileReimportStore } from '@/stores/profileReimport'

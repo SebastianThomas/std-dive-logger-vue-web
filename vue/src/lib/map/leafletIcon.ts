@@ -47,9 +47,10 @@ function haloColorRgb(diveCount: number): string {
 export function createDiveSiteIcon(
   diveCount: number,
   customIconUrl?: string | null,
+  showBadge = true,
 ): Icon<IconOptions> {
   const rgb = haloColorRgb(diveCount)
-  const badge = diveCount > 0 ? `<div class="site-marker-badge">${diveCount}</div>` : ''
+  const badge = showBadge && diveCount > 0 ? `<div class="site-marker-badge">${diveCount}</div>` : ''
   const iconUrl = customIconUrl || DIVER_ICON_URL
   return new DivIcon({
     html: `

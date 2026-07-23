@@ -33,6 +33,7 @@
         <section v-if="user" class="border-t pt-6 space-y-4">
           <h2 class="text-lg font-medium">Equipment Configurations</h2>
           <SuitManagement :user-id="user.id" />
+          <CcrUnitManagement :user-id="user.id" />
           <DiveComputerManagement :user-id="user.id" />
         </section>
 
@@ -90,6 +91,7 @@ import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { type User } from '@/lib/types/user'
 import SuitManagement from '@/components/dive/SuitManagement.vue'
+import CcrUnitManagement from '@/components/dive/CcrUnitManagement.vue'
 import DiveComputerManagement from '@/components/dive/DiveComputerManagement.vue'
 import BuddyManagement from '@/components/dive/BuddyManagement.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'

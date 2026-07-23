@@ -270,6 +270,39 @@
           </div>
         </div>
 
+        <!-- CCR Unit (only relevant for CCR rigs; managed via external entity like Suit) -->
+        <div v-if="isCcrBaseConfiguration(modelValue.configuration.base)" class="border-t pt-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium">CCR Unit</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                Select an existing rebreather or create a new one. Optional.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+              @click="showCcrUnitModal = true"
+            >
+              Choose / Create CCR Unit
+            </button>
+          </div>
+
+          <div v-if="modelValue.configuration.ccrUnit" class="mt-3 text-sm space-y-1">
+            <div>
+              <span class="font-semibold">Name:</span>
+              {{ modelValue.configuration.ccrUnit.name }}
+            </div>
+            <div v-if="modelValue.configuration.ccrUnit.notes">
+              <span class="font-semibold">Notes:</span>
+              {{ formatSuitNotesPreview(modelValue.configuration.ccrUnit.notes) }}
+            </div>
+          </div>
+          <p v-else class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+            No CCR unit selected.
+          </p>
+        </div>
+
         <!-- Weight -->
         <div class="border-t pt-4 space-y-3">
           <div>
@@ -310,6 +343,14 @@
       :user-id="userId"
       @suit-selected="handleSuitSelected"
       @close="showSuitModal = false"
+    />
+
+    <!-- CCR Unit modal -->
+    <CcrUnitSelector
+      v-if="showCcrUnitModal"
+      :current-ccr-unit="modelValue.configuration?.ccrUnit ?? null"
+      @ccr-unit-selected="handleCcrUnitSelected"
+      @close="showCcrUnitModal = false"
     />
 
     <!-- Map Modal -->
@@ -360,14 +401,17 @@ import { ref } from 'vue'
 import { useApi } from '@/composables/useApi'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
 import SuitSelector from '@/components/dive/edit/SuitSelector.vue'
+import CcrUnitSelector from '@/components/dive/edit/CcrUnitSelector.vue'
 import {
   type DiveSite,
   type Visibility,
   type GasConsumption,
   type DiveConfiguration,
   type Suit,
+  type CcrUnit,
   BASE_CONFIGURATION_LABELS,
   SUIT_TYPE_LABELS,
+  isCcrBaseConfiguration,
 } from '@/lib/types/dive'
 
 interface DiveFormData {
@@ -399,6 +443,7 @@ const showBuddyDropdown = ref(false)
 let buddyDebounce: ReturnType<typeof setTimeout> | null = null
 const selectedCoords = ref<{ lat: number; lon: number } | null>(null)
 const showSuitModal = ref(false)
+const showCcrUnitModal = ref(false)
 // Notes preview formatter: first three words, ensure >= 20 chars
 const formatSuitNotesPreview = (notes?: string) => {
   const text = (notes ?? '').trim()
@@ -590,5 +635,17 @@ const applySuitToModel = (suit: Suit) => {
       suit,
     },
   })
+}
+
+// CCR unit management helpers
+const handleCcrUnitSelected = (ccrUnit: CcrUnit) => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    configuration: {
+      ...props.modelValue.configuration!,
+      ccrUnit,
+    },
+  })
+  showCcrUnitModal.value = false
 }
 </script>
