@@ -26,10 +26,23 @@
       <div class="flex-1 overflow-auto p-4 space-y-4">
         <!-- Selection Mode -->
         <div v-if="!selectedSite" class="space-y-4">
+          <div
+            v-if="initialName"
+            class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3 text-sm text-amber-900 dark:text-amber-100"
+          >
+            The dive site "<strong>{{ initialName }}</strong
+            >" from your import couldn't be matched automatically. Search for it below, or create
+            it as a new site.
+          </div>
+
           <!-- Search existing sites -->
           <div>
             <label class="block text-sm font-medium mb-2">Search Existing Dive Sites</label>
-            <AutocompleteInput suburl="site" label="Search by name..." @selected="onSiteSelected" />
+            <DiveSiteSearch
+              placeholder="Search by name..."
+              :initial-value="initialName ?? ''"
+              @selected="onSiteSelected"
+            />
           </div>
 
           <div class="relative">
@@ -94,8 +107,13 @@
           </div>
 
           <!-- Map picker for new site -->
-          <div v-else class="h-64">
-            <DiveSiteMapPicker @select="onMapCoordSelect" />
+          <div v-else class="space-y-2">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Click on the map below to set this site's location.
+            </p>
+            <div class="h-64">
+              <DiveSiteMapPicker @select="onMapCoordSelect" />
+            </div>
           </div>
         </div>
       </div>
@@ -124,10 +142,11 @@
           <button
             v-if="selectedSite && (!isCreatingNew || (mapLat !== null && mapLon !== null))"
             type="button"
+            :disabled="loading"
             @click="confirmSelection"
-            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
-            Confirm
+            {{ loading ? 'Creating...' : 'Confirm' }}
           </button>
           <button
             v-if="selectedSite && isCreatingNew && (mapLat === null || mapLon === null)"
@@ -146,21 +165,29 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useApi } from '@/composables/useApi'
-import AutocompleteInput from '@/components/AutocompleteInput.vue'
+import DiveSiteSearch from '@/components/DiveSiteSearch.vue'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
 import { toast } from 'vue-sonner'
 import type { DiveSite } from '@/lib/types/dive'
 import type { MapCoords } from '@/components/DiveSiteMapPicker.vue'
 
-const newSiteName = ref('')
+interface Props {
+  /** Pre-fills the search box and "create new" name when the caller already knows which
+   * dive site name couldn't be resolved (e.g. an import that referenced a missing site). */
+  initialName?: string
+}
+
+const props = defineProps<Props>()
+
+const newSiteName = ref(props.initialName ?? '')
 const selectedSite = ref<DiveSite | null>(null)
 const isCreatingNew = ref(false)
 const mapLat = ref<number | null>(null)
 const mapLon = ref<number | null>(null)
 const loading = ref(false)
 
-const { getWithToken, postWithToken } = useApi()
+const { postWithToken } = useApi()
 
 const emit = defineEmits<{
   'site-selected': [site: DiveSite]
@@ -168,20 +195,11 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const onSiteSelected = async (option: { id: number; name: string }) => {
-  loading.value = true
-  try {
-    // Fetch the full site details including coordinates
-    const res = await getWithToken<DiveSite>(`/v1/dives/sites/${option.id}`)
-    selectedSite.value = res.data
-    isCreatingNew.value = false
-    mapLat.value = null
-    mapLon.value = null
-  } catch (err) {
-    console.error('Failed to fetch dive site details:', err)
-  } finally {
-    loading.value = false
-  }
+const onSiteSelected = (site: DiveSite) => {
+  selectedSite.value = site
+  isCreatingNew.value = false
+  mapLat.value = null
+  mapLon.value = null
 }
 
 const proceedToMap = () => {

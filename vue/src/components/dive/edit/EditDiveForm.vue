@@ -32,32 +32,25 @@
       <!-- Location -->
       <div>
         <label for="site-name" class="block mb-2 font-medium">Location</label>
-        <div class="flex gap-2 items-end">
-          <input
-            id="site-name"
-            :value="modelValue.diveSite?.name ?? ''"
-            type="text"
-            class="flex-1 p-2 border rounded"
-            placeholder="Location Name"
-            @input="
-              updateSite(
-                ($event.target as HTMLInputElement).value,
-                modelValue.diveSite?.latitude ?? 0,
-                modelValue.diveSite?.longitude ?? 0,
-              )
-            "
-          />
+        <div class="flex gap-2 items-start">
+          <div class="flex-1">
+            <DiveSiteSearch
+              :initial-value="modelValue.diveSite?.name ?? ''"
+              placeholder="Search dive sites by name..."
+              @selected="onSiteSelected"
+            />
+          </div>
           <button
             type="button"
-            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 whitespace-nowrap"
             @click="showMap = true"
           >
             Choose on Map
           </button>
         </div>
         <p v-if="modelValue.diveSite" class="text-sm mt-1 text-gray-600 dark:text-gray-400">
-          Selected: {{ modelValue.diveSite.latitude.toFixed(5) }},
-          {{ modelValue.diveSite.longitude.toFixed(5) }}
+          Selected: {{ modelValue.diveSite.name }} ({{ modelValue.diveSite.latitude.toFixed(5) }},
+          {{ modelValue.diveSite.longitude.toFixed(5) }})
         </p>
       </div>
 
@@ -400,6 +393,7 @@
 import { ref } from 'vue'
 import { useApi } from '@/composables/useApi'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
+import DiveSiteSearch from '@/components/DiveSiteSearch.vue'
 import SuitSelector from '@/components/dive/edit/SuitSelector.vue'
 import CcrUnitSelector from '@/components/dive/edit/CcrUnitSelector.vue'
 import {
@@ -471,6 +465,10 @@ const updateSite = (name: string, lat: number, lon: number) => {
     ...props.modelValue,
     diveSite: { name, latitude: lat, longitude: lon },
   })
+}
+
+const onSiteSelected = (site: DiveSite) => {
+  updateSite(site.name, site.latitude, site.longitude)
 }
 
 const handleMapClick = (coords: { lat: number; lon: number }) => {
