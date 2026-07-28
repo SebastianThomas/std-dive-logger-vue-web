@@ -100,34 +100,40 @@
       </div>
 
       <div v-else class="flex flex-col gap-4">
-        <p class="text-sm text-gray-600 dark:text-gray-300">
-          Sign in with your wetnotes.com account to import a Divesoft Liberty dive log. Your
-          password is only used to sign in directly with wetnotes.com in your browser - it is
-          never sent to our servers.
-        </p>
-        <div class="flex flex-col">
-          <label for="divesoft-email" class="mb-1 font-medium text-gray-700 dark:text-gray-300">
-            wetnotes.com Email
-          </label>
-          <input
-            id="divesoft-email"
-            v-model="divesoftEmail"
-            type="text"
-            placeholder="Enter email address"
-            class="pl-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
-          />
+        <div
+          class="text-sm text-gray-600 dark:text-gray-300 rounded-xl border border-sky-200 bg-sky-50 dark:bg-sky-900/20 dark:border-sky-700 p-4"
+        >
+          <p class="font-medium text-gray-800 dark:text-gray-100 mb-1">
+            wetnotes.com doesn't allow a direct sign-in from here, so this needs one manual step:
+          </p>
+          <ol class="list-decimal pl-5 space-y-1">
+            <li>Log into <strong>wetnotes.com</strong> in another tab (if you aren't already).</li>
+            <li>
+              Open your browser's dev tools (F12), go to the
+              <strong>Console</strong> tab, and run:
+              <code
+                class="block mt-1 px-2 py-1 rounded bg-gray-800 text-gray-100 dark:bg-black text-xs overflow-x-auto"
+                >localStorage.getItem('access_token')</code
+              >
+            </li>
+            <li>Copy the resulting value (without the surrounding quotes) and paste it below.</li>
+          </ol>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            This token is only valid for about 24 hours - you'll need to repeat this step for
+            future imports.
+          </p>
         </div>
         <div class="flex flex-col">
-          <label for="divesoft-password" class="mb-1 font-medium text-gray-700 dark:text-gray-300">
-            wetnotes.com Password
+          <label for="divesoft-token" class="mb-1 font-medium text-gray-700 dark:text-gray-300">
+            wetnotes.com Access Token
           </label>
-          <input
-            id="divesoft-password"
-            v-model="divesoftPassword"
-            type="password"
-            placeholder="Enter password"
-            class="pl-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
-          />
+          <textarea
+            id="divesoft-token"
+            v-model="divesoftToken"
+            rows="3"
+            placeholder="Paste the access_token value here"
+            class="pl-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white font-mono text-xs"
+          ></textarea>
         </div>
         <div class="flex flex-col">
           <label for="divesoft-dive" class="mb-1 font-medium text-gray-700 dark:text-gray-300">
@@ -216,12 +222,9 @@ import DiveSiteSelector from '@/components/DiveSiteSelector.vue'
 import type { UploadDiveResult, DiveSite } from '@/lib/types/dive'
 import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
 import {
-  getDivesoftConfig,
-  loginDivesoft,
   listDivesoftDiveIds,
   getDivesoftDive,
   extractDivesoftDiveId,
-  DivesoftLoginError,
   type DivesoftDiveJson,
 } from '@/lib/divesoft'
 import axios from 'axios'
@@ -240,8 +243,7 @@ const missingSiteName = ref<string | null>(null)
 const createdSiteId = ref<number | null>(null)
 const loading = ref(false)
 
-const divesoftEmail = ref('')
-const divesoftPassword = ref('')
+const divesoftToken = ref('')
 const divesoftDiveInput = ref('')
 // Cache of already-fetched dive JSON so a "missing dive site" retry can re-submit to our backend
 // without signing in to wetnotes.com again.
@@ -441,6 +443,7 @@ const postDivesoftDives = async (dives: DivesoftDiveJson[], toastId: string | nu
   ).data
   handleImportSuccess(res, toastId, () => {
     pendingDivesoftDives.value = null
+    divesoftToken.value = ''
     divesoftDiveInput.value = ''
     createdSiteId.value = null
   })
@@ -448,32 +451,29 @@ const postDivesoftDives = async (dives: DivesoftDiveJson[], toastId: string | nu
 
 const handleDivesoftSubmit = async () => {
   status.value = ''
-  if (!divesoftEmail.value || !divesoftPassword.value) {
-    status.value = 'Error: Please enter your wetnotes.com email and password.'
+  const token = divesoftToken.value.trim()
+  if (!token) {
+    status.value = 'Error: Please paste your wetnotes.com access token.'
     return
   }
 
   lastImportSource.value = 'divesoft'
   loading.value = true
-  const toastId = toast.loading('Signing in to wetnotes.com...', { duration: 10000 })
+  const toastId = toast.loading('Fetching your dive(s) from wetnotes.com...', {
+    duration: 10000,
+  })
 
   try {
-    const config = await getDivesoftConfig()
-    const token = await loginDivesoft(config, divesoftEmail.value, divesoftPassword.value)
-    // Never keep the password around any longer than needed for the login call above.
-    divesoftPassword.value = ''
-
     const diveIdInput = divesoftDiveInput.value.trim()
     let dives: DivesoftDiveJson[]
     if (diveIdInput) {
-      dives = [await getDivesoftDive(config, token, extractDivesoftDiveId(diveIdInput))]
+      dives = [await getDivesoftDive(token, extractDivesoftDiveId(diveIdInput))]
     } else {
-      toast.loading('Fetching your dives from wetnotes.com...', { id: toastId })
-      const ids = await listDivesoftDiveIds(config, token)
+      const ids = await listDivesoftDiveIds(token)
       dives = []
       for (const [index, id] of ids.entries()) {
         toast.loading(`Fetching dive ${index + 1} of ${ids.length}...`, { id: toastId })
-        dives.push(await getDivesoftDive(config, token, id))
+        dives.push(await getDivesoftDive(token, id))
       }
     }
     pendingDivesoftDives.value = dives
@@ -481,10 +481,11 @@ const handleDivesoftSubmit = async () => {
     toast.loading('Importing...', { id: toastId })
     await postDivesoftDives(dives, toastId)
   } catch (err) {
-    if (err instanceof DivesoftLoginError) {
+    if (axios.isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
       toast.dismiss(toastId)
-      toast.error(err.message)
-      status.value = `Error: ${err.message}`
+      const message = 'Your wetnotes.com access token is invalid or expired. Please paste a fresh one.'
+      toast.error(message)
+      status.value = `Error: ${message}`
     } else {
       handleImportError(err, toastId)
     }
