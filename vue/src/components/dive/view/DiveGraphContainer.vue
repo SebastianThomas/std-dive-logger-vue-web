@@ -109,6 +109,7 @@
         <div class="shrink-0 px-3 pb-3">
           <AscentRatePanel
             :profiles="profiles"
+            :dive-id="diveId"
             :visible-profiles="visibleProfiles"
             :selected-profiles="selectedProfiles"
             :external-hover-time-ms="sharedHoverTimeMs"
@@ -210,6 +211,7 @@
     <AscentRatePanel
       class="mt-2"
       :profiles="profiles"
+      :dive-id="diveId"
       :visible-profiles="visibleProfiles"
       :selected-profiles="selectedProfiles"
       :external-hover-time-ms="sharedHoverTimeMs"

@@ -60,9 +60,9 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { select, scaleLinear, area, axisLeft, curveMonotoneX, bisector } from 'd3'
 import type { Area } from 'd3'
-import type { DiveProfile } from '@/lib/types/dive'
+import type { DiveProfile, DiveProfileRatesResponse } from '@/lib/types/dive'
 import {
-  computeAscentRates,
+  toRatePoints,
   rateTier,
   SLOW_RATE_M_PER_MIN,
   NORMAL_RATE_M_PER_MIN,
@@ -72,9 +72,11 @@ import {
   type RatePoint,
 } from '@/lib/graph/ascentRate'
 import { formatElapsedTime } from '@/lib/utils/timeUtils'
+import { useApi } from '@/composables/useApi'
 
 const props = defineProps<{
   profiles: DiveProfile[]
+  diveId?: number
   visibleProfiles?: boolean[]
   selectedProfiles?: number[]
   /** Time (ms) hovered on another synced chart (e.g. the main dive profile) — draws a crosshair
@@ -86,6 +88,39 @@ const emit = defineEmits<{
   /** Fired on local hover so a sibling chart can sync its own crosshair to this time. */
   hoverTimeChange: [value: number | null]
 }>()
+
+const { getWithToken } = useApi()
+
+// Keyed by dive id — a dive's rates never change once analytics has run for it, so once fetched
+// there's no need to ask the backend again while the user navigates around the same dive.
+const ratesCache = new Map<number, DiveProfileRatesResponse[]>()
+const ratesByProfileId = ref<Map<number, DiveProfileRatesResponse>>(new Map())
+
+async function fetchRates() {
+  const diveId = props.diveId
+  if (!diveId) {
+    ratesByProfileId.value = new Map()
+    return
+  }
+  const cached = ratesCache.get(diveId)
+  if (cached) {
+    ratesByProfileId.value = new Map(cached.map((r) => [r.profileId, r]))
+    return
+  }
+  try {
+    const res = await getWithToken<DiveProfileRatesResponse[]>(
+      `/v1/dives/analytics/rates?id=${diveId}`,
+    )
+    ratesCache.set(diveId, res.data)
+    ratesByProfileId.value = new Map(res.data.map((r) => [r.profileId, r]))
+  } catch (err) {
+    console.error('Failed to fetch ascent/descent rates:', err)
+    ratesByProfileId.value = new Map()
+  }
+}
+
+onMounted(fetchRates)
+watch(() => [props.diveId, props.profiles], fetchRates, { deep: true })
 
 const expanded = ref(false)
 const container = ref<HTMLElement | null>(null)
@@ -115,9 +150,11 @@ const earliestStart = computed(() =>
   props.profiles.length ? Math.min(...props.profiles.map((p) => p.start)) : 0,
 )
 
-// Precompute once per profile set change — the adaptive window search is the expensive part,
-// no need to redo it on every render/resize.
-const ratesByProfile = computed<RatePoint[][]>(() => props.profiles.map(computeAscentRates))
+// Sourced from the backend (fetchRates above) rather than computed here, so this chart's
+// coloring can never drift from what segment classification itself used.
+const ratesByProfile = computed<RatePoint[][]>(() =>
+  props.profiles.map((p) => toRatePoints(ratesByProfileId.value.get(p.id))),
+)
 
 // Ascent and descent are separate, unrelated concerns (one is exertion/comfort, the other can be
 // a real decompression-injury risk), so they get their own peak rather than a single "worst of
@@ -400,7 +437,7 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => [props.profiles, props.visibleProfiles, expanded.value],
+  () => [props.profiles, props.visibleProfiles, expanded.value, ratesByProfileId.value],
   () => {
     if (expanded.value) {
       updateSize()

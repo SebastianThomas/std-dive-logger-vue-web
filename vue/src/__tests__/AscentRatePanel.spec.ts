@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import AscentRatePanel from '@/components/dive/view/AscentRatePanel.vue'
-import type { DiveProfile, DiveMeasurementWithId } from '@/lib/types/dive'
+import type { DiveProfile, DiveMeasurementWithId, DiveProfileRatesResponse } from '@/lib/types/dive'
 
 vi.stubGlobal(
   'ResizeObserver',
@@ -12,9 +12,14 @@ vi.stubGlobal(
   },
 )
 
+const getWithToken = vi.fn()
+vi.mock('@/composables/useApi', () => ({
+  useApi: () => ({ getWithToken }),
+}))
+
 const DUMMY_TEMP = { value: 15, unit: 'CELSIUS' as const }
 
-function buildProfile(depths: number[], stepSeconds = 5, epochOffset = 0): DiveProfile {
+function buildProfile(depths: number[], stepSeconds = 5, epochOffset = 0, id = 0): DiveProfile {
   const measurements: DiveMeasurementWithId[] = depths.map((depth, i) => ({
     id: i,
     measurement: {
@@ -26,7 +31,7 @@ function buildProfile(depths: number[], stepSeconds = 5, epochOffset = 0): DiveP
     },
   }))
   return {
-    id: 0,
+    id,
     diveComputer: {
       id: 0,
       manufacturer: { id: 0, name: 'Test' },
@@ -46,44 +51,77 @@ function buildProfile(depths: number[], stepSeconds = 5, epochOffset = 0): DiveP
   }
 }
 
+// Backend response fixture: a plain central-difference rate, just enough signal for these tests
+// (badges, tiers, hover) to exercise the panel with realistic-looking data. The actual smoothing
+// algorithm lives and is tested on the backend (DiveProfileSegmenterTest); this component only
+// displays whatever the backend sends.
+function ratesFromProfile(profile: DiveProfile): DiveProfileRatesResponse {
+  const points = profile.measurements
+  return {
+    profileId: profile.id,
+    rates: points.map((m, i) => {
+      const prev = points[Math.max(0, i - 1)]!
+      const next = points[Math.min(points.length - 1, i + 1)]!
+      const dtMinutes = (next.measurement.time - prev.measurement.time) / 60_000
+      const rateMetersPerMinute =
+        dtMinutes > 0 ? (next.measurement.depth - prev.measurement.depth) / dtMinutes : 0
+      return { time: m.measurement.time, depth: m.measurement.depth, rateMetersPerMinute }
+    }),
+  }
+}
+
+function mockRatesFor(...profiles: DiveProfile[]) {
+  getWithToken.mockResolvedValue({ data: profiles.map(ratesFromProfile) })
+}
+
+async function mountAndAwaitRates(props: {
+  profiles: DiveProfile[]
+  diveId?: number
+  externalHoverTimeMs?: number | null
+}) {
+  const wrapper = mount(AscentRatePanel, { props })
+  await flushPromises()
+  return wrapper
+}
+
 describe('AscentRatePanel', () => {
-  it('starts collapsed and shows a peak-descent summary badge without expanding', () => {
+  it('starts collapsed and shows a peak-descent summary badge without expanding', async () => {
     // A fast 20 m/min descent, no ascent at all.
     const depths = Array.from({ length: 25 }, (_, i) => (i * 5 * 20) / 60)
-    const wrapper = mount(AscentRatePanel, {
-      props: { profiles: [buildProfile(depths)] },
-    })
+    const profile = buildProfile(depths)
+    mockRatesFor(profile)
+    const wrapper = await mountAndAwaitRates({ profiles: [profile], diveId: 1 })
     expect(wrapper.find('svg').exists()).toBe(false)
     expect(wrapper.text()).toContain('peak descent')
     expect(wrapper.text()).not.toContain('peak ascent')
     expect(wrapper.text()).toContain('m/min')
   })
 
-  it('shows separate peak badges for descent and ascent when a profile has both', () => {
+  it('shows separate peak badges for descent and ascent when a profile has both', async () => {
     const descent = Array.from({ length: 15 }, (_, i) => (i * 5 * 20) / 60)
     const ascent = Array.from(
       { length: 15 },
       (_, i) => descent[descent.length - 1]! - (i * 5 * 12) / 60,
     )
-    const wrapper = mount(AscentRatePanel, {
-      props: { profiles: [buildProfile([...descent, ...ascent])] },
-    })
+    const profile = buildProfile([...descent, ...ascent])
+    mockRatesFor(profile)
+    const wrapper = await mountAndAwaitRates({ profiles: [profile], diveId: 1 })
     expect(wrapper.text()).toContain('peak descent')
     expect(wrapper.text()).toContain('peak ascent')
   })
 
   it('renders the chart once expanded', async () => {
     const depths = Array.from({ length: 25 }, (_, i) => (i * 5 * 10) / 60)
-    const wrapper = mount(AscentRatePanel, {
-      props: { profiles: [buildProfile(depths)] },
-    })
+    const profile = buildProfile(depths)
+    mockRatesFor(profile)
+    const wrapper = await mountAndAwaitRates({ profiles: [profile], diveId: 1 })
     await wrapper.find('button').trigger('click')
     await wrapper.vm.$nextTick()
     expect(wrapper.find('svg').exists()).toBe(true)
   })
 
-  it('shows no data state for an empty profile set', () => {
-    const wrapper = mount(AscentRatePanel, { props: { profiles: [] } })
+  it('shows no data state for an empty profile set', async () => {
+    const wrapper = await mountAndAwaitRates({ profiles: [] })
     expect(wrapper.text()).toContain('no data')
   })
 
@@ -93,8 +131,12 @@ describe('AscentRatePanel', () => {
     // because the elapsed-time baseline collapsed to 0 instead of the profile's actual start.
     const epochOffset = 1_753_000_000_000
     const depths = Array.from({ length: 5 }, (_, i) => i * 2)
-    const wrapper = mount(AscentRatePanel, {
-      props: { profiles: [buildProfile(depths, 5, epochOffset)], externalHoverTimeMs: null },
+    const profile = buildProfile(depths, 5, epochOffset)
+    mockRatesFor(profile)
+    const wrapper = await mountAndAwaitRates({
+      profiles: [profile],
+      diveId: 1,
+      externalHoverTimeMs: null,
     })
     await wrapper.find('button').trigger('click')
     await wrapper.setProps({ externalHoverTimeMs: epochOffset + 10_000 })
@@ -115,8 +157,12 @@ describe('AscentRatePanel', () => {
     }
     try {
       const depths = Array.from({ length: 10 }, (_, i) => i)
-      const wrapper = mount(AscentRatePanel, {
-        props: { profiles: [buildProfile(depths)], externalHoverTimeMs: null },
+      const profile = buildProfile(depths)
+      mockRatesFor(profile)
+      const wrapper = await mountAndAwaitRates({
+        profiles: [profile],
+        diveId: 1,
+        externalHoverTimeMs: null,
       })
       await wrapper.find('button').trigger('click')
       // Hover right at the end of the profile — the far right edge of the chart.
@@ -137,8 +183,12 @@ describe('AscentRatePanel', () => {
 
   it('gives the ascent-rate tooltip the same look as the main chart tooltip', async () => {
     const depths = Array.from({ length: 10 }, (_, i) => i)
-    const wrapper = mount(AscentRatePanel, {
-      props: { profiles: [buildProfile(depths)], externalHoverTimeMs: null },
+    const profile = buildProfile(depths)
+    mockRatesFor(profile)
+    const wrapper = await mountAndAwaitRates({
+      profiles: [profile],
+      diveId: 1,
+      externalHoverTimeMs: null,
     })
     await wrapper.find('button').trigger('click')
     await wrapper.setProps({ externalHoverTimeMs: 10_000 })

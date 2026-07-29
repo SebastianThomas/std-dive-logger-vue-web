@@ -284,6 +284,17 @@ export type DiveProfileSegmentWithId = {
   segment: DiveProfileSegment
 }
 
+export type DiveProfileRatePoint = {
+  time: number
+  depth: number
+  rateMetersPerMinute: number
+}
+
+export type DiveProfileRatesResponse = {
+  profileId: number
+  rates: DiveProfileRatePoint[]
+}
+
 export type DiveDepthVarianceStats = {
   version: number
   avgDepth: number
