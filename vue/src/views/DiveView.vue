@@ -548,10 +548,11 @@ const allGases = computed(() => {
   if (!gases || gases.length === 0) {
     return new Set<Gas>()
   }
-  // Deduplicate by composition, not by object reference (to handle Vue proxies)
+  // Deduplicate by composition only (not description) - the same gas breathed via different
+  // profiles/computers can have differently-worded descriptions, but it's still one gas.
   const seen = new Map<string, Gas>()
   gases.forEach((gas) => {
-    const key = `${gas.o2}-${gas.n2}-${gas.he}-${gas.description || ''}`
+    const key = `${gas.o2}-${gas.n2}-${gas.he}`
     if (!seen.has(key)) {
       seen.set(key, gas)
     }

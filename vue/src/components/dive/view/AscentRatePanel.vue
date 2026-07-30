@@ -324,21 +324,31 @@ function render() {
     drawTier(extremeArea, RATE_TIER_COLORS.extreme, 0.6, false)
   })
 
-  g.append('g').call(
-    axisLeft(yScale)
-      .tickValues(
-        [
-          -QUICK_RATE_M_PER_MIN,
-          -NORMAL_RATE_M_PER_MIN,
-          -SLOW_RATE_M_PER_MIN,
-          0,
-          SLOW_RATE_M_PER_MIN,
-          NORMAL_RATE_M_PER_MIN,
-          QUICK_RATE_M_PER_MIN,
-        ].filter((v) => Math.abs(v) <= maxAbsRate),
-      )
-      .tickFormat((d) => `${Number(d)}`),
-  )
+  // The panel is short (~110px) while the y-domain always spans at least ±21.6 m/min, so the
+  // innermost candidate ticks (0, ±slow) can end up just a few px apart - closer than a single
+  // line of tick-label text. Keep 0 first (most important reference), then admit the remaining
+  // candidates outward-in-priority only if they clear a minimum pixel gap from every tick already
+  // kept, so labels never overlap regardless of panel height or how large maxAbsRate gets.
+  const MIN_TICK_LABEL_GAP_PX = 14
+  const candidateTicks = [
+    0,
+    SLOW_RATE_M_PER_MIN,
+    -SLOW_RATE_M_PER_MIN,
+    NORMAL_RATE_M_PER_MIN,
+    -NORMAL_RATE_M_PER_MIN,
+    QUICK_RATE_M_PER_MIN,
+    -QUICK_RATE_M_PER_MIN,
+  ].filter((v) => Math.abs(v) <= maxAbsRate)
+  const keptTicks: number[] = []
+  for (const value of candidateTicks) {
+    const y = yScale(value)
+    if (keptTicks.every((kept) => Math.abs(yScale(kept) - y) >= MIN_TICK_LABEL_GAP_PX)) {
+      keptTicks.push(value)
+    }
+  }
+  keptTicks.sort((a, b) => a - b)
+
+  g.append('g').call(axisLeft(yScale).tickValues(keptTicks).tickFormat((d) => `${Number(d)}`))
 
   const crosshair = g
     .append('line')
