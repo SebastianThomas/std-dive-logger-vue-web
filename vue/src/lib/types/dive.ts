@@ -262,6 +262,44 @@ export type DiveWithoutProfiles = {
 }
 export type UploadDiveResult = { dives: DiveWithoutProfiles[]; errors: string[] }
 
+export type PendingImportSource = 'DIVESOFT' | 'FIT_GARMIN' | 'UDDF_SHEARWATER' | 'XML_SUBSURFACE'
+
+/** Cheap, review-only view of a staged (not yet persisted) import - never carries profile data. */
+export type PendingImportSummary = {
+  id: number
+  source: PendingImportSource
+  externalId?: string
+  filename?: string
+  diveIdentifierGuess?: string
+  siteNameGuess?: string
+  latitudeGuess?: number
+  longitudeGuess?: number
+  computerSerial?: string
+  startDate?: string
+  durationSeconds?: number
+  maxDepth?: number
+  createdAt: string
+}
+
+export type StageImportResult = { staged: PendingImportSummary[]; errors: string[] }
+
+/**
+ * Overrides applied when committing a staged import. `linkToExistingDiveId` is mutually exclusive
+ * with the site fields - when set, the parsed profile is attached to that existing dive instead
+ * of creating a new one.
+ */
+export type PendingImportCommitRequest = {
+  diveNumber?: number
+  diveIdentifier?: string
+  notes?: string
+  visibility?: Visibility
+  namedBuddies?: string[]
+  diveSiteId?: number
+  newSiteName?: string
+  newSiteLocation?: { lat: number; lon: number }
+  linkToExistingDiveId?: number
+}
+
 export type DiveProfileWithoutMeasurements = {
   id: number
   diveComputer: DiveComputer

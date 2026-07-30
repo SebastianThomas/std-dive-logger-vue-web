@@ -3,213 +3,226 @@
     <div class="w-full max-w-3xl bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
       <h1 class="text-2xl font-bold mb-4">Upload Dive Files</h1>
 
-      <div class="flex gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
-        <button
-          type="button"
-          class="px-3 py-2 text-sm font-medium border-b-2 -mb-px"
-          :class="
-            mode === 'files'
-              ? 'border-sky-500 text-sky-600 dark:text-sky-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-          "
-          @click="mode = 'files'"
-        >
-          Upload files
-        </button>
-        <button
-          type="button"
-          class="px-3 py-2 text-sm font-medium border-b-2 -mb-px"
-          :class="
-            mode === 'divesoft'
-              ? 'border-sky-500 text-sky-600 dark:text-sky-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-          "
-          @click="mode = 'divesoft'"
-        >
-          Import from Divesoft (wetnotes.com)
-        </button>
-      </div>
-
-      <div v-if="mode === 'files'" class="flex flex-col gap-4">
-        <div class="flex flex-col gap-2">
-          <label class="font-medium">Files</label>
+      <div v-if="stagedImports.length === 0">
+        <div class="flex gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
           <button
             type="button"
-            class="border-2 border-dashed border-sky-300 bg-sky-50 dark:bg-sky-900 dark:border-sky-600 rounded-xl p-6 text-center cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-800 hover:border-sky-400 dark:hover:border-sky-500"
-            @click="fileInputRef?.click()"
-            @dragover.prevent
-            @drop.prevent="handleDrop"
+            class="px-3 py-2 text-sm font-medium border-b-2 -mb-px"
+            :class="
+              mode === 'files'
+                ? 'border-sky-500 text-sky-600 dark:text-sky-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            "
+            @click="mode = 'files'"
           >
-            <div class="text-sky-500 dark:text-sky-400 text-4xl mb-2">
-              <i class="fas fa-cloud-upload-alt"></i>
-            </div>
-            <p class="text-gray-700 dark:text-gray-200">
-              <span v-if="files.length" class="font-semibold"
-                >{{ files.length }} file(s) selected</span
-              >
-              <span v-else><span class="font-semibold">Click to upload</span> or drag & drop</span>
-            </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Multiple files supported</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              Supported formats: UDDF, XML, FIT (POSB not yet supported)
-            </p>
+            Upload files
           </button>
-          <input
-            ref="fileInputRef"
-            type="file"
-            class="hidden"
-            multiple
-            accept=".uddf,.xml,.posb,.fit"
-            @change="onFileInput"
-          />
-          <ul
-            v-if="files.length"
-            class="text-sm text-gray-700 dark:text-gray-300 list-disc pl-5 space-y-1"
-          >
-            <li v-for="f in files" :key="f.name">{{ f.name }}</li>
-          </ul>
           <button
-            v-if="files.length"
             type="button"
-            class="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600 text-sm self-start"
-            @click="clearFiles"
+            class="px-3 py-2 text-sm font-medium border-b-2 -mb-px"
+            :class="
+              mode === 'divesoft'
+                ? 'border-sky-500 text-sky-600 dark:text-sky-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            "
+            @click="mode = 'divesoft'"
           >
-            Clear Files
+            Import from Divesoft (wetnotes.com)
           </button>
         </div>
 
-        <div class="flex justify-end gap-3">
-          <button
-            :disabled="loading"
-            class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="safeBack"
-          >
-            Cancel
-          </button>
-          <button
-            :disabled="loading"
-            class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            @click="handleSubmit"
-          >
-            <span v-if="loading" class="inline-block animate-spin">
-              <i class="fas fa-spinner"></i>
-            </span>
-            {{ loading ? 'Uploading...' : 'Submit' }}
-          </button>
-        </div>
-      </div>
-
-      <div v-else class="flex flex-col gap-4">
-        <div
-          class="text-sm text-gray-600 dark:text-gray-300 rounded-xl border border-sky-200 bg-sky-50 dark:bg-sky-900/20 dark:border-sky-700 p-4"
-        >
-          <p class="font-medium text-gray-800 dark:text-gray-100 mb-1">
-            wetnotes.com doesn't allow a direct sign-in from here, so this needs one manual step:
-          </p>
-          <ol class="list-decimal pl-5 space-y-1">
-            <li>Log into <strong>wetnotes.com</strong> in another tab (if you aren't already).</li>
-            <li>
-              Open your browser's dev tools (F12), go to the
-              <strong>Console</strong> tab, and run:
-              <code
-                class="block mt-1 px-2 py-1 rounded bg-gray-800 text-gray-100 dark:bg-black text-xs overflow-x-auto"
-                >localStorage.getItem('access_token')</code
-              >
-            </li>
-            <li>Copy the resulting value (without the surrounding quotes) and paste it below.</li>
-          </ol>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            This token is only valid for about 24 hours - you'll need to repeat this step for
-            future imports.
-          </p>
-        </div>
-        <div class="flex flex-col">
-          <label for="divesoft-token" class="mb-1 font-medium text-gray-700 dark:text-gray-300">
-            wetnotes.com Access Token
-          </label>
-          <textarea
-            id="divesoft-token"
-            v-model="divesoftToken"
-            rows="3"
-            placeholder="Paste the access_token value here"
-            class="pl-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white font-mono text-xs"
-          ></textarea>
-        </div>
-        <div class="flex flex-col">
-          <label for="divesoft-dive" class="mb-1 font-medium text-gray-700 dark:text-gray-300">
-            Dive URL or ID (leave blank to import all dives)
-          </label>
-          <input
-            id="divesoft-dive"
-            v-model="divesoftDiveInput"
-            type="text"
-            placeholder="https://wetnotes.com/app/dives/... or leave blank"
-            class="pl-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
-          />
-        </div>
-
-        <div class="flex justify-end gap-3">
-          <button
-            :disabled="loading"
-            class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="safeBack"
-          >
-            Cancel
-          </button>
-          <button
-            :disabled="loading"
-            class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            @click="handleDivesoftSubmit"
-          >
-            <span v-if="loading" class="inline-block animate-spin">
-              <i class="fas fa-spinner"></i>
-            </span>
-            {{ loading ? 'Importing...' : 'Import' }}
-          </button>
-        </div>
-      </div>
-
-      <p
-        v-if="status"
-        class="text-sm mt-4"
-        :class="status.startsWith('Error') ? 'text-red-600' : 'text-green-700'"
-      >
-        {{ status }}
-      </p>
-      <div v-if="errors">
-        <p class="text-sm" :class="'text-red-600'" v-for="e in errors" :key="e">{{ e }}</p>
-      </div>
-
-      <!-- Hints & Tips -->
-      <div
-        class="mt-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4"
-      >
-        <div class="flex items-start gap-3">
-          <div class="text-amber-600 dark:text-amber-400 text-xl leading-none">
-            <i class="fas fa-lightbulb"></i>
-          </div>
-          <div>
-            <h2 class="font-semibold text-amber-900 dark:text-amber-200 mb-1">Hints & Tips</h2>
-            <ul class="list-disc pl-5 text-sm text-amber-900/90 dark:text-amber-100/90 space-y-1">
-              <li>
-                Shearwater auto-merge: Add a <strong>+</strong> in front of the dive number in the
-                Shearwater Cloud app before exporting to auto-merge the uploaded dive into an
-                existing dive with the same number. If no such dive exists, the upload will return
-                an error.
-              </li>
+        <div v-if="mode === 'files'" class="flex flex-col gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="font-medium">Files</label>
+            <button
+              type="button"
+              class="border-2 border-dashed border-sky-300 bg-sky-50 dark:bg-sky-900 dark:border-sky-600 rounded-xl p-6 text-center cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-800 hover:border-sky-400 dark:hover:border-sky-500"
+              @click="fileInputRef?.click()"
+              @dragover.prevent
+              @drop.prevent="handleDrop"
+            >
+              <div class="text-sky-500 dark:text-sky-400 text-4xl mb-2">
+                <i class="fas fa-cloud-upload-alt"></i>
+              </div>
+              <p class="text-gray-700 dark:text-gray-200">
+                <span v-if="files.length" class="font-semibold"
+                  >{{ files.length }} file(s) selected</span
+                >
+                <span v-else
+                  ><span class="font-semibold">Click to upload</span> or drag & drop</span
+                >
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Multiple files supported</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Supported formats: UDDF, XML, FIT (POSB not yet supported)
+              </p>
+            </button>
+            <input
+              ref="fileInputRef"
+              type="file"
+              class="hidden"
+              multiple
+              accept=".uddf,.xml,.posb,.fit"
+              @change="onFileInput"
+            />
+            <ul
+              v-if="files.length"
+              class="text-sm text-gray-700 dark:text-gray-300 list-disc pl-5 space-y-1"
+            >
+              <li v-for="f in files" :key="f.name">{{ f.name }}</li>
             </ul>
+            <button
+              v-if="files.length"
+              type="button"
+              class="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600 text-sm self-start"
+              @click="clearFiles"
+            >
+              Clear Files
+            </button>
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <button
+              :disabled="loading"
+              class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              @click="safeBack"
+            >
+              Cancel
+            </button>
+            <button
+              :disabled="loading"
+              class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              @click="handleSubmit"
+            >
+              <span v-if="loading" class="inline-block animate-spin">
+                <i class="fas fa-spinner"></i>
+              </span>
+              {{ loading ? 'Uploading...' : 'Submit' }}
+            </button>
           </div>
         </div>
+
+        <div v-else class="flex flex-col gap-4">
+          <div
+            class="text-sm text-gray-600 dark:text-gray-300 rounded-xl border border-sky-200 bg-sky-50 dark:bg-sky-900/20 dark:border-sky-700 p-4"
+          >
+            <p class="font-medium text-gray-800 dark:text-gray-100 mb-1">
+              wetnotes.com doesn't allow a direct sign-in from here, so this needs one manual step:
+            </p>
+            <ol class="list-decimal pl-5 space-y-1">
+              <li>Log into <strong>wetnotes.com</strong> in another tab (if you aren't already).</li>
+              <li>
+                Open your browser's dev tools (F12), go to the
+                <strong>Console</strong> tab, and run:
+                <code
+                  class="block mt-1 px-2 py-1 rounded bg-gray-800 text-gray-100 dark:bg-black text-xs overflow-x-auto"
+                  >localStorage.getItem('access_token')</code
+                >
+              </li>
+              <li>Copy the resulting value (without the surrounding quotes) and paste it below.</li>
+            </ol>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              This token is only valid for about 24 hours - you'll need to repeat this step for
+              future imports.
+            </p>
+          </div>
+          <div class="flex flex-col">
+            <label for="divesoft-token" class="mb-1 font-medium text-gray-700 dark:text-gray-300">
+              wetnotes.com Access Token
+            </label>
+            <textarea
+              id="divesoft-token"
+              v-model="divesoftToken"
+              rows="3"
+              placeholder="Paste the access_token value here"
+              class="pl-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white font-mono text-xs"
+            ></textarea>
+          </div>
+          <div class="flex flex-col">
+            <label for="divesoft-dive" class="mb-1 font-medium text-gray-700 dark:text-gray-300">
+              Dive URL or ID (leave blank to import all dives)
+            </label>
+            <input
+              id="divesoft-dive"
+              v-model="divesoftDiveInput"
+              type="text"
+              placeholder="https://wetnotes.com/app/dives/... or leave blank"
+              class="pl-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <button
+              :disabled="loading"
+              class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              @click="safeBack"
+            >
+              Cancel
+            </button>
+            <button
+              :disabled="loading"
+              class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              @click="handleDivesoftSubmit"
+            >
+              <span v-if="loading" class="inline-block animate-spin">
+                <i class="fas fa-spinner"></i>
+              </span>
+              {{ loading ? 'Fetching...' : 'Fetch' }}
+            </button>
+          </div>
+        </div>
+
+        <p
+          v-if="status"
+          class="text-sm mt-4"
+          :class="status.startsWith('Error') ? 'text-red-600' : 'text-green-700'"
+        >
+          {{ status }}
+        </p>
+        <div v-if="errors">
+          <p class="text-sm" :class="'text-red-600'" v-for="e in errors" :key="e">{{ e }}</p>
+        </div>
+
+        <!-- Hints & Tips -->
+        <div
+          class="mt-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4"
+        >
+          <div class="flex items-start gap-3">
+            <div class="text-amber-600 dark:text-amber-400 text-xl leading-none">
+              <i class="fas fa-lightbulb"></i>
+            </div>
+            <div>
+              <h2 class="font-semibold text-amber-900 dark:text-amber-200 mb-1">Hints & Tips</h2>
+              <ul class="list-disc pl-5 text-sm text-amber-900/90 dark:text-amber-100/90 space-y-1">
+                <li>
+                  Shearwater auto-merge: Add a <strong>+</strong> in front of the dive number in
+                  the Shearwater Cloud app before exporting to auto-merge the uploaded dive into an
+                  existing dive with the same number.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review step: nothing has been persisted yet, review and confirm each staged dive -->
+      <div v-else class="flex flex-col gap-4">
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+          Nothing has been saved yet - review each dive below, adjust the site or attach it to an
+          existing dive if needed, then commit it.
+        </p>
+        <p v-if="stageErrors.length" class="text-sm text-red-600">
+          Some dives could not be parsed: {{ stageErrors.join('; ') }}
+        </p>
+        <PendingImportRow
+          v-for="summary in stagedImports"
+          :key="summary.id"
+          :summary="summary"
+          @committed="onCommitted"
+          @discarded="onDiscarded"
+        />
       </div>
     </div>
-
-    <DiveSiteSelector
-      v-if="showSelectSite"
-      :initial-name="missingSiteName ?? undefined"
-      @site-selected="onSiteSelected"
-      @site-created="onSiteCreated"
-      @close="handleSelectSiteClose"
-    />
   </div>
 </template>
 
@@ -218,8 +231,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useNavigation } from '@/composables/useNavigation'
 import { toast } from 'vue-sonner'
-import DiveSiteSelector from '@/components/DiveSiteSelector.vue'
-import type { UploadDiveResult, DiveSite } from '@/lib/types/dive'
+import PendingImportRow from '@/components/dive/import/PendingImportRow.vue'
+import type { DiveWithoutProfiles, StageImportResult, PendingImportSummary } from '@/lib/types/dive'
 import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
 import {
   listDivesoftDiveIds,
@@ -238,17 +251,13 @@ const files = ref<File[]>([])
 const status = ref('')
 const errors = ref<string[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
-const showSelectSite = ref(false)
-const missingSiteName = ref<string | null>(null)
-const createdSiteId = ref<number | null>(null)
 const loading = ref(false)
 
 const divesoftToken = ref('')
 const divesoftDiveInput = ref('')
-// Cache of already-fetched dive JSON so a "missing dive site" retry can re-submit to our backend
-// without signing in to wetnotes.com again.
-const pendingDivesoftDives = ref<DivesoftDiveJson[] | null>(null)
-const lastImportSource = ref<'files' | 'divesoft'>('files')
+
+const stagedImports = ref<PendingImportSummary[]>([])
+const stageErrors = ref<string[]>([])
 
 const handleDrop = (e: DragEvent) => {
   if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
@@ -320,63 +329,28 @@ const handleDiveCreateKeydown = (event: KeyboardEvent) => {
   }
 }
 
-/** Shared handling of a successful `UploadDiveResult` response, for either import path. */
-const handleImportSuccess = (
-  res: UploadDiveResult,
-  toastId: string | number,
-  onClear: () => void,
-) => {
-  const isErrors = res.errors && res.errors.length > 0
-  const isDives = res.dives && res.dives.length > 0
-  if (isErrors && isDives) {
-    status.value = `Import tried, successfully imported dives ${res.dives.map((d) => d.number).join(', ')}, but got errors.`
-    errors.value = res.errors
-    toast.dismiss(toastId)
-    toast.success(`Imported dives: ${res.dives.map((d) => d.number).join(', ')} with some errors`, {
-      duration: 10000,
-    })
-  } else if (isErrors) {
-    status.value = `Import tried, no dives successful, but got errors`
-    errors.value = res.errors
-    toast.dismiss(toastId)
-    toast.error('Import completed with errors', { duration: 10000 })
-  } else {
-    status.value = `Import complete: Imported ${res.dives.map((d) => d.number).join(', ')}`
-    toast.dismiss(toastId)
-    toast.success(
-      `Successfully imported ${res.dives.length} dive(s): ${res.dives.map((d) => d.number).join(', ')}`,
-      { duration: 10000 },
-    )
-    if (res.dives.length === 1) {
-      router.push({ name: 'DiveView', params: { diveId: res.dives[0]!.id } })
-    }
-    onClear()
+/** Shared handling of a successful `StageImportResult` response, for either import path. */
+const handleStageSuccess = (res: StageImportResult, toastId: string | number) => {
+  toast.dismiss(toastId)
+  stageErrors.value = res.errors ?? []
+  if (res.staged.length === 0) {
+    status.value = res.errors.length ? 'Error: Nothing could be imported.' : 'No dives found.'
+    toast.error(status.value)
+    return
   }
+  stagedImports.value = res.staged
+  toast.success(`Parsed ${res.staged.length} dive(s) - review and commit below`)
 }
 
-/** Shared handling of a failed import request, for either import path. */
-const handleImportError = (err: unknown, toastId: string | number) => {
+/** Shared handling of a failed stage request, for either import path. */
+const handleStageError = (err: unknown, toastId: string | number) => {
   toast.dismiss(toastId)
   if (axios.isAxiosError(err) && err.response) {
     const data = err.response.data as
-      | {
-          title?: string
-          field?: string
-          additionalMessage?: string
-          status?: number
-          name?: string
-          reason?: string
-          detail?: string
-        }
-      | UploadDiveResult
-    if ('reason' in data && data.reason === 'MISSING_VALUE' && data.field === 'DIVE_SITE') {
-      missingSiteName.value = data.name ?? null
-      // Show site selector instead of just create
-      showSelectSite.value = true
-      return
-    }
-    if ('dives' in data && 'errors' in data) {
-      status.value = `Error: Import for ${data.dives.length} dives would work, but failed importing ${data.errors.length} dives: \n${data.errors.join('\n')}`
+      | { title?: string; detail?: string }
+      | StageImportResult
+    if ('staged' in data && 'errors' in data) {
+      status.value = `Error: Could not parse ${data.errors.length} dive(s): \n${data.errors.join('\n')}`
     } else {
       status.value = `Error: ${data.title ?? 'Import failed'} (${data.detail ?? 'No more information'})`
     }
@@ -394,7 +368,6 @@ const handleSubmit = async () => {
     return
   }
 
-  lastImportSource.value = 'files'
   loading.value = true
   const toastId = toast.loading('Uploading dive files... This may take a few minutes.', {
     duration: 10000,
@@ -402,51 +375,25 @@ const handleSubmit = async () => {
 
   try {
     const formDataObj = new FormData()
-    const body: { diveSiteId?: number } = {}
-    if (createdSiteId.value) {
-      body.diveSiteId = createdSiteId.value
-    }
-    const bodyBlob = new Blob([JSON.stringify(body)], { type: 'application/json' })
-    formDataObj.append('uploadBody', bodyBlob)
     files.value.forEach((f) => formDataObj.append('file', f))
 
     const res = (
-      await postWithToken<UploadDiveResult, FormData>(
+      await postWithToken<StageImportResult, FormData>(
         resolveImporterUrl(`/v1/import`),
         formDataObj,
         {},
         null,
       )
     ).data
-    handleImportSuccess(res, toastId, () => {
+    handleStageSuccess(res, toastId)
+    if (res.staged.length > 0) {
       files.value = []
-      createdSiteId.value = null
-    })
+    }
   } catch (err) {
-    handleImportError(err, toastId)
+    handleStageError(err, toastId)
   } finally {
     loading.value = false
   }
-}
-
-/** Posts already-fetched Divesoft dive JSON to our backend and handles the result. */
-const postDivesoftDives = async (dives: DivesoftDiveJson[], toastId: string | number) => {
-  const body: { diveSiteId?: number } = {}
-  if (createdSiteId.value) {
-    body.diveSiteId = createdSiteId.value
-  }
-  const res = (
-    await postWithToken<UploadDiveResult, { dives: DivesoftDiveJson[]; body: object }>(
-      resolveImporterUrl('/v1/import/divesoft'),
-      { dives, body },
-    )
-  ).data
-  handleImportSuccess(res, toastId, () => {
-    pendingDivesoftDives.value = null
-    divesoftToken.value = ''
-    divesoftDiveInput.value = ''
-    createdSiteId.value = null
-  })
 }
 
 const handleDivesoftSubmit = async () => {
@@ -457,7 +404,6 @@ const handleDivesoftSubmit = async () => {
     return
   }
 
-  lastImportSource.value = 'divesoft'
   loading.value = true
   const toastId = toast.loading('Fetching your dive(s) from wetnotes.com...', {
     duration: 10000,
@@ -476,10 +422,19 @@ const handleDivesoftSubmit = async () => {
         dives.push(await getDivesoftDive(token, id))
       }
     }
-    pendingDivesoftDives.value = dives
 
-    toast.loading('Importing...', { id: toastId })
-    await postDivesoftDives(dives, toastId)
+    toast.loading('Parsing...', { id: toastId })
+    const res = (
+      await postWithToken<StageImportResult, { dives: DivesoftDiveJson[] }>(
+        resolveImporterUrl('/v1/import/divesoft'),
+        { dives },
+      )
+    ).data
+    handleStageSuccess(res, toastId)
+    if (res.staged.length > 0) {
+      divesoftToken.value = ''
+      divesoftDiveInput.value = ''
+    }
   } catch (err) {
     if (axios.isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
       toast.dismiss(toastId)
@@ -487,59 +442,23 @@ const handleDivesoftSubmit = async () => {
       toast.error(message)
       status.value = `Error: ${message}`
     } else {
-      handleImportError(err, toastId)
+      handleStageError(err, toastId)
     }
   } finally {
     loading.value = false
   }
 }
 
-const onSiteCreated = async (site: DiveSite) => {
-  showSelectSite.value = false
-  missingSiteName.value = null
-  createdSiteId.value = site.id ?? null
-  try {
-    if (lastImportSource.value === 'divesoft' && pendingDivesoftDives.value) {
-      const toastId = toast.loading('Importing...', { duration: 10000 })
-      loading.value = true
-      try {
-        await postDivesoftDives(pendingDivesoftDives.value, toastId)
-      } finally {
-        loading.value = false
-      }
-    } else {
-      await handleSubmit()
-    }
-  } catch (err) {
-    console.error('Error submitting after site creation:', err)
-    status.value = 'Error: Failed to import dives after site creation. Please try again.'
+const onCommitted = (pendingImportId: number, dive: DiveWithoutProfiles) => {
+  const wasLast = stagedImports.value.length === 1
+  stagedImports.value = stagedImports.value.filter((s) => s.id !== pendingImportId)
+  if (wasLast) {
+    router.push({ name: 'DiveView', params: { diveId: dive.id } })
   }
 }
 
-const onSiteSelected = async (site: DiveSite) => {
-  showSelectSite.value = false
-  createdSiteId.value = site.id ?? null
-  try {
-    if (lastImportSource.value === 'divesoft' && pendingDivesoftDives.value) {
-      const toastId = toast.loading('Importing...', { duration: 10000 })
-      loading.value = true
-      try {
-        await postDivesoftDives(pendingDivesoftDives.value, toastId)
-      } finally {
-        loading.value = false
-      }
-    } else {
-      await handleSubmit()
-    }
-  } catch (err) {
-    console.error('Error submitting after site selection:', err)
-    status.value = 'Error: Failed to import dives after site selection. Please try again.'
-  }
-}
-
-const handleSelectSiteClose = () => {
-  showSelectSite.value = false
-  missingSiteName.value = null
+const onDiscarded = (pendingImportId: number) => {
+  stagedImports.value = stagedImports.value.filter((s) => s.id !== pendingImportId)
 }
 
 onMounted(() => {
