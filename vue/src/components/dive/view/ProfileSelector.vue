@@ -21,7 +21,7 @@
       <span>{{ idx + 1 }}</span>
     </StyledCheckbox>
     <button
-      v-if="!vertical"
+      v-if="!vertical && !readOnly"
       class="align-button"
       title="Align profiles"
       @click="$emit('openAlignModal')"
@@ -34,12 +34,15 @@
 <script setup lang="ts">
 import type { DiveProfile } from '@/lib/types/dive'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 defineProps<{
   profiles: DiveProfile[]
   visibleProfiles: boolean[]
   vertical?: boolean
 }>()
+
+const { readOnly } = useReadOnlyMode()
 
 defineEmits<{
   toggleProfile: [index: number]

@@ -4,6 +4,7 @@
       <h3 class="text-lg font-semibold">My CCR Units</h3>
       <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
         <button
+          v-if="!readOnly"
           type="button"
           class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
           @click="openCreateModal"
@@ -152,6 +153,7 @@ import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 import debounce from '@/lib/utils/debounce'
 import type { CcrUnit, PagedResult } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 interface Props {
   userId: number
@@ -161,6 +163,7 @@ defineProps<Props>()
 
 const { getWithToken, postWithToken, putWithToken } = useApi()
 const router = useRouter()
+const { readOnly } = useReadOnlyMode()
 
 const ccrUnits = ref<CcrUnit[]>([])
 const loading = ref(false)

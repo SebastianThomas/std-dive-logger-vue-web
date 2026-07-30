@@ -19,6 +19,7 @@
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">People</span>
             <button
+              v-if="!readOnly"
               @click="showAddPersonForm = !showAddPersonForm"
               class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-blue-600"
             >
@@ -65,6 +66,7 @@
             >
               <span class="text-sm">{{ person.name }}</span>
               <button
+                v-if="!readOnly"
                 @click="deletePerson(person.id)"
                 class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600"
               >
@@ -85,6 +87,7 @@
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">Groups</span>
             <button
+              v-if="!readOnly"
               @click="showAddGroupForm = !showAddGroupForm"
               class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-blue-600"
             >
@@ -132,6 +135,7 @@
             >
               <span class="text-sm">{{ group.name }}</span>
               <button
+                v-if="!readOnly"
                 @click="deleteGroup(group.id)"
                 class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600"
               >
@@ -155,6 +159,7 @@ import { useApi } from '@/composables/useApi'
 import AutocompleteInput from '@/components/AutocompleteInput.vue'
 import type { User, Group } from '@/lib/types/user'
 import type { PagedResult } from '@/lib/types/dive'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 const props = defineProps<{
   open: boolean
@@ -165,6 +170,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
+
+const { readOnly } = useReadOnlyMode()
 
 const readers = ref<User[]>([])
 const groupReaders = ref<Group[]>([])

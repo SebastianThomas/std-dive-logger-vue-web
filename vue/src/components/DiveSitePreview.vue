@@ -13,7 +13,7 @@
   >
     <span>No preview</span>
     <button
-      v-if="dive?.id"
+      v-if="dive?.id && !readOnly"
       :disabled="isRegenerating"
       @click.stop="regeneratePreview"
       title="Try to regenerate preview image"
@@ -28,6 +28,7 @@
 import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import type { DiveWithoutProfiles } from '@/lib/types/dive'
 
 interface Props {
@@ -36,6 +37,7 @@ interface Props {
 
 const props = defineProps<Props>()
 const { postWithToken } = useApi()
+const { readOnly } = useReadOnlyMode()
 
 const emit = defineEmits<{
   'preview-regenerated': [dive: DiveWithoutProfiles]

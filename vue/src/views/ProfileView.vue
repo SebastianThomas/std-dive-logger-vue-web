@@ -43,7 +43,7 @@
         </section>
 
         <!-- Danger Zone -->
-        <section class="border-t pt-6 space-y-4">
+        <section v-if="!readOnly" class="border-t pt-6 space-y-4">
           <h2 class="text-lg font-medium text-red-600">Permanently Delete Account</h2>
 
           <button
@@ -99,9 +99,11 @@ import UserIconUploadModal from '@/components/UserIconUploadModal.vue'
 import UserBackgroundUploadModal from '@/components/UserBackgroundUploadModal.vue'
 import { useUserIconUploadStore } from '@/stores/userIconUpload'
 import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 const router = useRouter()
 const { getWithToken, postWithToken } = useApi()
+const { readOnly } = useReadOnlyMode()
 const user = ref<User | null>(null)
 const showDeregisterModal = ref(false)
 const showIconUploadModal = ref(false)
@@ -122,13 +124,13 @@ const handleBackgroundUpdated = (updatedUser: User) => {
 }
 
 watch(iconUploadRequestId, () => {
-  if (user.value) {
+  if (user.value && !readOnly.value) {
     showIconUploadModal.value = true
   }
 })
 
 watch(backgroundUploadRequestId, () => {
-  if (user.value) {
+  if (user.value && !readOnly.value) {
     showBackgroundUploadModal.value = true
   }
 })

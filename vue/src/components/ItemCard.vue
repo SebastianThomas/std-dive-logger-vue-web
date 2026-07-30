@@ -18,6 +18,7 @@
         View Dives
       </button>
       <button
+        v-if="!readOnly"
         type="button"
         class="px-2 py-1 text-xs rounded border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors whitespace-nowrap"
         @click="$emit('edit')"
@@ -34,6 +35,8 @@
 </template>
 
 <script setup lang="ts">
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
+
 interface Props {
   title: string
 }
@@ -44,4 +47,6 @@ defineEmits<{
   'view-dives': []
   edit: []
 }>()
+
+const { readOnly } = useReadOnlyMode()
 </script>

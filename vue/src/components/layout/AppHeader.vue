@@ -16,6 +16,15 @@
     </div>
     <div class="flex items-center space-x-2 sm:space-x-3">
       <button
+        v-if="authStore.isLoggedIn"
+        class="theme-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300"
+        :class="{ 'read-only-active': readOnly }"
+        @click="toggleReadOnly()"
+        :title="readOnly ? 'Read-only mode: ON (click to disable)' : 'Read-only mode: OFF (click to enable)'"
+      >
+        <i :class="readOnly ? 'fas fa-lock' : 'fas fa-lock-open'" class="text-lg sm:text-xl"></i>
+      </button>
+      <button
         class="theme-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300"
         @click="themeStore.toggleTheme()"
         :title="themeLabel"
@@ -53,6 +62,7 @@
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 interface Props {
   showTitle: boolean
@@ -63,6 +73,7 @@ const { pageName, showTitle } = defineProps<Props>()
 
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+const { readOnly, toggleReadOnly } = useReadOnlyMode()
 
 const themeIcon = computed(() => {
   return themeStore.theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun'
@@ -104,6 +115,14 @@ const handleLogout = () => {
   :root:not([data-theme]) .header-bg {
     background-color: #0284c7;
   }
+}
+
+.read-only-active {
+  background-color: rgba(220, 38, 38, 0.55) !important;
+}
+
+.read-only-active:hover {
+  background-color: rgba(220, 38, 38, 0.7) !important;
 }
 
 /* Theme button */

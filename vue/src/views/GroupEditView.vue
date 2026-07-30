@@ -20,7 +20,7 @@
               <td class="px-3 py-2">
                 <RoleMenu
                   v-model="member.role"
-                  :disabled="!isAdmin"
+                  :disabled="!isAdmin || readOnly"
                   @update:modelValue="(role) => changeRole(member.id, role)"
                 />
               </td>
@@ -32,7 +32,7 @@
         </table>
       </section>
 
-      <section v-if="isAdmin">
+      <section v-if="isAdmin && !readOnly">
         <h3 class="font-semibold mb-2">Join Requests</h3>
         <table class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded">
           <tbody>
@@ -66,7 +66,7 @@
 
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
 
-      <div class="flex gap-2 mt-4">
+      <div v-if="!readOnly" class="flex gap-2 mt-4">
         <button
           @click="showLeaveConfirm = true"
           class="px-4 py-2 rounded bg-orange-600 text-white hover:bg-orange-700"
@@ -137,10 +137,12 @@ import type {
   User,
   UserWithRole,
 } from '@/lib/types/user'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 const route = useRoute()
 const { safeBack } = useNavigation()
 const groupId = computed(() => Number(route.params.groupId))
+const { readOnly } = useReadOnlyMode()
 
 const { getWithToken, putWithToken, deleteWithToken } = useApi()
 const users = ref<UserWithRole[]>([])

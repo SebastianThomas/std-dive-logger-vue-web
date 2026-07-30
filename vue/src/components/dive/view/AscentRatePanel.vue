@@ -72,6 +72,7 @@ import {
   type RatePoint,
 } from '@/lib/graph/ascentRate'
 import { formatElapsedTime } from '@/lib/utils/timeUtils'
+import { detectTimeGaps, buildVirtualTimeMapper } from '@/lib/graph/timeGaps'
 import { useApi } from '@/composables/useApi'
 
 const props = defineProps<{
@@ -218,12 +219,18 @@ function render() {
   const tmin = Math.min(...allTimes)
   const tmax = Math.max(...allTimes)
 
+  // Same gap-compression as DiveGraph.vue (a pure function of profiles, so both charts derive an
+  // identical mapping independently rather than needing it threaded down as a prop) - keeps this
+  // panel's x-axis aligned with the main chart stacked above it even when a big gap is present.
+  const timeMapper = buildVirtualTimeMapper(detectTimeGaps(props.profiles), allTimes)
+  const { toVirtual, toReal } = timeMapper
+
   const allRates = ratesByProfile.value
     .filter((_, idx) => visibleMask.value[idx])
     .flatMap((rates) => rates.map((r) => r.rate))
   const maxAbsRate = Math.max(QUICK_RATE_M_PER_MIN * 1.2, ...allRates.map(Math.abs), 0)
 
-  const xScale = scaleLinear().domain([tmin, tmax]).range([0, innerWidth.value])
+  const xScale = scaleLinear().domain([toVirtual(tmin), toVirtual(tmax)]).range([0, innerWidth.value])
   // Ascent (negative) plots into the top half, descent (positive) into the bottom half — the
   // reverse of a normal depth axis, matching "up" on screen to actually going up in the water.
   const yScale = scaleLinear().domain([-maxAbsRate, maxAbsRate]).range([0, innerHeight.value])
@@ -284,7 +291,7 @@ function render() {
   // every point without needing to read the axis.
   const areaFor = (threshold: number): Area<RatePoint> =>
     area<RatePoint>()
-      .x((d) => xScale(d.time))
+      .x((d) => xScale(toVirtual(d.time)))
       .y0(zeroY)
       .y1((d) => (Math.abs(d.rate) > threshold ? yScale(d.rate) : zeroY))
       .curve(curveMonotoneX)
@@ -323,6 +330,22 @@ function render() {
     drawTier(quickArea, RATE_TIER_COLORS.quick, 0.6, false)
     drawTier(extremeArea, RATE_TIER_COLORS.extreme, 0.6, false)
   })
+
+  // Same break markers as DiveGraph.vue, at the same x-position (both charts share the same
+  // gap-compression mapping since it's a pure function of the same profiles).
+  g.selectAll('line.gap-break')
+    .data(timeMapper.breakPositions)
+    .enter()
+    .append('line')
+    .attr('class', 'gap-break')
+    .attr('x1', (v) => xScale(v))
+    .attr('x2', (v) => xScale(v))
+    .attr('y1', 0)
+    .attr('y2', innerHeight.value)
+    .attr('stroke', '#9ca3af')
+    .attr('stroke-width', 1.5)
+    .attr('stroke-dasharray', '3,3')
+    .style('pointer-events', 'none')
 
   // The panel is short (~110px) while the y-domain always spans at least ±21.6 m/min, so the
   // innermost candidate ticks (0, ±slow) can end up just a few px apart - closer than a single
@@ -384,7 +407,7 @@ function render() {
     const idx = Math.min(rates.length - 1, Math.max(0, b(rates, tVal)))
     const point = rates[idx]
     if (!point) return
-    const cx = xScale(point.time)
+    const cx = xScale(toVirtual(point.time))
     crosshair.attr('x1', cx).attr('x2', cx).style('display', null)
     const anchorX = screenLeftPx ?? cx
 
@@ -420,7 +443,7 @@ function render() {
       if (clientX === null || !container.value) return
       const rect = container.value.getBoundingClientRect()
       const mx = clientX - rect.left - margin.left
-      const tVal = xScale.invert(mx)
+      const tVal = toReal(xScale.invert(mx))
       showAtTime?.(tVal, clientX - rect.left)
       emit('hoverTimeChange', tVal)
     })

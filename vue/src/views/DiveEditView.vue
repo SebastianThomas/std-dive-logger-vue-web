@@ -66,10 +66,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { useNavigation } from '@/composables/useNavigation'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import EditDiveForm from '@/components/dive/edit/EditDiveForm.vue'
 import type {
   Dive,
@@ -79,18 +80,31 @@ import type {
   DiveConfiguration,
   TagDefinition,
 } from '@/lib/types/dive'
+import type { User } from '@/lib/types/user'
 import TagSelector from '@/components/dive/TagSelector.vue'
 import TagBadge from '@/components/dive/TagBadge.vue'
 
 const route = useRoute()
+const router = useRouter()
 const { safeBack } = useNavigation()
 const { getWithToken, putWithToken, postWithToken } = useApi()
+const { readOnly } = useReadOnlyMode()
 
 const diveId = computed(() => Number(route.params.diveId))
 const currentUserId = ref<number | null>(null)
+const myUserId = ref<number | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const submitting = ref(false)
+
+const fetchMyUserId = async () => {
+  try {
+    const res = await getWithToken<User>('/v1/users/')
+    myUserId.value = res.data.id
+  } catch (err) {
+    console.error('Failed to fetch user ID', err)
+  }
+}
 
 interface DiveFormData {
   diveNumber?: number
@@ -132,6 +146,16 @@ const fetchDive = async () => {
     // up-to-date dive in one round-trip, so the edit page always starts with current tags.
     const res = await postWithToken<Dive>(`/v1/dives/${diveId.value}/refresh-tags`, {})
     const dive = res.data
+
+    // Editing isn't yours to do here - either this dive belongs to someone else (the backend
+    // itself would reject any actual save, but bouncing back immediately is much clearer than an
+    // edit form that silently can't be submitted), or read-only mode is on and nothing should be
+    // editable right now regardless of ownership.
+    if (dive.user.id !== myUserId.value || readOnly.value) {
+      toast.error("You can't edit this dive right now.")
+      router.replace({ name: 'DiveView', params: { diveId: diveId.value } })
+      return
+    }
 
     currentUserId.value = dive.user.id
 
@@ -299,8 +323,9 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 }
 
-onMounted(() => {
-  fetchDive()
+onMounted(async () => {
+  await fetchMyUserId()
+  await fetchDive()
   window.addEventListener('keydown', handleKeyDown)
 })
 

@@ -44,7 +44,7 @@
           </div>
 
           <button
-            v-if="!confirmingId || confirmingId !== tag.id"
+            v-if="!readOnly && (!confirmingId || confirmingId !== tag.id)"
             @click="confirmingId = tag.id"
             class="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 shrink-0 transition-colors"
           >
@@ -96,8 +96,10 @@ import { ref, computed, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import type { TagDefinition } from '@/lib/types/dive'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 const { getWithToken, deleteWithToken } = useApi()
+const { readOnly } = useReadOnlyMode()
 
 const allTags = ref<TagDefinition[]>([])
 const isLoading = ref(true)

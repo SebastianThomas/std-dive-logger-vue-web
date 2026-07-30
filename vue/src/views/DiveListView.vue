@@ -22,6 +22,7 @@
         </div>
         <div v-if="isSelectionMode" class="flex gap-2">
           <button
+            v-if="!readOnly"
             @click="openBulkActions"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
@@ -260,9 +261,11 @@ import type {
 import type { UserDiveStatsByYear } from '@/lib/types/stats'
 import debounce from '../lib/utils/debounce'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 const router = useRouter()
 const route = useRoute()
+const { readOnly } = useReadOnlyMode()
 const { getWithToken } = useApi()
 
 // State

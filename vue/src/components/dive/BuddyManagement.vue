@@ -24,6 +24,7 @@
       <li v-for="name in buddies" :key="name" class="flex items-center justify-between px-4 py-2">
         <span>{{ name }}</span>
         <button
+          v-if="!readOnly"
           type="button"
           class="px-2 py-1 text-xs rounded border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
           @click="openRenameModal(name)"
@@ -82,8 +83,10 @@
 import { ref, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 const { getWithToken, putWithToken } = useApi()
+const { readOnly } = useReadOnlyMode()
 
 const buddies = ref<string[]>([])
 const loading = ref(false)

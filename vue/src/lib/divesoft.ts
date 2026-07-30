@@ -18,6 +18,38 @@ export async function listDivesoftDiveIds(token: string): Promise<string[]> {
   return data.items.userDives.map((d) => d.id)
 }
 
+/**
+ * Lists the ids of dives shared with this account (not owned by it). wetnotes.com's own web app
+ * has a separate `/app/shared-dives` route alongside `/app/dives`, so this assumes a mirroring
+ * `GET /shared-dives` API endpoint with the same `{ items: { ... } }` shape as the own-dives
+ * endpoint - **unverified against the real API** at the time of writing. Deliberately degrades to
+ * an empty list (logging a warning) rather than throwing on any shape mismatch or error, so a
+ * wrong guess here can only mean "no shared dives shown" instead of breaking the already-working
+ * own-dives import.
+ */
+export async function listDivesoftSharedDiveIds(token: string): Promise<string[]> {
+  try {
+    const { data } = await axios.get<{ items?: { sharedDives?: { id: string }[] } }>(
+      `${DIVESOFT_API_BASE}/shared-dives`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    )
+    const ids = data.items?.sharedDives?.map((d) => d.id)
+    if (!ids) {
+      console.warn(
+        'Divesoft shared-dives response did not have the expected items.sharedDives shape - showing no shared dives.',
+        data,
+      )
+    }
+    return ids ?? []
+  } catch (err) {
+    console.warn(
+      'Could not fetch Divesoft shared dives (the /shared-dives endpoint guess may not match the real API) - showing no shared dives.',
+      err,
+    )
+    return []
+  }
+}
+
 /** Fetches one dive's full raw JSON exactly as wetnotes.com/Divesoft returns it. */
 export async function getDivesoftDive(token: string, id: string): Promise<DivesoftDiveJson> {
   const { data } = await axios.get<DivesoftDiveJson>(`${DIVESOFT_API_BASE}/dives/${id}`, {

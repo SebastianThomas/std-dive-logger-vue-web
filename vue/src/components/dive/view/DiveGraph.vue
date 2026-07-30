@@ -79,6 +79,12 @@ import {
   METRICS_TO_RENDER,
   type MetricConfigMap,
 } from '@/lib/graph/metricExtractors'
+import {
+  detectTimeGaps,
+  buildVirtualTimeMapper,
+  getActiveSegments,
+  type TimeMapper,
+} from '@/lib/graph/timeGaps'
 
 type Props = {
   profiles: DiveProfile[]
@@ -220,6 +226,15 @@ const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
 const decoZoneLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const decoZoneArea = ref<Area<[number, number]> | null>(null)
 const po2ReferenceLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
+// Maps real measurement time to a "virtual" time with any large gaps between/within profiles
+// compressed to a small fixed width (see lib/graph/timeGaps.ts) - identity when there are none,
+// which is the overwhelming majority of dives.
+const timeMapper = ref<TimeMapper>({ toVirtual: (t) => t, toReal: (v) => v, breakPositions: [] })
+// Recomputed only in setupScales() (not on every zoom/pan tick, which calls renderAll() far more
+// often) - axis-tick generation below reuses this rather than re-running gap detection itself.
+const timeGaps = ref<ReturnType<typeof detectTimeGaps>>([])
+const dataTimeRange = ref<[number, number]>([0, 0])
+const gapBreaksLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
 const currentZoomLevel = ref(1)
@@ -266,7 +281,11 @@ function setupScales() {
   const dmin = Math.min(...dValues)
   const dmax = Math.max(...dValues)
 
-  timeScaleBase.value = scaleLinear().domain([tmin, tmax]).range([0, innerWidth.value])
+  timeGaps.value = detectTimeGaps(props.profiles)
+  timeMapper.value = buildVirtualTimeMapper(timeGaps.value, tValues)
+  dataTimeRange.value = [tmin, tmax]
+  const { toVirtual } = timeMapper.value
+  timeScaleBase.value = scaleLinear().domain([toVirtual(tmin), toVirtual(tmax)]).range([0, innerWidth.value])
   timeScale.value = timeScaleBase.value.copy()
   // Depth increases downwards (invert range so 0 is at top, max depth at bottom)
   depthScaleBase.value = scaleLinear().domain([dmin, dmax]).range([0, innerHeight.value])
@@ -315,18 +334,18 @@ function setupScales() {
   po2ExceedsSafeLimit.value = po2Max > 1.6
 
   depthLine.value = line()
-    .x((d: [number, number]) => (timeScale.value ? timeScale.value(d[0]) : 0))
+    .x((d: [number, number]) => (timeScale.value ? timeScale.value(toVirtual(d[0])) : 0))
     .y((d: [number, number]) => (depthScale.value ? depthScale.value(d[1]) : 0))
 
   decoZoneArea.value = area<[number, number]>()
-    .x((d) => (timeScale.value ? timeScale.value(d[0]) : 0))
+    .x((d) => (timeScale.value ? timeScale.value(toVirtual(d[0])) : 0))
     .y0(() => (depthScale.value ? depthScale.value(0) : 0))
     .y1((d) => (depthScale.value ? depthScale.value(d[1]) : 0))
     .curve(curveStepAfter)
 
   const makeMetricLine = (scale: ScaleLinear<number, number> | null): Line<[number, number]> =>
     line()
-      .x((d: [number, number]) => (timeScale.value ? timeScale.value(d[0]) : 0))
+      .x((d: [number, number]) => (timeScale.value ? timeScale.value(toVirtual(d[0])) : 0))
       .y((d: [number, number]) => (scale ? scale(d[1]) : 0))
 
   tempScale.value = scaleLinear().domain(tempExtent).range([innerHeight.value, 0])
@@ -510,6 +529,9 @@ function initSvg() {
   // regardless of how much data is plotted underneath it.
   po2ReferenceLayer.value = g.append('g').attr('class', 'po2-reference').attr('clip-path', clipPathUrl)
 
+  // Break markers for any compressed time gaps - above the lines, same as the PO2 guideline.
+  gapBreaksLayer.value = g.append('g').attr('class', 'gap-breaks').attr('clip-path', clipPathUrl)
+
   // Hover overlay
   // Vertical crosshair line
   crosshairLine.value = g
@@ -591,8 +613,8 @@ function initSvg() {
         .map((m) => m.measurement.time)
         .filter((v): v is number => Number.isFinite(v))
       if (zoomTimes.length > 0) {
-        const tmin = Math.min(...zoomTimes)
-        const tmax = Math.max(...zoomTimes)
+        const tmin = timeMapper.value.toVirtual(Math.min(...zoomTimes))
+        const tmax = timeMapper.value.toVirtual(Math.max(...zoomTimes))
         const viewWidth = domain[1] - domain[0]
 
         const newDomain = [...domain] as [number, number]
@@ -671,15 +693,30 @@ function renderAll() {
 
   // Axes
 
-  // Generate smart time axis ticks with 4-10 labels based on graph width and duration
+  // Generate smart time axis ticks with 4-10 labels based on graph width and duration. When the
+  // dive has a compressed gap, ticks are generated per active (real-time) segment rather than
+  // once over the whole virtual range - a single pass would otherwise treat the gap as if it
+  // were real elapsed time and produce non-round, meaningless intervals.
   const timeRange = timeScale.value.domain() as [number, number]
   const diveStart = props.profiles[0]?.start ?? 0
-  const tickValues = generateTimeAxisTicks(timeRange, diveStart, innerWidth.value)
+  const { toVirtual, toReal } = timeMapper.value
+  const tickValues = !timeGaps.value.length
+    ? generateTimeAxisTicks(timeRange, diveStart, innerWidth.value)
+    : getActiveSegments(timeGaps.value, dataTimeRange.value[0], dataTimeRange.value[1]).flatMap(
+        (segment) => {
+          const segStart = Math.max(segment.start, toReal(timeRange[0]))
+          const segEnd = Math.min(segment.end, toReal(timeRange[1]))
+          if (segEnd <= segStart || !timeScale.value) return []
+          const pixelWidth = timeScale.value(toVirtual(segEnd)) - timeScale.value(toVirtual(segStart))
+          if (pixelWidth <= 0) return []
+          return generateTimeAxisTicks([segStart, segEnd], diveStart, pixelWidth)
+        },
+      )
 
   axes.x.value?.call(
     axisBottom(timeScale.value)
-      .tickValues(tickValues)
-      .tickFormat((t): string => formatElapsedTime(Number(t), props.profiles[0]?.start ?? 0)),
+      .tickValues(tickValues.map(toVirtual))
+      .tickFormat((t): string => formatElapsedTime(toReal(Number(t)), diveStart)),
   )
   const scales = {
     depth: depthScale.value,
@@ -801,6 +838,30 @@ function renderAll() {
 
   renderDecoZone()
   renderPo2OverageBand()
+  renderGapBreaks()
+}
+
+// A dashed vertical line at each compressed gap, spanning the full plot height, marking a jump
+// in time that isn't drawn to scale (see lib/graph/timeGaps.ts). No-op (clears any stale ones)
+// when the dive has no large gaps, which is the overwhelming majority of dives.
+function renderGapBreaks() {
+  if (!gapBreaksLayer.value) return
+  gapBreaksLayer.value.selectAll('*').remove()
+  if (!timeScale.value) return
+
+  gapBreaksLayer.value
+    .selectAll('line')
+    .data(timeMapper.value.breakPositions)
+    .enter()
+    .append('line')
+    .attr('x1', (v) => timeScale.value!(v))
+    .attr('x2', (v) => timeScale.value!(v))
+    .attr('y1', 0)
+    .attr('y2', innerHeight.value)
+    .attr('stroke', '#9ca3af')
+    .attr('stroke-width', 1.5)
+    .attr('stroke-dasharray', '3,3')
+    .style('pointer-events', 'none')
 }
 
 // Recolors the axis tick sitting exactly at the 1.6 bar guideline (added via
@@ -941,7 +1002,7 @@ function renderSegments() {
     if (!startMeasurement) return
 
     const startTime = startMeasurement.measurement.time
-    const startX = timeScale.value!(startTime)
+    const startX = timeScale.value!(timeMapper.value.toVirtual(startTime))
 
     // Calculate end time: either from next segment (if same profile) or end of this profile's measurements
     let endTime: number
@@ -962,7 +1023,7 @@ function renderSegments() {
       endTime = profileMeasurements[profileMeasurements.length - 1]?.measurement.time ?? startTime
     }
 
-    const endX = timeScale.value!(endTime)
+    const endX = timeScale.value!(timeMapper.value.toVirtual(endTime))
     const width = Math.max(0, endX - startX)
 
     if (segmentsLayer.value !== null) {
@@ -1220,7 +1281,7 @@ function renderTooltipAtTime(
     }
   }
 
-  const cx = timeScale.value(tVal)
+  const cx = timeScale.value(timeMapper.value.toVirtual(tVal))
 
   // Which line is the cursor actually closest to? Only real local pointer input carries a Y to
   // test against — a handful of scale lookups (one per visible metric), not path geometry, so
@@ -1346,7 +1407,7 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
   }
 
   isLocalHover = true
-  const tVal = timeScale.value.invert(mx)
+  const tVal = timeMapper.value.toReal(timeScale.value.invert(mx))
 
   let clientX: number
   let clientY: number

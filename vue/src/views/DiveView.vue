@@ -20,27 +20,30 @@
         <div class="flex justify-between items-center mb-4 gap-4">
           <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
           <div class="flex gap-2 ml-auto">
-            <RouterLink v-if="isMine" :to="{ name: 'DiveEdit', params: { diveId: dive.id } }">
+            <RouterLink
+              v-if="isMine && !readOnly"
+              :to="{ name: 'DiveEdit', params: { diveId: dive.id } }"
+            >
               <button class="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
                 Edit
               </button>
             </RouterLink>
             <button
-              v-if="isMine"
+              v-if="isMine && !readOnly"
               @click="showShareModal = true"
               class="bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
             >
               Share
             </button>
             <button
-              v-if="isMine"
+              v-if="isMine && !readOnly"
               @click="showDeleteModal = true"
               class="bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
             >
               Delete
             </button>
             <button
-              v-else
+              v-else-if="!isMine && !readOnly"
               @click="showLinkModal = true"
               class="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
             >
@@ -172,7 +175,7 @@
           <!-- Profiles Row: only relevant (and only shown) once a dive actually has more than
                one profile - lets you remove one attached to the wrong dive by mistake (e.g. via
                import) without deleting the whole dive. -->
-          <InfoCardRow v-if="isMine && dive.profiles.length > 1">
+          <InfoCardRow v-if="isMine && !readOnly && dive.profiles.length > 1">
             <InfoCard title="Profiles">
               <div
                 v-for="profile in dive.profiles"
@@ -511,12 +514,14 @@ import TagBadge from '@/components/dive/TagBadge.vue'
 import type { User } from '@/lib/types/user'
 import { useProfileReimportStore } from '@/stores/profileReimport'
 import { storeToRefs } from 'pinia'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 const router = useRouter()
 const route = useRoute()
 const { getWithToken, deleteWithToken } = useApi()
 const profileReimportStore = useProfileReimportStore()
 const { requestId: reimportRequestId } = storeToRefs(profileReimportStore)
+const { readOnly } = useReadOnlyMode()
 
 const diveId = computed(() => Number(route.params.diveId))
 const dive = ref<Dive | null>(null)
@@ -682,19 +687,19 @@ const handleDiveViewKeydown = (event: KeyboardEvent) => {
   }
 
   // 'e' for edit
-  if (event.key.toLowerCase() === 'e' && !event.ctrlKey && !event.metaKey && isMine.value) {
+  if (event.key.toLowerCase() === 'e' && !event.ctrlKey && !event.metaKey && isMine.value && !readOnly.value) {
     router.push({ name: 'DiveEdit', params: { diveId: dive.value?.id } })
   }
   // 's' for share
-  if (event.key.toLowerCase() === 's' && !event.ctrlKey && !event.metaKey && isMine.value) {
+  if (event.key.toLowerCase() === 's' && !event.ctrlKey && !event.metaKey && isMine.value && !readOnly.value) {
     showShareModal.value = true
   }
   // 'd' for delete
-  if (event.key.toLowerCase() === 'd' && !event.ctrlKey && !event.metaKey && isMine.value) {
+  if (event.key.toLowerCase() === 'd' && !event.ctrlKey && !event.metaKey && isMine.value && !readOnly.value) {
     showDeleteModal.value = true
   }
   // 'l' for link dive
-  if (event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey && !isMine.value) {
+  if (event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey && !isMine.value && !readOnly.value) {
     showLinkModal.value = true
   }
 }
@@ -708,7 +713,7 @@ onMounted(() => {
 watch(() => diveId.value, fetchDive)
 
 watch(reimportRequestId, () => {
-  if (dive.value?.profiles?.length && isMine.value) {
+  if (dive.value?.profiles?.length && isMine.value && !readOnly.value) {
     showReimportModal.value = true
   }
 })

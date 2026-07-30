@@ -4,6 +4,7 @@
       <h3 class="text-lg font-semibold">My Dive Computers</h3>
       <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
         <button
+          v-if="!readOnly"
           type="button"
           class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
           @click="openCreateModal"
@@ -11,6 +12,7 @@
           Create New
         </button>
         <button
+          v-if="!readOnly"
           type="button"
           class="px-4 py-2 rounded bg-orange-600 text-white hover:bg-orange-700 transition-colors"
           @click="showCleanupConfirmation = true"
@@ -159,6 +161,7 @@ import ItemCard from '@/components/ItemCard.vue'
 import ItemCardGrid from '@/components/ItemCardGrid.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import type { DiveComputer, DiveComputerManufacturer, PagedResult } from '@/lib/types/dive'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 interface Props {
   userId: number
@@ -167,6 +170,7 @@ interface Props {
 defineProps<Props>()
 
 const { getWithToken, postWithToken, putWithToken, deleteWithToken } = useApi()
+const { readOnly } = useReadOnlyMode()
 const router = useRouter()
 
 const diveComputers = ref<DiveComputer[]>([])

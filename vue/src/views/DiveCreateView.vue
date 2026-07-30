@@ -102,7 +102,7 @@
           </div>
         </div>
 
-        <div v-else class="flex flex-col gap-4">
+        <div v-else-if="!divesoftPickerItems" class="flex flex-col gap-4">
           <div
             class="text-sm text-gray-600 dark:text-gray-300 rounded-xl border border-sky-200 bg-sky-50 dark:bg-sky-900/20 dark:border-sky-700 p-4"
           >
@@ -203,6 +203,18 @@
             </div>
           </div>
         </div>
+
+        <!-- Divesoft picker: dives fetched but not yet staged - pick which ones to import -->
+        <div v-else class="flex flex-col gap-4">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            Choose which dive(s) to import. Nothing is staged yet.
+          </p>
+          <DivesoftDiveList
+            :dives="divesoftPickerItems ?? []"
+            @stage="handleDivesoftStageSelected"
+            @cancel="divesoftPickerItems = null"
+          />
+        </div>
       </div>
 
       <!-- Review step: nothing has been persisted yet, review and confirm each staged dive -->
@@ -232,10 +244,14 @@ import { useApi } from '@/composables/useApi'
 import { useNavigation } from '@/composables/useNavigation'
 import { toast } from 'vue-sonner'
 import PendingImportRow from '@/components/dive/import/PendingImportRow.vue'
+import DivesoftDiveList, {
+  type DivesoftDiveListItem,
+} from '@/components/dive/import/DivesoftDiveList.vue'
 import type { DiveWithoutProfiles, StageImportResult, PendingImportSummary } from '@/lib/types/dive'
 import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
 import {
   listDivesoftDiveIds,
+  listDivesoftSharedDiveIds,
   getDivesoftDive,
   extractDivesoftDiveId,
   type DivesoftDiveJson,
@@ -252,6 +268,7 @@ const status = ref('')
 const errors = ref<string[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const loading = ref(false)
+const divesoftPickerItems = ref<DivesoftDiveListItem[] | null>(null)
 
 const divesoftToken = ref('')
 const divesoftDiveInput = ref('')
@@ -396,6 +413,28 @@ const handleSubmit = async () => {
   }
 }
 
+/** Actually stages the given raw Divesoft dive JSON(s) via the backend - shared by both the
+ * single-dive-id path (stages immediately) and the picker's "Stage selected" (stages only the
+ * dives the user checked). */
+const stageDivesoftDives = async (
+  dives: DivesoftDiveJson[],
+  toastId: string | number,
+): Promise<void> => {
+  toast.loading('Parsing...', { id: toastId })
+  const res = (
+    await postWithToken<StageImportResult, { dives: DivesoftDiveJson[] }>(
+      resolveImporterUrl('/v1/import/divesoft'),
+      { dives },
+    )
+  ).data
+  handleStageSuccess(res, toastId)
+  if (res.staged.length > 0) {
+    divesoftToken.value = ''
+    divesoftDiveInput.value = ''
+    divesoftPickerItems.value = null
+  }
+}
+
 const handleDivesoftSubmit = async () => {
   status.value = ''
   const token = divesoftToken.value.trim()
@@ -411,30 +450,30 @@ const handleDivesoftSubmit = async () => {
 
   try {
     const diveIdInput = divesoftDiveInput.value.trim()
-    let dives: DivesoftDiveJson[]
     if (diveIdInput) {
-      dives = [await getDivesoftDive(token, extractDivesoftDiveId(diveIdInput))]
-    } else {
-      const ids = await listDivesoftDiveIds(token)
-      dives = []
-      for (const [index, id] of ids.entries()) {
-        toast.loading(`Fetching dive ${index + 1} of ${ids.length}...`, { id: toastId })
-        dives.push(await getDivesoftDive(token, id))
-      }
+      // A specific dive was requested directly - stage it immediately, no picker needed.
+      const dive = await getDivesoftDive(token, extractDivesoftDiveId(diveIdInput))
+      await stageDivesoftDives([dive], toastId)
+      return
     }
 
-    toast.loading('Parsing...', { id: toastId })
-    const res = (
-      await postWithToken<StageImportResult, { dives: DivesoftDiveJson[] }>(
-        resolveImporterUrl('/v1/import/divesoft'),
-        { dives },
-      )
-    ).data
-    handleStageSuccess(res, toastId)
-    if (res.staged.length > 0) {
-      divesoftToken.value = ''
-      divesoftDiveInput.value = ''
+    // No specific dive requested - fetch every dive (own and shared) so the user can pick which
+    // ones to actually import, rather than staging everything unconditionally.
+    const [ownIds, sharedIds] = await Promise.all([
+      listDivesoftDiveIds(token),
+      listDivesoftSharedDiveIds(token),
+    ])
+    const toFetch = [
+      ...ownIds.map((id) => ({ id, isShared: false })),
+      ...sharedIds.map((id) => ({ id, isShared: true })),
+    ]
+    const items: DivesoftDiveListItem[] = []
+    for (const [index, { id, isShared }] of toFetch.entries()) {
+      toast.loading(`Fetching dive ${index + 1} of ${toFetch.length}...`, { id: toastId })
+      items.push({ id, isShared, json: await getDivesoftDive(token, id) })
     }
+    toast.dismiss(toastId)
+    divesoftPickerItems.value = items
   } catch (err) {
     if (axios.isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
       toast.dismiss(toastId)
@@ -444,6 +483,18 @@ const handleDivesoftSubmit = async () => {
     } else {
       handleStageError(err, toastId)
     }
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleDivesoftStageSelected = async (dives: DivesoftDiveJson[]) => {
+  loading.value = true
+  const toastId = toast.loading('Staging selected dive(s)...', { duration: 10000 })
+  try {
+    await stageDivesoftDives(dives, toastId)
+  } catch (err) {
+    handleStageError(err, toastId)
   } finally {
     loading.value = false
   }
