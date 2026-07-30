@@ -275,10 +275,10 @@ export type PendingImportSummary = {
   latitudeGuess?: number
   longitudeGuess?: number
   computerSerial?: string
-  startDate?: string
+  startDate?: number
   durationSeconds?: number
   maxDepth?: number
-  createdAt: string
+  createdAt: number
 }
 
 export type StageImportResult = { staged: PendingImportSummary[]; errors: string[] }

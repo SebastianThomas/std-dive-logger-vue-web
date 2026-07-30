@@ -169,6 +169,40 @@
             </InfoCard>
           </InfoCardRow>
 
+          <!-- Profiles Row: only relevant (and only shown) once a dive actually has more than
+               one profile - lets you remove one attached to the wrong dive by mistake (e.g. via
+               import) without deleting the whole dive. -->
+          <InfoCardRow v-if="isMine && dive.profiles.length > 1">
+            <InfoCard title="Profiles">
+              <div
+                v-for="profile in dive.profiles"
+                :key="profile.id"
+                class="flex items-center justify-between gap-3"
+              >
+                <span
+                  >{{ profile.diveComputer?.customIdentifier ?? 'Unknown computer' }} ·
+                  {{ formatDate(profile.start) }}</span
+                >
+                <button
+                  type="button"
+                  class="text-red-600 hover:text-red-700"
+                  title="Delete this profile"
+                  @click="confirmDeleteProfile(profile.id)"
+                >
+                  Delete
+                </button>
+              </div>
+            </InfoCard>
+          </InfoCardRow>
+
+          <DeletionConfirmation
+            v-model="showDeleteProfileModal"
+            title="Delete profile"
+            message="This removes this profile's measurements from the dive permanently, keeping the rest of the dive intact. This action cannot be undone."
+            confirm-text="Delete profile"
+            @confirm="handleDeleteProfile"
+          />
+
           <!-- Advanced Dive Information Row -->
           <InfoCardRow v-if="firstProfileSummary || lastProfileSummary">
             <!-- CNS Information -->
@@ -580,6 +614,31 @@ const fetchUserId = async () => {
     myUserId.value = res.data.id
   } catch (err) {
     console.error('Failed to fetch user ID', err)
+  }
+}
+
+const showDeleteProfileModal = ref(false)
+const profileIdToDelete = ref<number | null>(null)
+
+const confirmDeleteProfile = (profileId: number) => {
+  profileIdToDelete.value = profileId
+  showDeleteProfileModal.value = true
+}
+
+const handleDeleteProfile = async () => {
+  if (!dive.value || profileIdToDelete.value === null) return
+  try {
+    const res = await deleteWithToken<Dive>(
+      `/v1/dives/${diveId.value}/profiles/${profileIdToDelete.value}`,
+    )
+    dive.value = res.data
+    toast.success('Profile deleted')
+  } catch (err) {
+    console.error('Delete profile failed', err)
+    toast.error('Failed to delete profile')
+  } finally {
+    showDeleteProfileModal.value = false
+    profileIdToDelete.value = null
   }
 }
 

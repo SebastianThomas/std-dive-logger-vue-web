@@ -94,7 +94,7 @@
                 ? 'bg-sky-600 text-white'
                 : 'bg-gray-200 dark:bg-gray-600'
             "
-            @click="linkToExistingDiveId = d.id"
+            @click="selectExistingDive(d)"
           >
             {{ linkToExistingDiveId === d.id ? 'Selected' : 'Select' }}
           </button>
@@ -122,6 +122,14 @@
     @site-created="onSiteChosen"
     @close="showSiteSelector = false"
   />
+
+  <DeletionConfirmation
+    v-model="showDateGapWarning"
+    title="Dates are far apart"
+    :message="dateGapWarningMessage"
+    confirm-text="Attach anyway"
+    @confirm="confirmPendingDiveSelection"
+  />
 </template>
 
 <script setup lang="ts">
@@ -133,6 +141,7 @@ import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
 import { formatDate } from '@/lib/utils/timeUtils'
 import debounce from '@/lib/utils/debounce'
 import DiveSiteSelector from '@/components/DiveSiteSelector.vue'
+import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import type {
   DiveSite,
   DiveWithoutProfiles,
@@ -169,6 +178,42 @@ const siteLabel = ref(props.summary.siteNameGuess ?? 'Not set - please choose a 
 const diveSearchTerm = ref('')
 const myDives = ref<DiveWithoutProfiles[]>([])
 const linkToExistingDiveId = ref<number | null>(null)
+
+// Attaching to the wrong dive silently merges unrelated profiles together (e.g. two dives
+// months apart) with no way to undo it short of manually deleting the merged-in profile -
+// so anything more than half a day off from the import's own date needs an explicit
+// confirmation rather than a single accidental click.
+const HALF_DAY_MS = 12 * 60 * 60 * 1000
+const showDateGapWarning = ref(false)
+const dateGapWarningMessage = ref('')
+const pendingDiveSelection = ref<DiveWithoutProfiles | null>(null)
+
+const selectExistingDive = (d: DiveWithoutProfiles) => {
+  const importDate = props.summary.startDate
+  const diveDate = d.summary.start
+  if (
+    importDate !== undefined &&
+    diveDate !== undefined &&
+    Math.abs(importDate - diveDate) > HALF_DAY_MS
+  ) {
+    pendingDiveSelection.value = d
+    dateGapWarningMessage.value =
+      `This import starts ${formatDate(importDate)}, but dive #${d.number} starts ` +
+      `${formatDate(diveDate)} - more than half a day apart. Attaching it here will merge ` +
+      `what looks like an unrelated dive's profile into #${d.number}. Continue anyway?`
+    showDateGapWarning.value = true
+    return
+  }
+  linkToExistingDiveId.value = d.id
+}
+
+const confirmPendingDiveSelection = () => {
+  if (pendingDiveSelection.value) {
+    linkToExistingDiveId.value = pendingDiveSelection.value.id
+  }
+  showDateGapWarning.value = false
+  pendingDiveSelection.value = null
+}
 
 const onSiteChosen = (site: DiveSite) => {
   chosenSite.value = site
