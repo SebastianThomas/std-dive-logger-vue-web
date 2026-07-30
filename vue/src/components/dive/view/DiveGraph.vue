@@ -252,8 +252,14 @@ function setupScales() {
   const allMeasurements = props.profiles.flatMap((p) => p.measurements)
   if (!allMeasurements.length) return
 
-  const tValues = allMeasurements.map((m) => m.measurement.time)
-  const dValues = allMeasurements.map((m) => m.measurement.depth)
+  // Guard against a single bad sample (e.g. a NaN/undefined time or depth from a malformed
+  // source file) taking down the whole chart - Math.min/max propagate NaN from just one bad
+  // input, which would otherwise break these domains (and therefore every series) entirely.
+  const isFiniteNumber = (v: unknown): v is number =>
+    typeof v === 'number' && Number.isFinite(v)
+  const tValues = allMeasurements.map((m) => m.measurement.time).filter(isFiniteNumber)
+  const dValues = allMeasurements.map((m) => m.measurement.depth).filter(isFiniteNumber)
+  if (!tValues.length || !dValues.length) return
 
   const tmin = Math.min(...tValues)
   const tmax = Math.max(...tValues)
@@ -377,9 +383,24 @@ onBeforeUnmount(() => {
   if (zoomHintTimer) clearTimeout(zoomHintTimer)
 })
 
+const redraw = async () => {
+  setupScales()
+  renderAll()
+  await maybeFetchSegments()
+  renderSegments()
+}
+
+// props.profiles is always replaced wholesale on update (DiveView reassigns the whole `dive`
+// object rather than mutating profiles/measurements in place), so this only needs a reference
+// check - deep-watching it was forcing Vue to recursively proxy and diff every measurement of
+// every profile (thousands of nested objects on a real dive) on every single reactive check,
+// which is what made the view laggy.
+watch(() => props.profiles, redraw)
+
+// visibleProfiles IS mutated in place (toggling a single index) rather than reassigned, so it -
+// along with the cheap primitive toggles/axis metrics - still needs deep tracking to notice.
 watch(
   () => [
-    props.profiles,
     props.visibleProfiles,
     props.showTemp,
     props.showSegments,
@@ -399,12 +420,7 @@ watch(
     leftAxisMetric.value,
     rightAxisMetric.value,
   ],
-  async () => {
-    setupScales()
-    renderAll()
-    await maybeFetchSegments()
-    renderSegments()
-  },
+  redraw,
   { deep: true },
 )
 
@@ -571,9 +587,12 @@ function initSvg() {
       // Constrain the view to not extend beyond the data bounds
       const domain = timeScale.value.domain() as [number, number]
       const allMeasurements = props.profiles.flatMap((p) => p.measurements)
-      if (allMeasurements.length > 0) {
-        const tmin = Math.min(...allMeasurements.map((m) => m.measurement.time))
-        const tmax = Math.max(...allMeasurements.map((m) => m.measurement.time))
+      const zoomTimes = allMeasurements
+        .map((m) => m.measurement.time)
+        .filter((v): v is number => Number.isFinite(v))
+      if (zoomTimes.length > 0) {
+        const tmin = Math.min(...zoomTimes)
+        const tmax = Math.max(...zoomTimes)
         const viewWidth = domain[1] - domain[0]
 
         const newDomain = [...domain] as [number, number]
@@ -731,10 +750,9 @@ function renderAll() {
   depthLinesGroup.selectAll('path').remove()
   props.profiles.forEach((profile, idx) => {
     if (!visibleMask.value[idx]) return
-    const depthPts: [number, number][] = profile.measurements.map((m) => [
-      m.measurement.time,
-      m.measurement.depth,
-    ])
+    const depthPts: [number, number][] = profile.measurements
+      .map((m): [number, number] => [m.measurement.time, m.measurement.depth])
+      .filter(([t, d]) => Number.isFinite(t) && Number.isFinite(d))
     depthLinesGroup
       .append('path')
       .datum(depthPts)
@@ -832,11 +850,13 @@ function renderDecoZone() {
 
   props.profiles.forEach((profile, idx) => {
     if (!visibleMask.value[idx]) return
-    const points: [number, number][] = profile.measurements.map((m) => {
-      const stops = m.measurement.deco
-      const ceiling = stops?.length ? Math.max(...stops.map((s) => s.depth)) : 0
-      return [m.measurement.time, ceiling]
-    })
+    const points: [number, number][] = profile.measurements
+      .map((m): [number, number] => {
+        const stops = m.measurement.deco
+        const ceiling = stops?.length ? Math.max(...stops.map((s) => s.depth)) : 0
+        return [m.measurement.time, ceiling]
+      })
+      .filter(([t]) => Number.isFinite(t))
     if (!points.some((p) => p[1] > 0)) return
 
     decoZoneLayer.value
