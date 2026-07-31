@@ -49,5 +49,7 @@ export type RatePoint = { time: number; rate: number }
  */
 export function toRatePoints(response: DiveProfileRatesResponse | undefined | null): RatePoint[] {
   if (!response) return []
-  return response.rates.map((r) => ({ time: r.time, rate: r.rateMetersPerMinute }))
+  return response.rates
+    .map((r) => ({ time: r.time, rate: r.rateMetersPerMinute }))
+    .filter((p) => Number.isFinite(p.time) && Number.isFinite(p.rate))
 }

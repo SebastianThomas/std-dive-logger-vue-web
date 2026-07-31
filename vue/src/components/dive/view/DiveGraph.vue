@@ -844,7 +844,7 @@ function renderAll() {
       if (!visibleMask.value[idx]) return
       const points: [number, number][] = profile.measurements
         .map(config.extractor)
-        .filter((p): p is [number, number] => p !== null)
+        .filter(isFinitePoint)
       if (points.length) {
         group
           .append('path')
@@ -942,7 +942,7 @@ function renderDecoZone() {
         const ceiling = stops?.length ? Math.max(...stops.map((s) => s.depth)) : 0
         return [m.measurement.time, ceiling]
       })
-      .filter(([t]) => Number.isFinite(t))
+      .filter(([t, d]) => Number.isFinite(t) && Number.isFinite(d))
     if (!points.some((p) => p[1] > 0)) return
 
     decoZoneLayer.value
@@ -1107,14 +1107,18 @@ const metricPointsCache = computed<Array<Partial<Record<Exclude<MetricType, 'dep
     return props.profiles.map((profile) => {
       const perMetric: Partial<Record<Exclude<MetricType, 'depth'>, [number, number][]>> = {}
       for (const key of METRICS_TO_RENDER) {
-        perMetric[key] = profile.measurements
-          .map(EXTRACTORS[key])
-          .filter((p): p is [number, number] => p !== null)
+        perMetric[key] = profile.measurements.map(EXTRACTORS[key]).filter(isFinitePoint)
       }
       return perMetric
     })
   },
 )
+
+// Drops both a missing extractor result (null) and a non-finite one (a NaN value from a bad
+// sample, e.g. via a corrupted/partial import) - either would otherwise reach the line generator
+// and produce an invalid "NaN" path, so this is the single point where these get excluded.
+const isFinitePoint = (p: [number, number] | null): p is [number, number] =>
+  p !== null && Number.isFinite(p[0]) && Number.isFinite(p[1])
 
 // Linearly interpolates the value at time t from a sorted [time, value][] list — matching the
 // straight-line segments d3 draws between consecutive points (metric lines use the default

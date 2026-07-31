@@ -42,20 +42,47 @@ export function useApi() {
   }
 
   const getTokenOrRefresh = async ({ force }: { force: boolean }): Promise<string> => {
-    while (authStore.isRefreshing) {
-      // wait
-      await new Promise((resolve) => setTimeout(resolve, 50))
+    // If a refresh is already in flight (triggered by another concurrent
+    // caller), just await its result instead of polling and then possibly
+    // triggering a redundant refresh of our own. Refresh tokens are commonly
+    // single-use/rotated, so a second concurrent refresh call would fail even
+    // though a perfectly valid, freshly-refreshed token is already available.
+    const inFlightRefresh = authStore.getRefreshPromise()
+    if (inFlightRefresh) {
+      const token = await inFlightRefresh
+      if (token) {
+        return token
+      }
+      throw new Error('Could not refresh, please log in again.')
     }
+
     if (!force && authStore.isLoggedIn && authStore.accessToken) {
       return authStore.accessToken
     }
-    authStore.setRefreshing()
-    const token = await refreshAccessToken()
+
+    // We are the first caller to need a refresh: kick one off and publish it
+    // so any concurrent callers can await the same result instead of
+    // triggering their own.
+    const refreshPromise = (async (): Promise<string | null> => {
+      authStore.setRefreshing()
+      try {
+        const token = await refreshAccessToken()
+        if (token) {
+          authStore.login(token)
+          return token
+        }
+        authStore.logout()
+        return null
+      } finally {
+        authStore.setRefreshPromise(null)
+      }
+    })()
+    authStore.setRefreshPromise(refreshPromise)
+
+    const token = await refreshPromise
     if (token) {
-      authStore.login(token)
       return token
     }
-    authStore.logout()
     throw new Error('Could not refresh, please log in again.')
   }
 

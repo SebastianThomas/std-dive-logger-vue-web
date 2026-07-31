@@ -3,6 +3,7 @@
     v-if="previewImage && !imageLoadError"
     :src="previewImage"
     :alt="alt"
+    loading="lazy"
     crossorigin="anonymous"
     class="w-full h-auto object-contain cursor-pointer"
     @error="imageLoadError = true"

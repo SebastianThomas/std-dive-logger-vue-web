@@ -622,16 +622,25 @@ const handleBulkDelete = async () => {
 const confirmBulkDelete = async () => {
   const ids = props.selectedDives.map((d) => d.id)
 
-  try {
-    await Promise.all(ids.map((id) => deleteWithToken(`/v1/dives/${id}`)))
-    toast.success(`Successfully deleted ${ids.length} dive(s)`)
-    showSecondDeleteConfirm.value = false
-    emit('refresh')
-    emit('close')
-  } catch (err) {
-    console.error('Failed to delete dives', err)
-    toast.error('Failed to delete some dives')
+  const results = await Promise.allSettled(ids.map((id) => deleteWithToken(`/v1/dives/${id}`)))
+  const failed = results.filter((r) => r.status === 'rejected')
+  const succeeded = results.length - failed.length
+
+  if (failed.length) {
+    failed.forEach((r) => console.error('Failed to delete dive', (r as PromiseRejectedResult).reason))
   }
+
+  if (failed.length === 0) {
+    toast.success(`Successfully deleted ${succeeded} dive(s)`)
+  } else if (succeeded === 0) {
+    toast.error(`Failed to delete ${failed.length} dive(s)`)
+  } else {
+    toast.error(`${succeeded} of ${ids.length} dive(s) deleted, ${failed.length} failed`)
+  }
+
+  showSecondDeleteConfirm.value = false
+  emit('refresh')
+  emit('close')
 }
 </script>
 

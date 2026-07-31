@@ -172,6 +172,18 @@
           </div>
         </div>
 
+        <!-- Divesoft picker: dives fetched but not yet staged - pick which ones to import -->
+        <div v-else class="flex flex-col gap-4">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            Choose which dive(s) to import. Nothing is staged yet.
+          </p>
+          <DivesoftDiveList
+            :dives="divesoftPickerItems ?? []"
+            @stage="handleDivesoftStageSelected"
+            @cancel="divesoftPickerItems = null"
+          />
+        </div>
+
         <p
           v-if="status"
           class="text-sm mt-4"
@@ -202,18 +214,6 @@
               </ul>
             </div>
           </div>
-        </div>
-
-        <!-- Divesoft picker: dives fetched but not yet staged - pick which ones to import -->
-        <div v-else class="flex flex-col gap-4">
-          <p class="text-sm text-gray-600 dark:text-gray-300">
-            Choose which dive(s) to import. Nothing is staged yet.
-          </p>
-          <DivesoftDiveList
-            :dives="divesoftPickerItems ?? []"
-            @stage="handleDivesoftStageSelected"
-            @cancel="divesoftPickerItems = null"
-          />
         </div>
       </div>
 

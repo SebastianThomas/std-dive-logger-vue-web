@@ -47,7 +47,6 @@
             placeholder="Search dives..."
             autofocus
             class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 dark:bg-gray-800 dark:text-white"
-            @input="handleSearch"
             @keydown.esc="handleSearchEscape"
           />
         </div>
@@ -471,7 +470,14 @@ const fetchUserId = async () => {
   }
 }
 
+// Incrementing token used to guard against out-of-order responses: fetchDives can be in flight
+// for more than one request at once (e.g. a slow broad-search response resolving after a faster,
+// narrower one), so a stale response must never be allowed to clobber state for what's currently
+// being requested.
+let fetchRequestId = 0
+
 const fetchDives = async () => {
+  const requestId = ++fetchRequestId
   isLoading.value = true
   status.value = ''
   try {
@@ -516,6 +522,13 @@ const fetchDives = async () => {
     }
 
     const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(url)
+
+    // A newer fetchDives() call has since started (e.g. the user kept typing/changed a filter) -
+    // discard this response rather than overwriting state with stale results.
+    if (requestId !== fetchRequestId) {
+      return
+    }
+
     dives.value = res.data.result ?? []
     totalPages.value = res.data.totalPages ?? 0
     totalElements.value = res.data.totalElements ?? dives.value.length
@@ -525,17 +538,18 @@ const fetchDives = async () => {
       status.value = searchQuery.value ? 'No dives match your search.' : 'No dives found.'
     }
   } catch (e) {
+    if (requestId !== fetchRequestId) {
+      return
+    }
     console.error(e)
     status.value = 'Failed to load dives.'
     toast.error('Failed to load dives.')
   } finally {
-    isLoading.value = false
+    if (requestId === fetchRequestId) {
+      isLoading.value = false
+    }
   }
 }
-
-const handleSearch = debounce(() => {
-  currentPage.value = 1
-}, 300)
 
 const toggleSharedDives = () => {
   viewShared.value = !viewShared.value
@@ -723,7 +737,6 @@ const clearTagFilter = () => {
 watch(
   [
     currentPage,
-    searchQuery,
     viewShared,
     sortColumn,
     sortDirection,
@@ -741,6 +754,23 @@ watch(
     updateUrlQuery()
     fetchDives()
   },
+)
+
+// searchQuery updates synchronously on every keystroke via v-model, so it's watched separately
+// (rather than joining the array above) and debounced - otherwise typing a query would fire one
+// undebounced fetchDives() call per keystroke. currentPage is reset to 1 for a new search; if it
+// was already 1, that reset is a no-op that wouldn't otherwise trigger the watch above, so fetch
+// explicitly in that case.
+watch(
+  searchQuery,
+  debounce(() => {
+    if (currentPage.value !== 1) {
+      currentPage.value = 1
+      return
+    }
+    updateUrlQuery()
+    fetchDives()
+  }, 300),
 )
 
 // Initial load

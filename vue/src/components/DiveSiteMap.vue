@@ -25,7 +25,7 @@
           v-for="item in props.sites"
           :key="item.site.id"
           :lat-lng="[item.site.latitude, item.site.longitude]"
-          :icon="createDiveSiteIcon(item.diveInfo.length, customIconUrl, props.showDiveCountBadge)"
+          :icon="siteIcons.get(item.site.id)"
         >
           <l-popup>
             <DiveSiteMapPopup :site="item.site" :dive-info="item.diveInfo" />
@@ -75,6 +75,23 @@ const [mapView, setMapView] = usePersistentMapView('map-picker-view', {
   lat: 46,
   lon: 8,
   zoom: 5,
+})
+
+// Memoized per-site marker icons. `createDiveSiteIcon` builds a `DivIcon` by parsing an HTML
+// template string, which is expensive to redo for every marker on every re-render (e.g. every
+// map pan/zoom, since that writes into `mapView` and this component reads it via `mapCenter`/
+// `mapZoom`). Icons only actually need to change when a site's dive count, the badge-visibility
+// prop, or the user's custom icon URL changes — not when the map viewport changes — so this is
+// keyed by site id and recomputed only when those inputs change.
+const siteIcons = computed(() => {
+  const icons = new Map<number | undefined, ReturnType<typeof createDiveSiteIcon>>()
+  for (const item of props.sites) {
+    icons.set(
+      item.site.id,
+      createDiveSiteIcon(item.diveInfo.length, customIconUrl.value, props.showDiveCountBadge),
+    )
+  }
+  return icons
 })
 
 const mapCenter = computed<[number, number]>(

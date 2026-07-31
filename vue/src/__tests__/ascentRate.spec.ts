@@ -29,6 +29,22 @@ describe('toRatePoints', () => {
       { time: 10000, rate: -6 },
     ])
   })
+
+  it('drops points with a non-finite time or rate rather than passing them through', () => {
+    const response: DiveProfileRatesResponse = {
+      profileId: 1,
+      rates: [
+        { time: 0, depth: 0, rateMetersPerMinute: 0 },
+        { time: 5000, depth: 1, rateMetersPerMinute: NaN },
+        { time: NaN, depth: 2, rateMetersPerMinute: 4 },
+        { time: 10000, depth: 3, rateMetersPerMinute: 6 },
+      ],
+    }
+    expect(toRatePoints(response)).toEqual([
+      { time: 0, rate: 0 },
+      { time: 10000, rate: 6 },
+    ])
+  })
 })
 
 describe('rateTier', () => {

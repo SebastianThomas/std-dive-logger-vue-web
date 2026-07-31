@@ -22,6 +22,14 @@ export const useAuthStore = defineStore('auth', () => {
   })
   const initialCheckDone = ref(false)
 
+  // Shared in-flight token refresh promise. When several requests need a
+  // fresh token at the same time, only the first one should actually trigger
+  // a refresh (refresh tokens are typically single-use/rotated); every other
+  // concurrent caller awaits this same promise instead of triggering its own
+  // redundant refresh. Kept as a plain (non-reactive) variable since it lives
+  // only for the lifetime of one refresh call and doesn't need to drive the UI.
+  let refreshPromise: Promise<string | null> | null = null
+
   const isLoggedIn = computed(() => authState.value.loggedIn)
   const accessToken = computed(() =>
     authState.value.loggedIn ? authState.value.accessToken : null,
@@ -48,6 +56,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setRefreshing() {
     authState.value = { ...authState.value, refreshing: true }
+  }
+
+  /** Returns the currently in-flight refresh promise, if any. */
+  function getRefreshPromise(): Promise<string | null> | null {
+    return refreshPromise
+  }
+
+  /** Registers (or clears, when passed null) the shared in-flight refresh promise. */
+  function setRefreshPromise(promise: Promise<string | null> | null) {
+    refreshPromise = promise
   }
 
   function waitForInitialCheck(): Promise<void> {
@@ -89,6 +107,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     setRefreshing,
+    getRefreshPromise,
+    setRefreshPromise,
     waitForInitialCheck,
     tryInitialLogin,
   }

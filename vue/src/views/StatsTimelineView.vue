@@ -72,7 +72,7 @@
           <StatsTimelineChart
             :series="series"
             :granularity="granularity"
-            :selected-metrics="[...selectedMetrics]"
+            :selected-metrics="selectedMetricsList"
             :breakdown-by="breakdownBy"
             @point-click="handlePointClick"
             @range-select="handleRangeSelect"
@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import StatsFilterBar from '@/components/stats/StatsFilterBar.vue'
@@ -156,6 +156,12 @@ const selectedMetrics = ref<Set<TimelineMetric>>(
 )
 const breakdownBy = ref<StatsBreakdownDimension | null>(persisted.breakdownBy ?? null)
 const combineMode = ref<boolean>(persisted.combineMode ?? false)
+
+// Stable array reference for StatsTimelineChart's props.selectedMetrics: this only recomputes when
+// selectedMetrics.value itself is reassigned (see handleMetricClick), not on every parent re-render
+// (e.g. toggling combineMode) — an inline `[...selectedMetrics]` literal in the template would
+// instead produce a brand-new array on every render, defeating the chart's props watcher.
+const selectedMetricsList = computed(() => [...selectedMetrics.value])
 
 const series = ref<StatsTimeSeries | null>(null)
 const loading = ref(false)

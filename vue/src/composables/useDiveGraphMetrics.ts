@@ -62,24 +62,75 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
 
     const measurements = profile.measurements
 
+    let hasTemp = false
+    let hasNdl = false
+    let hasOtu = false
+    let hasCns = false
+    let hasGf = false
+    let hasRmv = false
+    let hasGasO2 = false
+    let hasGasN2 = false
+    let hasGasHe = false
+    let hasDeco = false
+    // The two >1 checks below (po2 measured/calculated/setpoint) need a count, not just a
+    // boolean, so track counts for those and derive the flags once we're done.
+    let po2MeasuredCount = 0
+    let po2CalculatedCount = 0
+    let po2SetpointCount = 0
+
+    for (const m of measurements) {
+      if (!hasTemp && m.measurement.temperature?.value !== undefined) hasTemp = true
+      if (!hasNdl && !!m.measurement.ndl) hasNdl = true
+      if (!hasOtu && m.measurement.o2Tox !== undefined) hasOtu = true
+      if (!hasCns && m.measurement.cns !== undefined) hasCns = true
+      if (!hasGf && m.measurement.n2 !== undefined) hasGf = true
+      if (m.measurement.po2?.measured) po2MeasuredCount++
+      if (m.measurement.po2?.calculated) po2CalculatedCount++
+      if (m.measurement.po2?.maxSetPoint) po2SetpointCount++
+      if (!hasRmv && m.measurement.rmvLiters !== undefined) hasRmv = true
+      if (!hasGasO2 && m.measurement.gas?.o2 !== undefined) hasGasO2 = true
+      if (!hasGasN2 && m.measurement.gas?.n2 !== undefined && m.measurement.gas.n2 > 0)
+        hasGasN2 = true
+      if (!hasGasHe && m.measurement.gas?.he !== undefined && m.measurement.gas.he > 0)
+        hasGasHe = true
+      if (!hasDeco && (m.measurement.deco?.length ?? 0) > 0) hasDeco = true
+
+      // Short-circuit once every flag we can be sure of is settled. The po2 counts can only
+      // grow, so once they've each passed the ">1" threshold there's nothing left to learn from
+      // scanning further either.
+      if (
+        hasTemp &&
+        hasNdl &&
+        hasOtu &&
+        hasCns &&
+        hasGf &&
+        hasRmv &&
+        hasGasO2 &&
+        hasGasN2 &&
+        hasGasHe &&
+        hasDeco &&
+        po2MeasuredCount > 1 &&
+        po2CalculatedCount > 1 &&
+        po2SetpointCount > 1
+      ) {
+        break
+      }
+    }
+
     return {
-      hasTemp: measurements.some((m) => m.measurement.temperature?.value !== undefined),
-      hasNdl: measurements.some((m) => !!m.measurement.ndl),
-      hasOtu: measurements.some((m) => m.measurement.o2Tox !== undefined),
-      hasCns: measurements.some((m) => m.measurement.cns !== undefined),
-      hasGf: measurements.some((m) => m.measurement.n2 !== undefined),
-      hasPo2Measured: measurements.filter((m) => m.measurement.po2?.measured).length > 1,
-      hasPo2Calculated: measurements.filter((m) => m.measurement.po2?.calculated).length > 1,
-      hasPo2Setpoint: measurements.filter((m) => m.measurement.po2?.maxSetPoint).length > 1,
-      hasRmv: measurements.some((m) => m.measurement.rmvLiters !== undefined),
-      hasGasO2: measurements.some((m) => m.measurement.gas?.o2 !== undefined),
-      hasGasN2: measurements.some(
-        (m) => m.measurement.gas?.n2 !== undefined && m.measurement.gas.n2 > 0,
-      ),
-      hasGasHe: measurements.some(
-        (m) => m.measurement.gas?.he !== undefined && m.measurement.gas.he > 0,
-      ),
-      hasDeco: measurements.some((m) => (m.measurement.deco?.length ?? 0) > 0),
+      hasTemp,
+      hasNdl,
+      hasOtu,
+      hasCns,
+      hasGf,
+      hasPo2Measured: po2MeasuredCount > 1,
+      hasPo2Calculated: po2CalculatedCount > 1,
+      hasPo2Setpoint: po2SetpointCount > 1,
+      hasRmv,
+      hasGasO2,
+      hasGasN2,
+      hasGasHe,
+      hasDeco,
     }
   }
 

@@ -301,11 +301,14 @@ function render() {
       .curve(curveMonotoneX)
 
   // The "slow" tier has no lower threshold to collapse against — it's the full-range base layer
-  // every other tier draws over.
+  // every other tier draws over. Falls back to the zero line for a non-finite rate (a bad/missing
+  // sample) rather than feeding it straight into the scale - unlike areaFor()'s tiers, which are
+  // naturally NaN-safe already (a NaN rate fails every `> threshold` comparison), this one has no
+  // such comparison to fall through, so it needs its own explicit guard.
   const slowArea = area<RatePoint>()
-    .x((d) => xScale(d.time))
+    .x((d) => xScale(toVirtual(d.time)))
     .y0(zeroY)
-    .y1((d) => yScale(d.rate))
+    .y1((d) => (Number.isFinite(d.rate) ? yScale(d.rate) : zeroY))
     .curve(curveMonotoneX)
   const normalArea = areaFor(SLOW_RATE_M_PER_MIN)
   const quickArea = areaFor(NORMAL_RATE_M_PER_MIN)

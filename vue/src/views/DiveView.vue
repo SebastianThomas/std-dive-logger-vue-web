@@ -113,16 +113,8 @@
         <!-- Map -->
         <div class="w-full md:w-1/5 h-50 rounded-lg overflow-hidden shadow-sm border">
           <DiveSiteMap
-            :sites="[
-              {
-                site: {
-                  id: dive.site.id!,
-                  ...dive.site,
-                },
-                diveInfo: [{ ...dive }],
-              },
-            ]"
-            :center="[dive.site.latitude, dive.site.longitude]"
+            :sites="mapSites"
+            :center="mapCenter"
             :zoom="13"
             :show-dive-count-badge="false"
           />
@@ -538,6 +530,25 @@ const myUserId = ref<number | null>(null)
 const summary = computed(() => dive.value?.summary)
 const isMine = computed(() => dive.value?.user.id === myUserId.value)
 
+// Hoisted out of the template (which previously built a brand-new array/object literal here on
+// every render) so DiveSiteMap gets a stable prop reference across unrelated re-renders of this
+// view - a fresh reference every time defeats its own marker-icon memoization and forces Leaflet
+// to redo the marker's DOM for no reason.
+const mapSites = computed(() => {
+  const currentDive = dive.value
+  if (!currentDive) return []
+  return [
+    {
+      site: { id: currentDive.site.id!, ...currentDive.site },
+      diveInfo: [{ ...currentDive }],
+    },
+  ]
+})
+const mapCenter = computed<[number, number] | undefined>(() => {
+  const site = dive.value?.site
+  return site ? [site.latitude, site.longitude] : undefined
+})
+
 const viewDivesForSuit = (suitId: number) => {
   router.push({ name: 'DiveList', query: { suitId: suitId.toString() } })
 }
@@ -585,15 +596,25 @@ const allGases = computed<GasListEntry[]>(() => {
 
 const showGasDetails = computed(() => allGases.value.length <= 3)
 
+// Guards against an out-of-order response: if the user navigates to a different dive before an
+// earlier fetch resolves, that stale response must never overwrite what's now on screen (or,
+// worse, let a Delete/Edit action fire against the route's *new* diveId while the page still
+// displays the *old* dive's data). Only the most recently started fetch is allowed to apply.
+let fetchDiveRequestId = 0
+
 const fetchDive = async () => {
+  const requestId = ++fetchDiveRequestId
+  const requestedDiveId = diveId.value
   try {
     loading.value = true
-    const res = await getWithToken<Dive>(`/v1/dives/${diveId.value}`)
+    const res = await getWithToken<Dive>(`/v1/dives/${requestedDiveId}`)
+    if (requestId !== fetchDiveRequestId) return
     dive.value = res.data
   } catch (err) {
+    if (requestId !== fetchDiveRequestId) return
     error.value = err instanceof Error ? err.message : 'Failed to fetch dive'
   } finally {
-    loading.value = false
+    if (requestId === fetchDiveRequestId) loading.value = false
   }
 }
 
@@ -617,8 +638,11 @@ const confirmDeleteProfile = (profileId: number) => {
 const handleDeleteProfile = async () => {
   if (!dive.value || profileIdToDelete.value === null) return
   try {
+    // Keyed off the dive actually on screen (dive.value.id), not the route param (diveId.value) -
+    // these can only ever differ for a moment mid-navigation, but a mutation should always act on
+    // what the user is looking at, not on whatever the URL happens to say right now.
     const res = await deleteWithToken<Dive>(
-      `/v1/dives/${diveId.value}/profiles/${profileIdToDelete.value}`,
+      `/v1/dives/${dive.value.id}/profiles/${profileIdToDelete.value}`,
     )
     dive.value = res.data
     toast.success('Profile deleted')
@@ -634,7 +658,7 @@ const handleDeleteProfile = async () => {
 const handleDelete = async () => {
   if (!dive.value) return
   try {
-    await deleteWithToken(`/v1/dives/${diveId.value}`)
+    await deleteWithToken(`/v1/dives/${dive.value.id}`)
     toast.success('Dive deleted successfully')
     router.push({ name: 'DiveList' })
   } catch (err) {

@@ -97,12 +97,20 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const submitting = ref(false)
 
-const fetchMyUserId = async () => {
+/**
+ * Fetches the current user's own ID. Returns whether the fetch succeeded so callers can
+ * distinguish "we don't know the user's ID because this failed" from "we know it and it's
+ * null" — conflating the two would make a transient network error look identical to "this
+ * isn't your dive" in the ownership check that follows.
+ */
+const fetchMyUserId = async (): Promise<boolean> => {
   try {
     const res = await getWithToken<User>('/v1/users/')
     myUserId.value = res.data.id
+    return true
   } catch (err) {
     console.error('Failed to fetch user ID', err)
+    return false
   }
 }
 
@@ -324,8 +332,17 @@ const handleKeyDown = (event: KeyboardEvent) => {
 }
 
 onMounted(async () => {
-  await fetchMyUserId()
-  await fetchDive()
+  const myUserIdFetched = await fetchMyUserId()
+  if (!myUserIdFetched) {
+    // We couldn't even determine who the current user is, so the ownership check in
+    // fetchDive() can't be trusted (myUserId.value would still be null, which would look
+    // indistinguishable from "not your dive"). Surface this as a retry-able error instead of
+    // bouncing the user away from their own dive.
+    loading.value = false
+    error.value = 'Could not verify your account. Please reload the page to try again.'
+  } else {
+    await fetchDive()
+  }
   window.addEventListener('keydown', handleKeyDown)
 })
 

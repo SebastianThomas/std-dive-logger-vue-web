@@ -19,9 +19,9 @@
               <td class="px-3 py-2 font-medium">{{ member.name }}</td>
               <td class="px-3 py-2">
                 <RoleMenu
-                  v-model="member.role"
+                  :modelValue="member.role"
                   :disabled="!isAdmin || readOnly"
-                  @update:modelValue="(role) => changeRole(member.id, role)"
+                  @update:modelValue="(role) => changeRole(member, role)"
                 />
               </td>
             </tr>
@@ -194,13 +194,16 @@ const fetchGroupDetails = async () => {
   }
 }
 
-const changeRole = async (userId: number, role: string) => {
+const changeRole = async (member: UserWithRole, role: string) => {
+  const previousRole = member.role
+  member.role = role as InGroupRole
   try {
-    await putWithToken(`/v1/groups/role?id=${groupId.value}&userId=${userId}&role=${role}`, {})
+    await putWithToken(`/v1/groups/role?id=${groupId.value}&userId=${member.id}&role=${role}`, {})
     await fetchGroupDetails()
   } catch (err) {
     console.error(err)
     error.value = 'Failed to change role.'
+    member.role = previousRole
   }
 }
 
@@ -260,8 +263,7 @@ const handleGroupEditKeydown = (event: KeyboardEvent) => {
 const deleteGroup = async () => {
   isLoadingDelete.value = true
   try {
-    console.log(groupName.value)
-    await deleteWithToken(`/v1/groups/${groupName.value}`, {})
+    await deleteWithToken(`/v1/groups/${groupId.value}`, {})
     toast.success('Group deleted successfully')
     showDeleteConfirm.value = false
     safeBack()

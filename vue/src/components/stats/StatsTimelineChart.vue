@@ -58,6 +58,7 @@ import {
   type Selection,
   type ScaleLinear,
   type ScaleTime,
+  type ScaleOrdinal,
   type Line,
 } from 'd3'
 import type {
@@ -289,6 +290,14 @@ let crosshairRef: Selection<SVGLineElement, unknown, null, undefined> | null = n
 let xScaleRef: ScaleTime<number, number> | null = null
 let sortedPointsRef: StatsTimeSeriesPoint[] = []
 
+// Breakdown categories/color-scale and a per-bucket index of props.series.breakdown, both derived
+// purely from props.series.breakdown (not from hover position). Computed once per renderAll() and
+// reused by handleHoverMove on every pointermove, instead of rebuilding a Set + scaleOrdinal + full
+// array filter on every single mouse movement (which was measurably janky on hover-drag).
+let breakdownCategoriesRef: string[] = []
+let breakdownColorScaleRef: ScaleOrdinal<string, string> | null = null
+let breakdownByBucketRef: Map<number, StatsTimeSeriesPoint[]> = new Map()
+
 // Click-and-drag (mouse, touch, or pen — Pointer Events unify all three) selects an arbitrary
 // custom range, as opposed to a plain click/tap, which still snaps to the nearest single
 // point/bucket (see onClick). Pointer capture (set in onPointerDown) keeps pointermove/pointerup
@@ -468,6 +477,9 @@ function renderAll() {
     g.select('.x-axis').selectAll('*').remove()
     g.select('.y-left').selectAll('*').remove()
     categoricalLegend.value = []
+    breakdownCategoriesRef = []
+    breakdownColorScaleRef = null
+    breakdownByBucketRef = new Map()
     return
   }
 
@@ -564,6 +576,16 @@ function renderAll() {
     // Split each selected metric into one line per category, instead of one aggregate line.
     const categories = [...new Set(props.series.breakdown.map((d) => d.category ?? 'Unknown'))]
     const colorScale = scaleOrdinal<string, string>().domain(categories).range(schemeCategory10)
+    breakdownCategoriesRef = categories
+    breakdownColorScaleRef = colorScale
+
+    const byBucket = new Map<number, StatsTimeSeriesPoint[]>()
+    for (const d of props.series.breakdown) {
+      const bucket = byBucket.get(d.bucketStart)
+      if (bucket) bucket.push(d)
+      else byBucket.set(d.bucketStart, [d])
+    }
+    breakdownByBucketRef = byBucket
 
     for (const metric of props.selectedMetrics) {
       for (const category of categories) {
@@ -584,6 +606,9 @@ function renderAll() {
       }
     }
   } else {
+    breakdownCategoriesRef = []
+    breakdownColorScaleRef = null
+    breakdownByBucketRef = new Map()
     for (const metric of props.selectedMetrics) {
       const color = DEFAULT_TIMELINE_METRIC_CONFIGS[metric].color
       const seriesPoints: [number, number | null][] = points.map((p) => [
@@ -615,12 +640,15 @@ function handleHoverMove(event: PointerEvent) {
 
   // When breakdown is active, only the per-category lines are actually drawn (see renderAll) —
   // so the tooltip shows category rows for every selected metric instead of the (undrawn)
-  // aggregate values, using the same category list + color scale as renderAll so colors match.
+  // aggregate values, using the same category list + color scale + per-bucket index that renderAll
+  // already computed once (see breakdownCategoriesRef/breakdownColorScaleRef/breakdownByBucketRef)
+  // so colors match and this handler doesn't rebuild a Set + scaleOrdinal + full-array filter on
+  // every single pointer move.
   const rows: TooltipRow[] = []
-  if (isBreakdownActive.value) {
-    const categories = [...new Set(props.series.breakdown.map((d) => d.category ?? 'Unknown'))]
-    const colorScale = scaleOrdinal<string, string>().domain(categories).range(schemeCategory10)
-    const atBucket = props.series.breakdown.filter((d) => d.bucketStart === point.bucketStart)
+  if (isBreakdownActive.value && breakdownColorScaleRef) {
+    const categories = breakdownCategoriesRef
+    const colorScale = breakdownColorScaleRef
+    const atBucket = breakdownByBucketRef.get(point.bucketStart) ?? []
     for (const metric of props.selectedMetrics) {
       for (const category of categories) {
         const entry = atBucket.find((d) => (d.category ?? 'Unknown') === category)
@@ -715,9 +743,13 @@ onBeforeUnmount(() => {
   abortDrag()
 })
 
+// A getter per source (rather than one getter returning an array) makes this a multi-source watch,
+// which does its own shallow per-source comparison — no `deep: true` needed. `deep: true` here
+// would otherwise make Vue recursively walk props.series (a time-series array) on every reactivity
+// check, and combined with StatsTimelineView previously passing a brand-new `[...selectedMetrics]`
+// array literal on every render, was triggering a full SVG teardown/rebuild far more than needed.
 watch(
-  () => [props.series, props.granularity, props.selectedMetrics, props.breakdownBy],
+  [() => props.series, () => props.granularity, () => props.selectedMetrics, () => props.breakdownBy],
   () => renderAll(),
-  { deep: true },
 )
 </script>
