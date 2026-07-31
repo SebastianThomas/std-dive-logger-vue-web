@@ -74,6 +74,7 @@ import {
 import { formatElapsedTime } from '@/lib/utils/timeUtils'
 import { detectTimeGaps, buildVirtualTimeMapper } from '@/lib/graph/timeGaps'
 import { useApi } from '@/composables/useApi'
+import { LruCache } from '@/lib/utils/lruCache'
 
 const props = defineProps<{
   profiles: DiveProfile[]
@@ -94,7 +95,10 @@ const { getWithToken } = useApi()
 
 // Keyed by dive id — a dive's rates never change once analytics has run for it, so once fetched
 // there's no need to ask the backend again while the user navigates around the same dive.
-const ratesCache = new Map<number, DiveProfileRatesResponse[]>()
+// Capped (not a plain Map) because this component instance persists across dive-to-dive
+// navigation within a session (DiveView reuses it rather than remounting on diveId change) - an
+// uncapped cache would otherwise retain every dive ever viewed for the tab's whole lifetime.
+const ratesCache = new LruCache<number, DiveProfileRatesResponse[]>(8)
 const ratesByProfileId = ref<Map<number, DiveProfileRatesResponse>>(new Map())
 
 async function fetchRates() {

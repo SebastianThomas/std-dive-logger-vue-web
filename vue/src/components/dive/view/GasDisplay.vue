@@ -1,6 +1,7 @@
 <template>
   <span class="group relative inline-block cursor-help">
     {{ o2Percent }}/{{ hePercent }}
+    <span v-if="roleLabel" class="ml-1 text-[10px] opacity-70">({{ roleLabel }})</span>
     <span
       class="absolute top-full mt-1 left-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10"
     >
@@ -18,9 +19,13 @@
 import { computed } from 'vue'
 import type { Gas } from '@/lib/types/dive'
 
-const props = withDefaults(defineProps<{ gas: Gas; showDetails?: boolean }>(), {
-  showDetails: false,
-})
+const props = withDefaults(
+  defineProps<{ gas: Gas; showDetails?: boolean; roleLabel?: string | null }>(),
+  {
+    showDetails: false,
+    roleLabel: null,
+  },
+)
 
 const showDetails = computed(() => props.showDetails)
 

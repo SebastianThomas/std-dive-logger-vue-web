@@ -76,6 +76,7 @@ import {
 } from '@/lib/utils/graphUtils'
 import {
   createMetricConfigs,
+  EXTRACTORS,
   METRICS_TO_RENDER,
   type MetricConfigMap,
 } from '@/lib/graph/metricExtractors'
@@ -85,6 +86,7 @@ import {
   getActiveSegments,
   type TimeMapper,
 } from '@/lib/graph/timeGaps'
+import { LruCache } from '@/lib/utils/lruCache'
 
 type Props = {
   profiles: DiveProfile[]
@@ -222,7 +224,10 @@ const focusCircle = ref<Selection<SVGCircleElement, unknown, null, undefined> | 
 const crosshairLine = ref<Selection<SVGLineElement, unknown, null, undefined> | null>(null)
 const segmentsData = ref<DiveProfileSegmentWithId[] | null>(null)
 const segmentsLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
-const segmentsCache = new Map<number, DiveProfileSegmentWithId[]>()
+// Capped: this component instance persists across dive-to-dive navigation within a session
+// (DiveView reuses it rather than remounting on diveId change), so an uncapped cache here would
+// retain every dive's segments ever viewed for the tab's whole lifetime.
+const segmentsCache = new LruCache<number, DiveProfileSegmentWithId[]>(8)
 const decoZoneLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const decoZoneArea = ref<Area<[number, number]> | null>(null)
 const po2ReferenceLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
@@ -380,6 +385,8 @@ function setupScales() {
   gasHeLine.value = makeMetricLine(gasFractionScale.value)
 }
 
+let resizeDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
 onMounted(async () => {
   updateSize()
   initSvg()
@@ -388,11 +395,19 @@ onMounted(async () => {
   await maybeFetchSegments()
   renderSegments()
   ro = new ResizeObserver(() => {
-    updateSize()
-    initSvg()
-    setupScales()
-    renderAll()
-    renderSegments()
+    // ResizeObserver can fire many times in quick succession (a dragged window edge, mobile
+    // orientation change, elastic overscroll) - each tick here is a full SVG rebuild plus a
+    // rescan of every measurement for scale domains, so coalescing bursts into one trailing call
+    // avoids doing that work several times over for a single visual resize.
+    if (resizeDebounceTimer !== null) clearTimeout(resizeDebounceTimer)
+    resizeDebounceTimer = setTimeout(() => {
+      resizeDebounceTimer = null
+      updateSize()
+      initSvg()
+      setupScales()
+      renderAll()
+      renderSegments()
+    }, 100)
   })
   if (container.value) ro.observe(container.value)
 })
@@ -400,6 +415,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (ro && container.value) ro.unobserve(container.value)
   if (zoomHintTimer) clearTimeout(zoomHintTimer)
+  if (resizeDebounceTimer) clearTimeout(resizeDebounceTimer)
 })
 
 const redraw = async () => {
@@ -418,6 +434,11 @@ watch(() => props.profiles, redraw)
 
 // visibleProfiles IS mutated in place (toggling a single index) rather than reassigned, so it -
 // along with the cheap primitive toggles/axis metrics - still needs deep tracking to notice.
+//
+// None of these ever change a scale's domain (see the "Independent domains per metric" comment
+// in setupScales()) - only which already-computed lines/axes are visible - so re-running
+// setupScales() here would just repeat the same full rescan of every measurement for no visual
+// difference. Re-rendering with the existing scales is sufficient and far cheaper.
 watch(
   () => [
     props.visibleProfiles,
@@ -439,7 +460,11 @@ watch(
     leftAxisMetric.value,
     rightAxisMetric.value,
   ],
-  redraw,
+  async () => {
+    renderAll()
+    await maybeFetchSegments()
+    renderSegments()
+  },
   { deep: true },
 )
 
@@ -1074,14 +1099,16 @@ function buildMetricConfigs(): MetricConfigMap {
 // list instead makes hover behavior match what's actually drawn — a continuous line — rather
 // than the sparse underlying sample rate. Recomputed only when the profiles themselves change,
 // not on every mousemove.
+// Depends only on props.profiles (via EXTRACTORS, which reads no props at all) - deliberately
+// decoupled from show-flag props so toggling a metric's visibility doesn't force a full rescan
+// of every profile's measurements just to rebuild this cache.
 const metricPointsCache = computed<Array<Partial<Record<Exclude<MetricType, 'depth'>, [number, number][]>>>>(
   () => {
-    const configs = buildMetricConfigs()
     return props.profiles.map((profile) => {
       const perMetric: Partial<Record<Exclude<MetricType, 'depth'>, [number, number][]>> = {}
       for (const key of METRICS_TO_RENDER) {
         perMetric[key] = profile.measurements
-          .map(configs[key].extractor)
+          .map(EXTRACTORS[key])
           .filter((p): p is [number, number] => p !== null)
       }
       return perMetric
@@ -1166,25 +1193,19 @@ function renderTooltipAtTime(
 ): void {
   if (!timeScale.value || !depthScale.value || !gSel.value) return
 
-  // Find closest measurement across visible profiles only to determine time
-  const allMeasurements = props.profiles.flatMap((p, pIdx) =>
-    visibleMask.value[pIdx]
-      ? p.measurements.map((m, mIdx) => ({
-          ...m,
-          profileIdx: pIdx,
-          profileStart: p.start,
-          measurementIndex: mIdx,
-        }))
-      : [],
-  )
-  if (!allMeasurements.length) return
-
-  const b = bisector((m: DiveMeasurementWithId) => m.measurement.time).center
-  const idx = Math.min(allMeasurements.length - 1, Math.max(0, b(allMeasurements, tVal)))
-  const closestMeasurement = allMeasurements[idx]!
-
-  // Collect data from all visible profiles at this time
+  // Collect data from all visible profiles at this time. Bisects directly on each profile's own
+  // `measurements` array (no per-mousemove copying/spreading of every measurement) - this runs on
+  // every pointer move, so allocating a fresh, decorated array of the whole dataset each time
+  // would mean real GC pressure on longer dives.
   const profileDataList: TooltipProfileData[] = []
+  const graphStartTime = Math.min(...props.profiles.map((p) => p.start))
+  const bProfile = bisector((m: DiveMeasurementWithId) => m.measurement.time).center
+
+  // Fallback anchor depth for when the selected profile (below) has no data at this time -
+  // the depth of whichever visible profile's own nearest sample is closest in time to the cursor.
+  // Always overwritten before use once profileDataList is non-empty (checked just below).
+  let anchorDepth = 0
+  let anchorTimeDist = Infinity
 
   props.profiles.forEach((profile, profileIdx) => {
     if (!visibleMask.value[profileIdx]) return
@@ -1192,26 +1213,19 @@ function renderTooltipAtTime(
     // Check if this profile has data at the current time point
     // Only show tooltip for profiles where current time is within their time range
     if (tVal < profile.start || tVal > profile.end) return
+    if (profile.measurements.length === 0) return
 
-    // Find the closest measurement in this profile to the current time
-    const profileMeasurements = profile.measurements.map((m, mIdx) => ({
-      ...m,
-      profileIdx,
-      profileStart: profile.start,
-      measurementIndex: mIdx,
-    }))
-
-    if (profileMeasurements.length === 0) return
-
-    const bProfile = bisector((m: DiveMeasurementWithId) => m.measurement.time).center
     const mIdx = Math.min(
-      profileMeasurements.length - 1,
-      Math.max(0, bProfile(profileMeasurements, tVal)),
+      profile.measurements.length - 1,
+      Math.max(0, bProfile(profile.measurements, tVal)),
     )
-    const m = profileMeasurements[mIdx]!
+    const m = profile.measurements[mIdx]!
 
-    // Calculate absolute time from the earliest profile start
-    const graphStartTime = Math.min(...props.profiles.map((p) => p.start))
+    const dist = Math.abs(m.measurement.time - tVal)
+    if (dist < anchorTimeDist) {
+      anchorTimeDist = dist
+      anchorDepth = m.measurement.depth
+    }
 
     // Current mandatory stop, if any: the deepest active deco stop (the same "ceiling"
     // depth the red deco zone on the chart is shaded to) and its remaining stop time.
@@ -1227,7 +1241,7 @@ function renderTooltipAtTime(
     profileDataList.push({
       profileIdx,
       profileNum: profileIdx + 1,
-      timeDisplay: formatElapsedTime(m.measurement.time, m.profileStart),
+      timeDisplay: formatElapsedTime(m.measurement.time, profile.start),
       absoluteTime: formatElapsedTime(m.measurement.time, graphStartTime),
       depth: m.measurement.depth,
       temp: interpolateAt(profilePoints?.temp, tVal) ?? m.measurement.temperature?.value,
@@ -1244,23 +1258,18 @@ function renderTooltipAtTime(
       gasO2: interpolateAt(profilePoints?.gasO2, tVal),
       gasN2: interpolateAt(profilePoints?.gasN2, tVal),
       gasHe: interpolateAt(profilePoints?.gasHe, tVal),
-      segmentType:
-        m.measurementIndex !== undefined &&
-        m.profileIdx !== undefined &&
-        props.profiles[m.profileIdx]
-          ? findSegmentTypeAtIndex(
-              segmentsData.value,
-              props.profiles[m.profileIdx]!.id,
-              m.measurementIndex,
-              props.profiles[m.profileIdx]!.measurements?.length ?? 0,
-            )
-          : undefined,
+      segmentType: findSegmentTypeAtIndex(
+        segmentsData.value,
+        profile.id,
+        mIdx,
+        profile.measurements.length,
+      ),
     })
   })
 
   if (profileDataList.length === 0) return
 
-  let anchorDepth = closestMeasurement.measurement.depth
+  // profileDataList is non-empty, so the loop above always set anchorDepth at least once.
   let selM: DiveMeasurementWithId | undefined
 
   // Find the depth at the current time for the selected profile

@@ -21,6 +21,49 @@ export type MetricConfig = {
 export type MetricConfigMap = Record<Exclude<MetricType, 'depth'>, MetricConfig>
 
 /**
+ * Pure per-measurement data extractors, independent of any visibility/show-flag props. Kept
+ * separate from {@link createMetricConfigs} so code that only needs the extracted [time, value]
+ * points (e.g. the tooltip's interpolation cache) can depend on the profiles data alone, not on
+ * every show-toggle prop too - reading `props.showX` inside a computed makes Vue re-run that
+ * computed on every toggle, even though the extracted points themselves never change with
+ * visibility.
+ */
+export const EXTRACTORS: Record<
+  Exclude<MetricType, 'depth'>,
+  (m: DiveMeasurementWithId) => [number, number] | null
+> = {
+  temp: (m) =>
+    m.measurement.temperature?.value !== undefined
+      ? [m.measurement.time, m.measurement.temperature.value]
+      : null,
+  ndl: (m) =>
+    m.measurement.ndl ? [m.measurement.time, parseISODurationToMinutes(m.measurement.ndl)] : null,
+  otu: (m) => (m.measurement.o2Tox !== undefined ? [m.measurement.time, m.measurement.o2Tox] : null),
+  cns: (m) => (m.measurement.cns !== undefined ? [m.measurement.time, m.measurement.cns] : null),
+  gf: (m) => (m.measurement.n2 !== undefined ? [m.measurement.time, m.measurement.n2] : null),
+  po2Measured: (m) =>
+    m.measurement.po2?.measured !== undefined
+      ? [m.measurement.time, m.measurement.po2.measured]
+      : null,
+  po2Calculated: (m) =>
+    m.measurement.po2?.calculated !== undefined
+      ? [m.measurement.time, m.measurement.po2.calculated]
+      : null,
+  po2Setpoint: (m) =>
+    m.measurement.po2?.maxSetPoint !== undefined
+      ? [m.measurement.time, m.measurement.po2.maxSetPoint]
+      : null,
+  rmv: (m) =>
+    m.measurement.rmvLiters !== undefined ? [m.measurement.time, m.measurement.rmvLiters] : null,
+  gasO2: (m) =>
+    m.measurement.gas?.o2 !== undefined ? [m.measurement.time, m.measurement.gas.o2 * 100] : null,
+  gasN2: (m) =>
+    m.measurement.gas?.n2 !== undefined ? [m.measurement.time, m.measurement.gas.n2 * 100] : null,
+  gasHe: (m) =>
+    m.measurement.gas?.he !== undefined ? [m.measurement.time, m.measurement.gas.he * 100] : null,
+}
+
+/**
  * Creates the metric configuration map for extracting data points from dive measurements.
  * This factory function should be called within the component to access reactive references.
  *
@@ -59,103 +102,69 @@ export function createMetricConfigs(
   },
 ): MetricConfigMap {
   return {
-    temp: {
-      extractor: (m) =>
-        m.measurement.temperature?.value !== undefined
-          ? [m.measurement.time, m.measurement.temperature.value]
-          : null,
-      lineRef: lineRefs.temp,
-      showProp: props.showTemp ?? false,
-    },
+    temp: { extractor: EXTRACTORS.temp, lineRef: lineRefs.temp, showProp: props.showTemp ?? false },
     ndl: {
-      extractor: (m) =>
-        m.measurement.ndl
-          ? [m.measurement.time, parseISODurationToMinutes(m.measurement.ndl)]
-          : null,
+      extractor: EXTRACTORS.ndl,
       lineRef: lineRefs.ndl,
       showProp: props.showNdl ?? false,
       width: 1.2,
     },
     otu: {
-      extractor: (m) =>
-        m.measurement.o2Tox !== undefined ? [m.measurement.time, m.measurement.o2Tox] : null,
+      extractor: EXTRACTORS.otu,
       lineRef: lineRefs.otu,
       showProp: props.showOtu ?? false,
       width: 1.2,
     },
     cns: {
-      extractor: (m) =>
-        m.measurement.cns !== undefined ? [m.measurement.time, m.measurement.cns] : null,
+      extractor: EXTRACTORS.cns,
       lineRef: lineRefs.cns,
       showProp: props.showCns ?? false,
       width: 1.2,
     },
     gf: {
-      extractor: (m) =>
-        m.measurement.n2 !== undefined ? [m.measurement.time, m.measurement.n2] : null,
+      extractor: EXTRACTORS.gf,
       lineRef: lineRefs.gf,
       showProp: props.showGf ?? false,
       width: 1.2,
     },
     po2Measured: {
-      extractor: (m) =>
-        m.measurement.po2?.measured !== undefined
-          ? [m.measurement.time, m.measurement.po2.measured]
-          : null,
+      extractor: EXTRACTORS.po2Measured,
       lineRef: lineRefs.po2Measured,
       showProp: props.showPo2Measured ?? false,
       width: 1.2,
     },
     po2Calculated: {
-      extractor: (m) =>
-        m.measurement.po2?.calculated !== undefined
-          ? [m.measurement.time, m.measurement.po2.calculated]
-          : null,
+      extractor: EXTRACTORS.po2Calculated,
       lineRef: lineRefs.po2Calculated,
       showProp: props.showPo2Calculated ?? false,
       width: 1.2,
     },
     po2Setpoint: {
-      extractor: (m) =>
-        m.measurement.po2?.maxSetPoint !== undefined
-          ? [m.measurement.time, m.measurement.po2.maxSetPoint]
-          : null,
+      extractor: EXTRACTORS.po2Setpoint,
       lineRef: lineRefs.po2Setpoint,
       showProp: props.showPo2Setpoint ?? false,
       width: 1.2,
     },
     rmv: {
-      extractor: (m) =>
-        m.measurement.rmvLiters !== undefined
-          ? [m.measurement.time, m.measurement.rmvLiters]
-          : null,
+      extractor: EXTRACTORS.rmv,
       lineRef: lineRefs.rmv,
       showProp: props.showRmv ?? false,
       width: 1.2,
     },
     gasO2: {
-      extractor: (m) =>
-        m.measurement.gas?.o2 !== undefined
-          ? [m.measurement.time, m.measurement.gas.o2 * 100]
-          : null,
+      extractor: EXTRACTORS.gasO2,
       lineRef: lineRefs.gasO2,
       showProp: props.showGasO2 ?? false,
       width: 1.2,
     },
     gasN2: {
-      extractor: (m) =>
-        m.measurement.gas?.n2 !== undefined
-          ? [m.measurement.time, m.measurement.gas.n2 * 100]
-          : null,
+      extractor: EXTRACTORS.gasN2,
       lineRef: lineRefs.gasN2,
       showProp: props.showGasN2 ?? false,
       width: 1.2,
     },
     gasHe: {
-      extractor: (m) =>
-        m.measurement.gas?.he !== undefined
-          ? [m.measurement.time, m.measurement.gas.he * 100]
-          : null,
+      extractor: EXTRACTORS.gasHe,
       lineRef: lineRefs.gasHe,
       showProp: props.showGasHe ?? false,
       width: 1.2,

@@ -141,17 +141,17 @@
           <InfoCardRow>
             <InfoCard title="Gases">
               <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                <li v-for="gas in allGases" :key="`${gas.o2}/${gas.he}/${gas.n2}`">
-                  <GasDisplay :gas="gas" :show-details="showGasDetails" />
+                <li v-for="entry in allGases" :key="`${entry.gas.o2}/${entry.gas.he}/${entry.gas.n2}`">
+                  <GasDisplay :gas="entry.gas" :show-details="showGasDetails" :role-label="entry.roleLabel" />
                 </li>
-                <li v-if="allGases.size === 0" class="text-gray-400 dark:text-gray-500">
+                <li v-if="allGases.length === 0" class="text-gray-400 dark:text-gray-500">
                   No gas data
                 </li>
               </ul>
             </InfoCard>
             <InfoCard title="Dive Computers">
               <button
-                class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-left block"
+                class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
                 v-for="computer in uniqueComputers"
                 :key="computer.id"
                 @click="viewDivesForComputer(computer.id)"
@@ -504,12 +504,13 @@ import InfoCardRow from '@/components/InfoCardRow.vue'
 import SharePopover from '@/components/share/SharePopover.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import ProfileReimportModal from '@/components/dive/view/ProfileReimportModal.vue'
-import type { Dive, DiveComputer, Gas } from '@/lib/types/dive'
+import type { Dive, DiveComputer } from '@/lib/types/dive'
 import {
   BASE_CONFIGURATION_LABELS,
   SUIT_TYPE_LABELS,
   isCcrBaseConfiguration,
 } from '@/lib/types/dive'
+import { computeGasList, type GasListEntry } from '@/lib/dive/gasRoles'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { User } from '@/lib/types/user'
 import { useProfileReimportStore } from '@/stores/profileReimport'
@@ -573,33 +574,16 @@ const uniqueComputers = computed(() => {
   return new Set(computerMap.values())
 })
 
-// Extract all unique gas mixes from measurements
-const allGases = computed(() => {
-  const profiles = dive.value?.profiles
-  if (!profiles) {
-    return new Set<Gas>()
-  }
-  const gases = profiles
-    .flatMap((p) => p.measurements)
-    .map((m) => m.measurement.gas)
-    .filter(Boolean)
-    .map((g) => g!)
-  if (!gases || gases.length === 0) {
-    return new Set<Gas>()
-  }
-  // Deduplicate by composition only (not description) - the same gas breathed via different
-  // profiles/computers can have differently-worded descriptions, but it's still one gas.
-  const seen = new Map<string, Gas>()
-  gases.forEach((gas) => {
-    const key = `${gas.o2}-${gas.n2}-${gas.he}`
-    if (!seen.has(key)) {
-      seen.set(key, gas)
-    }
-  })
-  return new Set(seen.values())
+const allGases = computed<GasListEntry[]>(() => {
+  const currentDive = dive.value
+  if (!currentDive?.profiles) return []
+  const isCcr = currentDive.configuration?.base
+    ? isCcrBaseConfiguration(currentDive.configuration.base)
+    : false
+  return computeGasList(currentDive.profiles, isCcr)
 })
 
-const showGasDetails = computed(() => allGases.value.size <= 3)
+const showGasDetails = computed(() => allGases.value.length <= 3)
 
 const fetchDive = async () => {
   try {
