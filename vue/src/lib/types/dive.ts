@@ -288,6 +288,8 @@ export type StageImportResult = { staged: PendingImportSummary[]; errors: string
  * with the site fields - when set, the parsed profile is attached to that existing dive instead
  * of creating a new one.
  */
+export type ProfileTrim = { profileIndex: number; trimStart?: number; trimEnd?: number }
+
 export type PendingImportCommitRequest = {
   diveNumber?: number
   diveIdentifier?: string
@@ -298,6 +300,9 @@ export type PendingImportCommitRequest = {
   newSiteName?: string
   newSiteLocation?: { lat: number; lon: number }
   linkToExistingDiveId?: number
+  /** Trims applied to one or more profiles (by index, matching the preview endpoint's ordering)
+   * before the dive is created/attached. */
+  profileTrims?: ProfileTrim[]
 }
 
 export type DiveProfileWithoutMeasurements = {

@@ -10,9 +10,46 @@
       fullscreen
       @close="graphOpen = false"
       @profiles-aligned="handleProfilesAligned"
+      @profile-trimmed="handleProfileTrimmed"
     />
 
     <div v-else-if="!loading && dive" class="space-y-3 md:space-y-4">
+      <!-- Trim suggestion: a profile has a sustained near-surface stretch at its start/end (e.g.
+           the trailing few minutes a Divesoft Liberty logs while waiting to be ended manually)
+           worth reviewing - dismissible for this session, re-appears on a fresh page load since
+           there's no persisted "seen" state yet. -->
+      <div
+        v-if="isMine && !readOnly && !dismissedTrimSuggestion && profilesWithTrimSuggestion.length"
+        class="rounded-xl border border-sky-300 bg-sky-50 dark:bg-sky-900/20 dark:border-sky-700 p-3 flex items-center justify-between gap-3"
+      >
+        <p class="text-sm text-sky-900 dark:text-sky-100">
+          <i class="fa-solid fa-scissors mr-1"></i>
+          {{
+            profilesWithTrimSuggestion.length === 1
+              ? 'This dive has a profile with'
+              : `${profilesWithTrimSuggestion.length} profiles have`
+          }}
+          a near-surface stretch that might be worth trimming.
+        </p>
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            class="px-3 py-1 text-sm rounded-lg bg-sky-600 text-white hover:bg-sky-700"
+            @click="graphOpen = true"
+          >
+            Review
+          </button>
+          <button
+            type="button"
+            class="px-2 py-1 text-sm text-sky-900 dark:text-sky-100 opacity-70 hover:opacity-100"
+            title="Dismiss"
+            @click="dismissedTrimSuggestion = true"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
       <!-- Header -->
       <div
         class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 flex flex-col"
@@ -268,6 +305,7 @@
             :profiles="dive.profiles"
             :dive-id="diveId"
             @profiles-aligned="handleProfilesAligned"
+      @profile-trimmed="handleProfileTrimmed"
           />
         </div>
       </div>
@@ -503,6 +541,7 @@ import {
   isCcrBaseConfiguration,
 } from '@/lib/types/dive'
 import { computeGasList, type GasListEntry } from '@/lib/dive/gasRoles'
+import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { User } from '@/lib/types/user'
 import { useProfileReimportStore } from '@/stores/profileReimport'
@@ -596,6 +635,16 @@ const allGases = computed<GasListEntry[]>(() => {
 
 const showGasDetails = computed(() => allGases.value.length <= 3)
 
+const dismissedTrimSuggestion = ref(false)
+const profilesWithTrimSuggestion = computed(() => {
+  const profiles = dive.value?.profiles
+  if (!profiles) return []
+  return profiles.filter((p) => {
+    const suggestion = detectTrimSuggestion(p)
+    return suggestion.suggestedStart !== null || suggestion.suggestedEnd !== null
+  })
+})
+
 // Guards against an out-of-order response: if the user navigates to a different dive before an
 // earlier fetch resolves, that stale response must never overwrite what's now on screen (or,
 // worse, let a Delete/Edit action fire against the route's *new* diveId while the page still
@@ -675,6 +724,11 @@ const handleProfilesAligned = (updatedDive: Dive) => {
   // Replace the current dive with the updated one from the alignment response
   dive.value = updatedDive
   toast.success('Profiles aligned successfully')
+}
+
+const handleProfileTrimmed = (updatedDive: Dive) => {
+  // DiveGraphContainer already toasts success/failure for the trim itself - just refresh state.
+  dive.value = updatedDive
 }
 
 const handleProfileReimported = (updatedDive: Dive) => {

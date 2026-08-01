@@ -60,15 +60,24 @@
     <div v-if="mode === 'new'" class="flex flex-col gap-2">
       <label class="text-sm font-medium dark:text-gray-300">Dive site</label>
       <div class="flex items-center gap-2">
-        <span class="text-sm dark:text-gray-200">{{ siteLabel }}</span>
+        <span
+          class="text-sm"
+          :class="siteResolved ? 'dark:text-gray-200' : 'text-red-600 dark:text-red-400 font-medium'"
+        >
+          <i v-if="!siteResolved" class="fas fa-triangle-exclamation mr-1"></i>
+          {{ siteLabel }}
+        </span>
         <button
           type="button"
           class="text-sm text-sky-600 hover:text-sky-700"
           @click="showSiteSelector = true"
         >
-          Change
+          {{ siteResolved ? 'Change' : 'Choose' }}
         </button>
       </div>
+      <p v-if="!siteResolved" class="text-xs text-red-600 dark:text-red-400">
+        A dive site is required - this import will fail to save until one is chosen.
+      </p>
     </div>
 
     <div v-else class="flex flex-col gap-2">
@@ -103,10 +112,72 @@
       </ul>
     </div>
 
+    <div class="flex flex-col gap-2">
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          :disabled="previewLoading"
+          class="text-sm text-sky-600 hover:text-sky-700 disabled:opacity-50"
+          @click="togglePreview"
+        >
+          {{ previewLoading ? 'Loading preview...' : previewProfiles ? 'Hide preview' : 'Preview & trim' }}
+        </button>
+        <span v-if="profileTrims.size > 0" class="text-xs text-emerald-600 dark:text-emerald-400">
+          <i class="fa-solid fa-scissors mr-1"></i>{{ profileTrims.size }} profile(s) trimmed
+        </span>
+      </div>
+
+      <div v-if="previewProfiles" class="space-y-2">
+        <div class="flex flex-wrap gap-2">
+          <div
+            v-for="(profile, idx) in previewProfiles"
+            :key="profile.id"
+            class="flex items-center gap-1 px-2 py-1 text-xs rounded border"
+            :class="
+              profileTrims.has(profile.id)
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                : 'border-gray-300 dark:border-gray-600'
+            "
+          >
+            <button
+              type="button"
+              :disabled="trimProfileId !== null"
+              class="disabled:opacity-50"
+              @click="startTrimmingProfile(profile.id)"
+            >
+              <i class="fa-solid fa-scissors mr-1"></i>Trim profile {{ idx + 1
+              }}{{ profileTrims.has(profile.id) ? ' ✓' : '' }}
+            </button>
+            <button
+              v-if="profileTrims.has(profile.id)"
+              type="button"
+              class="opacity-70 hover:opacity-100"
+              title="Clear this trim"
+              @click="clearProfileTrim(profile.id)"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+        <div class="relative h-64 border rounded dark:border-gray-600">
+          <DiveGraph
+            :profiles="previewProfiles"
+            :dive-id="0"
+            :trim-profile-id="trimProfileId"
+            @trim-confirmed="confirmTrimmingProfile"
+            @trim-cancelled="cancelTrimmingProfile"
+          />
+        </div>
+      </div>
+    </div>
+
     <div class="flex justify-end">
       <button
         type="button"
-        :disabled="busy || (mode === 'existing' && !linkToExistingDiveId)"
+        :disabled="
+          busy || (mode === 'existing' ? !linkToExistingDiveId : !siteResolved)
+        "
+        :title="mode === 'new' && !siteResolved ? 'Choose a dive site first' : undefined"
         class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
         @click="commit"
       >
@@ -133,31 +204,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
-import axios from 'axios'
 import { useApi } from '@/composables/useApi'
 import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
 import { formatDate } from '@/lib/utils/timeUtils'
 import debounce from '@/lib/utils/debounce'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
+import { useProfileTrimming } from '@/composables/useProfileTrimming'
 import DiveSiteSelector from '@/components/DiveSiteSelector.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
+import DiveGraph from '@/components/dive/view/DiveGraph.vue'
 import type {
+  DiveProfile,
   DiveSite,
   DiveWithoutProfiles,
   PagedResult,
   PendingImportCommitRequest,
   PendingImportSummary,
 } from '@/lib/types/dive'
-
-/** Pulls the human-readable ProblemDetail `detail` out of a failed request, if present. */
-const extractErrorDetail = (err: unknown): string => {
-  if (axios.isAxiosError(err) && err.response) {
-    const data = err.response.data as { detail?: string; title?: string }
-    return data.detail ?? data.title ?? 'Please try again.'
-  }
-  return 'Please try again.'
-}
 
 const props = defineProps<{ summary: PendingImportSummary }>()
 const emit = defineEmits<{
@@ -174,10 +239,56 @@ const busy = ref(false)
 const showSiteSelector = ref(false)
 const chosenSite = ref<DiveSite | null>(null)
 const siteLabel = ref(props.summary.siteNameGuess ?? 'Not set - please choose a site')
+// A name guess alone doesn't *guarantee* the commit will succeed (the backend still needs to
+// resolve it to an existing site, or have coordinates to create one from) - but the guaranteed-
+// fail case is having nothing at all, which is what previously only surfaced as a commit-time
+// error. Once the user has explicitly picked a site via the selector, it's resolved regardless.
+const siteResolved = computed(() => !!chosenSite.value || !!props.summary.siteNameGuess)
 
 const diveSearchTerm = ref('')
 const myDives = ref<DiveWithoutProfiles[]>([])
 const linkToExistingDiveId = ref<number | null>(null)
+
+// Preview/trim - fetched on demand (see previewPending on the backend: not sent at stage time to
+// avoid round-tripping full measurement data for staged imports nobody ends up reviewing).
+// Profile ids here are the profile's own array index (there's no real persisted id yet), which is
+// also what profileTrims is keyed by - the backend applies each by that same index at commit time.
+const previewProfiles = ref<DiveProfile[] | null>(null)
+const previewLoading = ref(false)
+const {
+  trimProfileId,
+  startTrimming: startTrimmingProfile,
+  cancelTrimming: cancelTrimmingProfile,
+} = useProfileTrimming()
+const profileTrims = ref<Map<number, { start: number; end: number }>>(new Map())
+
+const togglePreview = async () => {
+  if (previewProfiles.value) {
+    previewProfiles.value = null
+    return
+  }
+  previewLoading.value = true
+  try {
+    const res = await getWithToken<DiveProfile[]>(
+      resolveImporterUrl(`/v1/import/pending/${props.summary.id}/preview`),
+    )
+    previewProfiles.value = res.data
+  } catch (err) {
+    console.error('Failed to load pending import preview', err)
+    toast.error(`Failed to load preview: ${extractErrorDetail(err)}`)
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+const confirmTrimmingProfile = (range: { profileId: number; start: number; end: number }) => {
+  profileTrims.value.set(range.profileId, { start: range.start, end: range.end })
+  trimProfileId.value = null
+}
+
+const clearProfileTrim = (profileId: number) => {
+  profileTrims.value.delete(profileId)
+}
 
 // Attaching to the wrong dive silently merges unrelated profiles together (e.g. two dives
 // months apart) with no way to undo it short of manually deleting the merged-in profile -
@@ -238,12 +349,24 @@ fetchMyDives()
 const commit = async () => {
   busy.value = true
   try {
+    const profileTrimsOverride =
+      profileTrims.value.size > 0
+        ? Array.from(profileTrims.value.entries()).map(([profileIndex, range]) => ({
+            profileIndex,
+            trimStart: range.start,
+            trimEnd: range.end,
+          }))
+        : undefined
     const overrides: PendingImportCommitRequest =
       mode.value === 'existing'
-        ? { linkToExistingDiveId: linkToExistingDiveId.value ?? undefined }
+        ? {
+            linkToExistingDiveId: linkToExistingDiveId.value ?? undefined,
+            profileTrims: profileTrimsOverride,
+          }
         : {
             diveIdentifier: identifier.value || undefined,
             diveSiteId: chosenSite.value?.id,
+            profileTrims: profileTrimsOverride,
           }
     const res = await postWithToken<DiveWithoutProfiles, PendingImportCommitRequest>(
       resolveImporterUrl(`/v1/import/pending/${props.summary.id}/commit`),

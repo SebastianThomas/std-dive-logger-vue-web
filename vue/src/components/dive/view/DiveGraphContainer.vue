@@ -60,8 +60,18 @@
               />
             </div>
 
-            <!-- Right column: Empty spacer (hidden on small screens) -->
-            <div class="hidden xl:block"></div>
+            <!-- Right column: trim trigger (empty spacer on small screens where it has no room) -->
+            <div class="hidden xl:flex justify-start">
+              <button
+                v-if="!readOnly"
+                type="button"
+                :disabled="trimProfileId !== null"
+                class="px-3 py-1.5 text-xs rounded-full border bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                @click="startTrimming"
+              >
+                <i class="fa-solid fa-scissors mr-1"></i>Trim profile
+              </button>
+            </div>
           </div>
         </div>
 
@@ -85,6 +95,9 @@
             :show-gas-n2="showGasN2"
             :show-gas-he="showGasHe"
             :show-deco-zone="showDecoZone"
+            :trim-profile-id="trimProfileId"
+            @trim-confirmed="confirmTrimming"
+            @trim-cancelled="cancelTrimming"
             :has-temp="combinedMetricsAvailability.hasTemp"
             :has-ndl="combinedMetricsAvailability.hasNdl"
             :has-otu="combinedMetricsAvailability.hasOtu"
@@ -131,6 +144,16 @@
         @open-align-modal="showAlignmentModal = true"
       />
       <AnalyticsToggle v-model:show-segments="showSegments" />
+      <button
+        v-if="!readOnly"
+        type="button"
+        :disabled="trimProfileId !== null"
+        class="px-3 py-1 text-xs rounded-full border disabled:opacity-50 disabled:cursor-not-allowed"
+        :style="{ borderColor: 'rgba(209,213,219,0.8)' }"
+        @click="startTrimming"
+      >
+        <i class="fa-solid fa-scissors mr-1"></i>Trim profile
+      </button>
     </div>
     <MetricsControlPanel
       class="px-4 mb-2"
@@ -187,6 +210,9 @@
         :show-gas-o2="showGasO2"
         :show-gas-n2="showGasN2"
         :show-gas-he="showGasHe"
+        :trim-profile-id="trimProfileId"
+        @trim-confirmed="confirmTrimming"
+        @trim-cancelled="cancelTrimming"
         :show-deco-zone="showDecoZone"
         :has-temp="combinedMetricsAvailability.hasTemp"
         :has-ndl="combinedMetricsAvailability.hasNdl"
@@ -231,6 +257,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, toRef, computed, watch } from 'vue'
 import { toast } from 'vue-sonner'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import MetricsControlPanel from '@/components/dive/view/MetricsControlPanel.vue'
 import DiveGraph from '@/components/dive/view/DiveGraph.vue'
 import ProfileAlignmentModal from '@/components/dive/view/ProfileAlignmentModal.vue'
@@ -239,6 +266,9 @@ import ProfileSelector from '@/components/dive/view/ProfileSelector.vue'
 import AscentRatePanel from '@/components/dive/view/AscentRatePanel.vue'
 import FullscreenGraphControls from '@/components/dive/view/FullscreenGraphControls.vue'
 import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
+import { useApi } from '@/composables/useApi'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
+import { useProfileTrimming } from '@/composables/useProfileTrimming'
 import type { Dive, DiveProfile } from '@/lib/types/dive'
 import type { AxisUnitGroup } from '@/lib/types/graph'
 
@@ -256,6 +286,14 @@ const visibleProfiles = ref<boolean[]>([])
 const selectedProfiles = ref<number[]>([0])
 const isClosing = ref(false)
 const historyEntryAdded = ref(false)
+const { readOnly } = useReadOnlyMode()
+const { postWithToken } = useApi()
+
+// Which profile is currently being trimmed (drag-handle mode on the chart) - null when not
+// trimming. Always the currently-selected profile, so this works the same whether the dive has
+// one profile (the common case) or several (where selectedProfiles picks which).
+const { trimProfileId, startTrimming: startTrimmingProfile, cancelTrimming } = useProfileTrimming()
+const trimBusy = ref(false)
 
 const profilesRef = toRef(props, 'profiles')
 const {
@@ -372,7 +410,32 @@ watch(
 const emit = defineEmits<{
   close: []
   'profiles-aligned': [updatedDive: Dive]
+  'profile-trimmed': [updatedDive: Dive]
 }>()
+
+const startTrimming = () => {
+  const profile = props.profiles[selectedProfiles.value[0] ?? 0]
+  if (profile) startTrimmingProfile(profile.id)
+}
+
+const confirmTrimming = async (range: { profileId: number; start: number; end: number }) => {
+  if (trimBusy.value) return
+  trimBusy.value = true
+  try {
+    const res = await postWithToken<Dive, { trimStart: number; trimEnd: number }>(
+      `/v1/dives/${props.diveId}/profiles/${range.profileId}/trim`,
+      { trimStart: range.start, trimEnd: range.end },
+    )
+    toast.success('Profile trimmed')
+    emit('profile-trimmed', res.data)
+  } catch (err) {
+    console.error('Failed to trim profile', err)
+    toast.error(`Failed to trim profile: ${extractErrorDetail(err)}`, { duration: 8000 })
+  } finally {
+    trimBusy.value = false
+    trimProfileId.value = null
+  }
+}
 
 const onKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'Escape' && props.fullscreen) {

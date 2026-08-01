@@ -226,6 +226,26 @@
         <p v-if="stageErrors.length" class="text-sm text-red-600">
           Some dives could not be parsed: {{ stageErrors.join('; ') }}
         </p>
+
+        <!-- Fast path: skip reviewing each dive individually when the guesses are good enough. -->
+        <div
+          v-if="quickImportEligible.length > 0"
+          class="flex items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-700 p-3"
+        >
+          <p class="text-sm text-emerald-900 dark:text-emerald-100">
+            {{ quickImportEligible.length }} of {{ stagedImports.length }} dive(s) are ready to
+            import as-is.
+          </p>
+          <button
+            type="button"
+            :disabled="quickImporting"
+            class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+            @click="quickImportAll"
+          >
+            {{ quickImporting ? 'Importing...' : `Import ${quickImportEligible.length} now` }}
+          </button>
+        </div>
+
         <PendingImportRow
           v-for="summary in stagedImports"
           :key="summary.id"
@@ -239,7 +259,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useNavigation } from '@/composables/useNavigation'
 import { toast } from 'vue-sonner'
@@ -247,7 +267,12 @@ import PendingImportRow from '@/components/dive/import/PendingImportRow.vue'
 import DivesoftDiveList, {
   type DivesoftDiveListItem,
 } from '@/components/dive/import/DivesoftDiveList.vue'
-import type { DiveWithoutProfiles, StageImportResult, PendingImportSummary } from '@/lib/types/dive'
+import type {
+  DiveWithoutProfiles,
+  StageImportResult,
+  PendingImportSummary,
+  PendingImportCommitRequest,
+} from '@/lib/types/dive'
 import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
 import {
   listDivesoftDiveIds,
@@ -510,6 +535,60 @@ const onCommitted = (pendingImportId: number, dive: DiveWithoutProfiles) => {
 
 const onDiscarded = (pendingImportId: number) => {
   stagedImports.value = stagedImports.value.filter((s) => s.id !== pendingImportId)
+}
+
+// "Good enough" fast path: commits every staged import that already has everything it needs
+// (a resolvable site guess - the one thing that's actually required) using just its own
+// best-guess values, with zero per-row interaction. Anything without a usable guess is left
+// staged for individual review via the existing per-row UI below, exactly as it works today -
+// this doesn't replace that, it's a shortcut for when the guesses are good enough as-is.
+const quickImporting = ref(false)
+const quickImportEligible = computed(() => stagedImports.value.filter((s) => !!s.siteNameGuess))
+
+const quickImportAll = async () => {
+  const eligible = quickImportEligible.value
+  if (eligible.length === 0 || quickImporting.value) return
+  quickImporting.value = true
+  const toastId = toast.loading(`Importing ${eligible.length} dive(s)...`)
+  try {
+    const results = await Promise.allSettled(
+      eligible.map((summary) =>
+        postWithToken<DiveWithoutProfiles, PendingImportCommitRequest>(
+          resolveImporterUrl(`/v1/import/pending/${summary.id}/commit`),
+          {},
+        ).then((res) => ({ id: summary.id, dive: res.data })),
+      ),
+    )
+    const succeededIds = new Set<number>()
+    let lastDive: DiveWithoutProfiles | null = null
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        succeededIds.add(result.value.id)
+        lastDive = result.value.dive
+      } else {
+        console.error('Quick-import failed for a pending import', result.reason)
+      }
+    }
+    stagedImports.value = stagedImports.value.filter((s) => !succeededIds.has(s.id))
+    const failedCount = eligible.length - succeededIds.size
+    if (failedCount === 0) {
+      toast.success(`Imported ${succeededIds.size} dive(s)`)
+    } else {
+      toast.error(
+        `Imported ${succeededIds.size} of ${eligible.length} - ${failedCount} failed, check them below`,
+      )
+    }
+    if (stagedImports.value.length === 0 && lastDive) {
+      router.push(
+        succeededIds.size === 1
+          ? { name: 'DiveView', params: { diveId: lastDive.id } }
+          : { name: 'DiveList' },
+      )
+    }
+  } finally {
+    quickImporting.value = false
+    toast.dismiss(toastId)
+  }
 }
 
 onMounted(() => {

@@ -22,6 +22,52 @@
     >
       Ctrl+Scroll • 2-finger pinch to zoom
     </div>
+
+    <!-- Trim mode: drag the two handles on the chart, then confirm or cancel. -->
+    <div
+      v-if="trimRange"
+      class="absolute top-2 left-2 z-20 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-3 text-xs w-56 border border-gray-300 dark:border-gray-600"
+    >
+      <div class="font-semibold mb-2">Trimming profile {{ trimProfileIndex + 1 }}</div>
+      <template v-if="trimStats">
+        <div class="flex justify-between">
+          <span class="opacity-70">Max depth</span>
+          <span>{{ trimStats.maxDepth.toFixed(1) }} m</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="opacity-70">Avg depth</span>
+          <span>{{ trimStats.averageDepth.toFixed(1) }} m</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="opacity-70">Bottom time</span>
+          <span>{{ Math.round(trimStats.bottomTimeSeconds / 60) }} min</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="opacity-70">Points kept</span>
+          <span>{{ trimStats.measurementCount }} / {{ trimProfileTotalCount }}</span>
+        </div>
+      </template>
+      <p v-else class="text-red-600 dark:text-red-400 my-1">
+        This range has no data - drag the handles apart.
+      </p>
+      <div class="flex justify-end gap-2 mt-3">
+        <button
+          type="button"
+          class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+          @click="cancelTrim"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          :disabled="!trimStats"
+          class="px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="confirmTrim"
+        >
+          Trim
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -46,6 +92,7 @@ import {
   bisector,
   zoom,
   zoomIdentity,
+  drag,
   type Selection,
   type ScaleLinear,
   type Line,
@@ -87,6 +134,8 @@ import {
   type TimeMapper,
 } from '@/lib/graph/timeGaps'
 import { LruCache } from '@/lib/utils/lruCache'
+import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
+import { computeRangeStats } from '@/lib/graph/rangeStats'
 
 type Props = {
   profiles: DiveProfile[]
@@ -126,6 +175,9 @@ type Props = {
   /** Time (ms) hovered on another synced chart (e.g. the ascent-rate panel) — draws this
    * chart's crosshair/tooltip at that time too, matched by position rather than local input. */
   externalHoverTimeMs?: number | null
+  /** Id of the profile currently being trimmed, if any — draws the drag handles/shaded cut
+   * regions and the live-stats panel for that profile. Null/undefined when not trimming. */
+  trimProfileId?: number | null
 }
 
 const props = defineProps<Props>()
@@ -135,6 +187,11 @@ const emit = defineEmits<{
   'update:rightAxisMetric': [value: AxisUnitGroup]
   /** Fired on local hover so a sibling chart can sync its own crosshair to this time. */
   hoverTimeChange: [value: number | null]
+  /** The user confirmed a trim - parent is responsible for calling the API and clearing
+   * trimProfileId once it resolves. */
+  trimConfirmed: [{ profileId: number; start: number; end: number }]
+  /** The user cancelled - parent should clear trimProfileId. */
+  trimCancelled: []
 }>()
 
 // Visibility mask with safe defaults (all visible)
@@ -244,6 +301,58 @@ const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
 const currentZoomLevel = ref(1)
 const { getWithToken } = useApi()
+
+// Trim mode - null while not trimming. Real (not virtual) times, always start <= end.
+const trimRange = ref<{ start: number; end: number } | null>(null)
+const trimOverlayLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
+
+const trimProfileIndex = computed(() =>
+  props.trimProfileId != null ? props.profiles.findIndex((p) => p.id === props.trimProfileId) : -1,
+)
+const trimProfile = computed<DiveProfile | null>(() => {
+  const idx = trimProfileIndex.value
+  return idx >= 0 ? (props.profiles[idx] ?? null) : null
+})
+const trimProfileTotalCount = computed(() => trimProfile.value?.measurements.length ?? 0)
+const trimStats = computed(() =>
+  trimProfile.value && trimRange.value
+    ? computeRangeStats(trimProfile.value, trimRange.value.start, trimRange.value.end)
+    : null,
+)
+
+// Enter/exit trim mode when the parent sets/clears trimProfileId - pre-fills the handles from
+// the auto-detected suggestion (a trailing/leading near-surface stretch) when there is one,
+// otherwise starts at the profile's own full range (i.e. nothing pre-selected to cut).
+watch(
+  () => props.trimProfileId,
+  (id) => {
+    if (id == null || !trimProfile.value) {
+      trimRange.value = null
+      renderTrimOverlay()
+      return
+    }
+    const profile = trimProfile.value
+    const suggestion = detectTrimSuggestion(profile)
+    trimRange.value = {
+      start: suggestion.suggestedStart ?? profile.start,
+      end: suggestion.suggestedEnd ?? profile.end,
+    }
+    renderTrimOverlay()
+  },
+)
+
+function cancelTrim() {
+  emit('trimCancelled')
+}
+
+function confirmTrim() {
+  if (!trimRange.value || props.trimProfileId == null) return
+  emit('trimConfirmed', {
+    profileId: props.trimProfileId,
+    start: trimRange.value.start,
+    end: trimRange.value.end,
+  })
+}
 
 const leftAxisMetric = computed({
   get: () => props.leftAxisMetric ?? 'depth',
@@ -557,6 +666,10 @@ function initSvg() {
   // Break markers for any compressed time gaps - above the lines, same as the PO2 guideline.
   gapBreaksLayer.value = g.append('g').attr('class', 'gap-breaks').attr('clip-path', clipPathUrl)
 
+  // Trim-mode shaded cut regions + drag handles - above everything else so the handles are
+  // always grabbable regardless of what's drawn underneath.
+  trimOverlayLayer.value = g.append('g').attr('class', 'trim-overlay').attr('clip-path', clipPathUrl)
+
   // Hover overlay
   // Vertical crosshair line
   crosshairLine.value = g
@@ -864,6 +977,7 @@ function renderAll() {
   renderDecoZone()
   renderPo2OverageBand()
   renderGapBreaks()
+  renderTrimOverlay()
 }
 
 // A dashed vertical line at each compressed gap, spanning the full plot height, marking a jump
@@ -887,6 +1001,82 @@ function renderGapBreaks() {
     .attr('stroke-width', 1.5)
     .attr('stroke-dasharray', '3,3')
     .style('pointer-events', 'none')
+}
+
+// Shaded regions for whatever's currently outside the trim selection, plus two draggable handles
+// at its start/end. No-op (clears any stale ones) when not in trim mode.
+function renderTrimOverlay() {
+  if (!trimOverlayLayer.value) return
+  trimOverlayLayer.value.selectAll('*').remove()
+  const profile = trimProfile.value
+  const range = trimRange.value
+  if (!profile || !range || !timeScale.value) return
+
+  const { toVirtual, toReal } = timeMapper.value
+  const x = (t: number): number => timeScale.value!(toVirtual(t))
+  const h = innerHeight.value
+
+  const shadeCut = (fromT: number, toT: number) => {
+    const left = Math.min(x(fromT), x(toT))
+    const width = Math.abs(x(toT) - x(fromT))
+    if (width <= 0) return
+    trimOverlayLayer.value
+      ?.append('rect')
+      .attr('x', left)
+      .attr('y', 0)
+      .attr('width', width)
+      .attr('height', h)
+      .attr('fill', '#000')
+      .attr('fill-opacity', 0.35)
+      .style('pointer-events', 'none')
+  }
+  shadeCut(profile.start, range.start)
+  shadeCut(range.end, profile.end)
+
+  // A visible thin line plus a wider, invisible grab area (easier to hit than the line itself,
+  // especially on touch) - both move together since they're in the same handle group.
+  const makeHandle = (key: 'start' | 'end') => {
+    const handleX = x(range[key])
+    const group = trimOverlayLayer.value!.append('g').attr('class', `trim-handle-${key}`)
+    group
+      .append('line')
+      .attr('x1', handleX)
+      .attr('x2', handleX)
+      .attr('y1', 0)
+      .attr('y2', h)
+      .attr('stroke', '#0ea5e9')
+      .attr('stroke-width', 2)
+      .style('pointer-events', 'none')
+    const GRAB_WIDTH = 16
+    group
+      .append('rect')
+      .attr('x', handleX - GRAB_WIDTH / 2)
+      .attr('y', 0)
+      .attr('width', GRAB_WIDTH)
+      .attr('height', h)
+      .attr('fill', 'transparent')
+      .style('cursor', 'ew-resize')
+      .call(
+        drag<SVGRectElement, unknown>()
+          // Stops the chart's own pan/zoom drag (bound higher up on the svg) from also firing
+          // for the same gesture.
+          .on('start', (event: { sourceEvent?: Event }) => event.sourceEvent?.stopPropagation())
+          .on('drag', (event: { x: number }) => {
+            if (!trimRange.value || !timeScale.value) return
+            const tVal = toReal(timeScale.value.invert(event.x))
+            const clamped = Math.min(Math.max(tVal, profile.start), profile.end)
+            const MIN_GAP_MS = 1000
+            if (key === 'start') {
+              trimRange.value.start = Math.min(clamped, trimRange.value.end - MIN_GAP_MS)
+            } else {
+              trimRange.value.end = Math.max(clamped, trimRange.value.start + MIN_GAP_MS)
+            }
+            renderTrimOverlay()
+          }),
+      )
+  }
+  makeHandle('start')
+  makeHandle('end')
 }
 
 // Recolors the axis tick sitting exactly at the 1.6 bar guideline (added via
