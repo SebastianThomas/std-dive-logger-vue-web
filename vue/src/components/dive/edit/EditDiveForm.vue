@@ -403,6 +403,8 @@ import {
   type DiveConfiguration,
   type Suit,
   type CcrUnit,
+  type Dive,
+  type PagedResult,
   BASE_CONFIGURATION_LABELS,
   SUIT_TYPE_LABELS,
   isCcrBaseConfiguration,
@@ -645,5 +647,35 @@ const handleCcrUnitSelected = (ccrUnit: CcrUnit) => {
     },
   })
   showCcrUnitModal.value = false
+  inferBaseConfigurationFromCcrUnit(ccrUnit.id)
+}
+
+// A given CCR rig is almost always dived in the same rig configuration (e.g. a sidemount
+// rebreather stays a sidemount rebreather) - rather than asking the diver to re-pick "Sidemount
+// CCR" every single time, look at the most recent dive that already used this unit and carry its
+// base configuration forward. Best-effort: a brand-new unit with no dive history, or a lookup
+// failure, just leaves the current selection untouched.
+const inferBaseConfigurationFromCcrUnit = async (ccrUnitId: number) => {
+  // Don't clobber an already-CCR selection the diver may have made deliberately.
+  if (
+    props.modelValue.configuration?.base &&
+    isCcrBaseConfiguration(props.modelValue.configuration.base)
+  ) {
+    return
+  }
+  try {
+    const listRes = await getWithToken<PagedResult<{ id: number }>>(
+      `/v1/dives/ccrUnit?ccrUnitId=${ccrUnitId}&page=0&sortCol=NUMBER&sortDirection=DESCENDING`,
+    )
+    const mostRecentId = listRes.data.result[0]?.id
+    if (mostRecentId === undefined) return
+    const diveRes = await getWithToken<Dive>(`/v1/dives/${mostRecentId}`)
+    const inferredBase = diveRes.data.configuration?.base
+    if (inferredBase && isCcrBaseConfiguration(inferredBase)) {
+      updateConfigField('base', inferredBase)
+    }
+  } catch (err) {
+    console.error('Failed to infer base configuration from CCR unit history', err)
+  }
 }
 </script>

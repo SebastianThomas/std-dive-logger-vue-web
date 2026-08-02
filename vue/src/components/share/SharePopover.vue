@@ -43,15 +43,16 @@
             <div class="flex gap-2">
               <button
                 type="submit"
-                :disabled="!selectedPerson"
+                :disabled="!selectedPerson || busy"
                 class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-2 rounded text-sm"
               >
-                Add buddy
+                {{ busy ? 'Adding...' : 'Add buddy' }}
               </button>
               <button
                 type="button"
+                :disabled="busy"
                 @click="personCancel"
-                class="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 px-3 py-2 rounded text-sm"
+                class="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2 rounded text-sm"
               >
                 Cancel
               </button>
@@ -67,8 +68,9 @@
               <span class="text-sm">{{ person.name }}</span>
               <button
                 v-if="!readOnly"
+                :disabled="busy"
                 @click="deletePerson(person.id)"
-                class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600"
+                class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 ×
               </button>
@@ -113,14 +115,16 @@
             <div class="flex gap-2">
               <button
                 type="submit"
-                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm"
+                :disabled="!groupInput.trim() || busy"
+                class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-2 rounded text-sm"
               >
-                Add group
+                {{ busy ? 'Adding...' : 'Add group' }}
               </button>
               <button
                 type="button"
+                :disabled="busy"
                 @click="((showAddGroupForm = false), (groupInput = ''))"
-                class="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 px-3 py-2 rounded text-sm"
+                class="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2 rounded text-sm"
               >
                 Cancel
               </button>
@@ -136,8 +140,9 @@
               <span class="text-sm">{{ group.name }}</span>
               <button
                 v-if="!readOnly"
+                :disabled="busy"
                 @click="deleteGroup(group.id)"
-                class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600"
+                class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 ×
               </button>
@@ -179,6 +184,7 @@ const groupInput = ref('')
 const selectedPerson = ref<User | null>(null)
 const showAddPersonForm = ref(false)
 const showAddGroupForm = ref(false)
+const busy = ref(false)
 
 const { getWithToken, postWithToken, deleteWithToken } = useApi()
 
@@ -213,7 +219,8 @@ const fetchAllReaders = async () => {
 }
 
 const deletePerson = async (id: number) => {
-  if (props.diveId == null) return
+  if (props.diveId == null || busy.value) return
+  busy.value = true
   try {
     await deleteWithToken(`/v1/dives/${props.diveId}/readers`, [id])
     toast.success('Removed person')
@@ -221,11 +228,14 @@ const deletePerson = async (id: number) => {
   } catch (err) {
     toast.error('Failed to remove person')
     console.error(err)
+  } finally {
+    busy.value = false
   }
 }
 
 const deleteGroup = async (id: number | undefined) => {
-  if (props.diveId == null || id == null) return
+  if (props.diveId == null || id == null || busy.value) return
+  busy.value = true
   try {
     await deleteWithToken(`/v1/dives/${props.diveId}/group-readers?groupId=${id}`)
     toast.success('Removed group')
@@ -233,6 +243,8 @@ const deleteGroup = async (id: number | undefined) => {
   } catch (err) {
     toast.error('Failed to remove group')
     console.error(err)
+  } finally {
+    busy.value = false
   }
 }
 
@@ -246,7 +258,8 @@ const personCancel = () => {
 }
 
 const handleAddPerson = async () => {
-  if (props.diveId == null || !selectedPerson.value) return
+  if (props.diveId == null || !selectedPerson.value || busy.value) return
+  busy.value = true
   try {
     const res = await postWithToken<PagedResult<User>>(`/v1/dives/${props.diveId}/readers`, [
       selectedPerson.value.id,
@@ -258,11 +271,14 @@ const handleAddPerson = async () => {
   } catch (err) {
     toast.error('Failed to add person')
     console.error(err)
+  } finally {
+    busy.value = false
   }
 }
 
 const handleAddGroup = async () => {
-  if (props.diveId == null || !groupInput.value.trim()) return
+  if (props.diveId == null || !groupInput.value.trim() || busy.value) return
+  busy.value = true
   try {
     await postWithToken(`/v1/dives/${props.diveId}/group-readers`, groupInput.value)
     toast.success('Added group')
@@ -272,6 +288,8 @@ const handleAddGroup = async () => {
   } catch (err) {
     toast.error('Failed to add group')
     console.error(err)
+  } finally {
+    busy.value = false
   }
 }
 </script>

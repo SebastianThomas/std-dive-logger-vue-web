@@ -62,6 +62,7 @@
       title="Deregister Account"
       message="Are you sure you want to permanently delete your account? This action cannot be undone."
       confirm-text="Deregister"
+      :loading="deregistering"
       @confirm="confirmDeregister"
     />
 
@@ -163,7 +164,11 @@ const handleProfileKeydown = (event: KeyboardEvent) => {
   }
 }
 
+const deregistering = ref(false)
+
 const confirmDeregister = async () => {
+  if (deregistering.value) return
+  deregistering.value = true
   try {
     const res = await postWithToken('/api/auth/deregister')
 
@@ -177,6 +182,8 @@ const confirmDeregister = async () => {
   } catch (err) {
     console.error(err)
     toast.error('Failed to deregister account')
+  } finally {
+    deregistering.value = false
   }
 }
 </script>

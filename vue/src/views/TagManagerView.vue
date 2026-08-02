@@ -54,14 +54,16 @@
           <div v-else class="flex items-center gap-2 shrink-0">
             <span class="text-xs text-gray-600 dark:text-gray-300">Are you sure?</span>
             <button
+              :disabled="deletingId === tag.id"
               @click="deleteTag(tag.id)"
-              class="text-xs px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700"
+              class="text-xs px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Yes, delete
+              {{ deletingId === tag.id ? 'Deleting...' : 'Yes, delete' }}
             </button>
             <button
+              :disabled="deletingId === tag.id"
               @click="confirmingId = null"
-              class="text-xs px-2 py-0.5 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+              class="text-xs px-2 py-0.5 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
@@ -104,6 +106,7 @@ const { readOnly } = useReadOnlyMode()
 const allTags = ref<TagDefinition[]>([])
 const isLoading = ref(true)
 const confirmingId = ref<number | null>(null)
+const deletingId = ref<number | null>(null)
 
 const myTags = computed(() => allTags.value.filter((t) => t.userId != null))
 const systemTags = computed(() => allTags.value.filter((t) => t.userId == null))
@@ -122,6 +125,8 @@ const fetchTags = async () => {
 }
 
 const deleteTag = async (id: number) => {
+  if (deletingId.value === id) return
+  deletingId.value = id
   try {
     await deleteWithToken(`/v1/tags/${id}`)
     allTags.value = allTags.value.filter((t) => t.id !== id)
@@ -131,6 +136,7 @@ const deleteTag = async (id: number) => {
     toast.error('Failed to delete tag.')
   } finally {
     confirmingId.value = null
+    deletingId.value = null
   }
 }
 

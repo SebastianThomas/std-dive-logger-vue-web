@@ -45,11 +45,11 @@
                 </label>
               </div>
               <button
-                :disabled="!primaryDiveId"
+                :disabled="!primaryDiveId || merging"
                 @click="handleMerge"
                 class="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Merge Dives
+                {{ merging ? 'Merging...' : 'Merge Dives' }}
               </button>
             </div>
             <p v-else class="text-sm text-gray-500">
@@ -243,16 +243,18 @@
         <p class="text-sm font-semibold text-red-600 mb-6">This action is irreversible!</p>
         <div class="flex gap-3 justify-end">
           <button
+            :disabled="bulkDeleting"
             @click="showSecondDeleteConfirm = false"
-            class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
+            :disabled="bulkDeleting"
             @click="confirmBulkDelete"
-            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Yes, Delete Permanently
+            {{ bulkDeleting ? 'Deleting...' : 'Yes, Delete Permanently' }}
           </button>
         </div>
       </div>
@@ -292,6 +294,7 @@ const emit = defineEmits<{
 const { deleteWithToken, postWithToken, putWithToken, getWithToken } = useApi()
 
 const primaryDiveId = ref<number | null>(null)
+const merging = ref(false)
 const showDeleteConfirm = ref(false)
 const showSecondDeleteConfirm = ref(false)
 const selectedBaseConfiguration = ref<BaseConfiguration | ''>('')
@@ -591,6 +594,7 @@ const handleWeightUpdate = async () => {
 }
 
 const handleMerge = async () => {
+  if (merging.value) return
   if (!primaryDiveId.value || selectedCount.value !== 2) {
     toast.error('Please select exactly 2 dives and choose a primary dive')
     return
@@ -599,6 +603,7 @@ const handleMerge = async () => {
   const secondaryId = props.selectedDives.find((d) => d.id !== primaryDiveId.value)?.id
   if (!secondaryId) return
 
+  merging.value = true
   try {
     await postWithToken(
       `/v1/dives/${primaryDiveId.value}/profiles/merge?toAddDiveId=${secondaryId}&keepToAddDive=false`,
@@ -610,6 +615,8 @@ const handleMerge = async () => {
   } catch (err) {
     console.error('Failed to merge dives', err)
     toast.error('Failed to merge dives')
+  } finally {
+    merging.value = false
   }
 }
 
@@ -619,7 +626,11 @@ const handleBulkDelete = async () => {
   showSecondDeleteConfirm.value = true
 }
 
+const bulkDeleting = ref(false)
+
 const confirmBulkDelete = async () => {
+  if (bulkDeleting.value) return
+  bulkDeleting.value = true
   const ids = props.selectedDives.map((d) => d.id)
 
   const results = await Promise.allSettled(ids.map((id) => deleteWithToken(`/v1/dives/${id}`)))
@@ -638,6 +649,7 @@ const confirmBulkDelete = async () => {
     toast.error(`${succeeded} of ${ids.length} dive(s) deleted, ${failed.length} failed`)
   }
 
+  bulkDeleting.value = false
   showSecondDeleteConfirm.value = false
   emit('refresh')
   emit('close')

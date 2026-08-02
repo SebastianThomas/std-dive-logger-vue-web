@@ -100,6 +100,7 @@
             :trim-profile-id="trimProfileId"
             @trim-confirmed="confirmTrimming"
             @trim-cancelled="cancelTrimming"
+            @trim-profile-changed="startTrimmingProfile"
             :has-temp="combinedMetricsAvailability.hasTemp"
             :has-ndl="combinedMetricsAvailability.hasNdl"
             :has-otu="combinedMetricsAvailability.hasOtu"
@@ -216,6 +217,7 @@
         :trim-profile-id="trimProfileId"
         @trim-confirmed="confirmTrimming"
         @trim-cancelled="cancelTrimming"
+        @trim-profile-changed="startTrimmingProfile"
         :show-deco-zone="showDecoZone"
         :extra-profile-metrics="extraProfileMetrics"
         :has-temp="combinedMetricsAvailability.hasTemp"
@@ -587,6 +589,10 @@ onBeforeUnmount(() => {
     exitFullscreen()
   }
 })
+
+// Lets a parent (e.g. a "review this trim suggestion" banner elsewhere on the page) open trim
+// mode for a specific profile without duplicating the trim-state logic that already lives here.
+defineExpose({ startTrimmingProfile })
 </script>
 
 <style scoped>

@@ -35,7 +35,7 @@
           <button
             type="button"
             class="px-3 py-1 text-sm rounded-lg bg-sky-600 text-white hover:bg-sky-700"
-            @click="graphOpen = true"
+            @click="reviewTrimSuggestion"
           >
             Review
           </button>
@@ -98,6 +98,7 @@
         v-model="showDeleteModal"
         title="Confirm Delete"
         :message="`Are you sure you want to delete dive #${dive.number}? This action cannot be undone.`"
+        :loading="deletingDive"
         @confirm="handleDelete"
       />
 
@@ -232,6 +233,7 @@
             title="Delete profile"
             message="This removes this profile's measurements from the dive permanently, keeping the rest of the dive intact. This action cannot be undone."
             confirm-text="Delete profile"
+            :loading="deletingProfile"
             @confirm="handleDeleteProfile"
           />
 
@@ -290,7 +292,7 @@
       </div>
 
       <!-- Dive Profile Graph -->
-      <div class="w-full flex justify-center mt-6">
+      <div class="w-full flex justify-center mt-6" ref="embeddedGraphCardRef">
         <div class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full flex flex-col">
           <div class="flex justify-between items-center p-4">
             <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
@@ -302,10 +304,11 @@
           </div>
           <DiveGraphContainer
             v-if="dive.profiles"
+            ref="embeddedGraphRef"
             :profiles="dive.profiles"
             :dive-id="diveId"
             @profiles-aligned="handleProfilesAligned"
-      @profile-trimmed="handleProfileTrimmed"
+            @profile-trimmed="handleProfileTrimmed"
           />
         </div>
       </div>
@@ -645,6 +648,19 @@ const profilesWithTrimSuggestion = computed(() => {
   })
 })
 
+// "Review" on the trim-suggestion banner used to jump straight to the fullscreen graph modal -
+// this instead scrolls to the already-visible embedded graph and opens trim mode there directly,
+// matching what the "Trim profile" button inside DiveGraphContainer itself does.
+const embeddedGraphCardRef = ref<HTMLElement | null>(null)
+const embeddedGraphRef = ref<InstanceType<typeof DiveGraphContainer> | null>(null)
+
+const reviewTrimSuggestion = () => {
+  const suggested = profilesWithTrimSuggestion.value[0]
+  if (!suggested) return
+  embeddedGraphCardRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  embeddedGraphRef.value?.startTrimmingProfile(suggested.id)
+}
+
 // Guards against an out-of-order response: if the user navigates to a different dive before an
 // earlier fetch resolves, that stale response must never overwrite what's now on screen (or,
 // worse, let a Delete/Edit action fire against the route's *new* diveId while the page still
@@ -684,8 +700,11 @@ const confirmDeleteProfile = (profileId: number) => {
   showDeleteProfileModal.value = true
 }
 
+const deletingProfile = ref(false)
+
 const handleDeleteProfile = async () => {
-  if (!dive.value || profileIdToDelete.value === null) return
+  if (!dive.value || profileIdToDelete.value === null || deletingProfile.value) return
+  deletingProfile.value = true
   try {
     // Keyed off the dive actually on screen (dive.value.id), not the route param (diveId.value) -
     // these can only ever differ for a moment mid-navigation, but a mutation should always act on
@@ -699,13 +718,17 @@ const handleDeleteProfile = async () => {
     console.error('Delete profile failed', err)
     toast.error('Failed to delete profile')
   } finally {
+    deletingProfile.value = false
     showDeleteProfileModal.value = false
     profileIdToDelete.value = null
   }
 }
 
+const deletingDive = ref(false)
+
 const handleDelete = async () => {
-  if (!dive.value) return
+  if (!dive.value || deletingDive.value) return
+  deletingDive.value = true
   try {
     await deleteWithToken(`/v1/dives/${dive.value.id}`)
     toast.success('Dive deleted successfully')
@@ -713,6 +736,7 @@ const handleDelete = async () => {
   } catch (err) {
     console.error('Delete failed', err)
     toast.error('Failed to delete dive')
+    deletingDive.value = false
   }
 }
 

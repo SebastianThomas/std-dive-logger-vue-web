@@ -28,7 +28,29 @@
       v-if="trimRange"
       class="absolute top-2 left-2 z-20 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-3 text-xs w-56 border border-gray-300 dark:border-gray-600"
     >
-      <div class="font-semibold mb-2">Trimming profile {{ trimProfileIndex + 1 }}</div>
+      <div class="font-semibold mb-2 flex items-center gap-1.5 flex-wrap">
+        <span>Trimming profile {{ trimProfileIndex + 1 }}</span>
+        <span v-if="props.profiles.length > 1" class="flex items-center gap-1 ml-auto">
+          <button
+            v-for="(p, idx) in props.profiles"
+            :key="p.id"
+            type="button"
+            :disabled="!visibleMask[idx]"
+            :title="`Trim profile ${idx + 1}`"
+            @click="$emit('trimProfileChanged', p.id)"
+            :class="[
+              'w-5 h-5 rounded text-[10px] font-normal leading-none flex items-center justify-center border transition-colors',
+              !visibleMask[idx]
+                ? 'opacity-40 cursor-not-allowed border-gray-300 dark:border-gray-600'
+                : idx === trimProfileIndex
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600',
+            ]"
+          >
+            {{ idx + 1 }}
+          </button>
+        </span>
+      </div>
       <template v-if="trimStats">
         <div class="flex justify-between">
           <span class="opacity-70">Max depth</span>
@@ -135,6 +157,7 @@ import {
   type TimeMapper,
 } from '@/lib/graph/timeGaps'
 import { detectModeTransitions, hasBothModes } from '@/lib/graph/modeTransitions'
+import { extendPo2CalculatedToBoundary } from '@/lib/graph/po2CalculatedExtension'
 import { LruCache } from '@/lib/utils/lruCache'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import { computeRangeStats } from '@/lib/graph/rangeStats'
@@ -199,6 +222,9 @@ const emit = defineEmits<{
   trimConfirmed: [{ profileId: number; start: number; end: number }]
   /** The user cancelled - parent should clear trimProfileId. */
   trimCancelled: []
+  /** The user picked a different profile to trim from within the trim panel itself - parent
+   * should update trimProfileId to this one instead of requiring Cancel + re-opening trim mode. */
+  trimProfileChanged: [profileId: number]
 }>()
 
 // Visibility mask with safe defaults (all visible)
@@ -586,6 +612,7 @@ watch(
     props.showGasN2,
     props.showGasHe,
     props.showDecoZone,
+    props.extraProfileMetrics,
     leftAxisMetric.value,
     rightAxisMetric.value,
   ],
@@ -988,9 +1015,12 @@ function renderAll() {
       // old behavior.
       const visible = idx === 0 ? config.showProp : (props.extraProfileMetrics?.[idx]?.[metric] ?? false)
       if (!visible) return
-      const points: [number, number][] = profile.measurements
+      let points: [number, number][] = profile.measurements
         .map(config.extractor)
         .filter(isFinitePoint)
+      if (metric === 'po2Calculated') {
+        points = extendPo2CalculatedToBoundary(points, profile)
+      }
       if (points.length) {
         group
           .append('path')
@@ -1199,6 +1229,15 @@ function renderPo2OverageBand() {
 
 // Renders the mandatory decompression "keep-out zone": a red shaded area from the
 // surface down to the current ceiling depth (the deepest active mandatory deco stop).
+//
+// Two profiles of the same dive (e.g. a primary computer and a backup/bailout computer) can
+// disagree on the ceiling at a given moment - each has its own gas loading model and sometimes
+// its own gas mix. Both zones are drawn (one per visible profile with any deco data), each
+// independently accurate, but an unstyled overlap of two identical fills would read as a single,
+// oddly-dark zone rather than "two profiles disagree here". Only the first (primary) profile's
+// zone gets a solid outline; every other visible profile's gets a dashed one and a lighter fill,
+// so an overlap still shows as two distinguishable, individually-attributable regions rather than
+// one flat blob.
 function renderDecoZone() {
   if (!decoZoneLayer.value) return
   decoZoneLayer.value.selectAll('path').remove()
@@ -1215,16 +1254,17 @@ function renderDecoZone() {
       .filter(([t, d]) => Number.isFinite(t) && Number.isFinite(d))
     if (!points.some((p) => p[1] > 0)) return
 
-    decoZoneLayer.value
+    const path = decoZoneLayer.value
       ?.append('path')
       .datum(points)
       .attr('d', decoZoneArea.value?.(points) ?? '')
       .attr('fill', '#dc2626')
-      .attr('fill-opacity', 0.28)
+      .attr('fill-opacity', idx === 0 ? 0.28 : 0.16)
       .attr('stroke', '#dc2626')
       .attr('stroke-width', 1)
       .attr('stroke-opacity', 0.5)
       .style('pointer-events', 'none')
+    if (idx > 0) path?.attr('stroke-dasharray', '3,2')
   })
 }
 
@@ -1377,7 +1417,9 @@ const metricPointsCache = computed<Array<Partial<Record<Exclude<MetricType, 'dep
     return props.profiles.map((profile) => {
       const perMetric: Partial<Record<Exclude<MetricType, 'depth'>, [number, number][]>> = {}
       for (const key of METRICS_TO_RENDER) {
-        perMetric[key] = profile.measurements.map(EXTRACTORS[key]).filter(isFinitePoint)
+        const points = profile.measurements.map(EXTRACTORS[key]).filter(isFinitePoint)
+        perMetric[key] =
+          key === 'po2Calculated' ? extendPo2CalculatedToBoundary(points, profile) : points
       }
       return perMetric
     })

@@ -71,7 +71,9 @@ export const DEFAULT_METRIC_CONFIGS: Record<MetricType, MetricConfig> = {
   temp: { show: true, color: '#ef4444' },
   cns: { show: false, color: '#fbbf24' },
   ndl: { show: false, color: '#7c3aed' },
-  gf: { show: false, color: '#8b5cf6' },
+  // Was #8b5cf6 (purple) - nearly indistinguishable from ndl's #7c3aed (violet), especially on a
+  // dark background where both read as similarly muted.
+  gf: { show: false, color: '#eab308' },
   otu: { show: false, color: '#ec4899' },
   po2Measured: { show: false, color: '#1d4ed8' },
   po2Calculated: { show: false, color: '#d946ef' },

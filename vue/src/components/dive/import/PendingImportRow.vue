@@ -170,6 +170,7 @@
             :trim-profile-id="trimProfileId"
             @trim-confirmed="confirmTrimmingProfile"
             @trim-cancelled="cancelTrimmingProfile"
+            @trim-profile-changed="startTrimmingProfile"
           />
         </div>
       </div>

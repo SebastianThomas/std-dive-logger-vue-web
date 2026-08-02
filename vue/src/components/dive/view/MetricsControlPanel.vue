@@ -72,12 +72,12 @@
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showGf"
-          color="#8b5cf6"
+          color="#eab308"
           :disabled="disableGf"
           :title="disableGf ? 'No GF99 data' : ''"
           @update:model-value="$emit('update:showGf', $event)"
         >
-          <span class="font-bold text-sm" style="color: #8b5cf6">GF99</span>
+          <span class="font-bold text-sm" style="color: #eab308">GF99</span>
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showPo2Measured"
@@ -142,26 +142,35 @@
         >
           <span class="font-bold text-sm" style="color: #f97316">Gas He</span>
         </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showGrid"
-          color="var(--foreground)"
-          @update:model-value="$emit('update:showGrid', $event)"
-        >
-          <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">Grid</span>
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showDecoZone"
-          color="#dc2626"
-          :disabled="disableDecoZone"
-          :title="disableDecoZone ? 'No mandatory decompression stops' : ''"
-          @update:model-value="$emit('update:showDecoZone', $event)"
-        >
-          <span class="font-bold text-sm" style="color: #dc2626">Deco Ceiling</span>
-        </StyledCheckbox>
       </div>
     </div>
+    <!-- Display options - kept separate from the metric toggles above (not measurements, just
+         chart display settings), so they don't get shuffled in among them by flex-wrap at
+         narrower widths. -->
+    <div v-show="showMetrics" class="flex flex-wrap gap-3 items-center mt-2">
+      <StyledCheckbox
+        :model-value="showGrid"
+        color="var(--foreground)"
+        @update:model-value="$emit('update:showGrid', $event)"
+      >
+        <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">Grid</span>
+      </StyledCheckbox>
+      <StyledCheckbox
+        :model-value="showDecoZone"
+        color="#dc2626"
+        :disabled="disableDecoZone"
+        :title="disableDecoZone ? 'No mandatory decompression stops' : ''"
+        @update:model-value="$emit('update:showDecoZone', $event)"
+      >
+        <span class="font-bold text-sm" style="color: #dc2626">Deco Ceiling</span>
+      </StyledCheckbox>
+    </div>
     <!-- Tooltip profile selector placed between Metrics and Axis sections -->
-    <div v-if="profilesCount > 1" class="flex items-center gap-2 mt-3">
+    <div
+      v-if="profilesCount > 1"
+      class="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t"
+      :style="{ borderColor: 'rgba(209,213,219,0.5)' }"
+    >
       <span class="text-sm font-semibold" :style="{ color: 'var(--foreground)' }"
         >Tooltip Profile:</span
       >
@@ -387,7 +396,7 @@ const extraMetricDefs = computed(() => [
   { key: 'ndl' as const, color: '#7c3aed', label: 'NDL', disabled: props.disableNdl },
   { key: 'otu' as const, color: '#ec4899', label: 'OTUs', disabled: props.disableOtu },
   { key: 'cns' as const, color: '#fbbf24', label: 'CNS', disabled: props.disableCns },
-  { key: 'gf' as const, color: '#8b5cf6', label: 'GF99', disabled: props.disableGf },
+  { key: 'gf' as const, color: '#eab308', label: 'GF99', disabled: props.disableGf },
   {
     key: 'po2Measured' as const,
     color: '#1d4ed8',

@@ -33,16 +33,18 @@
         <div class="flex justify-end gap-2">
           <button
             type="button"
-            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-800 dark:text-white"
+            :disabled="submitting"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-800 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
             @click="emit('close')"
           >
             Cancel
           </button>
           <button
             type="submit"
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            :disabled="submitting"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {{ type === 'new' ? 'Create' : 'Join' }}
+            {{ type === 'new' ? (submitting ? 'Creating...' : 'Create') : submitting ? 'Joining...' : 'Join' }}
           </button>
         </div>
       </form>
@@ -57,6 +59,8 @@ const props = defineProps<{
   open: boolean
   label: string
   type: 'new' | 'join'
+  /** Set by the parent while its own addGroup/joinGroup request is in flight. */
+  submitting?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -76,7 +80,7 @@ watch(
 )
 
 const handleSubmit = async () => {
-  if (!groupName.value.trim()) return
+  if (!groupName.value.trim() || props.submitting) return
   emit('submit', groupName.value)
 }
 </script>

@@ -13,6 +13,7 @@
             </button>
             <GroupPopover
               :open="anchorElAdd"
+              :submitting="addingGroup"
               @close="anchorElAdd = false"
               @submit="addGroup"
               label="group name"
@@ -27,6 +28,7 @@
             </button>
             <GroupPopover
               :open="anchorElJoin"
+              :submitting="joiningGroup"
               @close="anchorElJoin = false"
               @submit="joinGroup"
               label="group name"
@@ -74,8 +76,12 @@ const { getWithToken, postWithToken } = useApi()
 const groups = ref<GroupMember[]>([])
 const anchorElAdd = ref(false)
 const anchorElJoin = ref(false)
+const addingGroup = ref(false)
+const joiningGroup = ref(false)
 
 const joinGroup = async (groupName: string): Promise<boolean> => {
+  if (joiningGroup.value) return false
+  joiningGroup.value = true
   try {
     await postWithToken(`/v1/groups/${groupName}/members`, {})
     toast.success('Joined successfully!')
@@ -95,10 +101,14 @@ const joinGroup = async (groupName: string): Promise<boolean> => {
     }
     console.error(err)
     return false
+  } finally {
+    joiningGroup.value = false
   }
 }
 
 const addGroup = async (groupName: string): Promise<boolean> => {
+  if (addingGroup.value) return false
+  addingGroup.value = true
   try {
     await postWithToken('/v1/groups', { name: groupName })
     toast.success('Group created successfully!')
@@ -118,6 +128,8 @@ const addGroup = async (groupName: string): Promise<boolean> => {
     }
     console.error(err)
     return false
+  } finally {
+    addingGroup.value = false
   }
 }
 

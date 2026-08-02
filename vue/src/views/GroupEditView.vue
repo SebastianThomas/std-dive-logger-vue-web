@@ -20,7 +20,7 @@
               <td class="px-3 py-2">
                 <RoleMenu
                   :modelValue="member.role"
-                  :disabled="!isAdmin || readOnly"
+                  :disabled="!isAdmin || readOnly || changingRoleIds.has(member.id)"
                   @update:modelValue="(role) => changeRole(member, role)"
                 />
               </td>
@@ -44,16 +44,18 @@
               <td class="px-3 py-2 font-medium">{{ req.name }}</td>
               <td class="px-3 py-2 flex gap-2">
                 <button
-                  class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                  :disabled="processingRequestIds.has(req.id)"
+                  class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   @click="acceptRequest(req.id)"
                 >
-                  Accept
+                  {{ processingRequestIds.has(req.id) ? 'Accepting...' : 'Accept' }}
                 </button>
                 <button
-                  class="px-3 py-1 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
+                  :disabled="processingRequestIds.has(req.id)"
+                  class="px-3 py-1 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   @click="declineRequest(req.id)"
                 >
-                  Decline
+                  {{ processingRequestIds.has(req.id) ? 'Declining...' : 'Decline' }}
                 </button>
               </td>
             </tr>
@@ -154,6 +156,8 @@ const showDeleteConfirm = ref(false)
 const isLoadingLeave = ref(false)
 const isLoadingDelete = ref(false)
 const groupName = ref<string>('')
+const changingRoleIds = ref<Set<number>>(new Set())
+const processingRequestIds = ref<Set<number>>(new Set())
 
 const fetchJoinRequests = async () => {
   try {
@@ -195,8 +199,10 @@ const fetchGroupDetails = async () => {
 }
 
 const changeRole = async (member: UserWithRole, role: string) => {
+  if (changingRoleIds.value.has(member.id)) return
   const previousRole = member.role
   member.role = role as InGroupRole
+  changingRoleIds.value.add(member.id)
   try {
     await putWithToken(`/v1/groups/role?id=${groupId.value}&userId=${member.id}&role=${role}`, {})
     await fetchGroupDetails()
@@ -204,26 +210,36 @@ const changeRole = async (member: UserWithRole, role: string) => {
     console.error(err)
     error.value = 'Failed to change role.'
     member.role = previousRole
+  } finally {
+    changingRoleIds.value.delete(member.id)
   }
 }
 
 const acceptRequest = async (userId: number) => {
+  if (processingRequestIds.value.has(userId)) return
+  processingRequestIds.value.add(userId)
   try {
     await putWithToken(`/v1/groups/role?id=${groupId.value}&userId=${userId}&role=MEMBER`, {})
     await fetchJoinRequests()
   } catch (err) {
     console.error(err)
     error.value = 'Failed to accept request.'
+  } finally {
+    processingRequestIds.value.delete(userId)
   }
 }
 
 const declineRequest = async (userId: number) => {
+  if (processingRequestIds.value.has(userId)) return
+  processingRequestIds.value.add(userId)
   try {
     await putWithToken(`/v1/groups/role?id=${groupId.value}&userId=${userId}&role=DENIED`, {})
     await fetchJoinRequests()
   } catch (err) {
     console.error(err)
     error.value = 'Failed to decline request.'
+  } finally {
+    processingRequestIds.value.delete(userId)
   }
 }
 
