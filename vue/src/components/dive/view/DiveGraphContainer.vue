@@ -41,6 +41,7 @@
                 v-model:show-gas-n2="showGasN2"
                 v-model:show-gas-he="showGasHe"
                 v-model:show-deco-zone="showDecoZone"
+                v-model:extra-profile-metrics="extraProfileMetrics"
                 :disable-temp="!combinedMetricsAvailability.hasTemp"
                 :disable-ndl="!combinedMetricsAvailability.hasNdl"
                 :disable-otu="!combinedMetricsAvailability.hasOtu"
@@ -95,6 +96,7 @@
             :show-gas-n2="showGasN2"
             :show-gas-he="showGasHe"
             :show-deco-zone="showDecoZone"
+            :extra-profile-metrics="extraProfileMetrics"
             :trim-profile-id="trimProfileId"
             @trim-confirmed="confirmTrimming"
             @trim-cancelled="cancelTrimming"
@@ -174,6 +176,7 @@
       v-model:show-gas-n2="showGasN2"
       v-model:show-gas-he="showGasHe"
       v-model:show-deco-zone="showDecoZone"
+      v-model:extra-profile-metrics="extraProfileMetrics"
       :disable-temp="!combinedMetricsAvailability.hasTemp"
       :disable-ndl="!combinedMetricsAvailability.hasNdl"
       :disable-otu="!combinedMetricsAvailability.hasOtu"
@@ -214,6 +217,7 @@
         @trim-confirmed="confirmTrimming"
         @trim-cancelled="cancelTrimming"
         :show-deco-zone="showDecoZone"
+        :extra-profile-metrics="extraProfileMetrics"
         :has-temp="combinedMetricsAvailability.hasTemp"
         :has-ndl="combinedMetricsAvailability.hasNdl"
         :has-otu="combinedMetricsAvailability.hasOtu"
@@ -270,7 +274,7 @@ import { useApi } from '@/composables/useApi'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { useProfileTrimming } from '@/composables/useProfileTrimming'
 import type { Dive, DiveProfile } from '@/lib/types/dive'
-import type { AxisUnitGroup } from '@/lib/types/graph'
+import type { AxisUnitGroup, ProfileMetricVisibility } from '@/lib/types/graph'
 
 interface Props {
   profiles: DiveProfile[]
@@ -284,6 +288,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 const visibleProfiles = ref<boolean[]>([])
 const selectedProfiles = ref<number[]>([0])
+// Per-profile metric overrides for every profile except the first - session-local (not persisted
+// like the global show* store), so it resets to "just the primary profile, like before" each time
+// a dive is opened rather than carrying a backup computer's extra metrics into unrelated dives.
+const extraProfileMetrics = ref<ProfileMetricVisibility>({})
 const isClosing = ref(false)
 const historyEntryAdded = ref(false)
 const { readOnly } = useReadOnlyMode()

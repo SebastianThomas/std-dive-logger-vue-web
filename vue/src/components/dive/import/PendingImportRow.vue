@@ -57,6 +57,10 @@
       </button>
     </div>
 
+    <p v-if="autoAttachNote" class="text-xs text-sky-600 dark:text-sky-400">
+      <i class="fas fa-link mr-1"></i>{{ autoAttachNote }}
+    </p>
+
     <div v-if="mode === 'new'" class="flex flex-col gap-2">
       <label class="text-sm font-medium dark:text-gray-300">Dive site</label>
       <div class="flex items-center gap-2">
@@ -345,6 +349,38 @@ const fetchMyDives = async () => {
 }
 const handleDiveSearch = debounce(fetchMyDives, 300)
 fetchMyDives()
+
+// If the source file's guessed dive number already matches one of the diver's dives - whether
+// because it's a plain re-run-into-the-same-number case, or because the file encoded a
+// "+"/"-"-prefixed Shearwater bailout/CC companion marker (see UddfFile.diveNumber() on the
+// backend) - "New dive" would be the wrong default: a fractional guess makes the backend attach
+// to that number on commit regardless of what's selected here, so showing "New dive" would be
+// actively misleading. Preselect "attach to existing dive" (still overridable) instead.
+const autoAttachNote = ref<string | null>(null)
+
+const checkForAutoAttach = async () => {
+  const guess = props.summary.diveNumberGuess
+  if (guess === undefined) return
+  try {
+    const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(
+      `/v1/dives/search?page=0&query=${encodeURIComponent(String(guess))}`,
+    )
+    const match = res.data.result.find((d) => d.number === guess)
+    if (match) {
+      mode.value = 'existing'
+      autoAttachNote.value = `Auto-selected: dive #${guess} already exists in your log.`
+      selectExistingDive(match)
+    } else if (props.summary.diveNumberFractional) {
+      autoAttachNote.value =
+        `This file marks itself as an OC/bailout or CC companion profile for dive #${guess}, ` +
+        `but no dive with that number was found yet - import the other profile first, or this ` +
+        `commit will fail.`
+    }
+  } catch (err) {
+    console.error('Failed to check for a matching dive number', err)
+  }
+}
+checkForAutoAttach()
 
 const commit = async () => {
   busy.value = true

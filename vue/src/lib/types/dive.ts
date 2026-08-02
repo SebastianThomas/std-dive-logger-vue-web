@@ -66,6 +66,9 @@ export type DiveMeasurement = {
   n2?: number
   o2Tox?: number
   cns?: number
+  // Rebreather loop state (closed-circuit vs open-circuit/bailout) at this sample. Absent for
+  // OC-only dives and for sources that don't report it (e.g. FIT/Garmin).
+  mode?: 'OC' | 'CC'
 }
 
 export type DiveMeasurementWithId = {
@@ -279,6 +282,13 @@ export type PendingImportSummary = {
   durationSeconds?: number
   maxDepth?: number
   createdAt: number
+  // Dive number guessed from the source file (e.g. UDDF's <divenumber>). When
+  // diveNumberFractional is true, the source file encoded a "+"/"-"-prefixed Shearwater
+  // bailout/CC companion marker - the backend will attach to that number on commit regardless of
+  // whichever mode is selected in the UI, so the frontend preselects "attach to existing dive"
+  // for it rather than showing a "New dive" mode that wouldn't reflect what actually happens.
+  diveNumberGuess?: number
+  diveNumberFractional?: boolean
 }
 
 export type StageImportResult = { staged: PendingImportSummary[]; errors: string[] }

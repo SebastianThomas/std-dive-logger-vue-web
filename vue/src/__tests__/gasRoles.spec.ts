@@ -9,13 +9,14 @@ function measurement(
   time: number,
   g: Gas,
   po2: { measured?: number; calculated?: number } | undefined = undefined,
+  depth = 20,
 ): DiveMeasurementWithId {
   return {
     id,
     measurement: {
       time,
       temperature: { value: 15, unit: 'CELSIUS' },
-      depth: 20,
+      depth,
       ndl: '',
       deco: [],
       gas: g,
@@ -87,5 +88,24 @@ describe('computeGasList', () => {
     m.measurement.gas = undefined
     const profiles = [profile([m])]
     expect(computeGasList(profiles, true)).toEqual([])
+  })
+
+  it('ignores a surface (depth 0) reading of a gas never actually breathed underwater', () => {
+    const profiles = [
+      profile([
+        measurement(1, 0, gas(0.21), undefined, 0),
+        measurement(2, 60_000, gas(0.32), undefined, 20),
+      ]),
+    ]
+    const result = computeGasList(profiles, false)
+    expect(result).toEqual([{ gas: gas(0.32), roleLabel: null }])
+  })
+
+  it('treats near-identical fractions (sensor/parsing noise) as the same gas', () => {
+    const profiles = [
+      profile([measurement(1, 0, gas(0.32)), measurement(2, 60_000, gas(0.319))]),
+    ]
+    const result = computeGasList(profiles, false)
+    expect(result).toHaveLength(1)
   })
 })

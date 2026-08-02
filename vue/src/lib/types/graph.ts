@@ -16,6 +16,16 @@ export type MetricType =
 // Alias for axis metrics (same as MetricType)
 export type AxisMetric = MetricType
 
+// Per-profile overrides for metrics other than depth (depth is always shown for every visible
+// profile - it can only be hidden by hiding the whole profile). Keyed by profile array index.
+// Profile 0 (the primary/first profile) isn't represented here - its visibility continues to come
+// from the global show*/DEFAULT_METRIC_CONFIGS-backed store, matching pre-existing behavior. This
+// map only carries the *additional* metrics a user opts a secondary/backup profile into; an
+// absent entry (or an absent key within one) means "off", so a dive with only one profile - the
+// overwhelming majority - never touches this at all.
+export type ProfileMetricVisibility = Record<number, Partial<Record<Exclude<MetricType, 'depth'>, boolean>>>
+
+
 export type MetricConfig = {
   show: boolean
   color: string

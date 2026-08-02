@@ -203,6 +203,46 @@
         All
       </button>
     </div>
+    <!-- Extra metrics for secondary profiles - depth and the checkboxes above always apply to the
+         first/primary profile; this lets a backup computer's profile opt into specific metrics
+         instead of inheriting the primary's set (or none, by default). -->
+    <div
+      v-if="profilesCount > 1"
+      class="mt-3 pt-3 border-t"
+      :style="{ borderColor: 'rgba(209,213,219,0.5)' }"
+    >
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-sm font-semibold" :style="{ color: 'var(--foreground)' }"
+          >Extra metrics for profile:</span
+        >
+        <button
+          v-for="idx in profilesCount - 1"
+          :key="idx"
+          type="button"
+          @click="editingExtraProfile = idx"
+          :class="[
+            'px-2 py-0.5 text-xs rounded border transition-colors',
+            editingExtraProfile === idx
+              ? 'bg-blue-500 text-white border-blue-600'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600',
+          ]"
+        >
+          {{ idx + 1 }}
+        </button>
+      </div>
+      <div class="flex flex-wrap gap-3 items-center mt-2">
+        <StyledCheckbox
+          v-for="def in extraMetricDefs"
+          :key="def.key"
+          :model-value="extraProfileMetrics?.[editingExtraProfile]?.[def.key] ?? false"
+          :color="def.color"
+          :disabled="def.disabled"
+          @update:model-value="setExtraProfileMetric(def.key, $event)"
+        >
+          <span class="font-bold text-sm" :style="{ color: def.color }">{{ def.label }}</span>
+        </StyledCheckbox>
+      </div>
+    </div>
     <!-- Axis Selectors Row -->
     <div class="mt-3 pt-3 border-t" :style="{ borderColor: 'rgba(209,213,219,0.5)' }">
       <div class="flex items-center justify-between">
@@ -266,14 +306,20 @@
 </template>
 
 <script setup lang="ts">
-import { AXIS_UNIT_GROUPS, type AxisUnitGroup } from '@/lib/types/graph'
-import { ref } from 'vue'
+import {
+  AXIS_UNIT_GROUPS,
+  type AxisUnitGroup,
+  type MetricType,
+  type ProfileMetricVisibility,
+} from '@/lib/types/graph'
+import { computed, ref } from 'vue'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 
 const props = defineProps<{
   selectedProfiles: number[]
   profilesCount: number
   visibleProfiles?: boolean[]
+  extraProfileMetrics?: ProfileMetricVisibility
   showTemp: boolean
   showSegments: boolean
   showGrid: boolean
@@ -324,12 +370,57 @@ const emit = defineEmits<{
   'update:showGasN2': [value: boolean]
   'update:showGasHe': [value: boolean]
   'update:showDecoZone': [value: boolean]
+  'update:extraProfileMetrics': [value: ProfileMetricVisibility]
   'update:leftAxisMetric': [value: AxisUnitGroup]
   'update:rightAxisMetric': [value: AxisUnitGroup]
 }>()
 
 const showMetrics = ref(true)
 const showAxes = ref(true)
+
+// Which secondary profile (array index, 1-based numbering in the UI matches the "Tooltip
+// Profile" buttons above) the checkbox row below is currently editing overrides for.
+const editingExtraProfile = ref(1)
+
+const extraMetricDefs = computed(() => [
+  { key: 'temp' as const, color: '#ef4444', label: 'Temperature', disabled: props.disableTemp },
+  { key: 'ndl' as const, color: '#7c3aed', label: 'NDL', disabled: props.disableNdl },
+  { key: 'otu' as const, color: '#ec4899', label: 'OTUs', disabled: props.disableOtu },
+  { key: 'cns' as const, color: '#fbbf24', label: 'CNS', disabled: props.disableCns },
+  { key: 'gf' as const, color: '#8b5cf6', label: 'GF99', disabled: props.disableGf },
+  {
+    key: 'po2Measured' as const,
+    color: '#1d4ed8',
+    label: 'PO2 measured',
+    disabled: props.disablePo2Measured,
+  },
+  {
+    key: 'po2Calculated' as const,
+    color: '#d946ef',
+    label: 'PO2 calculated',
+    disabled: props.disablePo2Calculated,
+  },
+  {
+    key: 'po2Setpoint' as const,
+    color: '#22c55e',
+    label: 'PO2 setpoint',
+    disabled: props.disablePo2Setpoint,
+  },
+  { key: 'rmv' as const, color: '#14b8a6', label: 'RMV', disabled: props.disableRmv },
+  { key: 'gasO2' as const, color: '#06b6d4', label: 'Gas O2', disabled: props.disableGasO2 },
+  { key: 'gasN2' as const, color: '#84cc16', label: 'Gas N2', disabled: props.disableGasN2 },
+  { key: 'gasHe' as const, color: '#f97316', label: 'Gas He', disabled: props.disableGasHe },
+])
+
+function setExtraProfileMetric(key: Exclude<MetricType, 'depth'>, value: boolean): void {
+  emit('update:extraProfileMetrics', {
+    ...props.extraProfileMetrics,
+    [editingExtraProfile.value]: {
+      ...props.extraProfileMetrics?.[editingExtraProfile.value],
+      [key]: value,
+    },
+  })
+}
 
 function handleLeftAxisChange(event: Event): void {
   const value = (event.target as HTMLSelectElement).value as AxisUnitGroup

@@ -99,6 +99,7 @@ import {
   type Area,
   type ZoomBehavior,
   type ZoomTransform,
+  type CurveFactory,
 } from 'd3'
 import DiveGraphTooltip, {
   type TooltipData,
@@ -109,7 +110,7 @@ import { useApi } from '@/composables/useApi'
 import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
 import { formatISoDurationToMinutes, formatElapsedTime } from '@/lib/utils/timeUtils'
 import { generateId } from '@/lib/utils/cryptoUtils'
-import type { AxisUnitGroup, MetricType } from '@/lib/types/graph'
+import type { AxisUnitGroup, MetricType, ProfileMetricVisibility } from '@/lib/types/graph'
 import { DEFAULT_METRIC_CONFIGS } from '@/lib/types/graph'
 import { toKebabCase } from '@/lib/utils/stringUtils'
 import { getSegmentColor, findSegmentTypeAtIndex } from '@/lib/utils/diveSegmentUtils'
@@ -133,6 +134,7 @@ import {
   getActiveSegments,
   type TimeMapper,
 } from '@/lib/graph/timeGaps'
+import { detectModeTransitions, hasBothModes } from '@/lib/graph/modeTransitions'
 import { LruCache } from '@/lib/utils/lruCache'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import { computeRangeStats } from '@/lib/graph/rangeStats'
@@ -156,6 +158,11 @@ type Props = {
   showGasN2?: boolean
   showGasHe?: boolean
   showDecoZone?: boolean
+  // Per-profile metric overrides for every profile except the first (see ProfileMetricVisibility)
+  // - the first profile's visibility comes from the show* props above, unchanged from before this
+  // existed. Absent/undefined means no secondary profile has any extra metric turned on, which is
+  // the default for every dive until the user opts one in.
+  extraProfileMetrics?: ProfileMetricVisibility
   leftAxisMetric?: AxisUnitGroup
   rightAxisMetric?: AxisUnitGroup
   hasTemp?: boolean
@@ -297,6 +304,7 @@ const timeMapper = ref<TimeMapper>({ toVirtual: (t) => t, toReal: (v) => v, brea
 const timeGaps = ref<ReturnType<typeof detectTimeGaps>>([])
 const dataTimeRange = ref<[number, number]>([0, 0])
 const gapBreaksLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
+const modeTransitionsLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
 const currentZoomLevel = ref(1)
@@ -457,10 +465,22 @@ function setupScales() {
     .y1((d) => (depthScale.value ? depthScale.value(d[1]) : 0))
     .curve(curveStepAfter)
 
-  const makeMetricLine = (scale: ScaleLinear<number, number> | null): Line<[number, number]> =>
-    line()
+  // A plain line() defaults to linear interpolation, which implies a gradual change between two
+  // samples. That's correct for continuously-sampled metrics (temperature, NDL, ...), but wrong
+  // for a held/discrete value like the calculated PO2 during CC mode: a Shearwater-style computer
+  // only logs a new sample when the setpoint loop changes it, so the real value stayed flat at
+  // the old sample until the moment it stepped to the new one - curveStepAfter draws that
+  // correctly instead of implying a ramp that never happened.
+  const makeMetricLine = (
+    scale: ScaleLinear<number, number> | null,
+    curve?: CurveFactory,
+  ): Line<[number, number]> => {
+    const generator = line()
       .x((d: [number, number]) => (timeScale.value ? timeScale.value(toVirtual(d[0])) : 0))
       .y((d: [number, number]) => (scale ? scale(d[1]) : 0))
+    if (curve) generator.curve(curve)
+    return generator
+  }
 
   tempScale.value = scaleLinear().domain(tempExtent).range([innerHeight.value, 0])
   ndlScale.value = scaleLinear().domain([0, 100]).range([innerHeight.value, 0])
@@ -486,7 +506,7 @@ function setupScales() {
   cnsLine.value = makeMetricLine(o2ExposureScale.value)
   gfLine.value = makeMetricLine(gfScale.value)
   po2MeasuredLine.value = makeMetricLine(po2Scale.value)
-  po2CalculatedLine.value = makeMetricLine(po2Scale.value)
+  po2CalculatedLine.value = makeMetricLine(po2Scale.value, curveStepAfter)
   po2SetpointLine.value = makeMetricLine(po2Scale.value)
   rmvLine.value = makeMetricLine(rmvScale.value)
   gasO2Line.value = makeMetricLine(gasFractionScale.value)
@@ -665,6 +685,13 @@ function initSvg() {
 
   // Break markers for any compressed time gaps - above the lines, same as the PO2 guideline.
   gapBreaksLayer.value = g.append('g').attr('class', 'gap-breaks').attr('clip-path', clipPathUrl)
+
+  // OC/CC (bailout/closed-circuit) mode-change markers - only ever populated for a dive that
+  // genuinely contains both, see renderModeTransitions().
+  modeTransitionsLayer.value = g
+    .append('g')
+    .attr('class', 'mode-transitions')
+    .attr('clip-path', clipPathUrl)
 
   // Trim-mode shaded cut regions + drag handles - above everything else so the handles are
   // always grabbable regardless of what's drawn underneath.
@@ -948,13 +975,19 @@ function renderAll() {
     const group = gSel.value?.select(className)
     if (!group) return
     group.selectAll('path').remove()
-    if (!config.showProp || !config.lineRef.value) return
+    if (!config.lineRef.value) return
 
     const color = DEFAULT_METRIC_CONFIGS[metric].color
     const width = config.width ?? 1.5
 
     props.profiles.forEach((profile, idx) => {
       if (!visibleMask.value[idx]) return
+      // Profile 0's visibility is the metric's global show* toggle, unchanged from before
+      // per-profile overrides existed. Every other profile defaults to off - opting one in is
+      // what extraProfileMetrics is for - so a dive with only one profile never differs from the
+      // old behavior.
+      const visible = idx === 0 ? config.showProp : (props.extraProfileMetrics?.[idx]?.[metric] ?? false)
+      if (!visible) return
       const points: [number, number][] = profile.measurements
         .map(config.extractor)
         .filter(isFinitePoint)
@@ -977,6 +1010,7 @@ function renderAll() {
   renderDecoZone()
   renderPo2OverageBand()
   renderGapBreaks()
+  renderModeTransitions()
   renderTrimOverlay()
 }
 
@@ -1001,6 +1035,52 @@ function renderGapBreaks() {
     .attr('stroke-width', 1.5)
     .attr('stroke-dasharray', '3,3')
     .style('pointer-events', 'none')
+}
+
+// A dashed tick + short label ("BO"/"CC") at every point a rebreather diver's mode actually
+// changed - bail-out to open circuit, or back onto the closed loop. No-op (clears any stale ones)
+// unless the dive genuinely contains both modes somewhere across its visible profiles; a pure-OC
+// or pure-CC dive (almost every dive) never renders anything here. Deliberately not a background
+// band: it needs to coexist with the segments/deco-zone backgrounds without competing for the
+// same visual channel, so it's drawn as discrete markers instead.
+function renderModeTransitions() {
+  if (!modeTransitionsLayer.value) return
+  modeTransitionsLayer.value.selectAll('*').remove()
+  if (!timeScale.value) return
+
+  const visibleProfiles = props.profiles.filter((_, idx) => visibleMask.value[idx])
+  if (!hasBothModes(visibleProfiles)) return
+
+  const transitions = visibleProfiles.flatMap((profile) => detectModeTransitions(profile))
+  if (!transitions.length) return
+
+  const groups = modeTransitionsLayer.value
+    .selectAll('g')
+    .data(transitions)
+    .enter()
+    .append('g')
+    .attr(
+      'transform',
+      (t) => `translate(${timeScale.value!(timeMapper.value.toVirtual(t.time))}, 0)`,
+    )
+    .style('pointer-events', 'none')
+
+  groups
+    .append('line')
+    .attr('y1', 0)
+    .attr('y2', innerHeight.value)
+    .attr('stroke', (t) => (t.mode === 'OC' ? '#f97316' : '#0ea5e9'))
+    .attr('stroke-width', 1.5)
+    .attr('stroke-dasharray', '2,3')
+
+  groups
+    .append('text')
+    .attr('y', 12)
+    .attr('x', 3)
+    .attr('font-size', 10)
+    .attr('font-weight', 600)
+    .attr('fill', (t) => (t.mode === 'OC' ? '#f97316' : '#0ea5e9'))
+    .text((t) => (t.mode === 'OC' ? 'BO' : 'CC'))
 }
 
 // Shaded regions for whatever's currently outside the trim selection, plus two draggable handles
@@ -1498,7 +1578,9 @@ function renderTooltipAtTime(
     const selProfilePoints = metricPointsCache.value[selIdx]
     for (const key of METRICS_TO_RENDER) {
       const config = hoverMetricConfigs[key]
-      if (!config.showProp) continue
+      const visible =
+        selIdx === 0 ? config.showProp : (props.extraProfileMetrics?.[selIdx]?.[key] ?? false)
+      if (!visible) continue
       const scale = metricScaleFor(key)
       if (!scale) continue
       // Interpolated, not read straight off selM — some metrics (PO2 calculated/setpoint, gas
