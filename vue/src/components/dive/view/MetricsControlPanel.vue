@@ -26,12 +26,14 @@
         </span>
         <StyledCheckbox
           :model-value="showTemp"
-          color="#ef4444"
+          :color="DEFAULT_METRIC_CONFIGS.temp.color"
           :disabled="disableTemp"
           :title="disableTemp ? 'No temperature data' : ''"
           @update:model-value="$emit('update:showTemp', $event)"
         >
-          <span class="font-bold text-sm" style="color: #ef4444">Temperature</span>
+          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.temp.color }"
+            >Temperature</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           v-if="showSegmentsToggle !== false"
@@ -45,102 +47,130 @@
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showNdl"
-          color="#7c3aed"
+          :color="DEFAULT_METRIC_CONFIGS.ndl.color"
           :disabled="disableNdl"
           :title="disableNdl ? 'No NDL data' : ''"
           @update:model-value="$emit('update:showNdl', $event)"
         >
-          <span class="font-bold text-sm" style="color: #7c3aed">NDL</span>
+          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.ndl.color }"
+            >NDL</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showOtu"
-          color="#ec4899"
+          :color="DEFAULT_METRIC_CONFIGS.otu.color"
           :disabled="disableOtu"
           :title="disableOtu ? 'No OTU data' : ''"
           @update:model-value="$emit('update:showOtu', $event)"
         >
-          <span class="font-bold text-sm" style="color: #ec4899">OTUs</span>
+          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.otu.color }"
+            >OTUs</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showCns"
-          color="#fbbf24"
+          :color="DEFAULT_METRIC_CONFIGS.cns.color"
           :disabled="disableCns"
           :title="disableCns ? 'No CNS data' : ''"
           @update:model-value="$emit('update:showCns', $event)"
         >
-          <span class="font-bold text-sm" style="color: #fbbf24">CNS</span>
+          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.cns.color }"
+            >CNS</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showGf"
-          color="#eab308"
+          :color="DEFAULT_METRIC_CONFIGS.gf.color"
           :disabled="disableGf"
           :title="disableGf ? 'No GF99 data' : ''"
           @update:model-value="$emit('update:showGf', $event)"
         >
-          <span class="font-bold text-sm" style="color: #eab308">GF99</span>
+          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.gf.color }"
+            >GF99</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showPo2Measured"
-          color="#1d4ed8"
+          :color="DEFAULT_METRIC_CONFIGS.po2Measured.color"
           :disabled="disablePo2Measured"
           :title="disablePo2Measured ? 'No PO2 measured data' : ''"
           @update:model-value="$emit('update:showPo2Measured', $event)"
         >
-          <span class="font-bold text-sm" style="color: #1d4ed8">PO2 measured</span>
+          <span
+            class="font-bold text-sm"
+            :style="{ color: DEFAULT_METRIC_CONFIGS.po2Measured.color }"
+            >PO2 measured</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showPo2Calculated"
-          color="#d946ef"
+          :color="DEFAULT_METRIC_CONFIGS.po2Calculated.color"
           :disabled="disablePo2Calculated"
           :title="disablePo2Calculated ? 'No PO2 calculated data' : ''"
           @update:model-value="$emit('update:showPo2Calculated', $event)"
         >
-          <span class="font-bold text-sm" style="color: #d946ef">PO2 calculated</span>
+          <span
+            class="font-bold text-sm"
+            :style="{ color: DEFAULT_METRIC_CONFIGS.po2Calculated.color }"
+            >PO2 calculated</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showPo2Setpoint"
-          color="#22c55e"
+          :color="DEFAULT_METRIC_CONFIGS.po2Setpoint.color"
           :disabled="disablePo2Setpoint"
           :title="disablePo2Setpoint ? 'No PO2 setpoint data' : ''"
           @update:model-value="$emit('update:showPo2Setpoint', $event)"
         >
-          <span class="font-bold text-sm" style="color: #22c55e">PO2 setpoint</span>
+          <span
+            class="font-bold text-sm"
+            :style="{ color: DEFAULT_METRIC_CONFIGS.po2Setpoint.color }"
+            >PO2 setpoint</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showRmv"
-          color="#14b8a6"
+          :color="DEFAULT_METRIC_CONFIGS.rmv.color"
           :disabled="disableRmv"
           :title="disableRmv ? 'No RMV data' : ''"
           @update:model-value="$emit('update:showRmv', $event)"
         >
-          <span class="font-bold text-sm" style="color: #14b8a6">RMV</span>
+          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.rmv.color }"
+            >RMV</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showGasO2"
-          color="#06b6d4"
+          :color="DEFAULT_METRIC_CONFIGS.gasO2.color"
           :disabled="disableGasO2"
           :title="disableGasO2 ? 'No Gas O2 data' : ''"
           @update:model-value="$emit('update:showGasO2', $event)"
         >
-          <span class="font-bold text-sm" style="color: #06b6d4">Gas O2</span>
+          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.gasO2.color }"
+            >Gas O2</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showGasN2"
-          color="#84cc16"
+          :color="DEFAULT_METRIC_CONFIGS.gasN2.color"
           :disabled="disableGasN2"
           :title="disableGasN2 ? 'No Gas N2 data' : ''"
           @update:model-value="$emit('update:showGasN2', $event)"
         >
-          <span class="font-bold text-sm" style="color: #84cc16">Gas N2</span>
+          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.gasN2.color }"
+            >Gas N2</span
+          >
         </StyledCheckbox>
         <StyledCheckbox
           :model-value="showGasHe"
-          color="#f97316"
+          :color="DEFAULT_METRIC_CONFIGS.gasHe.color"
           :disabled="disableGasHe"
           :title="disableGasHe ? 'No Gas He data' : ''"
           @update:model-value="$emit('update:showGasHe', $event)"
         >
-          <span class="font-bold text-sm" style="color: #f97316">Gas He</span>
+          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.gasHe.color }"
+            >Gas He</span
+          >
         </StyledCheckbox>
       </div>
     </div>
@@ -317,6 +347,7 @@
 <script setup lang="ts">
 import {
   AXIS_UNIT_GROUPS,
+  DEFAULT_METRIC_CONFIGS,
   type AxisUnitGroup,
   type MetricType,
   type ProfileMetricVisibility,
@@ -392,33 +423,78 @@ const showAxes = ref(true)
 const editingExtraProfile = ref(1)
 
 const extraMetricDefs = computed(() => [
-  { key: 'temp' as const, color: '#ef4444', label: 'Temperature', disabled: props.disableTemp },
-  { key: 'ndl' as const, color: '#7c3aed', label: 'NDL', disabled: props.disableNdl },
-  { key: 'otu' as const, color: '#ec4899', label: 'OTUs', disabled: props.disableOtu },
-  { key: 'cns' as const, color: '#fbbf24', label: 'CNS', disabled: props.disableCns },
-  { key: 'gf' as const, color: '#eab308', label: 'GF99', disabled: props.disableGf },
+  {
+    key: 'temp' as const,
+    color: DEFAULT_METRIC_CONFIGS.temp.color,
+    label: 'Temperature',
+    disabled: props.disableTemp,
+  },
+  {
+    key: 'ndl' as const,
+    color: DEFAULT_METRIC_CONFIGS.ndl.color,
+    label: 'NDL',
+    disabled: props.disableNdl,
+  },
+  {
+    key: 'otu' as const,
+    color: DEFAULT_METRIC_CONFIGS.otu.color,
+    label: 'OTUs',
+    disabled: props.disableOtu,
+  },
+  {
+    key: 'cns' as const,
+    color: DEFAULT_METRIC_CONFIGS.cns.color,
+    label: 'CNS',
+    disabled: props.disableCns,
+  },
+  {
+    key: 'gf' as const,
+    color: DEFAULT_METRIC_CONFIGS.gf.color,
+    label: 'GF99',
+    disabled: props.disableGf,
+  },
   {
     key: 'po2Measured' as const,
-    color: '#1d4ed8',
+    color: DEFAULT_METRIC_CONFIGS.po2Measured.color,
     label: 'PO2 measured',
     disabled: props.disablePo2Measured,
   },
   {
     key: 'po2Calculated' as const,
-    color: '#d946ef',
+    color: DEFAULT_METRIC_CONFIGS.po2Calculated.color,
     label: 'PO2 calculated',
     disabled: props.disablePo2Calculated,
   },
   {
     key: 'po2Setpoint' as const,
-    color: '#22c55e',
+    color: DEFAULT_METRIC_CONFIGS.po2Setpoint.color,
     label: 'PO2 setpoint',
     disabled: props.disablePo2Setpoint,
   },
-  { key: 'rmv' as const, color: '#14b8a6', label: 'RMV', disabled: props.disableRmv },
-  { key: 'gasO2' as const, color: '#06b6d4', label: 'Gas O2', disabled: props.disableGasO2 },
-  { key: 'gasN2' as const, color: '#84cc16', label: 'Gas N2', disabled: props.disableGasN2 },
-  { key: 'gasHe' as const, color: '#f97316', label: 'Gas He', disabled: props.disableGasHe },
+  {
+    key: 'rmv' as const,
+    color: DEFAULT_METRIC_CONFIGS.rmv.color,
+    label: 'RMV',
+    disabled: props.disableRmv,
+  },
+  {
+    key: 'gasO2' as const,
+    color: DEFAULT_METRIC_CONFIGS.gasO2.color,
+    label: 'Gas O2',
+    disabled: props.disableGasO2,
+  },
+  {
+    key: 'gasN2' as const,
+    color: DEFAULT_METRIC_CONFIGS.gasN2.color,
+    label: 'Gas N2',
+    disabled: props.disableGasN2,
+  },
+  {
+    key: 'gasHe' as const,
+    color: DEFAULT_METRIC_CONFIGS.gasHe.color,
+    label: 'Gas He',
+    disabled: props.disableGasHe,
+  },
 ])
 
 function setExtraProfileMetric(key: Exclude<MetricType, 'depth'>, value: boolean): void {
