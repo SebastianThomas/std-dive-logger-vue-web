@@ -42,6 +42,7 @@
                 v-model:show-gas-he="showGasHe"
                 v-model:show-deco-zone="showDecoZone"
                 v-model:extra-profile-metrics="extraProfileMetrics"
+                :per-profile-availability="perProfileAvailability"
                 :disable-temp="!combinedMetricsAvailability.hasTemp"
                 :disable-ndl="!combinedMetricsAvailability.hasNdl"
                 :disable-otu="!combinedMetricsAvailability.hasOtu"
@@ -178,6 +179,7 @@
       v-model:show-gas-he="showGasHe"
       v-model:show-deco-zone="showDecoZone"
       v-model:extra-profile-metrics="extraProfileMetrics"
+      :per-profile-availability="perProfileAvailability"
       :disable-temp="!combinedMetricsAvailability.hasTemp"
       :disable-ndl="!combinedMetricsAvailability.hasNdl"
       :disable-otu="!combinedMetricsAvailability.hasOtu"
@@ -323,6 +325,7 @@ const {
   showGasHe,
   showDecoZone,
   getCombinedMetricAvailability,
+  getProfileMetricAvailability,
 } = useDiveGraphMetrics(profilesRef)
 
 const leftAxisMetric = ref<AxisUnitGroup>('depth')
@@ -352,6 +355,14 @@ const combinedMetricsAvailability = computed(() => {
   // Return combined availability for all visible profiles
   return getCombinedMetricAvailability(visibleIndices.length > 0 ? visibleIndices : [0])
 })
+
+// One entry per profile (not just visible ones - the "Extra metrics for profile" picker in
+// MetricsControlPanel can target any profile index) so its per-profile checkboxes can disable
+// individually instead of all sharing the same "available in *some* visible profile" flag that
+// combinedMetricsAvailability above provides for the primary Metrics row.
+const perProfileAvailability = computed(() =>
+  props.profiles.map((_, idx) => getProfileMetricAvailability(idx)),
+)
 
 // Automatically deselect metrics when they become unavailable, and re-enable when available
 watch(

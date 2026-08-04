@@ -68,34 +68,34 @@ export type TooltipData = {
 
 // Colors are grouped by what the metric actually relates to, rather than picked independently,
 // so a glance at the color already hints at the family before reading the label:
-//  - PO2 measured/calculated/setpoint: three shades of the same cyan-teal, since they're the same
-//    physical quantity read three different ways and belong on one shared axis anyway.
-//  - Deco ceiling (the red zone drawn in DiveGraph.vue) / gas N2 / NDL / GF99: a red-violet family,
-//    ordered by how much attention each deserves - N2 (least) is the palest, NDL a plain violet,
-//    GF99 (more important than NDL - it's the actual ceiling-driving number) leans redder/more
-//    saturated, and the deco zone itself is full red as the most safety-relevant of the group.
-//  - CNS / OTU / gas O2: all oxygen-toxicity-adjacent, so all yellow-orange, distinguished by shade.
+//  - Gas O2 / PO2 measured/calculated/setpoint / CNS / OTU: all oxygen-related (fraction, partial
+//    pressure, and its two toxicity trackers), so all shades of green - lime/pure green for
+//    CNS/OTU/O2, blue-green (emerald) for the PO2 trio specifically since those three are also
+//    the same physical quantity read three different ways and belong on one shared axis.
+//  - Deco ceiling (the red zone drawn in DiveGraph.vue) / NDL / GF99: a red-violet family, GF99
+//    more saturated/red than NDL since it's the actual ceiling-driving number, more important.
+//  - Gas N2: the least interesting number on a normal dive, so it's near-black - present but
+//    deliberately recessive rather than competing for attention.
+//  - Gas He: brown, distinct from every other family.
 //  - Temperature: blue, clearly outside every other family above.
 export const DEFAULT_METRIC_CONFIGS: Record<MetricType, MetricConfig> = {
   depth: { show: true, color: '#9CA3AF' },
   temp: { show: true, color: '#3b82f6' },
-  cns: { show: false, color: '#fbbf24' },
+  cns: { show: false, color: '#84cc16' },
   ndl: { show: false, color: '#7c3aed' },
   // More saturated/red than ndl's violet - GF99 is the number that actually drives the ceiling,
   // so it reads as more important than NDL while staying in the same red-violet family.
   gf: { show: false, color: '#e11d48' },
-  // A deeper orange than #f97316 - that shade is already used for the OC/BO bailout marker in
-  // DiveGraph.vue (renderModeTransitions), so a dive with both bailout markers and an OTU line
-  // visible at once still tells them apart.
-  otu: { show: false, color: '#ea580c' },
-  po2Measured: { show: false, color: '#0891b2' },
-  po2Calculated: { show: false, color: '#22d3ee' },
-  po2Setpoint: { show: false, color: '#0e7490' },
-  rmv: { show: false, color: '#22c55e' },
-  gasO2: { show: false, color: '#ca8a04' },
-  // Palest of the red-violet family - explicitly the least important member (see comment above).
-  gasN2: { show: false, color: '#c4b5fd' },
-  gasHe: { show: false, color: '#64748b' },
+  otu: { show: false, color: '#22c55e' },
+  po2Measured: { show: false, color: '#059669' },
+  po2Calculated: { show: false, color: '#34d399' },
+  po2Setpoint: { show: false, color: '#065f46' },
+  rmv: { show: false, color: '#4f46e5' },
+  gasO2: { show: false, color: '#15803d' },
+  // Near-black rather than grouped with the other gas fractions - least important number on a
+  // normal dive, so it stays visible but recedes rather than drawing the eye.
+  gasN2: { show: false, color: '#27272a' },
+  gasHe: { show: false, color: '#92400e' },
 }
 
 export const metricUnits: Record<MetricType, string | null> = {

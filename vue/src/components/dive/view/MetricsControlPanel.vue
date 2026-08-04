@@ -352,6 +352,7 @@ import {
   type MetricType,
   type ProfileMetricVisibility,
 } from '@/lib/types/graph'
+import type { ProfileMetricAvailability } from '@/composables/useDiveGraphMetrics'
 import { computed, ref } from 'vue'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 
@@ -360,6 +361,10 @@ const props = defineProps<{
   profilesCount: number
   visibleProfiles?: boolean[]
   extraProfileMetrics?: ProfileMetricVisibility
+  /** One entry per profile - lets the "Extra metrics for profile" picker below disable a
+   * checkbox based on whether *that* profile has the data, instead of the disableXxx props
+   * (which reflect availability across all *visible* profiles, for the primary Metrics row). */
+  perProfileAvailability?: ProfileMetricAvailability[]
   showTemp: boolean
   showSegments: boolean
   showGrid: boolean
@@ -422,78 +427,89 @@ const showAxes = ref(true)
 // Profile" buttons above) the checkbox row below is currently editing overrides for.
 const editingExtraProfile = ref(1)
 
+// Availability for the metric currently being edited in the "Extra metrics for profile" picker
+// below - falls back to the global (any-visible-profile) disable flag if the caller didn't pass
+// per-profile availability, so this degrades gracefully rather than disabling everything.
+function isExtraDisabled(
+  hasKey: keyof ProfileMetricAvailability,
+  fallback: boolean | undefined,
+): boolean {
+  const availability = props.perProfileAvailability?.[editingExtraProfile.value]
+  return availability ? !availability[hasKey] : (fallback ?? false)
+}
+
 const extraMetricDefs = computed(() => [
   {
     key: 'temp' as const,
     color: DEFAULT_METRIC_CONFIGS.temp.color,
     label: 'Temperature',
-    disabled: props.disableTemp,
+    disabled: isExtraDisabled('hasTemp', props.disableTemp),
   },
   {
     key: 'ndl' as const,
     color: DEFAULT_METRIC_CONFIGS.ndl.color,
     label: 'NDL',
-    disabled: props.disableNdl,
+    disabled: isExtraDisabled('hasNdl', props.disableNdl),
   },
   {
     key: 'otu' as const,
     color: DEFAULT_METRIC_CONFIGS.otu.color,
     label: 'OTUs',
-    disabled: props.disableOtu,
+    disabled: isExtraDisabled('hasOtu', props.disableOtu),
   },
   {
     key: 'cns' as const,
     color: DEFAULT_METRIC_CONFIGS.cns.color,
     label: 'CNS',
-    disabled: props.disableCns,
+    disabled: isExtraDisabled('hasCns', props.disableCns),
   },
   {
     key: 'gf' as const,
     color: DEFAULT_METRIC_CONFIGS.gf.color,
     label: 'GF99',
-    disabled: props.disableGf,
+    disabled: isExtraDisabled('hasGf', props.disableGf),
   },
   {
     key: 'po2Measured' as const,
     color: DEFAULT_METRIC_CONFIGS.po2Measured.color,
     label: 'PO2 measured',
-    disabled: props.disablePo2Measured,
+    disabled: isExtraDisabled('hasPo2Measured', props.disablePo2Measured),
   },
   {
     key: 'po2Calculated' as const,
     color: DEFAULT_METRIC_CONFIGS.po2Calculated.color,
     label: 'PO2 calculated',
-    disabled: props.disablePo2Calculated,
+    disabled: isExtraDisabled('hasPo2Calculated', props.disablePo2Calculated),
   },
   {
     key: 'po2Setpoint' as const,
     color: DEFAULT_METRIC_CONFIGS.po2Setpoint.color,
     label: 'PO2 setpoint',
-    disabled: props.disablePo2Setpoint,
+    disabled: isExtraDisabled('hasPo2Setpoint', props.disablePo2Setpoint),
   },
   {
     key: 'rmv' as const,
     color: DEFAULT_METRIC_CONFIGS.rmv.color,
     label: 'RMV',
-    disabled: props.disableRmv,
+    disabled: isExtraDisabled('hasRmv', props.disableRmv),
   },
   {
     key: 'gasO2' as const,
     color: DEFAULT_METRIC_CONFIGS.gasO2.color,
     label: 'Gas O2',
-    disabled: props.disableGasO2,
+    disabled: isExtraDisabled('hasGasO2', props.disableGasO2),
   },
   {
     key: 'gasN2' as const,
     color: DEFAULT_METRIC_CONFIGS.gasN2.color,
     label: 'Gas N2',
-    disabled: props.disableGasN2,
+    disabled: isExtraDisabled('hasGasN2', props.disableGasN2),
   },
   {
     key: 'gasHe' as const,
     color: DEFAULT_METRIC_CONFIGS.gasHe.color,
     label: 'Gas He',
-    disabled: props.disableGasHe,
+    disabled: isExtraDisabled('hasGasHe', props.disableGasHe),
   },
 ])
 
