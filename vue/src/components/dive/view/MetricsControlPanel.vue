@@ -7,7 +7,7 @@
       borderColor: 'rgba(209,213,219,0.8)',
     }"
   >
-    <div class="flex flex-col gap-3">
+    <div class="flex flex-col gap-2">
       <!-- Metrics toggles (collapsible) -->
       <div>
         <button
@@ -21,10 +21,25 @@
         </button>
       </div>
       <div v-show="showMetrics" class="flex flex-col gap-2">
+        <!-- Whole-profile on/off - turns off depth, every metric, and the tooltip for that
+             profile in one click, same effect as the profile picker above the chart, just
+             reachable from here too. -->
+        <div v-if="profilesCount > 1" class="flex flex-wrap gap-2 items-center">
+          <span class="text-xs opacity-70" :style="{ color: 'var(--foreground)' }">Profiles:</span>
+          <StyledCheckbox
+            v-for="idx in profilesCount"
+            :key="idx"
+            :model-value="!props.visibleProfiles || !!props.visibleProfiles[idx - 1]"
+            color="#10b981"
+            @update:model-value="$emit('toggleProfile', idx - 1)"
+          >
+            <span class="text-sm">{{ idx }}</span>
+          </StyledCheckbox>
+        </div>
+        <!-- One flat row in a fixed order (see METRIC_DEFS) - a metric with no data for this dive
+             is left out entirely rather than shown grayed out, so the row only ever contains
+             things you can actually toggle. -->
         <div class="flex flex-wrap gap-3 items-center">
-          <span class="flex items-center gap-1.5">
-            <span class="font-bold text-sm" style="color: #ffffff">Depth</span>
-          </span>
           <StyledCheckbox
             v-if="showSegmentsToggle !== false"
             :model-value="showSegments"
@@ -35,29 +50,11 @@
               >Segments</span
             >
           </StyledCheckbox>
-        </div>
-        <!-- Grouped by what each metric relates to (see DEFAULT_METRIC_CONFIGS' own color
-             grouping) rather than one flat wall of checkboxes - each group wraps as its own row,
-             and within a group whatever's unavailable for this dive sinks to the end, so the
-             available toggles you actually reach for stay clustered together instead of scattered
-             among grayed-out ones. -->
-        <div
-          v-for="group in metricGroups"
-          :key="group.name"
-          class="flex flex-wrap gap-x-3 gap-y-1.5 items-center"
-        >
-          <span
-            class="text-[10px] uppercase tracking-wide font-semibold opacity-50 w-full sm:w-auto sm:min-w-0"
-            :style="{ color: 'var(--foreground)' }"
-            >{{ group.name }}</span
-          >
           <StyledCheckbox
-            v-for="item in group.items"
+            v-for="item in primaryMetricItems"
             :key="item.key"
             :model-value="item.modelValue"
             :color="item.color"
-            :disabled="item.disabled"
-            :title="item.title"
             @update:model-value="emitToggle(item.key, $event)"
           >
             <span class="font-bold text-sm" :style="{ color: item.color }">{{ item.label }}</span>
@@ -162,14 +159,13 @@
       </div>
       <div class="flex flex-wrap gap-3 items-center mt-2">
         <StyledCheckbox
-          v-for="def in extraMetricDefs"
-          :key="def.key"
-          :model-value="extraProfileMetrics?.[editingExtraProfile]?.[def.key] ?? false"
-          :color="def.color"
-          :disabled="def.disabled"
-          @update:model-value="setExtraProfileMetric(def.key, $event)"
+          v-for="item in extraMetricItems"
+          :key="item.key"
+          :model-value="extraProfileMetrics?.[editingExtraProfile]?.[item.key] ?? false"
+          :color="item.color"
+          @update:model-value="setExtraProfileMetric(item.key, $event)"
         >
-          <span class="font-bold text-sm" :style="{ color: def.color }">{{ def.label }}</span>
+          <span class="font-bold text-sm" :style="{ color: item.color }">{{ item.label }}</span>
         </StyledCheckbox>
       </div>
     </div>
@@ -290,6 +286,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  toggleProfile: [index: number]
   'update:selectedProfiles': [value: number[]]
   'update:showTemp': [value: boolean]
   'update:showSegments': [value: boolean]
@@ -357,233 +354,133 @@ function emitToggle(key: ToggleKey, value: boolean): void {
   }
 }
 
-type MetricToggleItem = {
-  key: ToggleKey
-  label: string
-  color: string
-  modelValue: boolean
-  disabled?: boolean
-  title: string
+// One fixed order, shared by the primary row and the "Extra metrics for profile" picker below -
+// so a metric always sits in the same place regardless of which profile you're looking at.
+// Availability only ever decides whether an item appears at all, never where.
+const METRIC_DEFS: { key: ToggleKey; label: string }[] = [
+  { key: 'temp', label: 'Temperature' },
+  { key: 'ndl', label: 'NDL' },
+  { key: 'gf', label: 'GF99' },
+  { key: 'cns', label: 'CNS' },
+  { key: 'otu', label: 'OTUs' },
+  { key: 'po2Measured', label: 'PO2 measured' },
+  { key: 'po2Calculated', label: 'PO2 calculated' },
+  { key: 'po2Setpoint', label: 'PO2 setpoint' },
+  { key: 'rmv', label: 'RMV' },
+  { key: 'gasO2', label: 'Gas O2' },
+  { key: 'gasN2', label: 'Gas N2' },
+  { key: 'gasHe', label: 'Gas He' },
+]
+
+const AVAILABILITY_KEY: Record<ToggleKey, keyof ProfileMetricAvailability> = {
+  temp: 'hasTemp',
+  ndl: 'hasNdl',
+  gf: 'hasGf',
+  cns: 'hasCns',
+  otu: 'hasOtu',
+  po2Measured: 'hasPo2Measured',
+  po2Calculated: 'hasPo2Calculated',
+  po2Setpoint: 'hasPo2Setpoint',
+  rmv: 'hasRmv',
+  gasO2: 'hasGasO2',
+  gasN2: 'hasGasN2',
+  gasHe: 'hasGasHe',
 }
 
-// Grouped by what each metric actually relates to (the same families DEFAULT_METRIC_CONFIGS'
-// colors are grouped by), then sorted within each group so whatever's unavailable for this dive
-// sinks to the end - stable otherwise, so toggling something doesn't reshuffle its neighbors.
-const metricGroups = computed<{ name: string; items: MetricToggleItem[] }[]>(() => {
-  const groups: { name: string; items: MetricToggleItem[] }[] = [
-    {
-      name: 'Vitals',
-      items: [
-        {
-          key: 'temp',
-          label: 'Temperature',
-          color: DEFAULT_METRIC_CONFIGS.temp.color,
-          modelValue: props.showTemp,
-          disabled: props.disableTemp,
-          title: props.disableTemp ? 'No temperature data' : '',
-        },
-      ],
-    },
-    {
-      name: 'O2 & PO2',
-      items: [
-        {
-          key: 'cns',
-          label: 'CNS',
-          color: DEFAULT_METRIC_CONFIGS.cns.color,
-          modelValue: props.showCns,
-          disabled: props.disableCns,
-          title: props.disableCns ? 'No CNS data' : '',
-        },
-        {
-          key: 'otu',
-          label: 'OTUs',
-          color: DEFAULT_METRIC_CONFIGS.otu.color,
-          modelValue: props.showOtu,
-          disabled: props.disableOtu,
-          title: props.disableOtu ? 'No OTU data' : '',
-        },
-        {
-          key: 'gasO2',
-          label: 'Gas O2',
-          color: DEFAULT_METRIC_CONFIGS.gasO2.color,
-          modelValue: props.showGasO2,
-          disabled: props.disableGasO2,
-          title: props.disableGasO2 ? 'No Gas O2 data' : '',
-        },
-        {
-          key: 'po2Measured',
-          label: 'PO2 measured',
-          color: DEFAULT_METRIC_CONFIGS.po2Measured.color,
-          modelValue: props.showPo2Measured,
-          disabled: props.disablePo2Measured,
-          title: props.disablePo2Measured ? 'No PO2 measured data' : '',
-        },
-        {
-          key: 'po2Calculated',
-          label: 'PO2 calculated',
-          color: DEFAULT_METRIC_CONFIGS.po2Calculated.color,
-          modelValue: props.showPo2Calculated,
-          disabled: props.disablePo2Calculated,
-          title: props.disablePo2Calculated ? 'No PO2 calculated data' : '',
-        },
-        {
-          key: 'po2Setpoint',
-          label: 'PO2 setpoint',
-          color: DEFAULT_METRIC_CONFIGS.po2Setpoint.color,
-          modelValue: props.showPo2Setpoint,
-          disabled: props.disablePo2Setpoint,
-          title: props.disablePo2Setpoint ? 'No PO2 setpoint data' : '',
-        },
-      ],
-    },
-    {
-      name: 'Deco & Gas Loading',
-      items: [
-        {
-          key: 'gf',
-          label: 'GF99',
-          color: DEFAULT_METRIC_CONFIGS.gf.color,
-          modelValue: props.showGf,
-          disabled: props.disableGf,
-          title: props.disableGf ? 'No GF99 data' : '',
-        },
-        {
-          key: 'ndl',
-          label: 'NDL',
-          color: DEFAULT_METRIC_CONFIGS.ndl.color,
-          modelValue: props.showNdl,
-          disabled: props.disableNdl,
-          title: props.disableNdl ? 'No NDL data' : '',
-        },
-        {
-          key: 'gasN2',
-          label: 'Gas N2',
-          color: DEFAULT_METRIC_CONFIGS.gasN2.color,
-          modelValue: props.showGasN2,
-          disabled: props.disableGasN2,
-          title: props.disableGasN2 ? 'No Gas N2 data' : '',
-        },
-      ],
-    },
-    {
-      name: 'Other',
-      items: [
-        {
-          key: 'rmv',
-          label: 'RMV',
-          color: DEFAULT_METRIC_CONFIGS.rmv.color,
-          modelValue: props.showRmv,
-          disabled: props.disableRmv,
-          title: props.disableRmv ? 'No RMV data' : '',
-        },
-        {
-          key: 'gasHe',
-          label: 'Gas He',
-          color: DEFAULT_METRIC_CONFIGS.gasHe.color,
-          modelValue: props.showGasHe,
-          disabled: props.disableGasHe,
-          title: props.disableGasHe ? 'No Gas He data' : '',
-        },
-      ],
-    },
-  ]
+type PrimaryRuntime = { modelValue: boolean; disabled: boolean; title: string }
 
-  return groups.map((group) => ({
-    ...group,
-    items: [...group.items].sort((a, b) => Number(!!a.disabled) - Number(!!b.disabled)),
-  }))
-})
+// The primary row's model-value/disabled/title per metric, keyed for O(1) lookup by both
+// primaryMetricItems (below) and, as a fallback, the "Extra metrics" picker's own availability
+// check when no per-profile data was passed in.
+const primaryRuntimeByKey = computed<Record<ToggleKey, PrimaryRuntime>>(() => ({
+  temp: {
+    modelValue: props.showTemp,
+    disabled: !!props.disableTemp,
+    title: props.disableTemp ? 'No temperature data' : '',
+  },
+  ndl: {
+    modelValue: props.showNdl,
+    disabled: !!props.disableNdl,
+    title: props.disableNdl ? 'No NDL data' : '',
+  },
+  gf: {
+    modelValue: props.showGf,
+    disabled: !!props.disableGf,
+    title: props.disableGf ? 'No GF99 data' : '',
+  },
+  cns: {
+    modelValue: props.showCns,
+    disabled: !!props.disableCns,
+    title: props.disableCns ? 'No CNS data' : '',
+  },
+  otu: {
+    modelValue: props.showOtu,
+    disabled: !!props.disableOtu,
+    title: props.disableOtu ? 'No OTU data' : '',
+  },
+  po2Measured: {
+    modelValue: props.showPo2Measured,
+    disabled: !!props.disablePo2Measured,
+    title: props.disablePo2Measured ? 'No PO2 measured data' : '',
+  },
+  po2Calculated: {
+    modelValue: props.showPo2Calculated,
+    disabled: !!props.disablePo2Calculated,
+    title: props.disablePo2Calculated ? 'No PO2 calculated data' : '',
+  },
+  po2Setpoint: {
+    modelValue: props.showPo2Setpoint,
+    disabled: !!props.disablePo2Setpoint,
+    title: props.disablePo2Setpoint ? 'No PO2 setpoint data' : '',
+  },
+  rmv: {
+    modelValue: props.showRmv,
+    disabled: !!props.disableRmv,
+    title: props.disableRmv ? 'No RMV data' : '',
+  },
+  gasO2: {
+    modelValue: props.showGasO2,
+    disabled: !!props.disableGasO2,
+    title: props.disableGasO2 ? 'No Gas O2 data' : '',
+  },
+  gasN2: {
+    modelValue: props.showGasN2,
+    disabled: !!props.disableGasN2,
+    title: props.disableGasN2 ? 'No Gas N2 data' : '',
+  },
+  gasHe: {
+    modelValue: props.showGasHe,
+    disabled: !!props.disableGasHe,
+    title: props.disableGasHe ? 'No Gas He data' : '',
+  },
+}))
+
+// The primary row: fixed METRIC_DEFS order, with anything unavailable for the currently visible
+// profile(s) left out entirely rather than shown disabled.
+const primaryMetricItems = computed(() =>
+  METRIC_DEFS.filter((def) => !primaryRuntimeByKey.value[def.key].disabled).map((def) => ({
+    ...def,
+    color: DEFAULT_METRIC_CONFIGS[def.key].color,
+    ...primaryRuntimeByKey.value[def.key],
+  })),
+)
 
 // Which secondary profile (array index, 1-based numbering in the UI matches the "Tooltip
 // Profile" buttons above) the checkbox row below is currently editing overrides for.
 const editingExtraProfile = ref(1)
 
-// Availability for the metric currently being edited in the "Extra metrics for profile" picker
-// below - falls back to the global (any-visible-profile) disable flag if the caller didn't pass
-// per-profile availability, so this degrades gracefully rather than disabling everything.
-function isExtraDisabled(
-  hasKey: keyof ProfileMetricAvailability,
-  fallback: boolean | undefined,
-): boolean {
+// Same fixed order as the primary row, but availability is checked against the profile currently
+// selected above (falling back to the primary row's own disabled flag if the caller didn't pass
+// per-profile data, so this degrades gracefully rather than showing nothing).
+const extraMetricItems = computed(() => {
   const availability = props.perProfileAvailability?.[editingExtraProfile.value]
-  return availability ? !availability[hasKey] : (fallback ?? false)
-}
-
-const extraMetricDefs = computed(() => [
-  {
-    key: 'temp' as const,
-    color: DEFAULT_METRIC_CONFIGS.temp.color,
-    label: 'Temperature',
-    disabled: isExtraDisabled('hasTemp', props.disableTemp),
-  },
-  {
-    key: 'ndl' as const,
-    color: DEFAULT_METRIC_CONFIGS.ndl.color,
-    label: 'NDL',
-    disabled: isExtraDisabled('hasNdl', props.disableNdl),
-  },
-  {
-    key: 'otu' as const,
-    color: DEFAULT_METRIC_CONFIGS.otu.color,
-    label: 'OTUs',
-    disabled: isExtraDisabled('hasOtu', props.disableOtu),
-  },
-  {
-    key: 'cns' as const,
-    color: DEFAULT_METRIC_CONFIGS.cns.color,
-    label: 'CNS',
-    disabled: isExtraDisabled('hasCns', props.disableCns),
-  },
-  {
-    key: 'gf' as const,
-    color: DEFAULT_METRIC_CONFIGS.gf.color,
-    label: 'GF99',
-    disabled: isExtraDisabled('hasGf', props.disableGf),
-  },
-  {
-    key: 'po2Measured' as const,
-    color: DEFAULT_METRIC_CONFIGS.po2Measured.color,
-    label: 'PO2 measured',
-    disabled: isExtraDisabled('hasPo2Measured', props.disablePo2Measured),
-  },
-  {
-    key: 'po2Calculated' as const,
-    color: DEFAULT_METRIC_CONFIGS.po2Calculated.color,
-    label: 'PO2 calculated',
-    disabled: isExtraDisabled('hasPo2Calculated', props.disablePo2Calculated),
-  },
-  {
-    key: 'po2Setpoint' as const,
-    color: DEFAULT_METRIC_CONFIGS.po2Setpoint.color,
-    label: 'PO2 setpoint',
-    disabled: isExtraDisabled('hasPo2Setpoint', props.disablePo2Setpoint),
-  },
-  {
-    key: 'rmv' as const,
-    color: DEFAULT_METRIC_CONFIGS.rmv.color,
-    label: 'RMV',
-    disabled: isExtraDisabled('hasRmv', props.disableRmv),
-  },
-  {
-    key: 'gasO2' as const,
-    color: DEFAULT_METRIC_CONFIGS.gasO2.color,
-    label: 'Gas O2',
-    disabled: isExtraDisabled('hasGasO2', props.disableGasO2),
-  },
-  {
-    key: 'gasN2' as const,
-    color: DEFAULT_METRIC_CONFIGS.gasN2.color,
-    label: 'Gas N2',
-    disabled: isExtraDisabled('hasGasN2', props.disableGasN2),
-  },
-  {
-    key: 'gasHe' as const,
-    color: DEFAULT_METRIC_CONFIGS.gasHe.color,
-    label: 'Gas He',
-    disabled: isExtraDisabled('hasGasHe', props.disableGasHe),
-  },
-].sort((a, b) => Number(!!a.disabled) - Number(!!b.disabled)))
+  return METRIC_DEFS.filter((def) => {
+    const unavailable = availability
+      ? !availability[AVAILABILITY_KEY[def.key]]
+      : primaryRuntimeByKey.value[def.key].disabled
+    return !unavailable
+  }).map((def) => ({ ...def, color: DEFAULT_METRIC_CONFIGS[def.key].color }))
+})
 
 function setExtraProfileMetric(key: Exclude<MetricType, 'depth'>, value: boolean): void {
   emit('update:extraProfileMetrics', {
