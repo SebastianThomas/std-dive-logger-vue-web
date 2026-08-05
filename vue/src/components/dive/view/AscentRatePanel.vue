@@ -45,13 +45,16 @@
           <div>{{ RATE_TIER_LABELS[rateTier(tooltip.rate)] }}</div>
         </div>
       </div>
-      <p class="text-xs opacity-60 mt-1">
-        Ascent is plotted above the line, descent below. Color shows how fast depth is changing,
-        in either direction: under {{ SLOW_RATE_M_PER_MIN }} m/min is slow, up to
-        {{ NORMAL_RATE_M_PER_MIN }} m/min is normal, up to {{ QUICK_RATE_M_PER_MIN }} m/min is
-        quick, and beyond that is very fast — dangerous on an ascent, unusually fast on a
-        descent.
-      </p>
+      <div class="flex flex-wrap gap-1.5 items-center mt-1.5">
+        <span
+          v-for="tier in rateTierLegend"
+          :key="tier.key"
+          class="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+          :style="tierBadgeStyleForTier(tier.key)"
+        >
+          {{ RATE_TIER_LABELS[tier.key] }} {{ tier.range }}
+        </span>
+      </div>
     </div>
   </div>
 </template>
@@ -70,6 +73,7 @@ import {
   RATE_TIER_COLORS,
   RATE_TIER_LABELS,
   type RatePoint,
+  type RateTier,
 } from '@/lib/graph/ascentRate'
 import { formatElapsedTime } from '@/lib/utils/timeUtils'
 import { detectTimeGaps, buildVirtualTimeMapper } from '@/lib/graph/timeGaps'
@@ -161,27 +165,41 @@ const ratesByProfile = computed<RatePoint[][]>(() =>
   props.profiles.map((p) => toRatePoints(ratesByProfileId.value.get(p.id))),
 )
 
+// Ascent/descent rate is a physical quantity of the dive itself (same diver, same water column),
+// not something that meaningfully differs between two computers strapped to the same person - so
+// rendering every visible profile's tiered area stacked on the same chart just overlapped two
+// near-identical signals into a hard-to-read blob rather than showing anything genuinely new.
+// Pick one representative profile instead: whichever is selected in the main chart above, if it's
+// actually visible and has rate data, otherwise the first visible profile that does. For the
+// overwhelming majority of dives (one profile) this is a no-op - the behavior only changes once
+// a second profile is actually visible.
+const primaryProfileIdx = computed<number>(() => {
+  const hasRates = (idx: number): boolean =>
+    visibleMask.value[idx] === true && (ratesByProfile.value[idx]?.length ?? 0) > 0
+  const preferred = props.selectedProfiles?.[0]
+  if (preferred !== undefined && hasRates(preferred)) return preferred
+  return ratesByProfile.value.findIndex((_, idx) => hasRates(idx))
+})
+
 // Ascent and descent are separate, unrelated concerns (one is exertion/comfort, the other can be
 // a real decompression-injury risk), so they get their own peak rather than a single "worst of
 // either direction" figure that muddles the two together.
 const peakDescent = computed<RatePoint | null>(() => {
+  const rates = ratesByProfile.value[primaryProfileIdx.value]
+  if (!rates) return null
   let best: RatePoint | null = null
-  ratesByProfile.value.forEach((rates, idx) => {
-    if (!visibleMask.value[idx]) return
-    rates.forEach((r) => {
-      if (r.rate > 0 && (!best || r.rate > best.rate)) best = r
-    })
+  rates.forEach((r) => {
+    if (r.rate > 0 && (!best || r.rate > best.rate)) best = r
   })
   return best
 })
 
 const peakAscent = computed<RatePoint | null>(() => {
+  const rates = ratesByProfile.value[primaryProfileIdx.value]
+  if (!rates) return null
   let best: RatePoint | null = null
-  ratesByProfile.value.forEach((rates, idx) => {
-    if (!visibleMask.value[idx]) return
-    rates.forEach((r) => {
-      if (r.rate < 0 && (!best || r.rate < best.rate)) best = r
-    })
+  rates.forEach((r) => {
+    if (r.rate < 0 && (!best || r.rate < best.rate)) best = r
   })
   return best
 })
@@ -197,6 +215,20 @@ function tierBadgeStyle(rate: number): { backgroundColor: string; color: string 
   const color = RATE_TIER_COLORS[rateTier(rate)]
   return { backgroundColor: hexToRgba(color, 0.15), color }
 }
+
+function tierBadgeStyleForTier(tier: RateTier): { backgroundColor: string; color: string } {
+  const color = RATE_TIER_COLORS[tier]
+  return { backgroundColor: hexToRgba(color, 0.15), color }
+}
+
+// Small legend replacing the old paragraph of prose - same tier colors/labels as the peak badges
+// above, so "what does this color mean" is answered by a glance instead of a sentence to read.
+const rateTierLegend: { key: RateTier; range: string }[] = [
+  { key: 'slow', range: `<${SLOW_RATE_M_PER_MIN}` },
+  { key: 'normal', range: `${SLOW_RATE_M_PER_MIN}–${NORMAL_RATE_M_PER_MIN}` },
+  { key: 'quick', range: `${NORMAL_RATE_M_PER_MIN}–${QUICK_RATE_M_PER_MIN}` },
+  { key: 'extreme', range: `>${QUICK_RATE_M_PER_MIN}` },
+]
 
 const tooltip = ref<{ time: number; rate: number; left: number } | null>(null)
 
@@ -314,16 +346,14 @@ function render() {
   const quickArea = areaFor(NORMAL_RATE_M_PER_MIN)
   const extremeArea = areaFor(QUICK_RATE_M_PER_MIN)
 
-  props.profiles.forEach((profile, idx) => {
-    if (!visibleMask.value[idx]) return
-    const rates = ratesByProfile.value[idx]
-    if (!rates?.length) return
-
+  const primaryIdx = primaryProfileIdx.value
+  const primaryRates = primaryIdx >= 0 ? ratesByProfile.value[primaryIdx] : undefined
+  if (primaryRates?.length) {
     const drawTier = (gen: Area<RatePoint>, color: string, opacity: number, outline: boolean) => {
       const path = g
         .append('path')
-        .datum(rates)
-        .attr('d', gen(rates) ?? '')
+        .datum(primaryRates)
+        .attr('d', gen(primaryRates) ?? '')
         .attr('fill', color)
         .attr('fill-opacity', opacity)
         .style('pointer-events', 'none')
@@ -336,7 +366,7 @@ function render() {
     drawTier(normalArea, RATE_TIER_COLORS.normal, 0.6, false)
     drawTier(quickArea, RATE_TIER_COLORS.quick, 0.6, false)
     drawTier(extremeArea, RATE_TIER_COLORS.extreme, 0.6, false)
-  })
+  }
 
   // Same break markers as DiveGraph.vue, at the same x-position (both charts share the same
   // gap-compression mapping since it's a pure function of the same profiles).
@@ -390,25 +420,13 @@ function render() {
     .attr('stroke-dasharray', '4,2')
     .style('display', 'none')
 
-  // Which profile to read at a given hovered time: prefer the profile selected in the main
-  // chart, but only if it actually has data there — otherwise fall back to whichever visible
-  // profile does. Mirrors DiveGraph's own tooltip-profile resolution so both panels agree on
-  // the same profile (and therefore the same time) instead of one clamping to a stale profile's
-  // edge when profiles don't share the same time range (e.g. multiple dive computers/mergers).
-  const resolveProfileIdxForTime = (tVal: number): number => {
-    const inRange = (idx: number): boolean => {
-      const p = props.profiles[idx]
-      return !!p && visibleMask.value[idx] === true && tVal >= p.start && tVal <= p.end
-    }
-    const preferredProfileIdx = props.selectedProfiles?.[0]
-    if (preferredProfileIdx !== undefined && inRange(preferredProfileIdx)) return preferredProfileIdx
-    return props.profiles.findIndex((_, idx) => inRange(idx))
-  }
-
   showAtTime = (tVal: number, screenLeftPx: number | null) => {
-    const hoverProfileIdx = resolveProfileIdxForTime(tVal)
-    if (hoverProfileIdx < 0) return
-    const rates = ratesByProfile.value[hoverProfileIdx]
+    // Only ever reads the same single profile that's actually drawn (see primaryProfileIdx) -
+    // and only within its own time range, so the crosshair never lands on a clamped value where
+    // no area is actually rendered.
+    const profile = primaryIdx >= 0 ? props.profiles[primaryIdx] : undefined
+    if (!profile || tVal < profile.start || tVal > profile.end) return
+    const rates = primaryRates
     if (!rates?.length) return
     const b = bisector((d: RatePoint) => d.time).center
     const idx = Math.min(rates.length - 1, Math.max(0, b(rates, tVal)))

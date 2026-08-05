@@ -78,6 +78,8 @@ async function mountAndAwaitRates(props: {
   profiles: DiveProfile[]
   diveId?: number
   externalHoverTimeMs?: number | null
+  selectedProfiles?: number[]
+  visibleProfiles?: boolean[]
 }) {
   const wrapper = mount(AscentRatePanel, { props })
   await flushPromises()
@@ -201,5 +203,57 @@ describe('AscentRatePanel', () => {
       expect.arrayContaining(['bg-white', 'dark:bg-gray-800', 'shadow', 'rounded', 'px-2', 'py-1']),
     )
     expect((tooltipDiv.element as HTMLElement).style.width).toBe('10rem')
+  })
+
+  it('shows only the selected profile\'s peak, not the max across every visible profile', async () => {
+    // Two profiles of the same dive: a mild 10 m/min descent (profile 0, selected) and a much
+    // faster 30 m/min descent (profile 1) - if both were still combined, the badge would read 30.
+    const mild = Array.from({ length: 10 }, (_, i) => (i * 5 * 10) / 60)
+    const fast = Array.from({ length: 10 }, (_, i) => (i * 5 * 30) / 60)
+    const profile0 = buildProfile(mild, 5, 0, 0)
+    const profile1 = buildProfile(fast, 5, 0, 1)
+    mockRatesFor(profile0, profile1)
+    const wrapper = await mountAndAwaitRates({
+      profiles: [profile0, profile1],
+      diveId: 1,
+      selectedProfiles: [0],
+      visibleProfiles: [true, true],
+    })
+    expect(wrapper.text()).toMatch(/peak descent 10 m\/min/)
+    expect(wrapper.text()).not.toMatch(/peak descent 30 m\/min/)
+  })
+
+  it('draws only one profile\'s area even when two profiles are visible, not both overlapped', async () => {
+    const mild = Array.from({ length: 10 }, (_, i) => (i * 5 * 10) / 60)
+    const fast = Array.from({ length: 10 }, (_, i) => (i * 5 * 30) / 60)
+    const profile0 = buildProfile(mild, 5, 0, 0)
+    const profile1 = buildProfile(fast, 5, 0, 1)
+    mockRatesFor(profile0, profile1)
+    const wrapper = await mountAndAwaitRates({
+      profiles: [profile0, profile1],
+      diveId: 1,
+      selectedProfiles: [0],
+      visibleProfiles: [true, true],
+    })
+    await wrapper.find('button').trigger('click')
+    await wrapper.vm.$nextTick()
+    // Four tiers (slow/normal/quick/extreme) for one profile - eight would mean both got drawn.
+    const paths = wrapper.findAll('path').filter((p) => p.attributes('fill-opacity') !== undefined)
+    expect(paths.length).toBe(4)
+  })
+
+  it('shows a small color-coded speed legend instead of the old prose paragraph', async () => {
+    const depths = Array.from({ length: 10 }, (_, i) => i)
+    const profile = buildProfile(depths)
+    mockRatesFor(profile)
+    const wrapper = await mountAndAwaitRates({ profiles: [profile], diveId: 1 })
+    await wrapper.find('button').trigger('click')
+    await wrapper.vm.$nextTick()
+    const text = wrapper.text()
+    expect(text).toContain('slow')
+    expect(text).toContain('normal')
+    expect(text).toContain('quick')
+    expect(text).toContain('very fast')
+    expect(text).not.toContain('Ascent is plotted above the line')
   })
 })
