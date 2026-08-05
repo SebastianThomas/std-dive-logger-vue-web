@@ -20,158 +20,49 @@
           ></span>
         </button>
       </div>
-      <div v-show="showMetrics" class="flex flex-wrap gap-3 items-center">
-        <span class="flex items-center gap-1.5">
-          <span class="font-bold text-sm" style="color: #ffffff">Depth</span>
-        </span>
-        <StyledCheckbox
-          :model-value="showTemp"
-          :color="DEFAULT_METRIC_CONFIGS.temp.color"
-          :disabled="disableTemp"
-          :title="disableTemp ? 'No temperature data' : ''"
-          @update:model-value="$emit('update:showTemp', $event)"
-        >
-          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.temp.color }"
-            >Temperature</span
+      <div v-show="showMetrics" class="flex flex-col gap-2">
+        <div class="flex flex-wrap gap-3 items-center">
+          <span class="flex items-center gap-1.5">
+            <span class="font-bold text-sm" style="color: #ffffff">Depth</span>
+          </span>
+          <StyledCheckbox
+            v-if="showSegmentsToggle !== false"
+            :model-value="showSegments"
+            color="var(--foreground)"
+            @update:model-value="$emit('update:showSegments', $event)"
           >
-        </StyledCheckbox>
-        <StyledCheckbox
-          v-if="showSegmentsToggle !== false"
-          :model-value="showSegments"
-          color="var(--foreground)"
-          @update:model-value="$emit('update:showSegments', $event)"
-        >
-          <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }"
-            >Segments</span
-          >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showNdl"
-          :color="DEFAULT_METRIC_CONFIGS.ndl.color"
-          :disabled="disableNdl"
-          :title="disableNdl ? 'No NDL data' : ''"
-          @update:model-value="$emit('update:showNdl', $event)"
-        >
-          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.ndl.color }"
-            >NDL</span
-          >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showOtu"
-          :color="DEFAULT_METRIC_CONFIGS.otu.color"
-          :disabled="disableOtu"
-          :title="disableOtu ? 'No OTU data' : ''"
-          @update:model-value="$emit('update:showOtu', $event)"
-        >
-          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.otu.color }"
-            >OTUs</span
-          >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showCns"
-          :color="DEFAULT_METRIC_CONFIGS.cns.color"
-          :disabled="disableCns"
-          :title="disableCns ? 'No CNS data' : ''"
-          @update:model-value="$emit('update:showCns', $event)"
-        >
-          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.cns.color }"
-            >CNS</span
-          >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showGf"
-          :color="DEFAULT_METRIC_CONFIGS.gf.color"
-          :disabled="disableGf"
-          :title="disableGf ? 'No GF99 data' : ''"
-          @update:model-value="$emit('update:showGf', $event)"
-        >
-          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.gf.color }"
-            >GF99</span
-          >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showPo2Measured"
-          :color="DEFAULT_METRIC_CONFIGS.po2Measured.color"
-          :disabled="disablePo2Measured"
-          :title="disablePo2Measured ? 'No PO2 measured data' : ''"
-          @update:model-value="$emit('update:showPo2Measured', $event)"
+            <span class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }"
+              >Segments</span
+            >
+          </StyledCheckbox>
+        </div>
+        <!-- Grouped by what each metric relates to (see DEFAULT_METRIC_CONFIGS' own color
+             grouping) rather than one flat wall of checkboxes - each group wraps as its own row,
+             and within a group whatever's unavailable for this dive sinks to the end, so the
+             available toggles you actually reach for stay clustered together instead of scattered
+             among grayed-out ones. -->
+        <div
+          v-for="group in metricGroups"
+          :key="group.name"
+          class="flex flex-wrap gap-x-3 gap-y-1.5 items-center"
         >
           <span
-            class="font-bold text-sm"
-            :style="{ color: DEFAULT_METRIC_CONFIGS.po2Measured.color }"
-            >PO2 measured</span
+            class="text-[10px] uppercase tracking-wide font-semibold opacity-50 w-full sm:w-auto sm:min-w-0"
+            :style="{ color: 'var(--foreground)' }"
+            >{{ group.name }}</span
           >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showPo2Calculated"
-          :color="DEFAULT_METRIC_CONFIGS.po2Calculated.color"
-          :disabled="disablePo2Calculated"
-          :title="disablePo2Calculated ? 'No PO2 calculated data' : ''"
-          @update:model-value="$emit('update:showPo2Calculated', $event)"
-        >
-          <span
-            class="font-bold text-sm"
-            :style="{ color: DEFAULT_METRIC_CONFIGS.po2Calculated.color }"
-            >PO2 calculated</span
+          <StyledCheckbox
+            v-for="item in group.items"
+            :key="item.key"
+            :model-value="item.modelValue"
+            :color="item.color"
+            :disabled="item.disabled"
+            :title="item.title"
+            @update:model-value="emitToggle(item.key, $event)"
           >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showPo2Setpoint"
-          :color="DEFAULT_METRIC_CONFIGS.po2Setpoint.color"
-          :disabled="disablePo2Setpoint"
-          :title="disablePo2Setpoint ? 'No PO2 setpoint data' : ''"
-          @update:model-value="$emit('update:showPo2Setpoint', $event)"
-        >
-          <span
-            class="font-bold text-sm"
-            :style="{ color: DEFAULT_METRIC_CONFIGS.po2Setpoint.color }"
-            >PO2 setpoint</span
-          >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showRmv"
-          :color="DEFAULT_METRIC_CONFIGS.rmv.color"
-          :disabled="disableRmv"
-          :title="disableRmv ? 'No RMV data' : ''"
-          @update:model-value="$emit('update:showRmv', $event)"
-        >
-          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.rmv.color }"
-            >RMV</span
-          >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showGasO2"
-          :color="DEFAULT_METRIC_CONFIGS.gasO2.color"
-          :disabled="disableGasO2"
-          :title="disableGasO2 ? 'No Gas O2 data' : ''"
-          @update:model-value="$emit('update:showGasO2', $event)"
-        >
-          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.gasO2.color }"
-            >Gas O2</span
-          >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showGasN2"
-          :color="DEFAULT_METRIC_CONFIGS.gasN2.color"
-          :disabled="disableGasN2"
-          :title="disableGasN2 ? 'No Gas N2 data' : ''"
-          @update:model-value="$emit('update:showGasN2', $event)"
-        >
-          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.gasN2.color }"
-            >Gas N2</span
-          >
-        </StyledCheckbox>
-        <StyledCheckbox
-          :model-value="showGasHe"
-          :color="DEFAULT_METRIC_CONFIGS.gasHe.color"
-          :disabled="disableGasHe"
-          :title="disableGasHe ? 'No Gas He data' : ''"
-          @update:model-value="$emit('update:showGasHe', $event)"
-        >
-          <span class="font-bold text-sm" :style="{ color: DEFAULT_METRIC_CONFIGS.gasHe.color }"
-            >Gas He</span
-          >
-        </StyledCheckbox>
+            <span class="font-bold text-sm" :style="{ color: item.color }">{{ item.label }}</span>
+          </StyledCheckbox>
+        </div>
       </div>
     </div>
     <!-- Display options - kept separate from the metric toggles above (not measurements, just
@@ -423,6 +314,187 @@ const emit = defineEmits<{
 const showMetrics = ref(true)
 const showAxes = ref(true)
 
+type ToggleKey = Exclude<MetricType, 'depth'>
+
+function emitToggle(key: ToggleKey, value: boolean): void {
+  switch (key) {
+    case 'temp':
+      emit('update:showTemp', value)
+      break
+    case 'ndl':
+      emit('update:showNdl', value)
+      break
+    case 'otu':
+      emit('update:showOtu', value)
+      break
+    case 'cns':
+      emit('update:showCns', value)
+      break
+    case 'gf':
+      emit('update:showGf', value)
+      break
+    case 'po2Measured':
+      emit('update:showPo2Measured', value)
+      break
+    case 'po2Calculated':
+      emit('update:showPo2Calculated', value)
+      break
+    case 'po2Setpoint':
+      emit('update:showPo2Setpoint', value)
+      break
+    case 'rmv':
+      emit('update:showRmv', value)
+      break
+    case 'gasO2':
+      emit('update:showGasO2', value)
+      break
+    case 'gasN2':
+      emit('update:showGasN2', value)
+      break
+    case 'gasHe':
+      emit('update:showGasHe', value)
+      break
+  }
+}
+
+type MetricToggleItem = {
+  key: ToggleKey
+  label: string
+  color: string
+  modelValue: boolean
+  disabled?: boolean
+  title: string
+}
+
+// Grouped by what each metric actually relates to (the same families DEFAULT_METRIC_CONFIGS'
+// colors are grouped by), then sorted within each group so whatever's unavailable for this dive
+// sinks to the end - stable otherwise, so toggling something doesn't reshuffle its neighbors.
+const metricGroups = computed<{ name: string; items: MetricToggleItem[] }[]>(() => {
+  const groups: { name: string; items: MetricToggleItem[] }[] = [
+    {
+      name: 'Vitals',
+      items: [
+        {
+          key: 'temp',
+          label: 'Temperature',
+          color: DEFAULT_METRIC_CONFIGS.temp.color,
+          modelValue: props.showTemp,
+          disabled: props.disableTemp,
+          title: props.disableTemp ? 'No temperature data' : '',
+        },
+      ],
+    },
+    {
+      name: 'O2 & PO2',
+      items: [
+        {
+          key: 'cns',
+          label: 'CNS',
+          color: DEFAULT_METRIC_CONFIGS.cns.color,
+          modelValue: props.showCns,
+          disabled: props.disableCns,
+          title: props.disableCns ? 'No CNS data' : '',
+        },
+        {
+          key: 'otu',
+          label: 'OTUs',
+          color: DEFAULT_METRIC_CONFIGS.otu.color,
+          modelValue: props.showOtu,
+          disabled: props.disableOtu,
+          title: props.disableOtu ? 'No OTU data' : '',
+        },
+        {
+          key: 'gasO2',
+          label: 'Gas O2',
+          color: DEFAULT_METRIC_CONFIGS.gasO2.color,
+          modelValue: props.showGasO2,
+          disabled: props.disableGasO2,
+          title: props.disableGasO2 ? 'No Gas O2 data' : '',
+        },
+        {
+          key: 'po2Measured',
+          label: 'PO2 measured',
+          color: DEFAULT_METRIC_CONFIGS.po2Measured.color,
+          modelValue: props.showPo2Measured,
+          disabled: props.disablePo2Measured,
+          title: props.disablePo2Measured ? 'No PO2 measured data' : '',
+        },
+        {
+          key: 'po2Calculated',
+          label: 'PO2 calculated',
+          color: DEFAULT_METRIC_CONFIGS.po2Calculated.color,
+          modelValue: props.showPo2Calculated,
+          disabled: props.disablePo2Calculated,
+          title: props.disablePo2Calculated ? 'No PO2 calculated data' : '',
+        },
+        {
+          key: 'po2Setpoint',
+          label: 'PO2 setpoint',
+          color: DEFAULT_METRIC_CONFIGS.po2Setpoint.color,
+          modelValue: props.showPo2Setpoint,
+          disabled: props.disablePo2Setpoint,
+          title: props.disablePo2Setpoint ? 'No PO2 setpoint data' : '',
+        },
+      ],
+    },
+    {
+      name: 'Deco & Gas Loading',
+      items: [
+        {
+          key: 'gf',
+          label: 'GF99',
+          color: DEFAULT_METRIC_CONFIGS.gf.color,
+          modelValue: props.showGf,
+          disabled: props.disableGf,
+          title: props.disableGf ? 'No GF99 data' : '',
+        },
+        {
+          key: 'ndl',
+          label: 'NDL',
+          color: DEFAULT_METRIC_CONFIGS.ndl.color,
+          modelValue: props.showNdl,
+          disabled: props.disableNdl,
+          title: props.disableNdl ? 'No NDL data' : '',
+        },
+        {
+          key: 'gasN2',
+          label: 'Gas N2',
+          color: DEFAULT_METRIC_CONFIGS.gasN2.color,
+          modelValue: props.showGasN2,
+          disabled: props.disableGasN2,
+          title: props.disableGasN2 ? 'No Gas N2 data' : '',
+        },
+      ],
+    },
+    {
+      name: 'Other',
+      items: [
+        {
+          key: 'rmv',
+          label: 'RMV',
+          color: DEFAULT_METRIC_CONFIGS.rmv.color,
+          modelValue: props.showRmv,
+          disabled: props.disableRmv,
+          title: props.disableRmv ? 'No RMV data' : '',
+        },
+        {
+          key: 'gasHe',
+          label: 'Gas He',
+          color: DEFAULT_METRIC_CONFIGS.gasHe.color,
+          modelValue: props.showGasHe,
+          disabled: props.disableGasHe,
+          title: props.disableGasHe ? 'No Gas He data' : '',
+        },
+      ],
+    },
+  ]
+
+  return groups.map((group) => ({
+    ...group,
+    items: [...group.items].sort((a, b) => Number(!!a.disabled) - Number(!!b.disabled)),
+  }))
+})
+
 // Which secondary profile (array index, 1-based numbering in the UI matches the "Tooltip
 // Profile" buttons above) the checkbox row below is currently editing overrides for.
 const editingExtraProfile = ref(1)
@@ -511,7 +583,7 @@ const extraMetricDefs = computed(() => [
     label: 'Gas He',
     disabled: isExtraDisabled('hasGasHe', props.disableGasHe),
   },
-])
+].sort((a, b) => Number(!!a.disabled) - Number(!!b.disabled)))
 
 function setExtraProfileMetric(key: Exclude<MetricType, 'depth'>, value: boolean): void {
   emit('update:extraProfileMetrics', {

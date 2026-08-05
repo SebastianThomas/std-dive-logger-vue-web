@@ -9,6 +9,7 @@
     </button>
 
     <DiveGraphTooltip
+      ref="tooltipRef"
       :data="tooltip"
       :time="tooltipTime"
       :left="tooltipLeft"
@@ -158,6 +159,7 @@ import {
 } from '@/lib/graph/timeGaps'
 import { detectModeTransitions, hasBothModes } from '@/lib/graph/modeTransitions'
 import { extendPo2CalculatedToBoundary } from '@/lib/graph/po2CalculatedExtension'
+import { interpolateAt, stepAfterValueAt, valueAtForMetric } from '@/lib/graph/valueInterpolation'
 import { LruCache } from '@/lib/utils/lruCache'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import { computeRangeStats } from '@/lib/graph/rangeStats'
@@ -241,6 +243,7 @@ const { getProfileMetricAvailability, getCombinedMetricAvailability } =
   useDiveGraphMetrics(profilesRef)
 
 const container = ref<HTMLElement | null>(null)
+const tooltipRef = ref<InstanceType<typeof DiveGraphTooltip> | null>(null)
 const width = ref(600)
 const height = ref(300)
 // Right margin needs to fit the widest axis-group tick label ("1.80 bar"-style PO2 values,
@@ -890,7 +893,14 @@ function renderAll() {
   // once over the whole virtual range - a single pass would otherwise treat the gap as if it
   // were real elapsed time and produce non-round, meaningless intervals.
   const timeRange = timeScale.value.domain() as [number, number]
-  const diveStart = props.profiles[0]?.start ?? 0
+  // The earliest start across every profile, not just profiles[0] - matches the tooltip's own
+  // graphStartTime below. Profiles aren't guaranteed to be ordered by start time (e.g. a second
+  // computer attached to an already-created dive can sort after the first despite starting
+  // earlier), so anchoring to profiles[0] specifically could show axis tick labels offset from
+  // what the tooltip displays for the exact same point in time.
+  const diveStart = props.profiles.length
+    ? Math.min(...props.profiles.map((p) => p.start))
+    : 0
   const { toVirtual, toReal } = timeMapper.value
   const tickValues = !timeGaps.value.length
     ? generateTimeAxisTicks(timeRange, diveStart, innerWidth.value)
@@ -1432,22 +1442,6 @@ const metricPointsCache = computed<Array<Partial<Record<Exclude<MetricType, 'dep
 const isFinitePoint = (p: [number, number] | null): p is [number, number] =>
   p !== null && Number.isFinite(p[0]) && Number.isFinite(p[1])
 
-// Linearly interpolates the value at time t from a sorted [time, value][] list — matching the
-// straight-line segments d3 draws between consecutive points (metric lines use the default
-// linear curve). Clamps to the first/last value outside the list's own range.
-function interpolateAt(points: [number, number][] | undefined, t: number): number | undefined {
-  if (!points || points.length === 0) return undefined
-  if (points.length === 1 || t <= points[0]![0]) return points[0]![1]
-  const last = points[points.length - 1]!
-  if (t >= last[0]) return last[1]
-  const bi = bisector((d: [number, number]) => d[0]).left
-  const i = Math.min(points.length - 1, Math.max(1, bi(points, t)))
-  const p0 = points[i - 1]!
-  const p1 = points[i]!
-  if (p1[0] === p0[0]) return p1[1]
-  const frac = (t - p0[0]) / (p1[0] - p0[0])
-  return p0[1] + frac * (p1[1] - p0[1])
-}
 
 // Maps a plotted (non-depth) metric to the scale it's drawn against, for the line-hover hit
 // test below. Depth is handled separately since it always uses depthScale.
@@ -1568,7 +1562,7 @@ function renderTooltipAtTime(
       cns: interpolateAt(profilePoints?.cns, tVal),
       gf: interpolateAt(profilePoints?.gf, tVal),
       po2Measured: interpolateAt(profilePoints?.po2Measured, tVal),
-      po2Calculated: interpolateAt(profilePoints?.po2Calculated, tVal),
+      po2Calculated: stepAfterValueAt(profilePoints?.po2Calculated, tVal),
       po2Setpoint: interpolateAt(profilePoints?.po2Setpoint, tVal),
       rmv: interpolateAt(profilePoints?.rmv, tVal),
       gasO2: interpolateAt(profilePoints?.gasO2, tVal),
@@ -1628,8 +1622,9 @@ function renderTooltipAtTime(
       // Interpolated, not read straight off selM — some metrics (PO2 calculated/setpoint, gas
       // changes, ...) log far less often than depth, so the nearest sample often just doesn't
       // carry this field. Interpolating along the actually-drawn points keeps the hit test
-      // continuous instead of dropping in and out between real readings.
-      const value = interpolateAt(selProfilePoints?.[key], tVal)
+      // continuous instead of dropping in and out between real readings. po2Calculated uses
+      // stepAfterValueAt instead so the hit test's Y position agrees with the drawn step line.
+      const value = valueAtForMetric(selProfilePoints?.[key], tVal, key)
       if (value === undefined) continue
       const y = scale(value)
       const dist = Math.abs(y - hoverY)
@@ -1695,10 +1690,10 @@ function renderTooltipAtTime(
       mouseY = cy
     }
 
-    // Measure actual tooltip element if available, otherwise use estimates
-    const tooltipEl = containerEl.querySelector(
-      '[class*="bg-white"][class*="dark:bg-gray"]',
-    ) as HTMLElement
+    // Measure the actual tooltip element (via its own template ref) if it's currently rendered,
+    // otherwise fall back to estimates - it's absent right after tooltip.value first becomes
+    // non-null, before Vue has mounted its v-if'd root on this same tick.
+    const tooltipEl = tooltipRef.value?.$el as HTMLElement | undefined
     const tooltipWidth = tooltipEl?.offsetWidth || 280
     const tooltipHeight = tooltipEl?.offsetHeight || 120
 

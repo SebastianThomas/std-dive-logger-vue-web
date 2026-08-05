@@ -72,7 +72,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
     let hasGasN2 = false
     let hasGasHe = false
     let hasDeco = false
-    // The two >1 checks below (po2 measured/calculated/setpoint) need a count, not just a
+    // The three >1 checks below (po2 measured/calculated/setpoint) need a count, not just a
     // boolean, so track counts for those and derive the flags once we're done.
     let po2MeasuredCount = 0
     let po2CalculatedCount = 0
@@ -84,9 +84,11 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
       if (!hasOtu && m.measurement.o2Tox !== undefined) hasOtu = true
       if (!hasCns && m.measurement.cns !== undefined) hasCns = true
       if (!hasGf && m.measurement.n2 !== undefined) hasGf = true
-      if (m.measurement.po2?.measured) po2MeasuredCount++
-      if (m.measurement.po2?.calculated) po2CalculatedCount++
-      if (m.measurement.po2?.maxSetPoint) po2SetpointCount++
+      // !== undefined, not a truthy check - a genuine 0.00 bar reading (e.g. right at the
+      // surface) must still count as real data, not be mistaken for "not logged".
+      if (m.measurement.po2?.measured !== undefined) po2MeasuredCount++
+      if (m.measurement.po2?.calculated !== undefined) po2CalculatedCount++
+      if (m.measurement.po2?.maxSetPoint !== undefined) po2SetpointCount++
       if (!hasRmv && m.measurement.rmvLiters !== undefined) hasRmv = true
       if (!hasGasO2 && m.measurement.gas?.o2 !== undefined) hasGasO2 = true
       if (!hasGasN2 && m.measurement.gas?.n2 !== undefined && m.measurement.gas.n2 > 0)

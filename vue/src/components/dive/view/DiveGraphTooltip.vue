@@ -66,16 +66,16 @@
             GF: {{ profile.gf !== undefined ? profile.gf.toFixed(0) : '-' }}%
           </div>
           <div v-if="data.metricAvailability.hasRmv" :class="rowClass('rmv')">
-            RMV: {{ profile.rmv ? profile.rmv.toFixed(0) : '-' }} L/m
+            RMV: {{ profile.rmv != null ? profile.rmv.toFixed(0) : '-' }} L/m
           </div>
           <div v-if="data.metricAvailability.hasPo2Measured" :class="rowClass('po2Measured')">
-            PO2(m): {{ profile.po2Measured ? profile.po2Measured.toFixed(2) : '-' }}
+            PO2(m): {{ profile.po2Measured != null ? profile.po2Measured.toFixed(2) : '-' }}
           </div>
           <div v-if="data.metricAvailability.hasPo2Calculated" :class="rowClass('po2Calculated')">
-            PO2(c): {{ profile.po2Calculated ? profile.po2Calculated.toFixed(2) : '-' }}
+            PO2(c): {{ profile.po2Calculated != null ? profile.po2Calculated.toFixed(2) : '-' }}
           </div>
           <div v-if="data.metricAvailability.hasPo2Setpoint" :class="rowClass('po2Setpoint')">
-            PO2(s): {{ profile.po2Setpoint ? profile.po2Setpoint.toFixed(2) : '-' }}
+            PO2(s): {{ profile.po2Setpoint != null ? profile.po2Setpoint.toFixed(2) : '-' }}
           </div>
           <div
             v-if="data.metricAvailability.hasGasO2 || data.metricAvailability.hasGasHe"
@@ -118,19 +118,19 @@
         GF99: {{ currentProfile.gf !== undefined ? currentProfile.gf.toFixed(0) : '-' }}%
       </div>
       <div v-if="data.metricAvailability.hasRmv" :class="rowClass('rmv')">
-        RMV: {{ currentProfile.rmv ? currentProfile.rmv.toFixed(0) : '-' }} L/min
+        RMV: {{ currentProfile.rmv != null ? currentProfile.rmv.toFixed(0) : '-' }} L/min
       </div>
       <div v-if="data.metricAvailability.hasPo2Measured" :class="rowClass('po2Measured')">
         PO2 (measured):
-        {{ currentProfile.po2Measured ? currentProfile.po2Measured.toFixed(2) : '-' }} bar
+        {{ currentProfile.po2Measured != null ? currentProfile.po2Measured.toFixed(2) : '-' }} bar
       </div>
       <div v-if="data.metricAvailability.hasPo2Calculated" :class="rowClass('po2Calculated')">
         PO2 (calculated):
-        {{ currentProfile.po2Calculated ? currentProfile.po2Calculated.toFixed(2) : '-' }} bar
+        {{ currentProfile.po2Calculated != null ? currentProfile.po2Calculated.toFixed(2) : '-' }} bar
       </div>
       <div v-if="data.metricAvailability.hasPo2Setpoint" :class="rowClass('po2Setpoint')">
         PO2 (setpoint):
-        {{ currentProfile.po2Setpoint ? currentProfile.po2Setpoint.toFixed(2) : '-' }} bar
+        {{ currentProfile.po2Setpoint != null ? currentProfile.po2Setpoint.toFixed(2) : '-' }} bar
       </div>
       <div
         v-if="data.metricAvailability.hasGasO2 || data.metricAvailability.hasGasHe"
