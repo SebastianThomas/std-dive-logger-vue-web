@@ -582,6 +582,7 @@ const mapSites = computed(() => {
   return [
     {
       site: { id: currentDive.site.id!, ...currentDive.site },
+      diveCount: 1,
       diveInfo: [{ ...currentDive }],
     },
   ]

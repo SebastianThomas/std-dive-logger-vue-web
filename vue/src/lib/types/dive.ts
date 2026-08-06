@@ -391,7 +391,11 @@ export type BasicDiveInfo = {
 
 export type SiteWithDives = {
   site: DiveSite
-  diveInfo: BasicDiveInfo[]
+  diveCount: number
+  // Omitted by the backend (undefined) once the user has too many sites to inline every dive at
+  // every site - fetch it lazily via GET /v1/dives/sites/{id}/dives when actually needed (e.g. a
+  // map marker's popup opening). diveCount above is always present either way.
+  diveInfo?: BasicDiveInfo[]
 }
 
 export type AlignmentType =

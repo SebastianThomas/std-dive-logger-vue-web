@@ -1017,7 +1017,7 @@ function renderAll() {
     const color = DEFAULT_METRIC_CONFIGS[metric].color
     const width = config.width ?? 1.5
 
-    props.profiles.forEach((profile, idx) => {
+    props.profiles.forEach((_profile, idx) => {
       if (!visibleMask.value[idx]) return
       // Profile 0's visibility is the metric's global show* toggle, unchanged from before
       // per-profile overrides existed. Every other profile defaults to off - opting one in is
@@ -1025,12 +1025,7 @@ function renderAll() {
       // old behavior.
       const visible = idx === 0 ? config.showProp : (props.extraProfileMetrics?.[idx]?.[metric] ?? false)
       if (!visible) return
-      let points: [number, number][] = profile.measurements
-        .map(config.extractor)
-        .filter(isFinitePoint)
-      if (metric === 'po2Calculated') {
-        points = extendPo2CalculatedToBoundary(points, profile)
-      }
+      const points = metricPointsCache.value[idx]?.[metric] ?? []
       if (points.length) {
         group
           .append('path')

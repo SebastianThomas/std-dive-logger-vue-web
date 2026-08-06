@@ -73,7 +73,10 @@ const fitToSites = () => {
   })
 }
 
-watch(() => props.sites, fitToSites, { immediate: true, deep: true })
+// props.sites is reassigned wholesale on every new search (never mutated in place, see
+// DiveSiteSearch.vue's `results.value = ...` assignments) - a reference-only check is enough,
+// same reasoning as DiveGraph.vue's props.profiles watch.
+watch(() => props.sites, fitToSites, { immediate: true })
 </script>
 
 <style scoped>

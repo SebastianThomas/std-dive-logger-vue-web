@@ -13,7 +13,7 @@
       </div>
       <button
         type="button"
-        :disabled="busy"
+        :disabled="busy || readOnly"
         class="text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
         @click="discard"
       >
@@ -180,7 +180,7 @@
       <button
         type="button"
         :disabled="
-          busy || (mode === 'existing' ? !linkToExistingDiveId : !siteResolved)
+          busy || readOnly || (mode === 'existing' ? !linkToExistingDiveId : !siteResolved)
         "
         :title="mode === 'new' && !siteResolved ? 'Choose a dive site first' : undefined"
         class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
@@ -212,6 +212,7 @@
 import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { resolveImporterUrl } from '@/lib/globals/url/resolveUrl'
 import { formatDate } from '@/lib/utils/timeUtils'
 import debounce from '@/lib/utils/debounce'
@@ -236,6 +237,7 @@ const emit = defineEmits<{
 }>()
 
 const { getWithToken, postWithToken, deleteWithToken } = useApi()
+const { readOnly } = useReadOnlyMode()
 
 const identifier = ref(props.summary.diveIdentifierGuess ?? '')
 const mode = ref<'new' | 'existing'>('new')
@@ -384,6 +386,7 @@ const checkForAutoAttach = async () => {
 checkForAutoAttach()
 
 const commit = async () => {
+  if (readOnly.value) return
   busy.value = true
   try {
     const profileTrimsOverride =
@@ -420,6 +423,7 @@ const commit = async () => {
 }
 
 const discard = async () => {
+  if (readOnly.value) return
   busy.value = true
   try {
     await deleteWithToken(resolveImporterUrl(`/v1/import/pending/${props.summary.id}`))

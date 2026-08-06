@@ -129,7 +129,7 @@ async function fetchRates() {
 }
 
 onMounted(fetchRates)
-watch(() => [props.diveId, props.profiles], fetchRates, { deep: true })
+watch(() => props.diveId, fetchRates)
 
 const expanded = ref(false)
 const container = ref<HTMLElement | null>(null)
@@ -494,8 +494,19 @@ onBeforeUnmount(() => {
   if (ro && container.value) ro.unobserve(container.value)
 })
 
+// props.profiles is reassigned wholesale on update (never mutated in place), and expanded/
+// ratesByProfileId are always reassigned too - a reference-only check is enough. visibleProfiles,
+// though, is toggled by mutating a single index in place (see DiveGraphContainer's toggleProfile),
+// so it still needs deep tracking to notice - matches the same split DiveGraph.vue makes for the
+// identical pattern (DiveGraph.vue:586-600).
+watch(() => [props.profiles, expanded.value, ratesByProfileId.value], () => {
+  if (expanded.value) {
+    updateSize()
+    render()
+  }
+})
 watch(
-  () => [props.profiles, props.visibleProfiles, expanded.value, ratesByProfileId.value],
+  () => props.visibleProfiles,
   () => {
     if (expanded.value) {
       updateSize()

@@ -240,7 +240,7 @@ import {
   type ProfileMetricVisibility,
 } from '@/lib/types/graph'
 import type { ProfileMetricAvailability } from '@/composables/useDiveGraphMetrics'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 
 const props = defineProps<{
@@ -468,6 +468,20 @@ const primaryMetricItems = computed(() =>
 // Which secondary profile (array index, 1-based numbering in the UI matches the "Tooltip
 // Profile" buttons above) the checkbox row below is currently editing overrides for.
 const editingExtraProfile = ref(1)
+
+// The "Extra metrics" picker is only shown while profilesCount > 1 (v-if above masks a stale
+// value from being visible), but a stale out-of-range index would still be read by
+// extraMetricItems/setExtraProfileMetric if profilesCount later grows back - clamp it back into
+// range whenever the profile count shrinks, so it can't stay pointed at a profile that no longer
+// exists.
+watch(
+  () => props.profilesCount,
+  (count) => {
+    if (editingExtraProfile.value > count - 1) {
+      editingExtraProfile.value = Math.max(1, count - 1)
+    }
+  },
+)
 
 // Same fixed order as the primary row, but availability is checked against the profile currently
 // selected above (falling back to the primary row's own disabled flag if the caller didn't pass

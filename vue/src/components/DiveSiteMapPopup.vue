@@ -2,7 +2,9 @@
   <div class="popup-container">
     <h3 class="font-bold">{{ site.name }}</h3>
     <div class="dives-scroll-container">
-      <ul class="space-y-1">
+      <p v-if="loading" class="text-sm text-gray-500">Loading dives...</p>
+      <p v-else-if="loadError" class="text-sm text-red-600">Failed to load dives.</p>
+      <ul v-else class="space-y-1">
         <li v-for="info in sortedDiveInfo" :key="info.id" class="flex items-center justify-between">
           <span class="dive-name-truncate">#{{ info.number }}: {{ info.customIdentifier }}</span>
           <router-link
@@ -19,7 +21,8 @@
 
 <script setup lang="ts">
 import type { DiveSite } from '@/lib/types/dive'
-import { computed } from 'vue'
+import { useApi } from '@/composables/useApi'
+import { computed, onMounted, ref } from 'vue'
 
 interface DiveInfo {
   id: number
@@ -29,13 +32,35 @@ interface DiveInfo {
 
 interface Props {
   site: DiveSite
-  diveInfo: DiveInfo[]
+  // Absent when the site list omitted it (see SiteWithDives) - fetched on demand below in that
+  // case, so this popup still works whether the parent inlined it or not.
+  diveInfo?: DiveInfo[]
 }
 
 const props = defineProps<Props>()
+const { getWithToken } = useApi()
+
+const fetchedDiveInfo = ref<DiveInfo[] | null>(null)
+const loading = ref(false)
+const loadError = ref(false)
+
+onMounted(async () => {
+  if (props.diveInfo) return
+  loading.value = true
+  try {
+    const res = await getWithToken<DiveInfo[]>(`/v1/dives/sites/${props.site.id}/dives`)
+    fetchedDiveInfo.value = res.data
+  } catch (err) {
+    console.error('Failed to fetch dives at site', err)
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+})
 
 const sortedDiveInfo = computed(() => {
-  return [...props.diveInfo].sort((a, b) => a.number - b.number)
+  const info = props.diveInfo ?? fetchedDiveInfo.value ?? []
+  return [...info].sort((a, b) => a.number - b.number)
 })
 </script>
 

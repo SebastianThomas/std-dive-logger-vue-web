@@ -98,6 +98,7 @@
               :sites="[
                 {
                   site: selectedSite,
+                  diveCount: 0,
                   diveInfo: [],
                 },
               ]"

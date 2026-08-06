@@ -36,7 +36,8 @@
             <label class="font-medium">Files</label>
             <button
               type="button"
-              class="border-2 border-dashed border-sky-300 bg-sky-50 dark:bg-sky-900 dark:border-sky-600 rounded-xl p-6 text-center cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-800 hover:border-sky-400 dark:hover:border-sky-500"
+              :disabled="readOnly"
+              class="border-2 border-dashed border-sky-300 bg-sky-50 dark:bg-sky-900 dark:border-sky-600 rounded-xl p-6 text-center cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-800 hover:border-sky-400 dark:hover:border-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
               @click="fileInputRef?.click()"
               @dragover.prevent
               @drop.prevent="handleDrop"
@@ -90,7 +91,7 @@
               Cancel
             </button>
             <button
-              :disabled="loading"
+              :disabled="loading || readOnly"
               class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               @click="handleSubmit"
             >
@@ -160,7 +161,7 @@
               Cancel
             </button>
             <button
-              :disabled="loading"
+              :disabled="loading || readOnly"
               class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               @click="handleDivesoftSubmit"
             >
@@ -238,7 +239,7 @@
           </p>
           <button
             type="button"
-            :disabled="quickImporting"
+            :disabled="quickImporting || readOnly"
             class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
             @click="quickImportAll"
           >
@@ -262,6 +263,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useNavigation } from '@/composables/useNavigation'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { toast } from 'vue-sonner'
 import PendingImportRow from '@/components/dive/import/PendingImportRow.vue'
 import DivesoftDiveList, {
@@ -285,6 +287,7 @@ import axios from 'axios'
 
 const { safeBack, router } = useNavigation()
 const { postWithToken } = useApi()
+const { readOnly } = useReadOnlyMode()
 
 const mode = ref<'files' | 'divesoft'>('files')
 
@@ -302,6 +305,7 @@ const stagedImports = ref<PendingImportSummary[]>([])
 const stageErrors = ref<string[]>([])
 
 const handleDrop = (e: DragEvent) => {
+  if (readOnly.value) return
   if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
     const droppedFiles = Array.from(e.dataTransfer.files)
     const validFiles = droppedFiles.filter((file) => {
@@ -404,6 +408,7 @@ const handleStageError = (err: unknown, toastId: string | number) => {
 }
 
 const handleSubmit = async () => {
+  if (readOnly.value) return
   status.value = ''
   if (!files.value.length) {
     status.value = 'Error: Please add at least one file.'
@@ -461,6 +466,7 @@ const stageDivesoftDives = async (
 }
 
 const handleDivesoftSubmit = async () => {
+  if (readOnly.value) return
   status.value = ''
   const token = divesoftToken.value.trim()
   if (!token) {
@@ -514,6 +520,7 @@ const handleDivesoftSubmit = async () => {
 }
 
 const handleDivesoftStageSelected = async (dives: DivesoftDiveJson[]) => {
+  if (readOnly.value) return
   loading.value = true
   const toastId = toast.loading('Staging selected dive(s)...', { duration: 10000 })
   try {
@@ -547,7 +554,7 @@ const quickImportEligible = computed(() => stagedImports.value.filter((s) => !!s
 
 const quickImportAll = async () => {
   const eligible = quickImportEligible.value
-  if (eligible.length === 0 || quickImporting.value) return
+  if (eligible.length === 0 || quickImporting.value || readOnly.value) return
   quickImporting.value = true
   const toastId = toast.loading(`Importing ${eligible.length} dive(s)...`)
   try {

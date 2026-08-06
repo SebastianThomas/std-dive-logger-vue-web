@@ -125,7 +125,7 @@ const fetchTags = async () => {
 }
 
 const deleteTag = async (id: number) => {
-  if (deletingId.value === id) return
+  if (deletingId.value === id || readOnly.value) return
   deletingId.value = id
   try {
     await deleteWithToken(`/v1/tags/${id}`)

@@ -159,7 +159,13 @@ const handleProfileKeydown = (event: KeyboardEvent) => {
   }
 
   // Shift+D to delete account
-  if (event.key.toLowerCase() === 'd' && event.shiftKey && !event.ctrlKey && !event.metaKey) {
+  if (
+    event.key.toLowerCase() === 'd' &&
+    event.shiftKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !readOnly.value
+  ) {
     showDeregisterModal.value = true
   }
 }

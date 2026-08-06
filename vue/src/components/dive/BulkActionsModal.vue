@@ -266,6 +266,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import type {
   DiveWithoutProfiles,
@@ -292,6 +293,7 @@ const emit = defineEmits<{
 }>()
 
 const { deleteWithToken, postWithToken, putWithToken, getWithToken } = useApi()
+const { readOnly } = useReadOnlyMode()
 
 const primaryDiveId = ref<number | null>(null)
 const merging = ref(false)
@@ -492,6 +494,7 @@ const formatCcrUnitLabel = (unit: CcrUnit) => {
 }
 
 const handleBaseConfigurationUpdate = async () => {
+  if (readOnly.value) return
   if (!selectedBaseConfiguration.value) {
     toast.error('Select a base configuration')
     return
@@ -517,6 +520,7 @@ const handleBaseConfigurationUpdate = async () => {
 }
 
 const handleSuitUpdate = async () => {
+  if (readOnly.value) return
   if (!selectedSuitId.value) {
     toast.error('Select a suit')
     return
@@ -542,6 +546,7 @@ const handleSuitUpdate = async () => {
 }
 
 const handleCcrUnitUpdate = async () => {
+  if (readOnly.value) return
   if (!selectedCcrUnitId.value) {
     toast.error('Select a CCR unit')
     return
@@ -569,6 +574,7 @@ const handleCcrUnitUpdate = async () => {
 }
 
 const handleWeightUpdate = async () => {
+  if (readOnly.value) return
   if (!hasValidWeight.value || weightInput.value === null) {
     toast.error('Enter a valid weight')
     return
@@ -594,7 +600,7 @@ const handleWeightUpdate = async () => {
 }
 
 const handleMerge = async () => {
-  if (merging.value) return
+  if (merging.value || readOnly.value) return
   if (!primaryDiveId.value || selectedCount.value !== 2) {
     toast.error('Please select exactly 2 dives and choose a primary dive')
     return
@@ -629,7 +635,7 @@ const handleBulkDelete = async () => {
 const bulkDeleting = ref(false)
 
 const confirmBulkDelete = async () => {
-  if (bulkDeleting.value) return
+  if (bulkDeleting.value || readOnly.value) return
   bulkDeleting.value = true
   const ids = props.selectedDives.map((d) => d.id)
 

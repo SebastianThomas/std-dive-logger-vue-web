@@ -199,7 +199,7 @@ const fetchGroupDetails = async () => {
 }
 
 const changeRole = async (member: UserWithRole, role: string) => {
-  if (changingRoleIds.value.has(member.id)) return
+  if (changingRoleIds.value.has(member.id) || readOnly.value) return
   const previousRole = member.role
   member.role = role as InGroupRole
   changingRoleIds.value.add(member.id)
@@ -216,7 +216,7 @@ const changeRole = async (member: UserWithRole, role: string) => {
 }
 
 const acceptRequest = async (userId: number) => {
-  if (processingRequestIds.value.has(userId)) return
+  if (processingRequestIds.value.has(userId) || readOnly.value) return
   processingRequestIds.value.add(userId)
   try {
     await putWithToken(`/v1/groups/role?id=${groupId.value}&userId=${userId}&role=MEMBER`, {})
@@ -230,7 +230,7 @@ const acceptRequest = async (userId: number) => {
 }
 
 const declineRequest = async (userId: number) => {
-  if (processingRequestIds.value.has(userId)) return
+  if (processingRequestIds.value.has(userId) || readOnly.value) return
   processingRequestIds.value.add(userId)
   try {
     await putWithToken(`/v1/groups/role?id=${groupId.value}&userId=${userId}&role=DENIED`, {})
@@ -244,6 +244,7 @@ const declineRequest = async (userId: number) => {
 }
 
 const leaveGroup = async () => {
+  if (readOnly.value) return
   isLoadingLeave.value = true
   try {
     await deleteWithToken(`/v1/groups/${groupId.value}/members`, {})
@@ -265,11 +266,17 @@ const handleGroupEditKeydown = (event: KeyboardEvent) => {
   }
 
   // 'l' to leave group
-  if (event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey) {
+  if (event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey && !readOnly.value) {
     showLeaveConfirm.value = true
   }
   // Shift+D to delete group
-  if (event.key.toLowerCase() === 'd' && event.shiftKey && !event.ctrlKey && !event.metaKey) {
+  if (
+    event.key.toLowerCase() === 'd' &&
+    event.shiftKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !readOnly.value
+  ) {
     if (isAdmin.value) {
       showDeleteConfirm.value = true
     }
@@ -277,6 +284,7 @@ const handleGroupEditKeydown = (event: KeyboardEvent) => {
 }
 
 const deleteGroup = async () => {
+  if (readOnly.value) return
   isLoadingDelete.value = true
   try {
     await deleteWithToken(`/v1/groups/${groupId.value}`, {})

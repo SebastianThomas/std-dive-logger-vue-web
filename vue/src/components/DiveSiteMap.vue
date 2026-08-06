@@ -88,7 +88,7 @@ const siteIcons = computed(() => {
   for (const item of props.sites) {
     icons.set(
       item.site.id,
-      createDiveSiteIcon(item.diveInfo.length, customIconUrl.value, props.showDiveCountBadge),
+      createDiveSiteIcon(item.diveCount, customIconUrl.value, props.showDiveCountBadge),
     )
   }
   return icons
