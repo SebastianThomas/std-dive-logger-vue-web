@@ -92,9 +92,11 @@ export const DEFAULT_METRIC_CONFIGS: Record<MetricType, MetricConfig> = {
   po2Setpoint: { show: false, color: '#065f46' },
   rmv: { show: false, color: '#4f46e5' },
   gasO2: { show: false, color: '#15803d' },
-  // Near-black rather than grouped with the other gas fractions - least important number on a
-  // normal dive, so it stays visible but recedes rather than drawing the eye.
-  gasN2: { show: false, color: '#27272a' },
+  // Mid-gray rather than grouped with the other gas fractions - least important number on a
+  // normal dive, so it stays recessive rather than drawing the eye. Previously near-black
+  // (#27272a), which read as essentially invisible against a dark-mode background - a mid gray
+  // keeps enough contrast against both a light and a dark page background.
+  gasN2: { show: false, color: '#71717a' },
   gasHe: { show: false, color: '#92400e' },
 }
 

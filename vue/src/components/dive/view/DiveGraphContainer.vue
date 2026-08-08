@@ -280,6 +280,11 @@ import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
 import { useApi } from '@/composables/useApi'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { useProfileTrimming } from '@/composables/useProfileTrimming'
+import {
+  computeSensibleMetricDefaults,
+  DATA_DRIVEN_METRICS,
+  type DataDrivenMetric,
+} from '@/lib/graph/metricDefaults'
 import type { Dive, DiveProfile } from '@/lib/types/dive'
 import type { AxisUnitGroup, ProfileMetricVisibility } from '@/lib/types/graph'
 
@@ -329,6 +334,7 @@ const {
   showDecoZone,
   getCombinedMetricAvailability,
   getProfileMetricAvailability,
+  getProfileMetricCounts,
 } = useDiveGraphMetrics(profilesRef)
 
 const leftAxisMetric = ref<AxisUnitGroup>('depth')
@@ -367,51 +373,73 @@ const perProfileAvailability = computed(() =>
   props.profiles.map((_, idx) => getProfileMetricAvailability(idx)),
 )
 
-// Automatically deselect metrics when they become unavailable, and re-enable when available
+// Safety net only: a metric whose data disappears entirely (e.g. every profile carrying it just
+// got hidden via the profile toggles) gets switched off so the graph doesn't try to draw an empty
+// line. This must NOT also re-enable a metric just because it's available again - that was the
+// previous behavior here, and it meant re-toggling a profile's visibility (or even just the
+// combinedMetricsAvailability recompute that follows from it) would silently flip metrics the user
+// had deliberately turned off back on, over and over, for as long as the dive stayed open. Turning
+// a metric ON by default is entirely computeSensibleMetricDefaults's job below, and that only runs
+// once per dive (when props.profiles itself changes), not on every visibility toggle.
 watch(
   () => combinedMetricsAvailability.value,
   (availability) => {
     if (!availability.hasTemp) showTemp.value = false
-    else if (showTemp.value === false) showTemp.value = true
-
     if (!availability.hasNdl) showNdl.value = false
-    else if (showNdl.value === false) showNdl.value = true
-
     if (!availability.hasOtu) showOtu.value = false
-    else if (showOtu.value === false) showOtu.value = true
-
     if (!availability.hasCns) showCns.value = false
-    else if (showCns.value === false) showCns.value = true
-
     if (!availability.hasGf) showGf.value = false
-    else if (showGf.value === false) showGf.value = true
-
     if (!availability.hasPo2Measured) showPo2Measured.value = false
-    else if (showPo2Measured.value === false) showPo2Measured.value = true
-
     if (!availability.hasPo2Calculated) showPo2Calculated.value = false
-    else if (showPo2Calculated.value === false) showPo2Calculated.value = true
-
     if (!availability.hasPo2Setpoint) showPo2Setpoint.value = false
-    else if (showPo2Setpoint.value === false) showPo2Setpoint.value = true
-
     if (!availability.hasRmv) showRmv.value = false
-    else if (showRmv.value === false) showRmv.value = true
-
     if (!availability.hasGasO2) showGasO2.value = false
-    else if (showGasO2.value === false) showGasO2.value = true
-
     if (!availability.hasGasN2) showGasN2.value = false
-    else if (showGasN2.value === false) showGasN2.value = true
-
     if (!availability.hasGasHe) showGasHe.value = false
-    else if (showGasHe.value === false) showGasHe.value = true
-
     if (!availability.hasDeco) showDecoZone.value = false
-    else if (showDecoZone.value === false) showDecoZone.value = true
   },
   { deep: true },
 )
+
+// The primary row's show* ref for each of computeSensibleMetricDefaults' DATA_DRIVEN_METRICS,
+// keyed the same way its returned `show` record is, so the result can be applied with a simple
+// loop below instead of one assignment per metric.
+const dataDrivenShowRefs: Record<DataDrivenMetric, typeof showTemp> = {
+  temp: showTemp,
+  ndl: showNdl,
+  gf: showGf,
+  cns: showCns,
+  otu: showOtu,
+  po2Measured: showPo2Measured,
+  po2Calculated: showPo2Calculated,
+  po2Setpoint: showPo2Setpoint,
+  rmv: showRmv,
+}
+
+// Picks a sensible default once per dive - see computeSensibleMetricDefaults' own doc comment for
+// the reasoning (primary-profile-has-data gates the primary row; a richer secondary profile gets
+// opted in directly). Gas O2/N2/He are handled separately here, not by that function - always off
+// by default regardless of data, per the always-off policy for that whole metric family (see
+// stores/diveGraph.ts for why they're also excluded from persistence entirely).
+const applySensibleMetricDefaults = () => {
+  const defaults = computeSensibleMetricDefaults(
+    props.profiles.map((_, idx) => getProfileMetricCounts(idx)),
+  )
+  for (const metric of DATA_DRIVEN_METRICS) {
+    dataDrivenShowRefs[metric].value = defaults.show[metric]
+  }
+  extraProfileMetrics.value = defaults.extraProfileMetrics
+
+  showGasO2.value = false
+  showGasN2.value = false
+  showGasHe.value = false
+}
+
+// Keyed on diveId, not the profiles array reference - a trim/merge/align on the *same* dive
+// replaces that array too, and re-running this there would blow away extra-profile choices the
+// user just made in this same viewing session. Opening a genuinely different dive is what should
+// reset to fresh, data-driven defaults.
+watch(() => props.diveId, applySensibleMetricDefaults, { immediate: true })
 
 // Watch for changes to visibleProfiles and remove disabled profiles from selectedProfiles
 watch(

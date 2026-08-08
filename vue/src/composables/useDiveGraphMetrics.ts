@@ -19,6 +19,41 @@ export type ProfileMetricAvailability = {
   hasDeco: boolean
 }
 
+/** Raw point counts backing {@link ProfileMetricAvailability} - lets a caller compare *how much*
+ * data a profile has for a metric, not just whether it has any, e.g. to prefer a backup
+ * computer's much more complete PO2 log over the primary's handful of stray readings. */
+export type ProfileMetricCounts = {
+  temp: number
+  ndl: number
+  otu: number
+  cns: number
+  gf: number
+  po2Measured: number
+  po2Calculated: number
+  po2Setpoint: number
+  rmv: number
+  gasO2: number
+  gasN2: number
+  gasHe: number
+  deco: number
+}
+
+const EMPTY_COUNTS: ProfileMetricCounts = {
+  temp: 0,
+  ndl: 0,
+  otu: 0,
+  cns: 0,
+  gf: 0,
+  po2Measured: 0,
+  po2Calculated: 0,
+  po2Setpoint: 0,
+  rmv: 0,
+  gasO2: 0,
+  gasN2: 0,
+  gasHe: 0,
+  deco: 0,
+}
+
 export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
   const graphStore = useDiveGraphStore()
   const {
@@ -39,100 +74,53 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
     showDecoZone,
   } = storeToRefs(graphStore)
 
-  // Per-profile availability check
-  const getProfileMetricAvailability = (profileIdx: number): ProfileMetricAvailability => {
+  // Per-profile point counts - the single scan every other per-profile helper below derives from.
+  const getProfileMetricCounts = (profileIdx: number): ProfileMetricCounts => {
     const profile = profiles.value[profileIdx]
-    if (!profile) {
-      return {
-        hasTemp: false,
-        hasNdl: false,
-        hasOtu: false,
-        hasCns: false,
-        hasGf: false,
-        hasPo2Measured: false,
-        hasPo2Calculated: false,
-        hasPo2Setpoint: false,
-        hasRmv: false,
-        hasGasO2: false,
-        hasGasN2: false,
-        hasGasHe: false,
-        hasDeco: false,
-      }
-    }
+    if (!profile) return { ...EMPTY_COUNTS }
 
-    const measurements = profile.measurements
+    const counts: ProfileMetricCounts = { ...EMPTY_COUNTS }
 
-    let hasTemp = false
-    let hasNdl = false
-    let hasOtu = false
-    let hasCns = false
-    let hasGf = false
-    let hasRmv = false
-    let hasGasO2 = false
-    let hasGasN2 = false
-    let hasGasHe = false
-    let hasDeco = false
-    // The three >1 checks below (po2 measured/calculated/setpoint) need a count, not just a
-    // boolean, so track counts for those and derive the flags once we're done.
-    let po2MeasuredCount = 0
-    let po2CalculatedCount = 0
-    let po2SetpointCount = 0
-
-    for (const m of measurements) {
-      if (!hasTemp && m.measurement.temperature?.value !== undefined) hasTemp = true
-      if (!hasNdl && !!m.measurement.ndl) hasNdl = true
-      if (!hasOtu && m.measurement.o2Tox !== undefined) hasOtu = true
-      if (!hasCns && m.measurement.cns !== undefined) hasCns = true
-      if (!hasGf && m.measurement.n2 !== undefined) hasGf = true
+    for (const m of profile.measurements) {
+      if (m.measurement.temperature?.value !== undefined) counts.temp++
+      if (m.measurement.ndl) counts.ndl++
+      if (m.measurement.o2Tox !== undefined) counts.otu++
+      if (m.measurement.cns !== undefined) counts.cns++
+      if (m.measurement.n2 !== undefined) counts.gf++
       // !== undefined, not a truthy check - a genuine 0.00 bar reading (e.g. right at the
       // surface) must still count as real data, not be mistaken for "not logged".
-      if (m.measurement.po2?.measured !== undefined) po2MeasuredCount++
-      if (m.measurement.po2?.calculated !== undefined) po2CalculatedCount++
-      if (m.measurement.po2?.maxSetPoint !== undefined) po2SetpointCount++
-      if (!hasRmv && m.measurement.rmvLiters !== undefined) hasRmv = true
-      if (!hasGasO2 && m.measurement.gas?.o2 !== undefined) hasGasO2 = true
-      if (!hasGasN2 && m.measurement.gas?.n2 !== undefined && m.measurement.gas.n2 > 0)
-        hasGasN2 = true
-      if (!hasGasHe && m.measurement.gas?.he !== undefined && m.measurement.gas.he > 0)
-        hasGasHe = true
-      if (!hasDeco && (m.measurement.deco?.length ?? 0) > 0) hasDeco = true
-
-      // Short-circuit once every flag we can be sure of is settled. The po2 counts can only
-      // grow, so once they've each passed the ">1" threshold there's nothing left to learn from
-      // scanning further either.
-      if (
-        hasTemp &&
-        hasNdl &&
-        hasOtu &&
-        hasCns &&
-        hasGf &&
-        hasRmv &&
-        hasGasO2 &&
-        hasGasN2 &&
-        hasGasHe &&
-        hasDeco &&
-        po2MeasuredCount > 1 &&
-        po2CalculatedCount > 1 &&
-        po2SetpointCount > 1
-      ) {
-        break
-      }
+      if (m.measurement.po2?.measured !== undefined) counts.po2Measured++
+      if (m.measurement.po2?.calculated !== undefined) counts.po2Calculated++
+      if (m.measurement.po2?.maxSetPoint !== undefined) counts.po2Setpoint++
+      if (m.measurement.rmvLiters !== undefined) counts.rmv++
+      if (m.measurement.gas?.o2 !== undefined) counts.gasO2++
+      if (m.measurement.gas?.n2 !== undefined && m.measurement.gas.n2 > 0) counts.gasN2++
+      if (m.measurement.gas?.he !== undefined && m.measurement.gas.he > 0) counts.gasHe++
+      if ((m.measurement.deco?.length ?? 0) > 0) counts.deco++
     }
 
+    return counts
+  }
+
+  // Per-profile availability check
+  const getProfileMetricAvailability = (profileIdx: number): ProfileMetricAvailability => {
+    const c = getProfileMetricCounts(profileIdx)
     return {
-      hasTemp,
-      hasNdl,
-      hasOtu,
-      hasCns,
-      hasGf,
-      hasPo2Measured: po2MeasuredCount > 1,
-      hasPo2Calculated: po2CalculatedCount > 1,
-      hasPo2Setpoint: po2SetpointCount > 1,
-      hasRmv,
-      hasGasO2,
-      hasGasN2,
-      hasGasHe,
-      hasDeco,
+      hasTemp: c.temp > 0,
+      hasNdl: c.ndl > 0,
+      hasOtu: c.otu > 0,
+      hasCns: c.cns > 0,
+      hasGf: c.gf > 0,
+      // PO2 needs more than one real sample to draw a meaningful line - a single stray reading
+      // (e.g. a sensor error code that happens to parse as a number) isn't worth a whole toggle.
+      hasPo2Measured: c.po2Measured > 1,
+      hasPo2Calculated: c.po2Calculated > 1,
+      hasPo2Setpoint: c.po2Setpoint > 1,
+      hasRmv: c.rmv > 0,
+      hasGasO2: c.gasO2 > 0,
+      hasGasN2: c.gasN2 > 0,
+      hasGasHe: c.gasHe > 0,
+      hasDeco: c.deco > 0,
     }
   }
 
@@ -175,5 +163,6 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
     showDecoZone,
     getProfileMetricAvailability,
     getCombinedMetricAvailability,
+    getProfileMetricCounts,
   }
 }

@@ -18,6 +18,11 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
   const showPo2Calculated = ref(false)
   const showPo2Setpoint = ref(false)
   const showRmv = ref(false)
+  // Gas fraction lines (O2/N2/He) are deliberately excluded from persistence below (both load and
+  // persist) - always start off for every dive, in every new session, regardless of what was
+  // toggled last time. They're of limited everyday use, and Gas N2's near-black default color in
+  // particular is barely visible in dark mode - not something that should silently stay "on" once
+  // someone tries it once. Still togglable by hand for the rest of the current session.
   const showGasO2 = ref(false)
   const showGasN2 = ref(false)
   const showGasHe = ref(false)
@@ -44,9 +49,6 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
         showPo2Calculated?: boolean
         showPo2Setpoint?: boolean
         showRmv?: boolean
-        showGasO2?: boolean
-        showGasN2?: boolean
-        showGasHe?: boolean
         showDecoZone?: boolean
         timestamp?: number
       }
@@ -70,9 +72,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       if (typeof parsed.showPo2Setpoint === 'boolean')
         showPo2Setpoint.value = parsed.showPo2Setpoint
       if (typeof parsed.showRmv === 'boolean') showRmv.value = parsed.showRmv
-      if (typeof parsed.showGasO2 === 'boolean') showGasO2.value = parsed.showGasO2
-      if (typeof parsed.showGasN2 === 'boolean') showGasN2.value = parsed.showGasN2
-      if (typeof parsed.showGasHe === 'boolean') showGasHe.value = parsed.showGasHe
+      // showGasO2/N2/He deliberately not restored here - see their declaration above.
       if (typeof parsed.showDecoZone === 'boolean') showDecoZone.value = parsed.showDecoZone
     } catch {
       /* ignore malformed */
@@ -95,9 +95,6 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       showPo2Calculated: showPo2Calculated.value,
       showPo2Setpoint: showPo2Setpoint.value,
       showRmv: showRmv.value,
-      showGasO2: showGasO2.value,
-      showGasN2: showGasN2.value,
-      showGasHe: showGasHe.value,
       showDecoZone: showDecoZone.value,
       timestamp: Date.now(),
     }
@@ -119,9 +116,6 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       showPo2Calculated,
       showPo2Setpoint,
       showRmv,
-      showGasO2,
-      showGasN2,
-      showGasHe,
       showDecoZone,
     ],
     persist,
