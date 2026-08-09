@@ -27,7 +27,7 @@
     <!-- Main content -->
     <main
       id="main-content"
-      class="transition-all duration-300 overflow-auto min-h-full min-w-full grid-main bg-gray-100 dark:bg-gray-900 relative"
+      class="transition-all duration-300 overflow-y-auto overflow-x-hidden min-h-full min-w-0 grid-main bg-gray-100 dark:bg-gray-900 relative"
       :style="mainBackgroundStyle"
     >
       <router-view class="router-content" />
@@ -303,6 +303,7 @@ onUnmounted(() => {
 
 .grid-main {
   grid-area: main;
+  min-width: 0;
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
