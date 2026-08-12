@@ -1,5 +1,6 @@
 import type { DiveProfile } from '@/lib/types/dive'
 import { useDiveGraphStore } from '@/stores/diveGraph'
+import { synthesizePo2Calculated } from '@/lib/graph/po2Synthesis'
 import { storeToRefs } from 'pinia'
 import { type Ref } from 'vue'
 
@@ -97,6 +98,15 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
       if (m.measurement.gas?.n2 !== undefined && m.measurement.gas.n2 > 0) counts.gasN2++
       if (m.measurement.gas?.he !== undefined && m.measurement.gas.he > 0) counts.gasHe++
       if ((m.measurement.deco?.length ?? 0) > 0) counts.deco++
+    }
+
+    // No real calculated-PO2 samples logged (e.g. a fixed-setpoint CCR handset that only ever
+    // reports measured PO2/setpoint) - fall back to a client-side synthesized line (FO2 × ambient
+    // pressure) so the dive still has *a* calculated-PO2 source to pick from, same as if the
+    // device had logged one itself.
+    if (counts.po2Calculated <= 1) {
+      const synthesized = synthesizePo2Calculated(profile)
+      if (synthesized.length > counts.po2Calculated) counts.po2Calculated = synthesized.length
     }
 
     return counts

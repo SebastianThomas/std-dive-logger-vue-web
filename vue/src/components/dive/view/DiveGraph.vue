@@ -159,6 +159,7 @@ import {
 } from '@/lib/graph/timeGaps'
 import { detectModeTransitions, hasBothModes } from '@/lib/graph/modeTransitions'
 import { extendPo2CalculatedToBoundary } from '@/lib/graph/po2CalculatedExtension'
+import { synthesizePo2Calculated } from '@/lib/graph/po2Synthesis'
 import { interpolateAt, stepAfterValueAt, valueAtForMetric } from '@/lib/graph/valueInterpolation'
 import { LruCache } from '@/lib/utils/lruCache'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
@@ -1423,8 +1424,15 @@ const metricPointsCache = computed<Array<Partial<Record<Exclude<MetricType, 'dep
       const perMetric: Partial<Record<Exclude<MetricType, 'depth'>, [number, number][]>> = {}
       for (const key of METRICS_TO_RENDER) {
         const points = profile.measurements.map(EXTRACTORS[key]).filter(isFinitePoint)
-        perMetric[key] =
-          key === 'po2Calculated' ? extendPo2CalculatedToBoundary(points, profile) : points
+        if (key !== 'po2Calculated') {
+          perMetric[key] = points
+          continue
+        }
+        // No real calculated-PO2 samples on this profile (e.g. a fixed-setpoint CCR handset) -
+        // fall back to a synthesized line (FO2 × ambient pressure), same source used to decide
+        // PO2 availability in useDiveGraphMetrics.
+        const po2CalculatedPoints = points.length > 1 ? points : synthesizePo2Calculated(profile)
+        perMetric[key] = extendPo2CalculatedToBoundary(po2CalculatedPoints, profile)
       }
       return perMetric
     })

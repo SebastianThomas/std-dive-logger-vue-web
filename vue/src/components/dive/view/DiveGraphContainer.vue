@@ -284,6 +284,7 @@ import {
   computeSensibleMetricDefaults,
   DATA_DRIVEN_METRICS,
   type DataDrivenMetric,
+  type Po2Selection,
 } from '@/lib/graph/metricDefaults'
 import type { Dive, DiveProfile } from '@/lib/types/dive'
 import type { AxisUnitGroup, ProfileMetricVisibility } from '@/lib/types/graph'
@@ -355,6 +356,14 @@ const handleProfilesAligned = (updatedDive: Dive) => {
   emit('profiles-aligned', updatedDive)
 }
 
+// The dive's single selected best PO2 source (measured beats calculated; richest profile wins
+// within a tier) - see selectBestPo2Source's own doc comment. Every profile/metric combination
+// other than this one is deliberately kept unavailable below: redundant handsets/backup computers
+// report the same PO2 the loop is already showing, so letting them be toggled on independently
+// just adds clutter, not information. Set once per dive by applySensibleMetricDefaults, not
+// recomputed on every profile-visibility toggle - same reasoning as extraProfileMetrics.
+const po2Selection = ref<Po2Selection>(null)
+
 const combinedMetricsAvailability = computed(() => {
   // Get indices of visible profiles
   const visibleIndices = visibleProfiles.value
@@ -362,7 +371,17 @@ const combinedMetricsAvailability = computed(() => {
     .filter((idx) => idx >= 0)
 
   // Return combined availability for all visible profiles
-  return getCombinedMetricAvailability(visibleIndices.length > 0 ? visibleIndices : [0])
+  const base = getCombinedMetricAvailability(visibleIndices.length > 0 ? visibleIndices : [0])
+  const sel = po2Selection.value
+  // The primary row's PO2 checkboxes only ever affect profile 0's own line (see DiveGraph.vue) -
+  // so they're only worth enabling when profile 0 itself is the dive's selected best PO2 source.
+  return {
+    ...base,
+    hasPo2Measured: sel?.profileIdx === 0 && sel.metric === 'po2Measured' ? base.hasPo2Measured : false,
+    hasPo2Calculated:
+      sel?.profileIdx === 0 && sel.metric === 'po2Calculated' ? base.hasPo2Calculated : false,
+    hasPo2Setpoint: sel?.profileIdx === 0 ? base.hasPo2Setpoint : false,
+  }
 })
 
 // One entry per profile (not just visible ones - the "Extra metrics for profile" picker in
@@ -370,7 +389,24 @@ const combinedMetricsAvailability = computed(() => {
 // individually instead of all sharing the same "available in *some* visible profile" flag that
 // combinedMetricsAvailability above provides for the primary Metrics row.
 const perProfileAvailability = computed(() =>
-  props.profiles.map((_, idx) => getProfileMetricAvailability(idx)),
+  props.profiles.map((_, idx) => {
+    const availability = getProfileMetricAvailability(idx)
+    const sel = po2Selection.value
+    // Same "only the selected best PO2 source" restriction as combinedMetricsAvailability above,
+    // applied per profile instead of per visible-set - a backup/standby computer's measured or
+    // setpoint checkbox must not be independently toggleable just because it happens to have data,
+    // since it reports the same PO2 the loop is already showing.
+    return {
+      ...availability,
+      hasPo2Measured:
+        sel?.profileIdx === idx && sel.metric === 'po2Measured' ? availability.hasPo2Measured : false,
+      hasPo2Calculated:
+        sel?.profileIdx === idx && sel.metric === 'po2Calculated'
+          ? availability.hasPo2Calculated
+          : false,
+      hasPo2Setpoint: sel?.profileIdx === idx ? availability.hasPo2Setpoint : false,
+    }
+  }),
 )
 
 // Safety net only: a metric whose data disappears entirely (e.g. every profile carrying it just
@@ -410,9 +446,6 @@ const dataDrivenShowRefs: Record<DataDrivenMetric, typeof showTemp> = {
   gf: showGf,
   cns: showCns,
   otu: showOtu,
-  po2Measured: showPo2Measured,
-  po2Calculated: showPo2Calculated,
-  po2Setpoint: showPo2Setpoint,
   rmv: showRmv,
 }
 
@@ -429,10 +462,20 @@ const applySensibleMetricDefaults = () => {
     dataDrivenShowRefs[metric].value = defaults.show[metric]
   }
   extraProfileMetrics.value = defaults.extraProfileMetrics
+  po2Selection.value = defaults.po2Selection
 
   showGasO2.value = false
   showGasN2.value = false
   showGasHe.value = false
+  // The primary row's PO2 checkboxes only ever draw profile 0's own line - only turn one on by
+  // default when profile 0 itself is the dive's single selected best PO2 source (see
+  // selectBestPo2Source). Setpoint stays off by default either way - still toggleable by hand
+  // when available, just never assumed to be what the user wants to see first.
+  showPo2Measured.value =
+    defaults.po2Selection?.profileIdx === 0 && defaults.po2Selection.metric === 'po2Measured'
+  showPo2Calculated.value =
+    defaults.po2Selection?.profileIdx === 0 && defaults.po2Selection.metric === 'po2Calculated'
+  showPo2Setpoint.value = false
 }
 
 // Keyed on diveId, not the profiles array reference - a trim/merge/align on the *same* dive
