@@ -16,5 +16,3 @@ export async function refreshAccessToken(): Promise<string | null> {
     return null
   }
 }
-
-export default refreshAccessToken

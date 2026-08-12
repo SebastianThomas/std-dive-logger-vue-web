@@ -1,5 +1,5 @@
 // Type for valid duration time components
-export type Duration = {
+type Duration = {
   hours: number
   minutes: number
   seconds: number
@@ -20,15 +20,6 @@ export function parseISODuration(duration?: string): ParsedDuration {
     minutes: Number(match[2] ?? 0),
     seconds: Number(match[3] ?? 0),
   }
-}
-
-// Format numbers to human-readable string
-export function showDuration(time: Duration): string {
-  const parts: string[] = []
-  if (time.hours > 0) parts.push(`${time.hours}h`)
-  if (time.minutes > 0) parts.push(`${time.minutes}m`)
-  if (time.seconds > 0 || parts.length === 0) parts.push(`${time.seconds}s`)
-  return parts.join(' ')
 }
 
 /**

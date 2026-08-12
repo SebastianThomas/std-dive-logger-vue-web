@@ -25,7 +25,7 @@ export function getSegmentColor(type: string): string {
  * @param type The segment type code
  * @returns Display name for the segment type
  */
-export function getSegmentTypeName(type: string): string {
+function getSegmentTypeName(type: string): string {
   switch (type) {
     case 'DESCENT':
       return 'Descent'

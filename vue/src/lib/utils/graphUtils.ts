@@ -1,11 +1,11 @@
-import type { AxisUnitGroup, MetricType } from '@/lib/types/graph'
+import type { AxisUnitGroup } from '@/lib/types/graph'
 import type { ScaleLinear } from 'd3'
 
 /**
  * Configuration for axis tick intervals in seconds.
  * Used to generate smart time axis labels based on graph width and duration.
  */
-export const TIME_TICK_INTERVALS = [30, 60, 120, 300, 600, 1200, 1800, 3600] as const
+const TIME_TICK_INTERVALS = [30, 60, 120, 300, 600, 1200, 1800, 3600] as const
 
 /**
  * Generates optimal tick values for a time axis based on duration and graph width.
@@ -172,28 +172,6 @@ export function calculateTemperatureExtent(temperatureValues: number[]): [number
   }
 
   return [tempMin, tempMax]
-}
-
-/**
- * Type guard to check if a value is a valid MetricType.
- */
-export function isMetricType(value: string): value is MetricType {
-  const validMetrics: readonly string[] = [
-    'depth',
-    'temp',
-    'ndl',
-    'otu',
-    'cns',
-    'gf',
-    'po2Measured',
-    'po2Calculated',
-    'po2Setpoint',
-    'rmv',
-    'gasO2',
-    'gasN2',
-    'gasHe',
-  ]
-  return validMetrics.includes(value)
 }
 
 /**

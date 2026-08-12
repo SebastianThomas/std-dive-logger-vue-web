@@ -235,6 +235,7 @@
 import {
   AXIS_UNIT_GROUPS,
   DEFAULT_METRIC_CONFIGS,
+  metricDisplayNames,
   type AxisUnitGroup,
   type MetricType,
   type ProfileMetricVisibility,
@@ -356,21 +357,26 @@ function emitToggle(key: ToggleKey, value: boolean): void {
 
 // One fixed order, shared by the primary row and the "Extra metrics for profile" picker below -
 // so a metric always sits in the same place regardless of which profile you're looking at.
-// Availability only ever decides whether an item appears at all, never where.
-const METRIC_DEFS: { key: ToggleKey; label: string }[] = [
-  { key: 'temp', label: 'Temperature' },
-  { key: 'ndl', label: 'NDL' },
-  { key: 'gf', label: 'GF99' },
-  { key: 'cns', label: 'CNS' },
-  { key: 'otu', label: 'OTUs' },
-  { key: 'po2Measured', label: 'PO2 measured' },
-  { key: 'po2Calculated', label: 'PO2 calculated' },
-  { key: 'po2Setpoint', label: 'PO2 setpoint' },
-  { key: 'rmv', label: 'RMV' },
-  { key: 'gasO2', label: 'Gas O2' },
-  { key: 'gasN2', label: 'Gas N2' },
-  { key: 'gasHe', label: 'Gas He' },
+// Availability only ever decides whether an item appears at all, never where. Labels come from
+// metricDisplayNames (lib/types/graph.ts) rather than being repeated here.
+const METRIC_ORDER: ToggleKey[] = [
+  'temp',
+  'ndl',
+  'gf',
+  'cns',
+  'otu',
+  'po2Measured',
+  'po2Calculated',
+  'po2Setpoint',
+  'rmv',
+  'gasO2',
+  'gasN2',
+  'gasHe',
 ]
+const METRIC_DEFS: { key: ToggleKey; label: string }[] = METRIC_ORDER.map((key) => ({
+  key,
+  label: metricDisplayNames[key],
+}))
 
 const AVAILABILITY_KEY: Record<ToggleKey, keyof ProfileMetricAvailability> = {
   temp: 'hasTemp',

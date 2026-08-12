@@ -1,4 +1,5 @@
 import type { MapViewState } from '@/lib/types/mapTypes'
+import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
 import { ref, watch } from 'vue'
 
 function safeParseMapView(saved: string | null, initial: MapViewState): MapViewState {
@@ -27,14 +28,7 @@ function safeParseMapView(saved: string | null, initial: MapViewState): MapViewS
 }
 
 export function usePersistentMapView(storageKey: string, initial: MapViewState) {
-  const mapView = ref<MapViewState>(
-    (() => {
-      if (typeof window === 'undefined') return initial
-
-      const saved = localStorage.getItem(storageKey)
-      return safeParseMapView(saved, initial)
-    })(),
-  )
+  const mapView = ref<MapViewState>(safeParseMapView(safeLocalStorage.getItem(storageKey), initial))
 
   let debounceTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -49,7 +43,7 @@ export function usePersistentMapView(storageKey: string, initial: MapViewState) 
         clearTimeout(debounceTimeout)
       }
       debounceTimeout = setTimeout(() => {
-        localStorage.setItem(storageKey, JSON.stringify(newView))
+        safeLocalStorage.setItem(storageKey, JSON.stringify(newView))
       }, 200)
     },
     { deep: true },

@@ -50,6 +50,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useApi } from '@/composables/useApi'
 import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
+import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
 import type { User } from '@/lib/types/user'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppSidebar from './components/layout/AppSidebar.vue'
@@ -81,53 +82,23 @@ const pageName = computed(() => {
 
 // Helper functions
 const getSavedSidebarState = (): boolean | null => {
-  if (typeof localStorage === 'undefined' || localStorage === null) {
-    return null
-  }
-  try {
-    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-    return saved === null ? null : saved === 'true'
-  } catch {
-    return null
-  }
+  const saved = safeLocalStorage.getItem(SIDEBAR_STORAGE_KEY)
+  return saved === null ? null : saved === 'true'
 }
 
 const saveSidebarState = (collapsed: boolean) => {
-  if (typeof localStorage === 'undefined' || localStorage === null) {
-    return
-  }
-  try {
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed))
-  } catch {
-    // Silently fail if localStorage is not available
-  }
+  safeLocalStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed))
 }
 
 // Cache the last-known custom background URL so it can be applied immediately on the next
 // load, before the /v1/users/ request that confirms whether it's still current has returned.
-const getCachedBackgroundUrl = (): string | null => {
-  if (typeof localStorage === 'undefined' || localStorage === null) {
-    return null
-  }
-  try {
-    return localStorage.getItem(BACKGROUND_STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
+const getCachedBackgroundUrl = (): string | null => safeLocalStorage.getItem(BACKGROUND_STORAGE_KEY)
 
 const saveCachedBackgroundUrl = (url: string | null) => {
-  if (typeof localStorage === 'undefined' || localStorage === null) {
-    return
-  }
-  try {
-    if (url) {
-      localStorage.setItem(BACKGROUND_STORAGE_KEY, url)
-    } else {
-      localStorage.removeItem(BACKGROUND_STORAGE_KEY)
-    }
-  } catch {
-    // Silently fail if localStorage is not available
+  if (url) {
+    safeLocalStorage.setItem(BACKGROUND_STORAGE_KEY, url)
+  } else {
+    safeLocalStorage.removeItem(BACKGROUND_STORAGE_KEY)
   }
 }
 

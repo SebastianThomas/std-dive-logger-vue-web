@@ -1,4 +1,4 @@
-import refreshAccessToken from '@/lib/globals/auth/refreshToken'
+import { refreshAccessToken } from '@/lib/globals/auth/refreshToken'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 

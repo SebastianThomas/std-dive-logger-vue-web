@@ -113,6 +113,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useProfileReimportStore } from '@/stores/profileReimport'
 import { useUserIconUploadStore } from '@/stores/userIconUpload'
 import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
+import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
 
 interface Command {
   id: string
@@ -147,23 +148,12 @@ type VimMode = 'normal' | 'insert'
 const NAVIGATION_MODE_STORAGE_KEY = 'command-palette-navigation-mode'
 
 const getNavigationModePreference = (): NavigationMode => {
-  try {
-    const saved = localStorage.getItem(NAVIGATION_MODE_STORAGE_KEY)
-    if (saved === 'vim' || saved === 'standard') {
-      return saved as NavigationMode
-    }
-    return 'standard'
-  } catch {
-    return 'standard'
-  }
+  const saved = safeLocalStorage.getItem(NAVIGATION_MODE_STORAGE_KEY)
+  return saved === 'vim' || saved === 'standard' ? saved : 'standard'
 }
 
 const setNavigationModePreference = (mode: NavigationMode) => {
-  try {
-    localStorage.setItem(NAVIGATION_MODE_STORAGE_KEY, mode)
-  } catch {
-    // Silently fail
-  }
+  safeLocalStorage.setItem(NAVIGATION_MODE_STORAGE_KEY, mode)
 }
 
 const navigationMode = ref<NavigationMode>(getNavigationModePreference())

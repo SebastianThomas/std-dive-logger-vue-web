@@ -199,5 +199,3 @@ export function useApi() {
 
   return { getWithToken, postWithToken, putWithToken, refresh: getTokenOrRefresh, deleteWithToken }
 }
-
-export default useApi

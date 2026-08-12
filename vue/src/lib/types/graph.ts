@@ -100,22 +100,6 @@ export const DEFAULT_METRIC_CONFIGS: Record<MetricType, MetricConfig> = {
   gasHe: { show: false, color: '#92400e' },
 }
 
-export const metricUnits: Record<MetricType, string | null> = {
-  depth: 'm',
-  temp: '°C',
-  cns: '%',
-  ndl: 'min',
-  gf: '%',
-  otu: null,
-  po2Measured: 'bar',
-  po2Calculated: 'bar',
-  po2Setpoint: 'bar',
-  rmv: 'l/min',
-  gasO2: '%',
-  gasN2: '%',
-  gasHe: '%',
-}
-
 export const metricDisplayNames: Record<MetricType, string> = {
   depth: 'Depth',
   temp: 'Temperature',
@@ -166,12 +150,3 @@ export const AXIS_UNIT_GROUPS: Record<AxisUnitGroup, AxisUnitGroupConfig> = {
   rmv: { label: 'RMV (l/min)', metrics: ['rmv'] },
 }
 
-const METRIC_TO_AXIS_GROUP: Record<MetricType, AxisUnitGroup> = Object.fromEntries(
-  Object.entries(AXIS_UNIT_GROUPS).flatMap(([group, config]) =>
-    config.metrics.map((metric) => [metric, group as AxisUnitGroup]),
-  ),
-) as Record<MetricType, AxisUnitGroup>
-
-export function axisGroupForMetric(metric: MetricType): AxisUnitGroup {
-  return METRIC_TO_AXIS_GROUP[metric]
-}

@@ -1,6 +1,6 @@
 import type { BaseConfiguration, DiveSite, TagDefinition, Temperature } from './dive'
 
-export type Duration = string
+type Duration = string
 
 export type UserDiveStats = {
   diveCount: number

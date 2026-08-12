@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
 
 const GRAPH_CONFIG_KEY = 'diveGraphConfig'
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
@@ -30,12 +31,8 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
 
   const load = () => {
     if (configLoaded.value) return
-    if (typeof window === 'undefined') {
-      configLoaded.value = true
-      return
-    }
     try {
-      const raw = window.localStorage.getItem(GRAPH_CONFIG_KEY)
+      const raw = safeLocalStorage.getItem(GRAPH_CONFIG_KEY)
       if (!raw) return
       const parsed = JSON.parse(raw) as {
         showTemp?: boolean
@@ -54,7 +51,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       }
 
       if (parsed.timestamp && Date.now() - parsed.timestamp > ONE_WEEK_MS) {
-        window.localStorage.removeItem(GRAPH_CONFIG_KEY)
+        safeLocalStorage.removeItem(GRAPH_CONFIG_KEY)
         return
       }
 
@@ -82,7 +79,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
   }
 
   const persist = () => {
-    if (!configLoaded.value || typeof window === 'undefined') return
+    if (!configLoaded.value) return
     const payload = {
       showTemp: showTemp.value,
       showSegments: showSegments.value,
@@ -98,7 +95,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       showDecoZone: showDecoZone.value,
       timestamp: Date.now(),
     }
-    window.localStorage.setItem(GRAPH_CONFIG_KEY, JSON.stringify(payload))
+    safeLocalStorage.setItem(GRAPH_CONFIG_KEY, JSON.stringify(payload))
   }
 
   load()
