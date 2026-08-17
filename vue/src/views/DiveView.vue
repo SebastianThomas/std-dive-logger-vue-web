@@ -106,6 +106,15 @@
         </div>
         <p class="text-gray-500 dark:text-gray-400 text-sm">
           {{ dive.site.name }} · {{ summary?.start ? formatDate(summary.start) : 'No start date' }}
+          <a
+            :href="googleMapsUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open in Google Maps"
+            class="ml-1 text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            <i class="fa-solid fa-map-location-dot"></i>
+          </a>
         </p>
         <div v-if="dive.tags?.length" class="flex md:hidden flex-wrap gap-1 mt-2">
           <TagBadge
@@ -547,6 +556,7 @@ import type { User } from '@/lib/types/user'
 import { useProfileReimportStore } from '@/stores/profileReimport'
 import { storeToRefs } from 'pinia'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
+import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 
 const router = useRouter()
 const route = useRoute()
@@ -587,6 +597,14 @@ const mapSites = computed(() => {
 const mapCenter = computed<[number, number] | undefined>(() => {
   const site = dive.value?.site
   return site ? [site.latitude, site.longitude] : undefined
+})
+
+// A plain external link (not a click handler) so it works exactly the same on mobile as desktop -
+// no JS map interaction needed, just opens the device's own Google Maps app/tab.
+const googleMapsUrl = computed(() => {
+  const site = dive.value?.site
+  if (!site) return undefined
+  return `https://www.google.com/maps/search/?api=1&query=${site.latitude},${site.longitude}`
 })
 
 const viewDivesForSuit = (suitId: number) => {
@@ -827,9 +845,22 @@ const formatDiveTime = (duration?: string): string => {
 
 // Keyboard shortcuts for DiveView
 const handleDiveViewKeydown = (event: KeyboardEvent) => {
+  // Escape closes the Link/Share modals (DeletionConfirmation and ProfileReimportModal already
+  // handle their own Escape) - checked before the input/textarea guard below since Escape should
+  // still close a modal even if focus landed in a field inside it.
+  if (event.key === 'Escape') {
+    if (showLinkModal.value) {
+      showLinkModal.value = false
+      return
+    }
+    if (showShareModal.value) {
+      showShareModal.value = false
+      return
+    }
+  }
+
   // Don't trigger shortcuts when typing in input/textarea
-  const target = event.target as HTMLElement
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+  if (isTypingTarget(event.target)) {
     return
   }
 
@@ -849,19 +880,57 @@ const handleDiveViewKeydown = (event: KeyboardEvent) => {
   if (event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey && !isMine.value && !readOnly.value) {
     showLinkModal.value = true
   }
-  // 'n'/'p' for next/previous dive by number in your own dive log - see adjacentDives' own
-  // comment for why this is isMine-only. No-op at either end (adjacentDives.value is null there),
-  // same convention as the dive list/stats page-forward/back shortcuts elsewhere in the app.
-  if (event.key.toLowerCase() === 'n' && !event.ctrlKey && !event.metaKey && isMine.value) {
+  // 'n'/'p' (or ←/→) for next/previous dive by number in your own dive log - see adjacentDives'
+  // own comment for why this is isMine-only. No-op at either end (adjacentDives.value is null
+  // there), same convention as the dive list/stats page-forward/back shortcuts elsewhere in the
+  // app. Arrow keys are an alias for the same action, not a separate one - many people reach for
+  // them before letters.
+  const wantsNext = event.key.toLowerCase() === 'n' || event.key === 'ArrowRight'
+  const wantsPrevious = event.key.toLowerCase() === 'p' || event.key === 'ArrowLeft'
+  if (wantsNext && !event.ctrlKey && !event.metaKey && isMine.value) {
     const nextId = adjacentDives.value?.nextDiveId
     if (nextId != null) {
       router.push({ name: 'DiveView', params: { diveId: nextId } })
     }
   }
-  if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.metaKey && isMine.value) {
+  if (wantsPrevious && !event.ctrlKey && !event.metaKey && isMine.value) {
     const previousId = adjacentDives.value?.previousDiveId
     if (previousId != null) {
       router.push({ name: 'DiveView', params: { diveId: previousId } })
+    }
+  }
+  // 'g' opens the dive site in Google Maps - same destination as the map-pin link next to the
+  // site name, just reachable without a mouse. window.open (not location.href) so it opens a new
+  // tab/app rather than navigating away from the dive itself.
+  if (event.key.toLowerCase() === 'g' && !event.ctrlKey && !event.metaKey && googleMapsUrl.value) {
+    window.open(googleMapsUrl.value, '_blank', 'noopener,noreferrer')
+  }
+  // 'c' copies a shareable link to this dive to the clipboard.
+  if (event.key.toLowerCase() === 'c' && !event.ctrlKey && !event.metaKey) {
+    navigator.clipboard
+      .writeText(window.location.href)
+      .then(() => toast.success('Link copied to clipboard'))
+      .catch(() => toast.error('Could not copy link'))
+  }
+  // 'r' opens the Reimport Dive Profile tool directly - previously only reachable as a Command
+  // Palette secret command. Same guard as the reimportRequestId watcher below (own dive, unlocked,
+  // has at least one profile to reimport).
+  if (
+    event.key.toLowerCase() === 'r' &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    isMine.value &&
+    !readOnly.value &&
+    dive.value?.profiles?.length
+  ) {
+    showReimportModal.value = true
+  }
+  // 1-9 jump the graph's "Tooltip Profile" selection straight to that profile, same as clicking
+  // its numbered button in MetricsControlPanel - only meaningful once a dive has more than one.
+  if (/^[1-9]$/.test(event.key) && !event.ctrlKey && !event.metaKey) {
+    const profiles = dive.value?.profiles
+    if (profiles && profiles.length > 1) {
+      embeddedGraphRef.value?.selectTooltipProfile(Number(event.key) - 1)
     }
   }
 }

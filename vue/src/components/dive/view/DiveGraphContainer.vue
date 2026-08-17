@@ -349,6 +349,15 @@ const toggleProfile = (idx: number) => {
   visibleProfiles.value[idx] = !visibleProfiles.value[idx]
 }
 
+// Exposed for DiveView's 1-9 number-key shortcut - jumps the "Tooltip Profile" selection straight
+// to profile idx, same effect as clicking its numbered button in MetricsControlPanel. A no-op for
+// an out-of-range or currently-hidden profile, rather than selecting nothing.
+const selectTooltipProfile = (idx: number) => {
+  if (idx < 0 || idx >= props.profiles.length) return
+  if (visibleProfiles.value[idx] === false) return
+  selectedProfiles.value = [idx]
+}
+
 const showAlignmentModal = ref(false)
 
 const handleProfilesAligned = (updatedDive: Dive) => {
@@ -678,7 +687,7 @@ onBeforeUnmount(() => {
 
 // Lets a parent (e.g. a "review this trim suggestion" banner elsewhere on the page) open trim
 // mode for a specific profile without duplicating the trim-state logic that already lives here.
-defineExpose({ startTrimmingProfile })
+defineExpose({ startTrimmingProfile, selectTooltipProfile })
 </script>
 
 <style scoped>

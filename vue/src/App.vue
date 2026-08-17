@@ -61,6 +61,7 @@ import { useThemeStore } from '@/stores/theme'
 import { useNavigation } from '@/composables/useNavigation'
 import { useApi } from '@/composables/useApi'
 import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
+import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
 import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
 import type { User } from '@/lib/types/user'
@@ -81,10 +82,11 @@ const BACKGROUND_STORAGE_KEY = 'custom-background-url'
 // Auth store
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
-const { safeBack, safeForward, router } = useNavigation()
+const { router } = useNavigation()
 const { getWithToken } = useApi()
 const backgroundUploadStore = useBackgroundUploadStore()
 const { updatedId: backgroundUpdatedId } = storeToRefs(backgroundUploadStore)
+const { showCommandPalette, showHelpMenu, leaderPending } = useGlobalShortcuts()
 
 // Page name - can be empty or use current route path
 const route = useRoute()
@@ -131,8 +133,6 @@ const windowWidth = ref(window.innerWidth)
 const isVisible = ref(getInitialSidebarState())
 const sidebarWidth = ref<0 | 50 | 130>(0)
 const showTitle = computed(() => windowWidth.value >= SM_BREAKPOINT)
-const showCommandPalette = ref(false)
-const showHelpMenu = ref(false)
 // Seeded synchronously from localStorage so the correct background shows on first paint,
 // before the API request below confirms it (or replaces it, if it's since changed).
 const customBackgroundUrl = ref<string | null>(getCachedBackgroundUrl())
@@ -221,126 +221,9 @@ watch(
 )
 watch(backgroundUpdatedId, fetchCustomBackground)
 
-// vim-style <leader> key, remapped from Space across the whole page (not just the Command
-// Palette) - Space only ever does something on its own (page-down scroll) when nothing in
-// particular is focused, which is exactly the condition `isNothingFocused` below checks, so a
-// focused button/checkbox/link/input keeps its own native Space behavior completely untouched;
-// only the "otherwise wasted" case is remapped. Pressing Space arms a ~1.5s window during which
-// the next key completes a <leader>-prefixed shortcut (see LEADER_ACTIONS); Escape or a timeout
-// cancels it with no effect, same as vim's own leader.
-const leaderPending = ref(false)
-let leaderTimeoutId: ReturnType<typeof setTimeout> | null = null
-
-const clearLeader = () => {
-  leaderPending.value = false
-  if (leaderTimeoutId) {
-    clearTimeout(leaderTimeoutId)
-    leaderTimeoutId = null
-  }
-}
-
-const LEADER_TIMEOUT_MS = 1500
-
-const armLeader = () => {
-  leaderPending.value = true
-  if (leaderTimeoutId) clearTimeout(leaderTimeoutId)
-  leaderTimeoutId = setTimeout(clearLeader, LEADER_TIMEOUT_MS)
-}
-
-const isNothingFocused = (): boolean =>
-  document.activeElement === null ||
-  document.activeElement === document.body
-
-const LEADER_ACTIONS: Record<string, () => void> = {
-  p: () => {
-    showCommandPalette.value = !showCommandPalette.value
-  },
-  '?': () => {
-    showHelpMenu.value = !showHelpMenu.value
-  },
-  b: () => safeBack(),
-  f: () => safeForward(),
-  h: () => router.push({ name: 'Home' }),
-  d: () => router.push({ name: 'DiveList' }),
-}
-
-// Global keyboard shortcuts
-const handleGlobalKeydown = (event: KeyboardEvent) => {
-  // Ctrl+P / Cmd+P for command palette - always works
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
-    event.preventDefault()
-    showCommandPalette.value = !showCommandPalette.value
-    return
-  }
-
-  // A leader sequence is already armed - this keypress completes it (or Escape cancels it). Only
-  // reachable while nothing was focused when Space armed it, so there's no typing target to
-  // protect here.
-  if (leaderPending.value) {
-    if (event.key === 'Escape') {
-      clearLeader()
-      return
-    }
-    const action = LEADER_ACTIONS[event.key]
-    clearLeader()
-    if (action) {
-      event.preventDefault()
-      action()
-    }
-    return
-  }
-
-  if (
-    event.key === ' ' &&
-    !event.ctrlKey &&
-    !event.metaKey &&
-    !event.altKey &&
-    isNothingFocused()
-  ) {
-    event.preventDefault()
-    armLeader()
-    return
-  }
-
-  // Don't trigger shortcuts when typing in input/textarea
-  const target = event.target as HTMLElement
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-    return
-  }
-
-  // 'b' for back
-  if (event.key.toLowerCase() === 'b' && !event.ctrlKey && !event.metaKey) {
-    safeBack()
-  }
-  // 'f' for forward
-  if (event.key.toLowerCase() === 'f' && !event.ctrlKey && !event.metaKey) {
-    safeForward()
-  }
-  // Ctrl+O / Ctrl+I - vim's jumplist back/forward, a more vim-idiomatic alias for 'b'/'f' above.
-  // Ctrl+I is matched via event.code, not event.key: browsers report Ctrl+I with the same
-  // event.key as a plain Tab press (a decades-old terminal convention carried into the DOM), so
-  // event.key alone can't tell the two apart - event.code (the physical key) can.
-  if (event.ctrlKey && event.key.toLowerCase() === 'o') {
-    event.preventDefault()
-    safeBack()
-    return
-  }
-  if (event.ctrlKey && event.code === 'KeyI') {
-    event.preventDefault()
-    safeForward()
-    return
-  }
-  // '?' to show help/shortcuts
-  if (event.key === '?' && !event.ctrlKey && !event.metaKey) {
-    event.preventDefault()
-    showHelpMenu.value = !showHelpMenu.value
-  }
-}
-
 // Lifecycle hooks
 onMounted(() => {
   window.addEventListener('resize', handleResize)
-  window.addEventListener('keydown', handleGlobalKeydown)
 
   // Initialize theme
   themeStore.initializeTheme()
@@ -351,8 +234,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
-  window.removeEventListener('keydown', handleGlobalKeydown)
-  clearLeader()
 })
 </script>
 

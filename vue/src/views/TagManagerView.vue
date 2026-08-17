@@ -100,6 +100,11 @@ import { useApi } from '@/composables/useApi'
 import type { TagDefinition } from '@/lib/types/dive'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
+// Two shortcuts considered here and declined, not implemented (see the app-wide shortcut
+// proposal): "'/' focuses a search/filter input" - this page has no search/filter input to focus,
+// and "'n' creates a new tag" - there is no create-tag action here at all (see the empty-state
+// copy above: tags are only ever created from the dive edit page's tag picker). Revisit only if
+// this page grows either of those features for its own reasons.
 const { getWithToken, deleteWithToken } = useApi()
 const { readOnly } = useReadOnlyMode()
 

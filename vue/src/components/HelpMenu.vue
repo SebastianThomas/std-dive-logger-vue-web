@@ -26,7 +26,7 @@
             <div class="space-y-1">
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600 dark:text-gray-400">Command Palette</span>
-                <kbd class="kbd-small">Ctrl+P</kbd>
+                <kbd class="kbd-small">Ctrl/Cmd+P or K</kbd>
               </div>
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600 dark:text-gray-400">Back</span>
@@ -39,6 +39,12 @@
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600 dark:text-gray-400">Help</span>
                 <kbd class="kbd-small">?</kbd>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-600 dark:text-gray-400"
+                  >Close Palette/Help (anywhere)</span
+                >
+                <kbd class="kbd-small">Esc</kbd>
               </div>
             </div>
           </div>
@@ -119,6 +125,12 @@
 <script setup lang="ts">
 import { ref, onUnmounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  leaderShortcuts,
+  pageShortcuts,
+  pageLabels,
+  isKnownShortcutPage,
+} from '@/lib/shortcuts/shortcutDocs'
 
 const isOpen = defineModel<boolean>({ required: true })
 const remainingSeconds = ref(10)
@@ -128,68 +140,22 @@ const expandedSections = ref<Record<string, boolean>>({})
 let timeoutId: ReturnType<typeof setTimeout> | null = null
 let intervalId: ReturnType<typeof setInterval> | null = null
 
-// Mirrors LEADER_ACTIONS in App.vue - kept as a separate display list here since App.vue's map is
-// keyed by the raw event key (including '?'), not meant for iteration/display on its own.
-const leaderShortcuts = [
-  { label: 'Command Palette', key: 'p' },
-  { label: 'Help', key: '?' },
-  { label: 'Back', key: 'b' },
-  { label: 'Forward', key: 'f' },
-  { label: 'Home', key: 'h' },
-  { label: 'Dive List', key: 'd' },
-  { label: 'Trends', key: 't' },
-]
-
-const allShortcuts = {
-  DiveView: [
-    { label: 'Edit Dive', key: 'E' },
-    { label: 'Share Dive', key: 'S' },
-    { label: 'Delete Dive', key: 'Shift+D' },
-    { label: 'Link Dive', key: 'L' },
-    { label: 'Next Dive (own log only)', key: 'N' },
-    { label: 'Previous Dive (own log only)', key: 'P' },
-  ],
-  DiveList: [
-    { label: 'Search', key: '/' },
-    { label: 'Toggle Shared', key: 'A' },
-    { label: 'Bulk Actions', key: 'M' },
-    { label: 'Next Page', key: 'N' },
-    { label: 'Previous Page', key: 'P' },
-  ],
-  Stats: [
-    { label: 'Next Stat Tab', key: 'N' },
-    { label: 'Previous Stat Tab', key: 'P' },
-  ],
-  StatsTimeline: [
-    { label: 'Next Metric', key: 'N' },
-    { label: 'Previous Metric', key: 'P' },
-  ],
-}
-
-const PAGE_LABELS: Record<keyof typeof allShortcuts, string> = {
-  DiveView: 'Dive View',
-  DiveList: 'Dive List',
-  Stats: 'Statistics',
-  StatsTimeline: 'Trends',
-}
-
-const isKnownPage = (name: string): name is keyof typeof allShortcuts => name in allShortcuts
-
 const currentPageLabel = computed(() => {
   const pageName = route.name?.toString() || ''
-  return isKnownPage(pageName) ? PAGE_LABELS[pageName] : ''
+  return isKnownShortcutPage(pageName) ? pageLabels[pageName] : ''
 })
 
 const currentPageShortcuts = computed(() => {
   const pageName = route.name?.toString() || ''
-  return isKnownPage(pageName) ? allShortcuts[pageName] : []
+  return isKnownShortcutPage(pageName) ? pageShortcuts[pageName] : []
 })
 
 const otherSections = computed(() => {
   const pageName = route.name?.toString() || ''
-  return (Object.keys(allShortcuts) as (keyof typeof allShortcuts)[])
+  return Object.keys(pageShortcuts)
+    .filter(isKnownShortcutPage)
     .filter((name) => name !== pageName)
-    .map((name) => ({ name, label: PAGE_LABELS[name], shortcuts: allShortcuts[name] }))
+    .map((name) => ({ name, label: pageLabels[name], shortcuts: pageShortcuts[name] }))
 })
 
 const toggleSection = (sectionName: string) => {

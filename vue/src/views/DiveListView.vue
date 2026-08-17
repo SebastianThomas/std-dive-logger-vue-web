@@ -216,6 +216,7 @@
         :sort-column="sortColumn"
         :sort-direction="sortDirection"
         :columns="columns"
+        :focused-id="focusedDiveId"
         @toggle-all="toggleAll"
         @toggle-row="toggleRow"
         @row-click="onRowClick"
@@ -244,6 +245,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { clampedCycleIndex } from '@/lib/utils/cycle'
+import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '../composables/useApi'
@@ -641,11 +644,23 @@ const handleSearchEscape = () => {
   searchInputRef.value?.blur()
 }
 
+// j/k row focus for keyboard-only browsing - -1 means nothing focused (the initial/default
+// state), never actually rendered as a highlighted row (see DiveListTable's focusedId prop).
+const focusedIndex = ref(-1)
+const focusedDiveId = computed(() =>
+  focusedIndex.value >= 0 ? (dives.value[focusedIndex.value]?.id ?? null) : null,
+)
+
+// A fresh page of results invalidates whatever index was focused before (different dives, or
+// none at all while loading) - always reset rather than risk highlighting the wrong row.
+watch(dives, () => {
+  focusedIndex.value = -1
+})
+
 // Keyboard shortcuts for DiveListView
 const handleDiveListKeydown = (event: KeyboardEvent) => {
-  const target = event.target as HTMLElement
   // Don't intercept keyboard shortcuts while the user is typing in a field
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+  if (isTypingTarget(event.target)) {
     return
   }
 
@@ -680,6 +695,45 @@ const handleDiveListKeydown = (event: KeyboardEvent) => {
   }
   if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.metaKey) {
     goToPage(currentPage.value - 1)
+  }
+  // Home/End jump straight to the first/last page.
+  if (event.key === 'Home' && !event.ctrlKey && !event.metaKey) {
+    goToPage(1)
+  }
+  if (event.key === 'End' && !event.ctrlKey && !event.metaKey) {
+    goToPage(totalPages.value)
+  }
+  // 'j'/'k' move row focus down/up, clamped at either end of the current page (not wrapping) -
+  // starts from the first row if nothing was focused yet.
+  if (event.key.toLowerCase() === 'j' && !event.ctrlKey && !event.metaKey && dives.value.length) {
+    event.preventDefault()
+    focusedIndex.value =
+      focusedIndex.value < 0 ? 0 : clampedCycleIndex(focusedIndex.value, dives.value.length, 1)
+  }
+  if (event.key.toLowerCase() === 'k' && !event.ctrlKey && !event.metaKey && dives.value.length) {
+    event.preventDefault()
+    focusedIndex.value =
+      focusedIndex.value < 0
+        ? dives.value.length - 1
+        : clampedCycleIndex(focusedIndex.value, dives.value.length, -1)
+  }
+  // Enter opens (or, in selection mode, toggles) the focused row - same action a click on it
+  // would trigger.
+  if (event.key === 'Enter' && focusedDiveId.value != null) {
+    onRowClick(focusedDiveId.value)
+  }
+  // 'x' toggles the focused row's selection specifically (as opposed to 'Enter', which follows
+  // whatever the row would normally do on click).
+  if (event.key.toLowerCase() === 'x' && !event.ctrlKey && !event.metaKey) {
+    if (focusedDiveId.value != null) {
+      toggleRow(focusedDiveId.value)
+    }
+  }
+  // Ctrl+A/Cmd+A selects every dive on the current page (not a toggle, unlike the header
+  // checkbox's toggle-all) - prevented from also triggering the browser's own "select all text".
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+    event.preventDefault()
+    selectedIds.value = dives.value.map((d) => d.id)
   }
 }
 

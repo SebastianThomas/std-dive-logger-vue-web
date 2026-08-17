@@ -17,7 +17,7 @@ const dive: DiveWithoutProfiles = {
   tags: [],
 }
 
-async function mountTable() {
+async function mountTable(extraProps: Record<string, unknown> = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -43,6 +43,7 @@ async function mountTable() {
       sortColumn: 'NUMBER',
       sortDirection: 'DESCENDING',
       columns: [],
+      ...extraProps,
     },
   })
 }
@@ -88,5 +89,15 @@ describe('DiveListTable row navigation', () => {
     const wrapper = await mountTable()
     await wrapper.get('tbody td').trigger('click')
     expect(wrapper.emitted('row-click')).toBeUndefined()
+  })
+
+  it('highlights the row matching focusedId (j/k keyboard navigation)', async () => {
+    const wrapper = await mountTable({ focusedId: 42 })
+    expect(wrapper.get('tbody tr').classes()).toContain('ring-2')
+  })
+
+  it('does not highlight any row when focusedId is null', async () => {
+    const wrapper = await mountTable({ focusedId: null })
+    expect(wrapper.get('tbody tr').classes()).not.toContain('ring-2')
   })
 })

@@ -294,6 +294,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { clampedCycleIndex } from '@/lib/utils/cycle'
+import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 import { useRouter, useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import StatCard from '@/components/StatCard.vue'
@@ -468,8 +469,7 @@ const cycleStat = (direction: 1 | -1) => {
 }
 
 const handleStatsKeydown = (event: KeyboardEvent) => {
-  const target = event.target as HTMLElement
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+  if (isTypingTarget(event.target)) return
   if (event.ctrlKey || event.metaKey) return
 
   if (event.key.toLowerCase() === 'n') {
@@ -477,6 +477,11 @@ const handleStatsKeydown = (event: KeyboardEvent) => {
   }
   if (event.key.toLowerCase() === 'p') {
     cycleStat(-1)
+  }
+  // 1-6 jump straight to a tab by its position, same fixed order as STAT_TYPES/n/p.
+  if (/^[1-9]$/.test(event.key)) {
+    const stat = STAT_TYPES[Number(event.key) - 1]
+    if (stat) selectStat(stat)
   }
 }
 

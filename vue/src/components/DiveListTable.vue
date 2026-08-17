@@ -44,6 +44,7 @@
               : dive.user.id !== myUserId
                 ? 'bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 border-l-transparent'
                 : 'hover:bg-gray-50 dark:hover:bg-gray-800 border-l-transparent',
+            dive.id === focusedId ? 'ring-2 ring-inset ring-blue-500 dark:ring-blue-400' : '',
           ]"
           @click="handleRowClick($event, dive.id)"
         >
@@ -144,6 +145,8 @@ defineProps<{
   sortColumn: SortColumn
   sortDirection: SortDirection
   columns: ColumnDef[]
+  /** Which row (if any) the j/k keyboard shortcuts currently have focused - see DiveListView. */
+  focusedId?: number | null
 }>()
 
 const emit = defineEmits<{

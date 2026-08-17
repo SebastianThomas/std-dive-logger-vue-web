@@ -107,6 +107,7 @@ import {
 } from '@/lib/types/statsTimeline'
 import { toggleMetricSelection } from '@/lib/stats/timelineMetricSelection'
 import { clampedCycleIndex } from '@/lib/utils/cycle'
+import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 
 const NUMERIC_METRICS: TimelineMetric[] = [
   'diveCount',
@@ -211,8 +212,7 @@ const cycleMetric = (direction: 1 | -1) => {
 }
 
 const handleTimelineKeydown = (event: KeyboardEvent) => {
-  const target = event.target as HTMLElement
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+  if (isTypingTarget(event.target)) return
   if (event.ctrlKey || event.metaKey) return
 
   if (event.key.toLowerCase() === 'n') {
@@ -220,6 +220,17 @@ const handleTimelineKeydown = (event: KeyboardEvent) => {
   }
   if (event.key.toLowerCase() === 'p') {
     cycleMetric(-1)
+  }
+  // 1-9 then 0 jump straight to a metric by its position in NUMERIC_METRICS (10 metrics total),
+  // same fixed order n/p step through - replaces the current selection, same as cycleMetric.
+  if (/^[0-9]$/.test(event.key)) {
+    const index = event.key === '0' ? 9 : Number(event.key) - 1
+    const metric = NUMERIC_METRICS[index]
+    if (metric) selectedMetrics.value = new Set([metric])
+  }
+  // 'c' toggles Combine mode, same as its checkbox in the metrics row above.
+  if (event.key.toLowerCase() === 'c') {
+    combineMode.value = !combineMode.value
   }
 }
 

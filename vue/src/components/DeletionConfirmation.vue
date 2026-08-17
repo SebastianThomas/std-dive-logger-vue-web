@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 
 interface Props {
   modelValue: boolean
@@ -72,7 +72,7 @@ const props = withDefaults(defineProps<Props>(), {
   confirmationPhrase: null,
 })
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   confirm: []
 }>()
@@ -87,6 +87,27 @@ watch(
     if (isOpen) typedConfirmation.value = ''
   },
 )
+
+// Escape cancels, same as clicking outside the modal or the Cancel button - a window-level
+// listener (only attached while open) rather than a template @keydown, since nothing inside this
+// plain overlay div is guaranteed to have focus.
+const handleEscape = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') emit('update:modelValue', false)
+}
+
+watch(
+  () => props.modelValue,
+  (isOpen) => {
+    if (isOpen) {
+      window.addEventListener('keydown', handleEscape)
+    } else {
+      window.removeEventListener('keydown', handleEscape)
+    }
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => window.removeEventListener('keydown', handleEscape))
 
 // A strict null check, not a falsy check - an *empty-string* confirmationPhrase must not silently
 // disable the guard entirely (`!''` is `true` in JS). It also can't be satisfied by "typing
