@@ -11,9 +11,20 @@
     <router-link :to="{ name: 'DiveList' }">
       <MenuItem icon="list" text="List" :is-visible="isVisible" />
     </router-link>
-    <router-link :to="{ name: 'DiveCreate' }">
+    <!-- Upload is a pure editing workflow (nothing else to do there) - unlike the other links
+         below, which lead to pages that self-guard their own edit controls and stay useful to
+         browse in read-only mode, this one is disabled outright rather than linked through. -->
+    <router-link v-if="!readOnly" :to="{ name: 'DiveCreate' }">
       <MenuItem icon="pen-to-square" text="Upload" :is-visible="isVisible" />
     </router-link>
+    <MenuItem
+      v-else
+      icon="pen-to-square"
+      text="Upload"
+      :is-visible="isVisible"
+      disabled
+      disabled-title="Disabled in read-only mode"
+    />
     <router-link :to="{ name: 'ShareOverview' }">
       <MenuItem icon="user-group" text="Groups" :is-visible="isVisible" />
     </router-link>
@@ -38,6 +49,7 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import MenuItem from './menu/MenuItem.vue'
 
 interface Props {
@@ -48,6 +60,7 @@ interface Props {
 defineProps<Props>()
 
 const authStore = useAuthStore()
+const { readOnly } = useReadOnlyMode()
 
 const emit = defineEmits<{
   toggleSidebar: []

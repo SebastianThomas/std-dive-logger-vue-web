@@ -113,6 +113,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useProfileReimportStore } from '@/stores/profileReimport'
 import { useUserIconUploadStore } from '@/stores/userIconUpload'
 import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
+import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
 
 interface Command {
@@ -132,6 +133,7 @@ const route = useRoute()
 const profileReimportStore = useProfileReimportStore()
 const userIconUploadStore = useUserIconUploadStore()
 const backgroundUploadStore = useBackgroundUploadStore()
+const { readOnly } = useReadOnlyMode()
 
 const isOpen = defineModel<boolean>({ required: true })
 const searchQuery = ref('')
@@ -223,6 +225,16 @@ const commands = computed<Command[]>(() => {
       category: 'navigation',
     },
     {
+      id: 'nav-trends',
+      label: 'Go to Trends',
+      description: 'View your dive stats over time',
+      icon: '📈',
+      action: () => router.push({ name: 'StatsTimeline' }),
+      keywords: ['trends', 'timeline', 'stats over time', 'history'],
+      shortcut: 'Space T',
+      category: 'navigation',
+    },
+    {
       id: 'nav-profile',
       label: 'Go to Profile',
       description: 'View and edit your profile',
@@ -280,7 +292,10 @@ const commands = computed<Command[]>(() => {
   // Add context-specific commands based on current route
   const contextCommands: Command[] = []
 
-  if (route.name === 'DiveView' && route.params.diveId) {
+  // Editing commands are left out entirely in read-only ("locked") mode - same convention as
+  // every other editing entry point in the app (buttons, page-level guards): not just disabled,
+  // not shown at all, so there's nothing to accidentally click through to.
+  if (route.name === 'DiveView' && route.params.diveId && !readOnly.value) {
     contextCommands.push({
       id: 'dive-edit',
       label: 'Edit Current Dive',
@@ -314,13 +329,20 @@ const commands = computed<Command[]>(() => {
     })
   }
 
-  return [...baseCommands, ...contextCommands]
+  const editableBaseCommands = readOnly.value
+    ? baseCommands.filter((cmd) => cmd.id !== 'nav-create')
+    : baseCommands
+
+  return [...editableBaseCommands, ...contextCommands]
 })
 
 // Commands that never show up when browsing the palette — they only appear once the search
 // query matches one of their keywords. Not linked from any menu or button; power-user only.
 const secretCommands = computed<Command[]>(() => {
   const commands: Command[] = []
+  // Every secret command below is an editing action - same read-only ("locked" mode) guard as
+  // the visible editing commands above, so a locked session has no way to reach them either.
+  if (readOnly.value) return commands
 
   if (route.name === 'DiveView' && route.params.diveId) {
     commands.push({

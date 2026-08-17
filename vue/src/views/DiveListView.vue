@@ -674,6 +674,13 @@ const handleDiveListKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape' && isSelectionMode.value) {
     clearSelection()
   }
+  // 'n'/'p' for next/previous page - goToPage already no-ops past either end.
+  if (event.key.toLowerCase() === 'n' && !event.ctrlKey && !event.metaKey) {
+    goToPage(currentPage.value + 1)
+  }
+  if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.metaKey) {
+    goToPage(currentPage.value - 1)
+  }
 }
 
 // Row click navigates directly; selection and action button removed

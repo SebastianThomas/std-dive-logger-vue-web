@@ -30,15 +30,37 @@
               </div>
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600 dark:text-gray-400">Back</span>
-                <kbd class="kbd-small">B</kbd>
+                <kbd class="kbd-small">B / Ctrl+O</kbd>
               </div>
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600 dark:text-gray-400">Forward</span>
-                <kbd class="kbd-small">F</kbd>
+                <kbd class="kbd-small">F / Ctrl+I</kbd>
               </div>
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600 dark:text-gray-400">Help</span>
                 <kbd class="kbd-small">?</kbd>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leader key - Always visible -->
+          <div>
+            <h4
+              class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2"
+            >
+              Leader (vim-style)
+            </h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              Press <kbd class="kbd-small">Space</kbd> (while nothing is focused), then a key:
+            </p>
+            <div class="space-y-1">
+              <div
+                v-for="shortcut in leaderShortcuts"
+                :key="shortcut.label"
+                class="flex justify-between"
+              >
+                <span class="text-sm text-gray-600 dark:text-gray-400">{{ shortcut.label }}</span>
+                <kbd class="kbd-small">Space {{ shortcut.key }}</kbd>
               </div>
             </div>
           </div>
@@ -106,55 +128,68 @@ const expandedSections = ref<Record<string, boolean>>({})
 let timeoutId: ReturnType<typeof setTimeout> | null = null
 let intervalId: ReturnType<typeof setInterval> | null = null
 
+// Mirrors LEADER_ACTIONS in App.vue - kept as a separate display list here since App.vue's map is
+// keyed by the raw event key (including '?'), not meant for iteration/display on its own.
+const leaderShortcuts = [
+  { label: 'Command Palette', key: 'p' },
+  { label: 'Help', key: '?' },
+  { label: 'Back', key: 'b' },
+  { label: 'Forward', key: 'f' },
+  { label: 'Home', key: 'h' },
+  { label: 'Dive List', key: 'd' },
+  { label: 'Trends', key: 't' },
+]
+
 const allShortcuts = {
   DiveView: [
     { label: 'Edit Dive', key: 'E' },
     { label: 'Share Dive', key: 'S' },
     { label: 'Delete Dive', key: 'Shift+D' },
     { label: 'Link Dive', key: 'L' },
+    { label: 'Next Dive (own log only)', key: 'N' },
+    { label: 'Previous Dive (own log only)', key: 'P' },
   ],
   DiveList: [
     { label: 'Search', key: '/' },
     { label: 'Toggle Shared', key: 'A' },
     { label: 'Bulk Actions', key: 'M' },
+    { label: 'Next Page', key: 'N' },
+    { label: 'Previous Page', key: 'P' },
+  ],
+  Stats: [
+    { label: 'Next Stat Tab', key: 'N' },
+    { label: 'Previous Stat Tab', key: 'P' },
+  ],
+  StatsTimeline: [
+    { label: 'Next Metric', key: 'N' },
+    { label: 'Previous Metric', key: 'P' },
   ],
 }
 
+const PAGE_LABELS: Record<keyof typeof allShortcuts, string> = {
+  DiveView: 'Dive View',
+  DiveList: 'Dive List',
+  Stats: 'Statistics',
+  StatsTimeline: 'Trends',
+}
+
+const isKnownPage = (name: string): name is keyof typeof allShortcuts => name in allShortcuts
+
 const currentPageLabel = computed(() => {
   const pageName = route.name?.toString() || ''
-  if (pageName === 'DiveView') return 'Dive View'
-  if (pageName === 'DiveList') return 'Dive List'
-  return ''
+  return isKnownPage(pageName) ? PAGE_LABELS[pageName] : ''
 })
 
 const currentPageShortcuts = computed(() => {
   const pageName = route.name?.toString() || ''
-  if (pageName === 'DiveView') return allShortcuts.DiveView
-  if (pageName === 'DiveList') return allShortcuts.DiveList
-  return []
+  return isKnownPage(pageName) ? allShortcuts[pageName] : []
 })
 
 const otherSections = computed(() => {
   const pageName = route.name?.toString() || ''
-  const sections = []
-
-  if (pageName !== 'DiveView') {
-    sections.push({
-      name: 'DiveView',
-      label: 'Dive View',
-      shortcuts: allShortcuts.DiveView,
-    })
-  }
-
-  if (pageName !== 'DiveList') {
-    sections.push({
-      name: 'DiveList',
-      label: 'Dive List',
-      shortcuts: allShortcuts.DiveList,
-    })
-  }
-
-  return sections
+  return (Object.keys(allShortcuts) as (keyof typeof allShortcuts)[])
+    .filter((name) => name !== pageName)
+    .map((name) => ({ name, label: PAGE_LABELS[name], shortcuts: allShortcuts[name] }))
 })
 
 const toggleSection = (sectionName: string) => {

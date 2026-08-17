@@ -8,6 +8,18 @@
   <!-- Help Menu -->
   <HelpMenu v-model="showHelpMenu" />
 
+  <!-- Leader-key indicator: Space is remapped to the vim <leader> key (see handleGlobalKeydown) -
+       a brief on-screen cue that a leader sequence is armed, since otherwise pressing Space would
+       silently do nothing until the next key lands. -->
+  <Transition name="fade">
+    <div
+      v-if="leaderPending"
+      class="fixed bottom-4 left-4 z-50 px-3 py-1.5 rounded-lg bg-gray-900/90 dark:bg-gray-700/90 text-white text-xs font-mono shadow-lg"
+    >
+      ␣ leader…
+    </div>
+  </Transition>
+
   <Toaster position="top-right" richColors closeButton />
   <div
     class="grid app-grid min-h-dvh w-full transition-all duration-300"
@@ -209,12 +221,84 @@ watch(
 )
 watch(backgroundUpdatedId, fetchCustomBackground)
 
+// vim-style <leader> key, remapped from Space across the whole page (not just the Command
+// Palette) - Space only ever does something on its own (page-down scroll) when nothing in
+// particular is focused, which is exactly the condition `isNothingFocused` below checks, so a
+// focused button/checkbox/link/input keeps its own native Space behavior completely untouched;
+// only the "otherwise wasted" case is remapped. Pressing Space arms a ~1.5s window during which
+// the next key completes a <leader>-prefixed shortcut (see LEADER_ACTIONS); Escape or a timeout
+// cancels it with no effect, same as vim's own leader.
+const leaderPending = ref(false)
+let leaderTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+const clearLeader = () => {
+  leaderPending.value = false
+  if (leaderTimeoutId) {
+    clearTimeout(leaderTimeoutId)
+    leaderTimeoutId = null
+  }
+}
+
+const LEADER_TIMEOUT_MS = 1500
+
+const armLeader = () => {
+  leaderPending.value = true
+  if (leaderTimeoutId) clearTimeout(leaderTimeoutId)
+  leaderTimeoutId = setTimeout(clearLeader, LEADER_TIMEOUT_MS)
+}
+
+const isNothingFocused = (): boolean =>
+  document.activeElement === null ||
+  document.activeElement === document.body
+
+const LEADER_ACTIONS: Record<string, () => void> = {
+  p: () => {
+    showCommandPalette.value = !showCommandPalette.value
+  },
+  '?': () => {
+    showHelpMenu.value = !showHelpMenu.value
+  },
+  b: () => safeBack(),
+  f: () => safeForward(),
+  h: () => router.push({ name: 'Home' }),
+  d: () => router.push({ name: 'DiveList' }),
+}
+
 // Global keyboard shortcuts
 const handleGlobalKeydown = (event: KeyboardEvent) => {
   // Ctrl+P / Cmd+P for command palette - always works
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
     event.preventDefault()
     showCommandPalette.value = !showCommandPalette.value
+    return
+  }
+
+  // A leader sequence is already armed - this keypress completes it (or Escape cancels it). Only
+  // reachable while nothing was focused when Space armed it, so there's no typing target to
+  // protect here.
+  if (leaderPending.value) {
+    if (event.key === 'Escape') {
+      clearLeader()
+      return
+    }
+    const action = LEADER_ACTIONS[event.key]
+    clearLeader()
+    if (action) {
+      event.preventDefault()
+      action()
+    }
+    return
+  }
+
+  if (
+    event.key === ' ' &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey &&
+    isNothingFocused()
+  ) {
+    event.preventDefault()
+    armLeader()
     return
   }
 
@@ -231,6 +315,20 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
   // 'f' for forward
   if (event.key.toLowerCase() === 'f' && !event.ctrlKey && !event.metaKey) {
     safeForward()
+  }
+  // Ctrl+O / Ctrl+I - vim's jumplist back/forward, a more vim-idiomatic alias for 'b'/'f' above.
+  // Ctrl+I is matched via event.code, not event.key: browsers report Ctrl+I with the same
+  // event.key as a plain Tab press (a decades-old terminal convention carried into the DOM), so
+  // event.key alone can't tell the two apart - event.code (the physical key) can.
+  if (event.ctrlKey && event.key.toLowerCase() === 'o') {
+    event.preventDefault()
+    safeBack()
+    return
+  }
+  if (event.ctrlKey && event.code === 'KeyI') {
+    event.preventDefault()
+    safeForward()
+    return
   }
   // '?' to show help/shortcuts
   if (event.key === '?' && !event.ctrlKey && !event.metaKey) {
@@ -254,6 +352,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleGlobalKeydown)
+  clearLeader()
 })
 </script>
 
@@ -309,5 +408,15 @@ onUnmounted(() => {
 
 .skip-to-content:focus {
   top: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

@@ -172,91 +172,107 @@
         @reimported="handleProfileReimported"
       />
 
-      <!-- Overview: Map alongside the small summary cards. -->
-      <div class="flex flex-col md:flex-row gap-6">
+      <!-- Overview: Map alongside multiple rows of small cards - the map keeps its own natural
+           size (items-start below) instead of stretching every card next to it to match its
+           height, and enough compact rows sit in that column to actually use the space. -->
+      <div class="flex flex-col md:flex-row gap-6 items-start">
         <!-- Map -->
-        <div class="w-full md:w-1/5 h-50 rounded-lg overflow-hidden shadow-sm border">
+        <div class="relative w-full md:w-1/5 h-50 rounded-lg overflow-hidden shadow-sm border shrink-0">
           <DiveSiteMap
             :sites="mapSites"
             :center="mapCenter"
             :zoom="13"
             :show-dive-count-badge="false"
           />
+          <!-- A small deliberate corner link, not the whole map - dragging/zooming/clicking a
+               marker on the map itself must never accidentally navigate away. -->
+          <RouterLink
+            :to="{ name: 'MapView' }"
+            title="View all dive sites"
+            class="absolute bottom-2 right-2 z-[1000] flex items-center gap-1 px-2 py-1 rounded-md bg-white/90 dark:bg-gray-800/90 text-xs font-medium text-gray-700 dark:text-gray-200 shadow hover:bg-white dark:hover:bg-gray-800 hover:underline"
+          >
+            <i class="fa-solid fa-map"></i>
+            All Sites
+          </RouterLink>
         </div>
 
-        <!-- Summary Cards -->
-        <InfoCardRow v-if="summary" class="w-full md:w-4/5">
-          <InfoCard title="Max Depth" :value="`${summary.maxDepth?.toFixed(1)} m`" />
-          <InfoCard title="Avg Depth" :value="`${summary.averageDepth?.toFixed(1)} m`" />
-          <InfoCard title="Bottom Time" :value="formatDiveTime(summary.bottomTime)" />
-        </InfoCardRow>
+        <div class="w-full md:w-4/5 flex flex-col gap-3">
+          <!-- Summary Cards -->
+          <InfoCardRow v-if="summary">
+            <InfoCard title="Max Depth" :value="`${summary.maxDepth?.toFixed(1)} m`" />
+            <InfoCard title="Avg Depth" :value="`${summary.averageDepth?.toFixed(1)} m`" />
+            <InfoCard title="Bottom Time" :value="formatDiveTime(summary.bottomTime)" />
+          </InfoCardRow>
+
+          <!-- CNS / OTU / GF99: dive-profile-derived stats. GF99 (Start) and GF99 @ Surface
+               replace the old "N2 Loading" card: DiveMeasurement.n2 already *is* GF99, not
+               literal N2 tissue loading, so "N2 Loading End" and a single-profile "SurfGF" card
+               used to print the exact same number under two different labels. "GF99 @ Surface" is
+               also a clearer name than "SurfGF" for what this actually is - the GF99 reading once
+               genuinely surfaced at the end of the dive, not the continuous "if-I-surfaced-
+               right-now" gauge some dive computers also label "Surface GF" throughout the dive. -->
+          <InfoCardRow
+            v-if="
+              firstProfileSummary?.startCNS !== undefined ||
+              lastProfileSummary?.endCNS !== undefined ||
+              lastProfileSummary?.o2Toxicity !== undefined ||
+              showGf99Start ||
+              profilesWithSurfacingGf.length
+            "
+          >
+            <!-- CNS Information -->
+            <InfoCard
+              v-if="
+                firstProfileSummary?.startCNS !== undefined ||
+                lastProfileSummary?.endCNS !== undefined
+              "
+              title="CNS (%)"
+            >
+              <div
+                v-if="firstProfileSummary?.startCNS !== undefined"
+                class="flex items-center gap-2"
+              >
+                <span>Start:</span>
+                <span class="font-semibold">{{ firstProfileSummary.startCNS.toFixed(0) }}</span>
+              </div>
+              <div
+                v-if="lastProfileSummary?.endCNS !== undefined"
+                class="flex items-center gap-2"
+              >
+                <span>End:</span>
+                <span class="font-semibold">{{ lastProfileSummary.endCNS.toFixed(0) }}</span>
+              </div>
+            </InfoCard>
+
+            <!-- OTU Information -->
+            <InfoCard
+              v-if="lastProfileSummary?.o2Toxicity !== undefined"
+              title="OTUs"
+              :value="`${lastProfileSummary?.o2Toxicity?.toFixed(0)}`"
+            />
+
+            <!-- GF99 at the start of the dive. -->
+            <InfoCard
+              v-if="showGf99Start"
+              title="GF99 (Start)"
+              :value="`${firstProfileSummary!.startN2!.toFixed(0)}%`"
+            />
+
+            <!-- GF99 @ Surface: each profile's own surfacing/last GF99 (DiveMeasurement.n2, the
+                 same value the graph's "GF99" metric is drawn from). -->
+            <InfoCard v-if="profilesWithSurfacingGf.length" title="GF99 @ Surface">
+              <div
+                v-for="p in profilesWithSurfacingGf"
+                :key="p.id"
+                class="flex items-center justify-between gap-3"
+              >
+                <span>{{ p.diveComputer?.customIdentifier ?? 'Unknown computer' }}</span>
+                <span class="font-semibold">{{ p.summary.endN2!.toFixed(0) }}%</span>
+              </div>
+            </InfoCard>
+          </InfoCardRow>
+        </div>
       </div>
-
-      <!-- CNS / OTU / GF99: dive-profile-derived stats, right after the small summary cards. GF99
-           (Start) and GF99 @ Surface replace the old "N2 Loading" card: DiveMeasurement.n2 already
-           *is* GF99, not literal N2 tissue loading, so "N2 Loading End" and a single-profile
-           "SurfGF" card used to print the exact same number under two different labels. "GF99 @
-           Surface" is also a clearer name than "SurfGF" for what this actually is - the GF99
-           reading once genuinely surfaced at the end of the dive, not the continuous
-           "if-I-surfaced-right-now" gauge some dive computers also label "Surface GF" throughout
-           the dive. -->
-      <InfoCardRow
-        v-if="
-          firstProfileSummary?.startCNS !== undefined ||
-          lastProfileSummary?.endCNS !== undefined ||
-          lastProfileSummary?.o2Toxicity !== undefined ||
-          showGf99Start ||
-          profilesWithSurfacingGf.length
-        "
-      >
-        <!-- CNS Information -->
-        <InfoCard
-          v-if="
-            firstProfileSummary?.startCNS !== undefined ||
-            lastProfileSummary?.endCNS !== undefined
-          "
-          title="CNS (%)"
-        >
-          <div
-            v-if="firstProfileSummary?.startCNS !== undefined"
-            class="flex items-center gap-2"
-          >
-            <span>Start:</span>
-            <span class="font-semibold">{{ firstProfileSummary.startCNS.toFixed(0) }}</span>
-          </div>
-          <div v-if="lastProfileSummary?.endCNS !== undefined" class="flex items-center gap-2">
-            <span>End:</span>
-            <span class="font-semibold">{{ lastProfileSummary.endCNS.toFixed(0) }}</span>
-          </div>
-        </InfoCard>
-
-        <!-- OTU Information -->
-        <InfoCard
-          v-if="lastProfileSummary?.o2Toxicity !== undefined"
-          title="OTUs"
-          :value="`${lastProfileSummary?.o2Toxicity?.toFixed(0)}`"
-        />
-
-        <!-- GF99 at the start of the dive. -->
-        <InfoCard
-          v-if="showGf99Start"
-          title="GF99 (Start)"
-          :value="`${firstProfileSummary!.startN2!.toFixed(0)}%`"
-        />
-
-        <!-- GF99 @ Surface: each profile's own surfacing/last GF99 (DiveMeasurement.n2, the same
-             value the graph's "GF99" metric is drawn from). -->
-        <InfoCard v-if="profilesWithSurfacingGf.length" title="GF99 @ Surface">
-          <div
-            v-for="p in profilesWithSurfacingGf"
-            :key="p.id"
-            class="flex items-center justify-between gap-3"
-          >
-            <span>{{ p.diveComputer?.customIdentifier ?? 'Unknown computer' }}</span>
-            <span class="font-semibold">{{ p.summary.endN2!.toFixed(0) }}%</span>
-          </div>
-        </InfoCard>
-      </InfoCardRow>
 
       <!-- Details Grid -->
       <InfoCardRow>
@@ -710,6 +726,33 @@ const fetchUserId = async () => {
   }
 }
 
+// Backs the 'n'/'p' shortcuts below - null at either end (already the first/last dive), and
+// deliberately only fetched for your own dives, not a shared/reader view of someone else's (see
+// the backend's own AdjacentDives doc comment: dive numbers are only unique per user, so "next/
+// previous" isn't well-defined for someone else's log unless it happens to be entirely visible to
+// you, which isn't guaranteed just because one dive was shared).
+const adjacentDives = ref<{ previousDiveId: number | null; nextDiveId: number | null } | null>(
+  null,
+)
+
+const fetchAdjacentDives = async () => {
+  const currentDiveId = dive.value?.id
+  if (!currentDiveId || !isMine.value) {
+    adjacentDives.value = null
+    return
+  }
+  try {
+    const res = await getWithToken<{ previousDiveId: number | null; nextDiveId: number | null }>(
+      `/v1/dives/${currentDiveId}/adjacent`,
+    )
+    adjacentDives.value = res.data
+  } catch {
+    adjacentDives.value = null
+  }
+}
+
+watch(() => [dive.value?.id, isMine.value] as const, fetchAdjacentDives)
+
 const showDeleteProfileModal = ref(false)
 const profileIdToDelete = ref<number | null>(null)
 
@@ -805,6 +848,21 @@ const handleDiveViewKeydown = (event: KeyboardEvent) => {
   // 'l' for link dive
   if (event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey && !isMine.value && !readOnly.value) {
     showLinkModal.value = true
+  }
+  // 'n'/'p' for next/previous dive by number in your own dive log - see adjacentDives' own
+  // comment for why this is isMine-only. No-op at either end (adjacentDives.value is null there),
+  // same convention as the dive list/stats page-forward/back shortcuts elsewhere in the app.
+  if (event.key.toLowerCase() === 'n' && !event.ctrlKey && !event.metaKey && isMine.value) {
+    const nextId = adjacentDives.value?.nextDiveId
+    if (nextId != null) {
+      router.push({ name: 'DiveView', params: { diveId: nextId } })
+    }
+  }
+  if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.metaKey && isMine.value) {
+    const previousId = adjacentDives.value?.previousDiveId
+    if (previousId != null) {
+      router.push({ name: 'DiveView', params: { diveId: previousId } })
+    }
   }
 }
 

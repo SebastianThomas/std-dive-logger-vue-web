@@ -1,10 +1,13 @@
 <template>
   <div
     role="menuitem"
-    tabindex="0"
+    :tabindex="disabled ? -1 : 0"
+    :aria-disabled="disabled"
+    :title="disabled ? disabledTitle : undefined"
     @click="handleClick"
     @keydown="handleKeyDown"
-    class="menu-item flex items-center gap-4 px-4 py-2 cursor-pointer transition-all duration-300"
+    class="menu-item flex items-center gap-4 px-4 py-2 transition-all duration-300"
+    :class="disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'"
   >
     <i :class="`fa fa-${icon} text-white text-lg`"></i>
     <span v-if="isVisible" class="text-white text-sm font-medium">{{ text }}</span>
@@ -16,19 +19,23 @@ interface Props {
   icon: string
   text: string
   isVisible: boolean
+  disabled?: boolean
+  disabledTitle?: string
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   action: []
 }>()
 
 const handleClick = () => {
+  if (props.disabled) return
   emit('action')
 }
 
 const handleKeyDown = (e: KeyboardEvent) => {
+  if (props.disabled) return
   if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault()
     emit('action')

@@ -292,7 +292,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { clampedCycleIndex } from '@/lib/utils/cycle'
 import { useRouter, useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import StatCard from '@/components/StatCard.vue'
@@ -311,6 +312,9 @@ const route = useRoute()
 const { getWithToken } = useApi()
 
 type StatType = 'overall' | 'year' | 'site' | 'buddy' | 'base' | 'tag'
+
+// Fixed order, matching the tab row in the template - also what 'n'/'p' step through below.
+const STAT_TYPES: StatType[] = ['overall', 'year', 'site', 'buddy', 'base', 'tag']
 
 const selectedStat = ref<StatType>('overall')
 const loading = ref(false)
@@ -446,10 +450,34 @@ const loadStat = async (stat: StatType) => {
 
 const getInitialStatType = (): StatType => {
   const queryType = route.query.type as string | undefined
-  if (queryType && ['overall', 'year', 'site', 'buddy', 'base', 'tag'].includes(queryType)) {
+  if (queryType && STAT_TYPES.includes(queryType as StatType)) {
     return queryType as StatType
   }
   return 'overall'
+}
+
+// 'n'/'p' step through STAT_TYPES one tab at a time, clamped at either end rather than wrapping -
+// same convention as the dive list's page-forward/back and the timeline's metric-cycling.
+const cycleStat = (direction: 1 | -1) => {
+  const currentIndex = STAT_TYPES.indexOf(selectedStat.value)
+  const nextIndex = clampedCycleIndex(currentIndex, STAT_TYPES.length, direction)
+  const next = STAT_TYPES[nextIndex]!
+  if (next !== selectedStat.value) {
+    selectStat(next)
+  }
+}
+
+const handleStatsKeydown = (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+  if (event.ctrlKey || event.metaKey) return
+
+  if (event.key.toLowerCase() === 'n') {
+    cycleStat(1)
+  }
+  if (event.key.toLowerCase() === 'p') {
+    cycleStat(-1)
+  }
 }
 
 onMounted(() => {
@@ -457,6 +485,11 @@ onMounted(() => {
   const initialStat = getInitialStatType()
   selectedStat.value = initialStat
   loadStat(initialStat)
+  window.addEventListener('keydown', handleStatsKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleStatsKeydown)
 })
 
 // Watch for query parameter changes (e.g., browser back/forward)

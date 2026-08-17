@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import StatsFilterBar from '@/components/stats/StatsFilterBar.vue'
@@ -106,6 +106,7 @@ import {
   timelineMetricUnits,
 } from '@/lib/types/statsTimeline'
 import { toggleMetricSelection } from '@/lib/stats/timelineMetricSelection'
+import { clampedCycleIndex } from '@/lib/utils/cycle'
 
 const NUMERIC_METRICS: TimelineMetric[] = [
   'diveCount',
@@ -198,6 +199,30 @@ const handleMetricClick = (metric: TimelineMetric, event: MouseEvent) => {
   selectedMetrics.value = toggleMetricSelection(selectedMetrics.value, metric, wantsCombine)
 }
 
+// 'n'/'p' step through NUMERIC_METRICS one at a time, replacing the current selection (including
+// any combined set) with a single metric - clamped at either end rather than wrapping, matching
+// the dive list's page-forward/back behavior. Based on the first currently-selected metric's
+// position, so it does something sensible even mid-combine.
+const cycleMetric = (direction: 1 | -1) => {
+  const current = NUMERIC_METRICS.find((m) => selectedMetrics.value.has(m)) ?? NUMERIC_METRICS[0]!
+  const currentIndex = NUMERIC_METRICS.indexOf(current)
+  const nextIndex = clampedCycleIndex(currentIndex, NUMERIC_METRICS.length, direction)
+  selectedMetrics.value = new Set([NUMERIC_METRICS[nextIndex]!])
+}
+
+const handleTimelineKeydown = (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+  if (event.ctrlKey || event.metaKey) return
+
+  if (event.key.toLowerCase() === 'n') {
+    cycleMetric(1)
+  }
+  if (event.key.toLowerCase() === 'p') {
+    cycleMetric(-1)
+  }
+}
+
 const navigateToDiveList = (startMs: number, endMs: number) => {
   router.push({
     name: 'DiveList',
@@ -255,5 +280,12 @@ const fetchSeries = async () => {
 
 watch([granularity, filters, breakdownBy], fetchSeries, { deep: true })
 
-onMounted(fetchSeries)
+onMounted(() => {
+  fetchSeries()
+  window.addEventListener('keydown', handleTimelineKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleTimelineKeydown)
+})
 </script>
