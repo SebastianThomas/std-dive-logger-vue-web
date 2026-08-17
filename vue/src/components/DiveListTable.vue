@@ -45,7 +45,7 @@
                 ? 'bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 border-l-transparent'
                 : 'hover:bg-gray-50 dark:hover:bg-gray-800 border-l-transparent',
           ]"
-          @click="$emit('row-click', dive.id)"
+          @click="handleRowClick($event, dive.id)"
         >
           <td class="border border-gray-400 px-2 py-2 text-center" @click.stop>
             <StyledCheckbox
@@ -53,21 +53,11 @@
               @update:model-value="$emit('toggle-row', dive.id)"
             />
           </td>
-          <td class="border border-gray-400 px-3 py-2 w-16" @click.stop>
-            <a
-              :href="diveHref(dive.id)"
-              class="block hover:underline hover:text-blue-700 dark:hover:text-blue-400"
-              @click="handleLinkClick($event, dive.id)"
-              >{{ dive.number }}</a
-            >
+          <td class="border border-gray-400 px-3 py-2 w-16">
+            {{ dive.number }}
           </td>
-          <td class="border border-gray-400 px-3 py-2 max-w-lg wrap-break-word" @click.stop>
-            <a
-              :href="diveHref(dive.id)"
-              class="block hover:underline hover:text-blue-700 dark:hover:text-blue-400"
-              @click="handleLinkClick($event, dive.id)"
-              >{{ dive.customIdentifier || '-' }}</a
-            >
+          <td class="border border-gray-400 px-3 py-2 max-w-lg wrap-break-word">
+            {{ dive.customIdentifier || '-' }}
           </td>
           <td class="border border-gray-400 px-3 py-2 w-40">
             {{ formatDate(dive.summary.start) }}
@@ -124,19 +114,15 @@ import { formatISoDurationToTime, formatDate } from '@/lib/utils/timeUtils'
 
 const router = useRouter()
 
-// A real resolved href, not just an SPA click handler - lets ctrl/cmd+click (or middle-click)
-// open the dive in a new tab, which a plain @click-only row never supported.
-const diveHref = (diveId: number) => router.resolve({ name: 'DiveView', params: { diveId } }).href
-
-// Mirrors vue-router's own RouterLink click guard: a modified click (ctrl/cmd/shift/alt) or
-// anything but a plain left click is left entirely to the browser's native "open in new
-// tab"/"open in new window" handling - only a plain click is intercepted to emit row-click (which
-// respects selection mode, unlike a bare navigation would).
-const handleLinkClick = (event: MouseEvent, diveId: number) => {
-  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+// Ctrl/cmd+click (or shift+click) anywhere on the row opens the dive in a new tab instead of
+// emitting row-click - no <a> element involved, so the row keeps the app's normal styling (an
+// anchor wrapping only part of a cell previously looked out of place and only worked over the
+// text itself, not the row's clickable area, which was worse than a plain click handler).
+const handleRowClick = (event: MouseEvent, diveId: number) => {
+  if (event.ctrlKey || event.metaKey || event.shiftKey) {
+    window.open(router.resolve({ name: 'DiveView', params: { diveId } }).href, '_blank')
     return
   }
-  event.preventDefault()
   emit('row-click', diveId)
 }
 

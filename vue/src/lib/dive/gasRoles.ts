@@ -35,6 +35,26 @@ const roundToPercent = (fraction: number): number => Math.round(fraction * 100) 
 const ROLE_LABELS: Record<GasRole, string> = { diluent: 'Diluent', bailout: 'Bailout' }
 
 /**
+ * True when a profile is from a computer running in gauge mode (deco calculation switched off).
+ * Such a computer reports n2 as exactly 0 for every sample it does report it on - not the same
+ * thing as a source that never reports n2 at all (e.g. FIT/Garmin), which must NOT be flagged
+ * here since it says nothing about whether deco/gas was actually tracked. Requiring at least one
+ * sample to explicitly report n2 (as opposed to it being universally `undefined`) is what tells
+ * "explicitly always 0" apart from "this field simply isn't populated."
+ *
+ * A gauge-mode computer isn't tracking gas either, so it keeps reporting whatever default/
+ * last-known gas it happens to hold (usually 21/0 - air), not something actually selected by the
+ * diver - this signal is shared by two otherwise-unrelated displays: the dive's GF99 card (a real
+ * "always 0%" reading is indistinguishable from "never computed" by looking at a single start/end
+ * sample) and the gas list below, which uses it to skip that profile's default gas entirely
+ * rather than showing a fabricated "21%" nobody actually selected.
+ */
+export function isGaugeModeProfile(profile: DiveProfile): boolean {
+  const withN2 = profile.measurements.filter((m) => m.measurement.n2 !== undefined)
+  return withN2.length > 0 && withN2.every((m) => m.measurement.n2 === 0)
+}
+
+/**
  * A measurement's CCR role, or `null` when there's genuinely nothing to go on for this specific
  * sample. `measurement.mode` (when the source device reports it at all) is authoritative - it's
  * the device's own record of which loop it was in, not an inference. Only measurements from
@@ -66,6 +86,11 @@ export function computeGasList(profiles: DiveProfile[], isCcr: boolean): GasList
   >()
 
   for (const profile of profiles) {
+    // A gauge-mode computer never tracked a real gas either, only its default/last-known one, so
+    // its whole gas contribution is skipped rather than showing that fabricated default alongside
+    // genuinely selected gases from other profiles on the same dive.
+    if (isGaugeModeProfile(profile)) continue
+
     for (const { measurement } of profile.measurements) {
       const gas = measurement.gas
       // A surface reading (not yet/no longer submerged) can reflect whatever gas the computer

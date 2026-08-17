@@ -54,43 +54,69 @@
       <div
         class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 flex flex-col"
       >
-        <div class="flex justify-between items-center mb-4 gap-4">
+        <div class="flex justify-between items-start mb-2 gap-4">
           <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
-          <div class="flex gap-2 ml-auto">
-            <RouterLink
-              v-if="isMine && !readOnly"
-              :to="{ name: 'DiveEdit', params: { diveId: dive.id } }"
-            >
-              <button class="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
-                Edit
+          <div class="flex flex-col items-end gap-2 shrink-0">
+            <div class="flex gap-2">
+              <RouterLink
+                v-if="isMine && !readOnly"
+                :to="{ name: 'DiveEdit', params: { diveId: dive.id } }"
+              >
+                <button class="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
+                  Edit
+                </button>
+              </RouterLink>
+              <button
+                v-if="isMine && !readOnly"
+                @click="showShareModal = true"
+                class="bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
+              >
+                Share
               </button>
-            </RouterLink>
-            <button
-              v-if="isMine && !readOnly"
-              @click="showShareModal = true"
-              class="bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
-            >
-              Share
-            </button>
-            <button
-              v-if="isMine && !readOnly"
-              @click="showDeleteModal = true"
-              class="bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
-            >
-              Delete
-            </button>
-            <button
-              v-else-if="!isMine && !readOnly"
-              @click="showLinkModal = true"
-              class="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
-            >
-              Link Dive
-            </button>
+              <button
+                v-if="isMine && !readOnly"
+                @click="showDeleteModal = true"
+                class="bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
+              >
+                Delete
+              </button>
+              <button
+                v-else-if="!isMine && !readOnly"
+                @click="showLinkModal = true"
+                class="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
+              >
+                Link Dive
+              </button>
+            </div>
+            <!-- Tags, desktop position: directly under the action buttons. On narrow screens this
+                 copy is hidden - a second copy below the site/date line takes over there instead,
+                 since "under the buttons" doesn't read well once the header stacks into one
+                 column. -->
+            <div v-if="dive.tags?.length" class="hidden md:flex flex-wrap gap-1 justify-end max-w-xs">
+              <TagBadge
+                v-for="tag in dive.tags"
+                :key="tag.id"
+                :name="tag.name"
+                :auto-detected="!!tag.autoDetectRule"
+                @click="viewDivesByTag(tag.id)"
+                class="cursor-pointer"
+              />
+            </div>
           </div>
         </div>
         <p class="text-gray-500 dark:text-gray-400 text-sm">
           {{ dive.site.name }} · {{ summary?.start ? formatDate(summary.start) : 'No start date' }}
         </p>
+        <div v-if="dive.tags?.length" class="flex md:hidden flex-wrap gap-1 mt-2">
+          <TagBadge
+            v-for="tag in dive.tags"
+            :key="tag.id"
+            :name="tag.name"
+            :auto-detected="!!tag.autoDetectRule"
+            @click="viewDivesByTag(tag.id)"
+            class="cursor-pointer"
+          />
+        </div>
       </div>
 
       <!-- Delete Modal -->
@@ -146,7 +172,7 @@
         @reimported="handleProfileReimported"
       />
 
-      <!-- Main Content -->
+      <!-- Overview: Map alongside the small summary cards. -->
       <div class="flex flex-col md:flex-row gap-6">
         <!-- Map -->
         <div class="w-full md:w-1/5 h-50 rounded-lg overflow-hidden shadow-sm border">
@@ -158,292 +184,259 @@
           />
         </div>
 
-        <!-- Dive Info -->
-        <div class="w-full md:w-4/5 flex flex-col gap-6">
-          <!-- Summary Cards -->
-          <InfoCardRow v-if="summary">
-            <InfoCard title="Max Depth" :value="`${summary.maxDepth?.toFixed(1)} m`" />
-            <InfoCard title="Avg Depth" :value="`${summary.averageDepth?.toFixed(1)} m`" />
-            <InfoCard title="Bottom Time" :value="formatDiveTime(summary.bottomTime)" />
-          </InfoCardRow>
-
-          <!-- Details Grid -->
-          <InfoCardRow>
-            <InfoCard title="Gases">
-              <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                <li
-                  v-for="entry in allGases"
-                  :key="`${entry.gas.o2}/${entry.gas.he}/${entry.gas.n2}/${entry.role ?? 'none'}`"
-                >
-                  <GasDisplay
-                    :gas="entry.gas"
-                    :show-details="showGasDetails"
-                    :role-label="entry.roleLabel"
-                    :contributing-computers="entry.contributingComputers"
-                  />
-                </li>
-                <li v-if="allGases.length === 0" class="text-gray-400 dark:text-gray-500">
-                  No gas data
-                </li>
-              </ul>
-            </InfoCard>
-            <InfoCard title="Dive Computers">
-              <button
-                class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
-                v-for="computer in uniqueComputers"
-                :key="computer.id"
-                @click="viewDivesForComputer(computer.id)"
-              >
-                {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
-              </button>
-            </InfoCard>
-            <InfoCard title="Buddies">
-              <p
-                v-if="!dive.namedBuddies.length && !dive.buddiesDives?.length"
-                class="text-xs text-gray-400 dark:text-gray-500"
-              >
-                No buddies recorded
-              </p>
-              <ul v-else class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                <li v-for="name in dive.namedBuddies" :key="`named-${name}`">{{ name }}</li>
-              </ul>
-            </InfoCard>
-          </InfoCardRow>
-
-          <!-- Profiles Row: only relevant (and only shown) once a dive actually has more than
-               one profile - lets you remove one attached to the wrong dive by mistake (e.g. via
-               import) without deleting the whole dive. -->
-          <InfoCardRow v-if="isMine && !readOnly && dive.profiles.length > 1">
-            <InfoCard title="Profiles">
-              <div
-                v-for="profile in dive.profiles"
-                :key="profile.id"
-                class="flex items-center justify-between gap-3"
-              >
-                <span
-                  >{{ profile.diveComputer?.customIdentifier ?? 'Unknown computer' }} ·
-                  {{ formatDate(profile.start) }}</span
-                >
-                <button
-                  type="button"
-                  class="text-red-600 hover:text-red-700"
-                  title="Delete this profile"
-                  @click="confirmDeleteProfile(profile.id)"
-                >
-                  Delete
-                </button>
-              </div>
-            </InfoCard>
-          </InfoCardRow>
-
-          <DeletionConfirmation
-            v-model="showDeleteProfileModal"
-            title="Delete profile"
-            message="This removes this profile's measurements from the dive permanently, keeping the rest of the dive intact. This action cannot be undone."
-            confirm-text="Delete profile"
-            :loading="deletingProfile"
-            @confirm="handleDeleteProfile"
-          />
-
-          <!-- Suit / Base Configuration / CCR Unit / Weight / Visibility / Gas Consumption - each
-               is a small value or two, so they share this one wrapping row instead of each
-               getting a full-width panel with its own header (Cylinders keeps its own panel below
-               - it's a small table, not a single value/pair). -->
-          <InfoCardRow v-if="dive.configuration || dive.visibility?.feeling || hasGasConsumption">
-            <InfoCard v-if="dive.configuration?.suit?.type" title="Suit">
-              <span>{{ SUIT_TYPE_LABELS[dive.configuration.suit.type] }}</span>
-              <span v-if="dive.configuration.suit.thickness != null">
-                &middot; {{ dive.configuration.suit.thickness }} mm</span
-              >
-              <button
-                v-if="dive.configuration.suit.id"
-                @click="viewDivesForSuit(dive.configuration.suit.id)"
-                class="block mt-1 text-[11px] text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
-              >
-                View all dives with this suit →
-              </button>
-            </InfoCard>
-            <InfoCard v-if="dive.configuration?.base" title="Base Config">
-              <span>{{ BASE_CONFIGURATION_LABELS[dive.configuration.base] }}</span>
-            </InfoCard>
-            <InfoCard
-              v-if="
-                dive.configuration &&
-                isCcrBaseConfiguration(dive.configuration.base) &&
-                dive.configuration.ccrUnit
-              "
-              title="CCR Unit"
-            >
-              <span>{{ dive.configuration.ccrUnit.name }}</span>
-            </InfoCard>
-            <InfoCard
-              v-if="dive.configuration?.weight !== undefined && dive.configuration.weight !== null"
-              title="Weight"
-            >
-              <span>{{ dive.configuration.weight }} kg</span>
-              <span v-if="dive.configuration.weightFeeling" class="capitalize">
-                &middot; {{ dive.configuration.weightFeeling.toLowerCase() }}</span
-              >
-            </InfoCard>
-            <InfoCard v-if="dive.visibility?.feeling" title="Visibility">
-              <span class="capitalize">{{ dive.visibility.feeling.toLowerCase() }}</span>
-              <span v-if="dive.visibility.meters != null"> &middot; {{ dive.visibility.meters }} m</span>
-            </InfoCard>
-            <InfoCard v-if="dive.visibility?.description" title="Visibility Notes">
-              {{ dive.visibility.description }}
-            </InfoCard>
-            <!-- SAC deliberately dropped: it's not meaningful for CCR (no continuous OC breathing
-                 rate on a closed loop) and depends on cylinder size even for OC, so it isn't
-                 comparable across dives with different cylinders - RMV alone is. These come from
-                 tracked per-dive cylinders (Cylinders panel below), not the old whole-dive
-                 gasConsumption figure. -->
-            <InfoCard
-              v-if="dive.cylinderConsumption?.ocRmvLiters != null"
-              title="RMV"
-              :value="`${dive.cylinderConsumption.ocRmvLiters.toFixed(2)} l/min`"
-            />
-            <InfoCard
-              v-if="dive.cylinderConsumption?.bailoutRmvLiters != null"
-              title="Bailout RMV"
-              :value="`${dive.cylinderConsumption.bailoutRmvLiters.toFixed(2)} l/min`"
-            />
-            <InfoCard
-              v-if="dive.cylinderConsumption?.o2Liters != null"
-              title="O2 Used"
-              :value="`${dive.cylinderConsumption.o2Liters.toFixed(0)} l`"
-            />
-            <InfoCard
-              v-if="dive.cylinderConsumption?.diluentLiters != null"
-              title="Diluent Used"
-              :value="`${dive.cylinderConsumption.diluentLiters.toFixed(0)} l`"
-            />
-            <InfoCard
-              v-if="
-                dive.gasConsumption?.totalLiters !== undefined &&
-                dive.gasConsumption.totalLiters !== null
-              "
-              title="Total Gas"
-              :value="`${dive.gasConsumption.totalLiters.toFixed(1)} l`"
-            />
-          </InfoCardRow>
-        </div>
-      </div>
-
-      <!-- Dive Profile Graph, alongside CNS/OTU/N2/SurfGF - flex-wrap so the CNS row sits beside
-           the graph when there's room, and cleanly wraps to its own row below when there isn't,
-           rather than forcing a cramped side-by-side. -->
-      <div class="flex flex-wrap gap-6 mt-6">
-        <div
-          class="flex-[2] min-w-[320px] flex justify-center"
-          ref="embeddedGraphCardRef"
-        >
-          <div
-            class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full flex flex-col"
-          >
-            <div class="flex justify-between items-center p-4">
-              <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
-                Dive Profile
-              </h2>
-              <button @click="graphOpen = true" class="text-sm text-blue-600 hover:underline">
-                Expand
-              </button>
-            </div>
-            <DiveGraphContainer
-              v-if="dive.profiles"
-              ref="embeddedGraphRef"
-              :profiles="dive.profiles"
-              :dive-id="diveId"
-              @profiles-aligned="handleProfilesAligned"
-              @profile-trimmed="handleProfileTrimmed"
-            />
-          </div>
-        </div>
-
-        <InfoCardRow
-          v-if="firstProfileSummary || lastProfileSummary || profilesWithSurfacingGf.length"
-          class="flex-1 min-w-[280px] content-start"
-        >
-          <!-- CNS Information -->
-          <InfoCard
-            v-if="
-              firstProfileSummary?.startCNS !== undefined ||
-              lastProfileSummary?.endCNS !== undefined
-            "
-            title="CNS (%)"
-          >
-            <div
-              v-if="firstProfileSummary?.startCNS !== undefined"
-              class="flex items-center gap-2"
-            >
-              <span>Start:</span>
-              <span class="font-semibold">{{ firstProfileSummary.startCNS.toFixed(0) }}</span>
-            </div>
-            <div v-if="lastProfileSummary?.endCNS !== undefined" class="flex items-center gap-2">
-              <span>End:</span>
-              <span class="font-semibold">{{ lastProfileSummary.endCNS.toFixed(0) }}</span>
-            </div>
-          </InfoCard>
-
-          <!-- OTU Information -->
-          <InfoCard
-            v-if="lastProfileSummary?.o2Toxicity !== undefined"
-            title="OTUs"
-            :value="`${lastProfileSummary?.o2Toxicity?.toFixed(0)}`"
-          />
-
-          <!-- N2 Loading Information -->
-          <InfoCard
-            v-if="
-              firstProfileSummary?.startN2 !== undefined ||
-              lastProfileSummary?.endN2 !== undefined
-            "
-            title="N2 Loading"
-          >
-            <div
-              v-if="firstProfileSummary?.startN2 !== undefined"
-              class="flex items-center gap-2"
-            >
-              <span>Start:</span>
-              <span class="font-semibold">{{ firstProfileSummary.startN2.toFixed(0) }}</span>
-            </div>
-            <div v-if="lastProfileSummary?.endN2 !== undefined" class="flex items-center gap-2">
-              <span>End:</span>
-              <span class="font-semibold">{{ lastProfileSummary.endN2.toFixed(0) }}</span>
-            </div>
-          </InfoCard>
-
-          <!-- SurfGF: each profile's own surfacing/last GF99 (DiveMeasurement.n2 - the same value
-               the graph's "GF99" metric is drawn from), not just the first/last profile above. -->
-          <InfoCard v-if="profilesWithSurfacingGf.length" title="SurfGF">
-            <div
-              v-for="p in profilesWithSurfacingGf"
-              :key="p.id"
-              class="flex items-center justify-between gap-3"
-            >
-              <span>{{ p.diveComputer?.customIdentifier ?? 'Unknown computer' }}</span>
-              <span class="font-semibold">{{ p.summary.endN2!.toFixed(0) }}%</span>
-            </div>
-          </InfoCard>
+        <!-- Summary Cards -->
+        <InfoCardRow v-if="summary" class="w-full md:w-4/5">
+          <InfoCard title="Max Depth" :value="`${summary.maxDepth?.toFixed(1)} m`" />
+          <InfoCard title="Avg Depth" :value="`${summary.averageDepth?.toFixed(1)} m`" />
+          <InfoCard title="Bottom Time" :value="formatDiveTime(summary.bottomTime)" />
         </InfoCardRow>
       </div>
 
-      <!-- Tags Panel -->
+      <!-- Dive Profile Graph - directly after the summary cards, standalone with nothing beside
+           it (previously shared a row with the CNS/OTU/GF99 cards below, which made ctrl+click
+           and general scanning awkward). -->
       <div
-        v-if="dive.tags?.length"
-        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full flex flex-col"
+        ref="embeddedGraphCardRef"
       >
-        <h2 class="text-lg font-semibold mb-3">Tags</h2>
-        <div class="flex flex-wrap gap-2">
-          <TagBadge
-            v-for="tag in dive.tags"
-            :key="tag.id"
-            :name="tag.name"
-            :auto-detected="!!tag.autoDetectRule"
-            @click="viewDivesByTag(tag.id)"
-            class="cursor-pointer"
-          />
+        <div class="flex justify-between items-center p-4">
+          <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
+            Dive Profile
+          </h2>
+          <button @click="graphOpen = true" class="text-sm text-blue-600 hover:underline">
+            Expand
+          </button>
         </div>
+        <DiveGraphContainer
+          v-if="dive.profiles"
+          ref="embeddedGraphRef"
+          :profiles="dive.profiles"
+          :dive-id="diveId"
+          @profiles-aligned="handleProfilesAligned"
+          @profile-trimmed="handleProfileTrimmed"
+        />
       </div>
+
+      <!-- CNS / OTU / GF99: dive-profile-derived stats, now their own row below the graph. GF99
+           (Start) and GF99 @ Surface replace the old "N2 Loading" card: DiveMeasurement.n2 already
+           *is* GF99, not literal N2 tissue loading, so "N2 Loading End" and a single-profile
+           "SurfGF" card used to print the exact same number under two different labels. "GF99 @
+           Surface" is also a clearer name than "SurfGF" for what this actually is - the GF99
+           reading once genuinely surfaced at the end of the dive, not the continuous
+           "if-I-surfaced-right-now" gauge some dive computers also label "Surface GF" throughout
+           the dive. -->
+      <InfoCardRow
+        v-if="
+          firstProfileSummary?.startCNS !== undefined ||
+          lastProfileSummary?.endCNS !== undefined ||
+          lastProfileSummary?.o2Toxicity !== undefined ||
+          showGf99Start ||
+          profilesWithSurfacingGf.length
+        "
+      >
+        <!-- CNS Information -->
+        <InfoCard
+          v-if="
+            firstProfileSummary?.startCNS !== undefined ||
+            lastProfileSummary?.endCNS !== undefined
+          "
+          title="CNS (%)"
+        >
+          <div
+            v-if="firstProfileSummary?.startCNS !== undefined"
+            class="flex items-center gap-2"
+          >
+            <span>Start:</span>
+            <span class="font-semibold">{{ firstProfileSummary.startCNS.toFixed(0) }}</span>
+          </div>
+          <div v-if="lastProfileSummary?.endCNS !== undefined" class="flex items-center gap-2">
+            <span>End:</span>
+            <span class="font-semibold">{{ lastProfileSummary.endCNS.toFixed(0) }}</span>
+          </div>
+        </InfoCard>
+
+        <!-- OTU Information -->
+        <InfoCard
+          v-if="lastProfileSummary?.o2Toxicity !== undefined"
+          title="OTUs"
+          :value="`${lastProfileSummary?.o2Toxicity?.toFixed(0)}`"
+        />
+
+        <!-- GF99 at the start of the dive. -->
+        <InfoCard
+          v-if="showGf99Start"
+          title="GF99 (Start)"
+          :value="`${firstProfileSummary!.startN2!.toFixed(0)}%`"
+        />
+
+        <!-- GF99 @ Surface: each profile's own surfacing/last GF99 (DiveMeasurement.n2, the same
+             value the graph's "GF99" metric is drawn from). -->
+        <InfoCard v-if="profilesWithSurfacingGf.length" title="GF99 @ Surface">
+          <div
+            v-for="p in profilesWithSurfacingGf"
+            :key="p.id"
+            class="flex items-center justify-between gap-3"
+          >
+            <span>{{ p.diveComputer?.customIdentifier ?? 'Unknown computer' }}</span>
+            <span class="font-semibold">{{ p.summary.endN2!.toFixed(0) }}%</span>
+          </div>
+        </InfoCard>
+      </InfoCardRow>
+
+      <!-- Details Grid -->
+      <InfoCardRow>
+        <InfoCard title="Gases">
+          <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+            <li
+              v-for="entry in allGases"
+              :key="`${entry.gas.o2}/${entry.gas.he}/${entry.gas.n2}/${entry.role ?? 'none'}`"
+            >
+              <GasDisplay
+                :gas="entry.gas"
+                :show-details="showGasDetails"
+                :role-label="entry.roleLabel"
+                :contributing-computers="entry.contributingComputers"
+              />
+            </li>
+            <li v-if="allGases.length === 0" class="text-gray-400 dark:text-gray-500">
+              No gas data
+            </li>
+          </ul>
+        </InfoCard>
+        <InfoCard title="Dive Computers">
+          <button
+            class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
+            v-for="computer in uniqueComputers"
+            :key="computer.id"
+            @click="viewDivesForComputer(computer.id)"
+          >
+            {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
+          </button>
+        </InfoCard>
+        <InfoCard title="Buddies">
+          <p
+            v-if="!dive.namedBuddies.length && !dive.buddiesDives?.length"
+            class="text-xs text-gray-400 dark:text-gray-500"
+          >
+            No buddies recorded
+          </p>
+          <ul v-else class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+            <li v-for="name in dive.namedBuddies" :key="`named-${name}`">{{ name }}</li>
+          </ul>
+        </InfoCard>
+      </InfoCardRow>
+
+      <!-- Profiles Row: only relevant (and only shown) once a dive actually has more than
+           one profile - lets you remove one attached to the wrong dive by mistake (e.g. via
+           import) without deleting the whole dive. -->
+      <InfoCardRow v-if="isMine && !readOnly && dive.profiles.length > 1">
+        <InfoCard title="Profiles">
+          <div
+            v-for="profile in dive.profiles"
+            :key="profile.id"
+            class="flex items-center justify-between gap-3"
+          >
+            <span
+              >{{ profile.diveComputer?.customIdentifier ?? 'Unknown computer' }} ·
+              {{ formatDate(profile.start) }}</span
+            >
+            <button
+              type="button"
+              class="text-red-600 hover:text-red-700"
+              title="Delete this profile"
+              @click="confirmDeleteProfile(profile.id)"
+            >
+              Delete
+            </button>
+          </div>
+        </InfoCard>
+      </InfoCardRow>
+
+      <DeletionConfirmation
+        v-model="showDeleteProfileModal"
+        title="Delete profile"
+        message="This removes this profile's measurements from the dive permanently, keeping the rest of the dive intact. This action cannot be undone."
+        confirm-text="Delete profile"
+        :loading="deletingProfile"
+        @confirm="handleDeleteProfile"
+      />
+
+      <!-- Suit / Base Configuration / CCR Unit / Weight / Visibility / Gas Consumption - each
+           is a small value or two, so they share this one wrapping row instead of each
+           getting a full-width panel with its own header (Cylinders keeps its own panel below
+           - it's a small table, not a single value/pair). -->
+      <InfoCardRow v-if="dive.configuration || dive.visibility?.feeling || hasGasConsumption">
+        <InfoCard v-if="dive.configuration?.suit?.type" title="Suit">
+          <button
+            v-if="dive.configuration.suit.id"
+            type="button"
+            @click="viewDivesForSuit(dive.configuration.suit.id)"
+            class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
+          >
+            {{ suitLabel }}
+          </button>
+          <span v-else>{{ suitLabel }}</span>
+        </InfoCard>
+        <InfoCard v-if="dive.configuration?.base" title="Base Config">
+          <span>{{ BASE_CONFIGURATION_LABELS[dive.configuration.base] }}</span>
+        </InfoCard>
+        <InfoCard
+          v-if="
+            dive.configuration &&
+            isCcrBaseConfiguration(dive.configuration.base) &&
+            dive.configuration.ccrUnit
+          "
+          title="CCR Unit"
+        >
+          <span>{{ dive.configuration.ccrUnit.name }}</span>
+        </InfoCard>
+        <InfoCard
+          v-if="dive.configuration?.weight !== undefined && dive.configuration.weight !== null"
+          title="Weight"
+        >
+          <span>{{ dive.configuration.weight }} kg</span>
+          <span v-if="dive.configuration.weightFeeling" class="capitalize">
+            &middot; {{ dive.configuration.weightFeeling.toLowerCase() }}</span
+          >
+        </InfoCard>
+        <InfoCard v-if="dive.visibility?.feeling" title="Visibility">
+          <span class="capitalize">{{ dive.visibility.feeling.toLowerCase() }}</span>
+          <span v-if="dive.visibility.meters != null"> &middot; {{ dive.visibility.meters }} m</span>
+        </InfoCard>
+        <!-- SAC deliberately dropped: it's not meaningful for CCR (no continuous OC breathing
+             rate on a closed loop) and depends on cylinder size even for OC, so it isn't
+             comparable across dives with different cylinders - RMV alone is. These come from
+             tracked per-dive cylinders (Cylinders panel below), not the old whole-dive
+             gasConsumption figure. -->
+        <InfoCard
+          v-if="dive.cylinderConsumption?.ocRmvLiters != null"
+          title="RMV"
+          :value="`${dive.cylinderConsumption.ocRmvLiters.toFixed(2)} l/min`"
+        />
+        <InfoCard
+          v-if="dive.cylinderConsumption?.bailoutRmvLiters != null"
+          title="Bailout RMV"
+          :value="`${dive.cylinderConsumption.bailoutRmvLiters.toFixed(2)} l/min`"
+        />
+        <InfoCard
+          v-if="dive.cylinderConsumption?.o2Liters != null"
+          title="O2 Used"
+          :value="`${dive.cylinderConsumption.o2Liters.toFixed(0)} l`"
+        />
+        <InfoCard
+          v-if="dive.cylinderConsumption?.diluentLiters != null"
+          title="Diluent Used"
+          :value="`${dive.cylinderConsumption.diluentLiters.toFixed(0)} l`"
+        />
+        <InfoCard
+          v-if="
+            dive.gasConsumption?.totalLiters !== undefined &&
+            dive.gasConsumption.totalLiters !== null
+          "
+          title="Total Gas"
+          :value="`${dive.gasConsumption.totalLiters.toFixed(1)} l`"
+        />
+      </InfoCardRow>
 
       <!-- Notes Panel -->
       <div
@@ -531,7 +524,7 @@ import {
   CYLINDER_ROLE_LABELS,
   isCcrBaseConfiguration,
 } from '@/lib/types/dive'
-import { computeGasList, type GasListEntry } from '@/lib/dive/gasRoles'
+import { computeGasList, isGaugeModeProfile, type GasListEntry } from '@/lib/dive/gasRoles'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { User } from '@/lib/types/user'
@@ -584,6 +577,13 @@ const viewDivesForSuit = (suitId: number) => {
   router.push({ name: 'DiveList', query: { suitId: suitId.toString() } })
 }
 
+const suitLabel = computed(() => {
+  const suit = dive.value?.configuration?.suit
+  if (!suit?.type) return ''
+  const label = SUIT_TYPE_LABELS[suit.type]
+  return suit.thickness != null ? `${label} · ${suit.thickness} mm` : label
+})
+
 const viewDivesByTag = (tagId: number) => {
   router.push({ name: 'DiveList', query: { tagIds: String(tagId) } })
 }
@@ -592,20 +592,32 @@ const viewDivesForComputer = (computerId: number) => {
   router.push({ name: 'DiveList', query: { computerId: computerId.toString() } })
 }
 
-const firstProfileSummary = computed(() => dive.value?.profiles[0]?.summary)
-const lastProfileSummary = computed(() => {
+const firstProfile = computed(() => dive.value?.profiles[0])
+const lastProfile = computed(() => {
   const profiles = dive.value?.profiles
   if (!profiles) {
     return undefined
   }
-  const length = profiles.length
-  return profiles[length - 1]?.summary
+  return profiles[profiles.length - 1]
+})
+const firstProfileSummary = computed(() => firstProfile.value?.summary)
+const lastProfileSummary = computed(() => lastProfile.value?.summary)
+
+// Guards the "GF99 (Start)" card: a computer in gauge mode reports n2=0 for every sample, which
+// looks identical to a real "0%" start reading unless every sample is checked, not just the
+// first one - see isGaugeModeProfile's own doc comment.
+const showGf99Start = computed(() => {
+  const profile = firstProfile.value
+  return profile?.summary?.startN2 !== undefined && !isGaugeModeProfile(profile)
 })
 
 // Each profile's own surfacing/last GF99 (DiveMeasurement.n2, same value the graph's "GF99"
-// metric is drawn from) - the SurfGF card only lists profiles that actually have one.
+// metric is drawn from) - the "GF99 @ Surface" card only lists profiles that actually have one,
+// excluding gauge-mode computers whose n2 is a flat 0 throughout rather than a real reading.
 const profilesWithSurfacingGf = computed(
-  () => dive.value?.profiles.filter((p) => p.summary?.endN2 !== undefined) ?? [],
+  () =>
+    dive.value?.profiles.filter((p) => p.summary?.endN2 !== undefined && !isGaugeModeProfile(p)) ??
+    [],
 )
 
 const hasGasConsumption = computed(() => {

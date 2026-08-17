@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeGasList } from '@/lib/dive/gasRoles'
+import { computeGasList, isGaugeModeProfile } from '@/lib/dive/gasRoles'
 import type { DiveProfile, DiveMeasurementWithId, Gas } from '@/lib/types/dive'
 
 const gas = (o2: number, he = 0): Gas => ({ o2, n2: 1 - o2 - he, he })
@@ -11,6 +11,7 @@ function measurement(
   po2: { measured?: number; calculated?: number } | undefined = undefined,
   depth = 20,
   mode?: 'OC' | 'CC',
+  n2?: number,
 ): DiveMeasurementWithId {
   return {
     id,
@@ -23,6 +24,7 @@ function measurement(
       gas: g,
       po2,
       mode,
+      n2,
     },
   }
 }
@@ -164,5 +166,53 @@ describe('computeGasList', () => {
     ]
     const result = computeGasList(profiles, false)
     expect(result).toHaveLength(1)
+  })
+
+  it('excludes a gauge-mode computer\'s default gas, but keeps a real gas from another computer', () => {
+    const gaugeModeProfile = profile(
+      [
+        measurement(1, 0, gas(0.21), undefined, 20, undefined, 0),
+        measurement(2, 60_000, gas(0.21), undefined, 20, undefined, 0),
+      ],
+      'Bottom Timer',
+    )
+    const trackedProfile = profile(
+      [measurement(3, 0, gas(0.32), undefined, 20, undefined, 5)],
+      'Real Computer',
+    )
+    const result = computeGasList([gaugeModeProfile, trackedProfile], false)
+    expect(result).toHaveLength(1)
+    expect(result[0]?.gas).toEqual(gas(0.32))
+  })
+
+  it('does not exclude a profile that simply never reports n2 at all (e.g. FIT/Garmin)', () => {
+    // measurement() defaults n2 to undefined - distinct from a computer that explicitly reports
+    // a flat 0 every sample. Only the latter is gauge mode; the former says nothing either way.
+    const profiles = [profile([measurement(1, 0, gas(0.21))])]
+    const result = computeGasList(profiles, false)
+    expect(result).toHaveLength(1)
+  })
+})
+
+describe('isGaugeModeProfile', () => {
+  it('is true when every reported n2 sample is exactly 0', () => {
+    const p = profile([
+      measurement(1, 0, gas(0.21), undefined, 20, undefined, 0),
+      measurement(2, 60_000, gas(0.21), undefined, 20, undefined, 0),
+    ])
+    expect(isGaugeModeProfile(p)).toBe(true)
+  })
+
+  it('is false when n2 is simply never reported (undefined), not explicitly 0', () => {
+    const p = profile([measurement(1, 0, gas(0.21)), measurement(2, 60_000, gas(0.21))])
+    expect(isGaugeModeProfile(p)).toBe(false)
+  })
+
+  it('is false when at least one sample has a real nonzero GF99 reading', () => {
+    const p = profile([
+      measurement(1, 0, gas(0.21), undefined, 20, undefined, 0),
+      measurement(2, 60_000, gas(0.21), undefined, 20, undefined, 12),
+    ])
+    expect(isGaugeModeProfile(p)).toBe(false)
   })
 })
