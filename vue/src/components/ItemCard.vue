@@ -25,6 +25,14 @@
       >
         Edit
       </button>
+      <button
+        v-if="!readOnly && showDelete"
+        type="button"
+        class="px-2 py-1 text-xs rounded border border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors whitespace-nowrap"
+        @click="$emit('delete')"
+      >
+        Delete
+      </button>
     </div>
 
     <!-- Content section -->
@@ -39,13 +47,19 @@ import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 interface Props {
   title: string
+  /** Opt-in per-card delete button - off by default so existing callers (e.g.
+   * DiveComputerManagement, which has its own separate bulk "delete unused" flow) are unaffected. */
+  showDelete?: boolean
 }
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  showDelete: false,
+})
 
 defineEmits<{
   'view-dives': []
   edit: []
+  delete: []
 }>()
 
 const { readOnly } = useReadOnlyMode()

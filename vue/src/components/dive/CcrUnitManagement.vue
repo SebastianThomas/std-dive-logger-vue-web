@@ -32,14 +32,47 @@
         v-for="unit in ccrUnits"
         :key="unit.id"
         :title="unit.name"
+        :show-delete="true"
         @view-dives="viewDivesForCcrUnit(unit.id)"
         @edit="editCcrUnit(unit)"
+        @delete="confirmDeleteUnit(unit)"
       >
         <p v-if="unit.notes" class="text-xs text-gray-600 dark:text-gray-400">
           {{ formatNotesPreview(unit.notes) }}
         </p>
+        <!-- Deliberately separated from the buttons above (own row, warning styling, its own
+             confirmation step) so it can't be reached by the same casual click path as the plain
+             delete - this one destroys every dive using the unit, not just the unit's own link. -->
+        <div v-if="!readOnly" class="mt-3 pt-2 border-t border-red-200 dark:border-red-900/50">
+          <button
+            type="button"
+            class="text-[11px] text-red-500 hover:text-red-700 dark:hover:text-red-400 underline decoration-dotted"
+            @click="confirmDeleteUnitAndAllDives(unit)"
+          >
+            Delete this unit AND every dive that uses it&hellip;
+          </button>
+        </div>
       </ItemCard>
     </ItemCardGrid>
+
+    <DeletionConfirmation
+      v-model="showDeleteUnitConfirm"
+      title="Delete CCR unit"
+      :message="deleteUnitMessage"
+      confirm-text="Delete unit"
+      :loading="deletingUnit"
+      @confirm="handleDeleteUnit"
+    />
+
+    <DeletionConfirmation
+      v-model="showDeleteUnitAndDivesConfirm"
+      title="Delete CCR unit and every dive that uses it"
+      :message="deleteUnitAndDivesMessage"
+      confirm-text="Delete unit and dives"
+      :confirmation-phrase="unitPendingDeletion?.name ?? null"
+      :loading="deletingUnitAndDives"
+      @confirm="handleDeleteUnitAndAllDives"
+    />
 
     <!-- Create/Edit Modal -->
     <div
@@ -145,12 +178,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemCardGrid from '@/components/ItemCardGrid.vue'
+import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import CcrUnitNameInput from '@/components/dive/edit/CcrUnitNameInput.vue'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 import debounce from '@/lib/utils/debounce'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import type { CcrUnit, PagedResult } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
@@ -161,7 +197,7 @@ interface Props {
 
 defineProps<Props>()
 
-const { getWithToken, postWithToken, putWithToken } = useApi()
+const { getWithToken, postWithToken, putWithToken, deleteWithToken } = useApi()
 const router = useRouter()
 const { readOnly } = useReadOnlyMode()
 
@@ -181,6 +217,83 @@ const form = ref<{ id: number | null; name: string; notes: string; isPublic: boo
 const diverSearchQuery = ref('')
 const diverSearchLoading = ref(false)
 const diverSearchResults = ref<User[]>([])
+
+// Shared between both delete flows below - which unit a confirmation modal is currently open for.
+const unitPendingDeletion = ref<CcrUnit | null>(null)
+
+const showDeleteUnitConfirm = ref(false)
+const deletingUnit = ref(false)
+const deleteUnitMessage = ref('')
+
+const confirmDeleteUnit = (unit: CcrUnit) => {
+  unitPendingDeletion.value = unit
+  deleteUnitMessage.value = `Remove "${unit.name}"? Any dive or dive computer currently linked to it is unlinked, not deleted - nothing about your dives themselves changes.`
+  showDeleteUnitConfirm.value = true
+}
+
+const handleDeleteUnit = async () => {
+  const unit = unitPendingDeletion.value
+  if (!unit) return
+  deletingUnit.value = true
+  try {
+    await deleteWithToken(`/v1/dives/configuration/ccrUnit/${unit.id}`)
+    toast.success(`Deleted CCR unit "${unit.name}"`)
+    showDeleteUnitConfirm.value = false
+    await loadCcrUnits()
+  } catch (err) {
+    console.error('Failed to delete CCR unit:', err)
+    toast.error(`Failed to delete CCR unit: ${extractErrorDetail(err)}`, { duration: 8000 })
+  } finally {
+    deletingUnit.value = false
+  }
+}
+
+const showDeleteUnitAndDivesConfirm = ref(false)
+const deletingUnitAndDives = ref(false)
+const deleteUnitAndDivesMessage = ref('')
+
+const confirmDeleteUnitAndAllDives = async (unit: CcrUnit) => {
+  unitPendingDeletion.value = unit
+  deleteUnitAndDivesMessage.value = 'Checking how many dives use this unit...'
+  showDeleteUnitAndDivesConfirm.value = true
+  try {
+    const res = await getWithToken<PagedResult<unknown>>(
+      `/v1/dives/ccrUnit?ccrUnitId=${unit.id}&page=0`,
+    )
+    const count = res.data.totalElements ?? 0
+    deleteUnitAndDivesMessage.value =
+      count === 0
+        ? `"${unit.name}" has no dives using it - this will just delete the unit itself.`
+        : `This permanently deletes ${count} dive${count === 1 ? '' : 's'} using "${unit.name}", then the unit itself. This cannot be undone.`
+  } catch (err) {
+    console.error('Failed to count dives for CCR unit:', err)
+    deleteUnitAndDivesMessage.value = `Could not determine how many dives use "${unit.name}" - proceed with caution, this cannot be undone.`
+  }
+}
+
+const handleDeleteUnitAndAllDives = async () => {
+  const unit = unitPendingDeletion.value
+  if (!unit) return
+  deletingUnitAndDives.value = true
+  try {
+    const res = await deleteWithToken<{ deletedDives: number }>(
+      `/v1/dives/configuration/ccrUnit/${unit.id}/dives`,
+    )
+    const deleted = res.data.deletedDives ?? 0
+    toast.success(
+      `Deleted ${deleted} dive${deleted === 1 ? '' : 's'} and CCR unit "${unit.name}"`,
+    )
+    showDeleteUnitAndDivesConfirm.value = false
+    await loadCcrUnits()
+  } catch (err) {
+    console.error('Failed to delete CCR unit and its dives:', err)
+    toast.error(`Failed to delete unit and its dives: ${extractErrorDetail(err)}`, {
+      duration: 8000,
+    })
+  } finally {
+    deletingUnitAndDives.value = false
+  }
+}
 
 const searchDivers = async () => {
   const query = diverSearchQuery.value.trim()

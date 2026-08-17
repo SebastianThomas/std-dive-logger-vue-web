@@ -53,9 +53,21 @@
               @update:model-value="$emit('toggle-row', dive.id)"
             />
           </td>
-          <td class="border border-gray-400 px-3 py-2 w-16">{{ dive.number }}</td>
-          <td class="border border-gray-400 px-3 py-2 max-w-lg wrap-break-word">
-            {{ dive.customIdentifier || '-' }}
+          <td class="border border-gray-400 px-3 py-2 w-16" @click.stop>
+            <a
+              :href="diveHref(dive.id)"
+              class="block hover:underline hover:text-blue-700 dark:hover:text-blue-400"
+              @click="handleLinkClick($event, dive.id)"
+              >{{ dive.number }}</a
+            >
+          </td>
+          <td class="border border-gray-400 px-3 py-2 max-w-lg wrap-break-word" @click.stop>
+            <a
+              :href="diveHref(dive.id)"
+              class="block hover:underline hover:text-blue-700 dark:hover:text-blue-400"
+              @click="handleLinkClick($event, dive.id)"
+              >{{ dive.customIdentifier || '-' }}</a
+            >
           </td>
           <td class="border border-gray-400 px-3 py-2 w-40">
             {{ formatDate(dive.summary.start) }}
@@ -102,12 +114,31 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import DiveSitePreview from '@/components/DiveSitePreview.vue'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 import type { DiveWithoutProfiles } from '@/lib/types/dive'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
 import { formatISoDurationToTime, formatDate } from '@/lib/utils/timeUtils'
+
+const router = useRouter()
+
+// A real resolved href, not just an SPA click handler - lets ctrl/cmd+click (or middle-click)
+// open the dive in a new tab, which a plain @click-only row never supported.
+const diveHref = (diveId: number) => router.resolve({ name: 'DiveView', params: { diveId } }).href
+
+// Mirrors vue-router's own RouterLink click guard: a modified click (ctrl/cmd/shift/alt) or
+// anything but a plain left click is left entirely to the browser's native "open in new
+// tab"/"open in new window" handling - only a plain click is intercepted to emit row-click (which
+// respects selection mode, unlike a bare navigation would).
+const handleLinkClick = (event: MouseEvent, diveId: number) => {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return
+  }
+  event.preventDefault()
+  emit('row-click', diveId)
+}
 
 interface ColumnDef {
   key: keyof DiveWithoutProfiles

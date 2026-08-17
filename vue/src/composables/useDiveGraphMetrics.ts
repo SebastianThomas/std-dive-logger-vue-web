@@ -37,6 +37,10 @@ export type ProfileMetricCounts = {
   gasN2: number
   gasHe: number
   deco: number
+  /** Measurements logged with mode === 'CC' - a setpoint is only a meaningful concept on a
+   * closed-circuit profile, so this gates whether po2Setpoint availability actually means
+   * anything (see hasPo2Setpoint below). */
+  ccSamples: number
 }
 
 const EMPTY_COUNTS: ProfileMetricCounts = {
@@ -53,6 +57,7 @@ const EMPTY_COUNTS: ProfileMetricCounts = {
   gasN2: 0,
   gasHe: 0,
   deco: 0,
+  ccSamples: 0,
 }
 
 export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
@@ -98,6 +103,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
       if (m.measurement.gas?.n2 !== undefined && m.measurement.gas.n2 > 0) counts.gasN2++
       if (m.measurement.gas?.he !== undefined && m.measurement.gas.he > 0) counts.gasHe++
       if ((m.measurement.deco?.length ?? 0) > 0) counts.deco++
+      if (m.measurement.mode === 'CC') counts.ccSamples++
     }
 
     // No real calculated-PO2 samples logged (e.g. a fixed-setpoint CCR handset that only ever
@@ -125,7 +131,10 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
       // (e.g. a sensor error code that happens to parse as a number) isn't worth a whole toggle.
       hasPo2Measured: c.po2Measured > 1,
       hasPo2Calculated: c.po2Calculated > 1,
-      hasPo2Setpoint: c.po2Setpoint > 1,
+      // A setpoint is meaningless outside CC mode - without this, an OC profile with stray/
+      // artifact maxSetPoint samples (a device quirk or bad import data) would still show the
+      // setpoint toggle as selectable even though there's no such thing as a setpoint on OC.
+      hasPo2Setpoint: c.po2Setpoint > 1 && c.ccSamples > 0,
       hasRmv: c.rmv > 0,
       hasGasO2: c.gasO2 > 0,
       hasGasN2: c.gasN2 > 0,

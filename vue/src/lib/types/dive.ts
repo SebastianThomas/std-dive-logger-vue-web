@@ -209,12 +209,40 @@ export type CylinderSize = {
   value: number
 }
 
+/** What a cylinder was actually used for - decides how it feeds into gas-consumption
+ * calculations. See CylinderConsumptionCalculator (backend) for the full reasoning. */
+export type CylinderRole = 'OC' | 'DILUENT' | 'O2' | 'BAILOUT'
+
+export const CYLINDER_ROLE_LABELS: Record<CylinderRole, string> = {
+  OC: 'OC',
+  DILUENT: 'Diluent',
+  O2: 'O2 supply',
+  BAILOUT: 'Bailout',
+}
+
 export type DiveConfigurationCylinder = {
   id: number
   size: CylinderSize
   startBar?: number | null
   endBar?: number | null
   notes?: string
+  /** O2/He fraction of the gas in this cylinder - N2 is implied. */
+  gas: { o2: number; he: number }
+  role: CylinderRole
+  /** Both null means "used for the whole dive" - the common single-cylinder case, no extra data
+   * entry required. Only set when more than one cylinder of the same role was used across the
+   * dive (e.g. twin/sidemount cylinders switched partway through). */
+  usageStart?: string | null
+  usageEnd?: string | null
+}
+
+/** Computed from tracked cylinders - see CylinderConsumptionCalculator (backend). Every field is
+ * `null`, not zero, when there's nothing to compute it from. */
+export type CylinderConsumption = {
+  ocRmvLiters?: number | null
+  bailoutRmvLiters?: number | null
+  o2Liters?: number | null
+  diluentLiters?: number | null
 }
 
 export type DiveConfiguration = {
@@ -236,6 +264,7 @@ export type Dive = {
   previewImage?: string
   visibility: Visibility
   gasConsumption: GasConsumption
+  cylinderConsumption?: CylinderConsumption | null
   configuration: DiveConfiguration
   site: DiveSite
   profiles: DiveProfile[]

@@ -105,6 +105,7 @@ import {
   timelineMetricDisplayNames,
   timelineMetricUnits,
 } from '@/lib/types/statsTimeline'
+import { toggleMetricSelection } from '@/lib/stats/timelineMetricSelection'
 
 const NUMERIC_METRICS: TimelineMetric[] = [
   'diveCount',
@@ -189,34 +190,12 @@ watch(
   { deep: true },
 )
 
-// Plain click selects only that metric (and deselects a lone selection); shift+click (or the
-// "Combine" toggle, for touch devices without a shift key) adds/removes it, but only if its unit
-// matches what's already selected — otherwise it falls back to a plain single-select rather than
-// silently doing nothing.
+// Plain click selects only that metric; shift+click (or the "Combine" toggle, for touch devices
+// without a shift key) adds/removes it instead, so long as its unit is compatible with what's
+// already selected. See toggleMetricSelection's own doc comment for why this used to look broken.
 const handleMetricClick = (metric: TimelineMetric, event: MouseEvent) => {
-  const next = new Set(selectedMetrics.value)
   const wantsCombine = event.shiftKey || combineMode.value
-  if (!wantsCombine) {
-    if (next.size === 1 && next.has(metric)) {
-      next.clear()
-    } else {
-      next.clear()
-      next.add(metric)
-    }
-  } else {
-    const currentUnit = next.size ? timelineMetricUnits[[...next][0] as TimelineMetric] : null
-    if (next.size === 0 || currentUnit === timelineMetricUnits[metric]) {
-      if (next.has(metric)) {
-        next.delete(metric)
-      } else {
-        next.add(metric)
-      }
-    } else {
-      next.clear()
-      next.add(metric)
-    }
-  }
-  selectedMetrics.value = next
+  selectedMetrics.value = toggleMetricSelection(selectedMetrics.value, metric, wantsCombine)
 }
 
 const navigateToDiveList = (startMs: number, endMs: number) => {

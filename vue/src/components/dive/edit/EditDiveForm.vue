@@ -326,6 +326,130 @@
             </select>
           </div>
         </div>
+
+        <!-- Cylinders: size/pressures/gas mix/role, used to compute real RMV (see the RMV/Bailout
+             RMV/O2/Diluent figures on the dive view page) instead of the manually-entered
+             whole-dive SAC/RMV above, which can't account for cylinder size or CCR at all. -->
+        <div class="border-t pt-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-medium">Cylinders</h3>
+            <button
+              type="button"
+              class="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+              @click="addCylinder"
+            >
+              Add Cylinder
+            </button>
+          </div>
+          <p
+            v-if="!modelValue.configuration.cylinders?.length"
+            class="text-sm text-gray-500 dark:text-gray-400"
+          >
+            No cylinders tracked - RMV can't be computed without at least one.
+          </p>
+          <div
+            v-for="(cylinder, index) in modelValue.configuration.cylinders"
+            :key="cylinder.id"
+            class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 space-y-2"
+          >
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div>
+                <label class="block text-xs mb-1">Size (l)</label>
+                <input
+                  :value="cylinder.size.value"
+                  type="number"
+                  step="0.1"
+                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                  @input="updateCylinderSizeValue(index, $event)"
+                />
+              </div>
+              <div>
+                <label class="block text-xs mb-1">Start (bar)</label>
+                <input
+                  :value="cylinder.startBar ?? ''"
+                  type="number"
+                  step="1"
+                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                  @input="updateCylinderNumberField(index, 'startBar', $event)"
+                />
+              </div>
+              <div>
+                <label class="block text-xs mb-1">End (bar)</label>
+                <input
+                  :value="cylinder.endBar ?? ''"
+                  type="number"
+                  step="1"
+                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                  @input="updateCylinderNumberField(index, 'endBar', $event)"
+                />
+              </div>
+              <div>
+                <label class="block text-xs mb-1">Role</label>
+                <select
+                  :value="cylinder.role"
+                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                  @change="
+                    updateCylinderField(
+                      index,
+                      'role',
+                      ($event.target as HTMLSelectElement).value as CylinderRole,
+                    )
+                  "
+                >
+                  <option v-for="(label, role) in CYLINDER_ROLE_LABELS" :key="role" :value="role">
+                    {{ label }}
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs mb-1">O2 %</label>
+                <input
+                  :value="Math.round(cylinder.gas.o2 * 100)"
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="100"
+                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                  @input="updateCylinderGasField(index, 'o2', $event)"
+                />
+              </div>
+              <div>
+                <label class="block text-xs mb-1">He %</label>
+                <input
+                  :value="Math.round(cylinder.gas.he * 100)"
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="100"
+                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                  @input="updateCylinderGasField(index, 'he', $event)"
+                />
+              </div>
+              <div class="col-span-2">
+                <label class="block text-xs mb-1">Notes</label>
+                <input
+                  :value="cylinder.notes ?? ''"
+                  type="text"
+                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                  @input="
+                    updateCylinderField(index, 'notes', ($event.target as HTMLInputElement).value)
+                  "
+                />
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Leave usage start/end unset if this cylinder was used for the whole dive - the
+              common case, needing no extra data entry.
+            </p>
+            <button
+              type="button"
+              class="text-xs text-red-600 hover:text-red-700"
+              @click="removeCylinder(index)"
+            >
+              Remove cylinder
+            </button>
+          </div>
+        </div>
       </fieldset>
     </form>
 
@@ -401,12 +525,15 @@ import {
   type Visibility,
   type GasConsumption,
   type DiveConfiguration,
+  type DiveConfigurationCylinder,
+  type CylinderRole,
   type Suit,
   type CcrUnit,
   type Dive,
   type PagedResult,
   BASE_CONFIGURATION_LABELS,
   SUIT_TYPE_LABELS,
+  CYLINDER_ROLE_LABELS,
   isCcrBaseConfiguration,
 } from '@/lib/types/dive'
 
@@ -595,6 +722,79 @@ const updateConfigField = (field: string, value: string | number | undefined) =>
       [field]: value,
     },
   })
+}
+
+const emptyCylinder = (): DiveConfigurationCylinder => ({
+  // A negative placeholder id, distinct from any real (positive) persisted cylinder id, so the
+  // backend's update path can tell "this is a brand new cylinder" apart from "keep this existing
+  // one" - matches how a not-yet-saved entity is conventionally represented before its first save.
+  id: -Date.now(),
+  size: { unit: 'LITER', value: 12 },
+  startBar: null,
+  endBar: null,
+  notes: '',
+  gas: { o2: 0.21, he: 0 },
+  role: 'OC',
+  usageStart: null,
+  usageEnd: null,
+})
+
+const updateCylinders = (cylinders: DiveConfigurationCylinder[]) => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    configuration: {
+      ...props.modelValue.configuration!,
+      cylinders,
+    },
+  })
+}
+
+const addCylinder = () => {
+  updateCylinders([...(props.modelValue.configuration?.cylinders ?? []), emptyCylinder()])
+}
+
+const removeCylinder = (index: number) => {
+  const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
+  cylinders.splice(index, 1)
+  updateCylinders(cylinders)
+}
+
+const updateCylinderField = <K extends keyof DiveConfigurationCylinder>(
+  index: number,
+  field: K,
+  value: DiveConfigurationCylinder[K],
+) => {
+  const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
+  const current = cylinders[index]
+  if (!current) return
+  cylinders[index] = { ...current, [field]: value }
+  updateCylinders(cylinders)
+}
+
+const updateCylinderNumberField = (
+  index: number,
+  field: 'startBar' | 'endBar',
+  event: Event,
+) => {
+  const value = (event.target as HTMLInputElement).value
+  updateCylinderField(index, field, value === '' ? null : Number(value))
+}
+
+const updateCylinderSizeValue = (index: number, event: Event) => {
+  const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
+  const current = cylinders[index]
+  if (!current) return
+  const value = Number((event.target as HTMLInputElement).value)
+  updateCylinderField(index, 'size', { ...current.size, value })
+}
+
+const updateCylinderGasField = (index: number, field: 'o2' | 'he', event: Event) => {
+  const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
+  const current = cylinders[index]
+  if (!current) return
+  // Inputs are entered as whole percent (e.g. 21) - stored as a 0-1 fraction.
+  const percent = Number((event.target as HTMLInputElement).value)
+  updateCylinderField(index, 'gas', { ...current.gas, [field]: percent / 100 })
 }
 
 const updateConfigSuitField = (field: string, value: string | number | undefined) => {

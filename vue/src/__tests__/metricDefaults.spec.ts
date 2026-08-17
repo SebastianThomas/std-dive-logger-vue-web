@@ -16,6 +16,7 @@ const EMPTY: ProfileMetricCounts = {
   gasN2: 0,
   gasHe: 0,
   deco: 0,
+  ccSamples: 0,
 }
 
 function counts(overrides: Partial<ProfileMetricCounts>): ProfileMetricCounts {
