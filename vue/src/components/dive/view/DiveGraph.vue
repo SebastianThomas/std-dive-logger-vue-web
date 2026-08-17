@@ -164,6 +164,7 @@ import { interpolateAt, stepAfterValueAt, valueAtForMetric } from '@/lib/graph/v
 import { LruCache } from '@/lib/utils/lruCache'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import { computeRangeStats } from '@/lib/graph/rangeStats'
+import { splitByTimeGap, medianSampleIntervalMs } from '@/lib/graph/lineSegments'
 
 type Props = {
   profiles: DiveProfile[]
@@ -1018,7 +1019,19 @@ function renderAll() {
     const color = DEFAULT_METRIC_CONFIGS[metric].color
     const width = config.width ?? 1.5
 
-    props.profiles.forEach((_profile, idx) => {
+    const appendPath = (points: [number, number][]): void => {
+      if (points.length < 2) return
+      group
+        .append('path')
+        .datum(points)
+        .attr('d', config.lineRef.value?.(points) ?? '')
+        .attr('fill', 'none')
+        .attr('stroke', color)
+        .attr('stroke-width', width)
+        .attr('opacity', 0.7)
+    }
+
+    props.profiles.forEach((profile, idx) => {
       if (!visibleMask.value[idx]) return
       // Profile 0's visibility is the metric's global show* toggle, unchanged from before
       // per-profile overrides existed. Every other profile defaults to off - opting one in is
@@ -1027,16 +1040,22 @@ function renderAll() {
       const visible = idx === 0 ? config.showProp : (props.extraProfileMetrics?.[idx]?.[metric] ?? false)
       if (!visible) return
       const points = metricPointsCache.value[idx]?.[metric] ?? []
-      if (points.length) {
-        group
-          .append('path')
-          .datum(points)
-          .attr('d', config.lineRef.value?.(points) ?? '')
-          .attr('fill', 'none')
-          .attr('stroke', color)
-          .attr('stroke-width', width)
-          .attr('opacity', 0.7)
+      if (!points.length) return
+
+      // NDL is excluded entirely while in mandatory deco (see EXTRACTORS.ndl), which can leave a
+      // real multi-minute gap between the last pre-deco point and the first post-deco one - drawn
+      // as one continuous line, that reads as a smooth ramp from ~0 to a large resumed value that
+      // never actually happened. Splitting wherever the gap is unusually large (vs. this profile's
+      // own typical sampling interval) draws it as two separate segments instead, matching what
+      // was actually recorded.
+      if (metric === 'ndl') {
+        const times = profile.measurements.map((m) => m.measurement.time)
+        const maxGapMs = Math.max(60_000, 3 * medianSampleIntervalMs(times))
+        splitByTimeGap(points, maxGapMs).forEach(appendPath)
+        return
       }
+
+      appendPath(points)
     })
   }
 

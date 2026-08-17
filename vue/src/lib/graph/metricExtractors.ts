@@ -36,8 +36,16 @@ export const EXTRACTORS: Record<
     m.measurement.temperature?.value !== undefined
       ? [m.measurement.time, m.measurement.temperature.value]
       : null,
+  // Excluded entirely while in mandatory decompression: NDL ("no-decompression limit remaining")
+  // is inapplicable once you're already past it, not "0" - a computer that still reports 0 there
+  // is reporting "no time left", not a real countdown value. Treating it as real data drew a flat
+  // 0 line for the whole deco stop, then an abrupt vertical jump to a large number (often 90+) the
+  // instant deco cleared - see splitByTimeGap in DiveGraph.vue, which breaks the drawn line across
+  // the resulting gap instead of connecting it with a misleading diagonal.
   ndl: (m) =>
-    m.measurement.ndl ? [m.measurement.time, parseISODurationToMinutes(m.measurement.ndl)] : null,
+    m.measurement.ndl && !m.measurement.deco?.length
+      ? [m.measurement.time, parseISODurationToMinutes(m.measurement.ndl)]
+      : null,
   otu: (m) => (m.measurement.o2Tox !== undefined ? [m.measurement.time, m.measurement.o2Tox] : null),
   cns: (m) => (m.measurement.cns !== undefined ? [m.measurement.time, m.measurement.cns] : null),
   gf: (m) => (m.measurement.n2 !== undefined ? [m.measurement.time, m.measurement.n2] : null),

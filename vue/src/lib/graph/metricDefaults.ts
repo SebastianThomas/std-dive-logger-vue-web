@@ -7,7 +7,7 @@ import type { ProfileMetricCounts } from '@/composables/useDiveGraphMetrics'
  * the PO2 family (measured/calculated/setpoint), which gets its own single-best-source selection
  * via {@link selectBestPo2Source} instead of this generic per-metric logic - see its doc comment
  * for why. */
-export const DATA_DRIVEN_METRICS = ['temp', 'ndl', 'gf', 'cns', 'otu', 'rmv'] as const
+export const DATA_DRIVEN_METRICS = ['temp', 'ndl', 'gf', 'cns', 'otu', 'rmv', 'deco'] as const
 
 export type DataDrivenMetric = (typeof DATA_DRIVEN_METRICS)[number]
 

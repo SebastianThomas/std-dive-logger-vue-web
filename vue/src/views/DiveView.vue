@@ -192,32 +192,7 @@
         </InfoCardRow>
       </div>
 
-      <!-- Dive Profile Graph - directly after the summary cards, standalone with nothing beside
-           it (previously shared a row with the CNS/OTU/GF99 cards below, which made ctrl+click
-           and general scanning awkward). -->
-      <div
-        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full flex flex-col"
-        ref="embeddedGraphCardRef"
-      >
-        <div class="flex justify-between items-center p-4">
-          <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
-            Dive Profile
-          </h2>
-          <button @click="graphOpen = true" class="text-sm text-blue-600 hover:underline">
-            Expand
-          </button>
-        </div>
-        <DiveGraphContainer
-          v-if="dive.profiles"
-          ref="embeddedGraphRef"
-          :profiles="dive.profiles"
-          :dive-id="diveId"
-          @profiles-aligned="handleProfilesAligned"
-          @profile-trimmed="handleProfileTrimmed"
-        />
-      </div>
-
-      <!-- CNS / OTU / GF99: dive-profile-derived stats, now their own row below the graph. GF99
+      <!-- CNS / OTU / GF99: dive-profile-derived stats, right after the small summary cards. GF99
            (Start) and GF99 @ Surface replace the old "N2 Loading" card: DiveMeasurement.n2 already
            *is* GF99, not literal N2 tissue loading, so "N2 Loading End" and a single-profile
            "SurfGF" card used to print the exact same number under two different labels. "GF99 @
@@ -438,15 +413,6 @@
         />
       </InfoCardRow>
 
-      <!-- Notes Panel -->
-      <div
-        v-if="dive.notes"
-        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
-      >
-        <h2 class="text-lg font-semibold mb-3">Notes</h2>
-        <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ dive.notes }}</p>
-      </div>
-
       <!-- Cylinders - the one piece of Configuration dense enough to keep its own panel; Suit/Base
            Config/CCR Unit/Weight/Visibility/Gas Consumption moved into the compact InfoCardRow
            above. -->
@@ -493,6 +459,40 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Dive Profile Graph - the lowermost card except for Notes below it: everything else on
+           the page is a quick-scan summary, so the (comparatively heavy) graph itself is the last
+           thing reached, not the first. Still standalone with nothing beside it. -->
+      <div
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full flex flex-col"
+        ref="embeddedGraphCardRef"
+      >
+        <div class="flex justify-between items-center p-4">
+          <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
+            Dive Profile
+          </h2>
+          <button @click="graphOpen = true" class="text-sm text-blue-600 hover:underline">
+            Expand
+          </button>
+        </div>
+        <DiveGraphContainer
+          v-if="dive.profiles"
+          ref="embeddedGraphRef"
+          :profiles="dive.profiles"
+          :dive-id="diveId"
+          @profiles-aligned="handleProfilesAligned"
+          @profile-trimmed="handleProfileTrimmed"
+        />
+      </div>
+
+      <!-- Notes Panel -->
+      <div
+        v-if="dive.notes"
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
+      >
+        <h2 class="text-lg font-semibold mb-3">Notes</h2>
+        <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ dive.notes }}</p>
       </div>
     </div>
 

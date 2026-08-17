@@ -62,6 +62,14 @@ describe('computeSensibleMetricDefaults', () => {
     expect(result.extraProfileMetrics).toEqual({ 2: { rmv: true } })
   })
 
+  it('defaults deco (Deco Ceiling) on whenever the primary profile has deco data, same as any other data-driven metric', () => {
+    const withData = computeSensibleMetricDefaults([counts({ deco: 5 })])
+    expect(withData.show.deco).toBe(true)
+
+    const withoutData = computeSensibleMetricDefaults([counts({})])
+    expect(withoutData.show.deco).toBe(false)
+  })
+
   it('never mentions the gas-fraction metrics - always handled separately, off by default', () => {
     const result = computeSensibleMetricDefaults([counts({ gasO2: 100, gasN2: 100, gasHe: 100 })])
 

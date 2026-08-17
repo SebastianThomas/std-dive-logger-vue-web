@@ -447,6 +447,7 @@ const dataDrivenShowRefs: Record<DataDrivenMetric, typeof showTemp> = {
   cns: showCns,
   otu: showOtu,
   rmv: showRmv,
+  deco: showDecoZone,
 }
 
 // Picks a sensible default once per dive - see computeSensibleMetricDefaults' own doc comment for

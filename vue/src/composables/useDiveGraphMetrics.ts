@@ -92,7 +92,12 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
       if (m.measurement.ndl) counts.ndl++
       if (m.measurement.o2Tox !== undefined) counts.otu++
       if (m.measurement.cns !== undefined) counts.cns++
-      if (m.measurement.n2 !== undefined) counts.gf++
+      // > 0, not just !== undefined - a computer in gauge mode (deco calc disabled) reports n2 as
+      // exactly 0 for every sample, which is a "not tracked" signal, not a real 0% GF99 reading
+      // (see isGaugeModeProfile in lib/dive/gasRoles.ts, the same distinction applied to the gas
+      // list and the GF99 info cards). Without this, GF99 stayed toggleable - and got drawn as a
+      // flat, meaningless 0 line - on any dive from a gauge-mode computer.
+      if (m.measurement.n2 !== undefined && m.measurement.n2 > 0) counts.gf++
       // !== undefined, not a truthy check - a genuine 0.00 bar reading (e.g. right at the
       // surface) must still count as real data, not be mistaken for "not logged".
       if (m.measurement.po2?.measured !== undefined) counts.po2Measured++

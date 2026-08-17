@@ -82,3 +82,34 @@ describe('useDiveGraphMetrics - hasPo2Setpoint', () => {
     expect(getProfileMetricAvailability(0).hasPo2Setpoint).toBe(false)
   })
 })
+
+describe('useDiveGraphMetrics - hasGf', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('is unavailable on a gauge-mode computer (n2 explicitly reported as 0 every sample)', () => {
+    const profiles = ref<DiveProfile[]>([
+      profileOf([measurement(0, { n2: 0 }), measurement(60, { n2: 0 })]),
+    ])
+    const { getProfileMetricAvailability } = useDiveGraphMetrics(profiles)
+
+    expect(getProfileMetricAvailability(0).hasGf).toBe(false)
+  })
+
+  it('is unavailable when n2 is simply never reported at all', () => {
+    const profiles = ref<DiveProfile[]>([profileOf([measurement(0), measurement(60)])])
+    const { getProfileMetricAvailability } = useDiveGraphMetrics(profiles)
+
+    expect(getProfileMetricAvailability(0).hasGf).toBe(false)
+  })
+
+  it('is available once at least one sample has a real nonzero GF99 reading', () => {
+    const profiles = ref<DiveProfile[]>([
+      profileOf([measurement(0, { n2: 0 }), measurement(60, { n2: 42 })]),
+    ])
+    const { getProfileMetricAvailability } = useDiveGraphMetrics(profiles)
+
+    expect(getProfileMetricAvailability(0).hasGf).toBe(true)
+  })
+})
