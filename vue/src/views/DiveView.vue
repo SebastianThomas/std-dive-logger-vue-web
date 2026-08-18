@@ -185,8 +185,12 @@
              instead, since Leaflet doesn't bubble marker clicks up to the map's own click
              handler, and dragging/zooming don't register as a click at all. Google Maps for this
              specific site lives in that popup instead of a separate on-page button - see
-             DiveSiteMapPopup. -->
-        <div class="relative w-full md:w-1/5 h-50 rounded-lg shadow-sm border shrink-0">
+             DiveSiteMapPopup. overflow-hidden clips the tile layer to the rounded corners - a
+             popup opened on this small box can still get its top edge clipped by the same rule
+             (Leaflet has no way to exempt just the popup from a container's own overflow:hidden;
+             see DiveSiteMap.vue's style comment), but DiveSiteMapPopup's `compact` mode keeps
+             popups short enough that this is now the exception, not routine. -->
+        <div class="relative w-full md:w-1/5 h-50 rounded-lg overflow-hidden shadow-sm border shrink-0">
           <DiveSiteMap
             :sites="mapSites"
             :center="mapCenter"

@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-full h-full" :class="{ 'allow-popup-overflow': props.compact }">
+  <div class="relative w-full h-full">
     <l-map
       ref="mapRef"
       :zoom="mapZoom"
@@ -178,15 +178,16 @@ onMounted(async () => {
   width: 100%;
 }
 
-/* Leaflet's own stylesheet clips everything (including popups) to the container's bounds via
-   overflow: hidden - fine on a map with room to spare, but on a short "compact" map (e.g.
-   DiveView's small preview) a popup taller than the box gets its top cut off and becomes
-   unreadable, no matter where the map auto-pans to. Letting popups overflow instead of shrinking
-   the map to fit is the standard trade-off here - see DiveSiteMapPopup's own `compact` prop for
-   the other half of this (keeping popup content short enough that it rarely needs to anyway). */
-.allow-popup-overflow :deep(.leaflet-container) {
-  overflow: visible;
-}
+/* Tried letting popups overflow this container instead of being clipped by it (for a short
+   "compact" map, e.g. DiveView's small preview, where a popup can be taller than the box) - but
+   CSS overflow:hidden clips *every* descendant of the element it's set on, tiles and zoom/
+   attribution controls included, not just popups; there's no selector that exempts one child
+   while clipping the rest. Overriding it here made the map tiles themselves bleed past the
+   rounded corners at all times, which is worse than an occasional clipped popup. Reverted -
+   DiveSiteMapPopup's own `compact` prop (short, fixed-height content) is what actually keeps
+   popups legible in a small box now, not this. Revisit only via a genuinely separate mechanism
+   (e.g. a popup rendered outside the map's own clipped DOM subtree), not another overflow
+   override here. */
 
 :deep(.leaflet-popup-content) {
   margin: 8px;
