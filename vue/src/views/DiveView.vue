@@ -13,7 +13,11 @@
       @profile-trimmed="handleProfileTrimmed"
     />
 
-    <div v-else-if="!loading && dive" class="space-y-3 md:space-y-4">
+    <!-- w-full: without an explicit width, this flex item (under the shell's justify-center)
+         shrinks to fit its own widest content instead of filling the available space - a dive
+         whose content happens to be narrower than another dive's then renders visibly narrower
+         and centered, rather than every dive consistently filling the same width. -->
+    <div v-else-if="!loading && dive" class="w-full space-y-3 md:space-y-4">
       <!-- Trim suggestion: a profile has a sustained near-surface stretch at its start/end (e.g.
            the trailing few minutes a Divesoft Liberty logs while waiting to be ended manually)
            worth reviewing - dismissible for this session, re-appears on a fresh page load since
@@ -106,15 +110,6 @@
         </div>
         <p class="text-gray-500 dark:text-gray-400 text-sm">
           {{ dive.site.name }} · {{ summary?.start ? formatDate(summary.start) : 'No start date' }}
-          <a
-            :href="googleMapsUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Open in Google Maps"
-            class="ml-1 text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            <i class="fa-solid fa-map-location-dot"></i>
-          </a>
         </p>
         <div v-if="dive.tags?.length" class="flex md:hidden flex-wrap gap-1 mt-2">
           <TagBadge
@@ -185,24 +180,21 @@
            size (items-start below) instead of stretching every card next to it to match its
            height, and enough compact rows sit in that column to actually use the space. -->
       <div class="flex flex-col md:flex-row gap-6 items-start">
-        <!-- Map -->
-        <div class="relative w-full md:w-1/5 h-50 rounded-lg overflow-hidden shadow-sm border shrink-0">
+        <!-- Map - the whole thing (not a corner badge, which overlapped the tile attribution
+             text) is the link to the all-sites map: clicking a marker still opens its popup
+             instead, since Leaflet doesn't bubble marker clicks up to the map's own click
+             handler, and dragging/zooming don't register as a click at all. Google Maps for this
+             specific site lives in that popup instead of a separate on-page button - see
+             DiveSiteMapPopup. -->
+        <div class="relative w-full md:w-1/5 h-50 rounded-lg shadow-sm border shrink-0">
           <DiveSiteMap
             :sites="mapSites"
             :center="mapCenter"
             :zoom="13"
             :show-dive-count-badge="false"
+            link-to-all-sites
+            compact
           />
-          <!-- A small deliberate corner link, not the whole map - dragging/zooming/clicking a
-               marker on the map itself must never accidentally navigate away. -->
-          <RouterLink
-            :to="{ name: 'MapView' }"
-            title="View all dive sites"
-            class="absolute bottom-2 right-2 z-[1000] flex items-center gap-1 px-2 py-1 rounded-md bg-white/90 dark:bg-gray-800/90 text-xs font-medium text-gray-700 dark:text-gray-200 shadow hover:bg-white dark:hover:bg-gray-800 hover:underline"
-          >
-            <i class="fa-solid fa-map"></i>
-            All Sites
-          </RouterLink>
         </div>
 
         <div class="w-full md:w-4/5 flex flex-col gap-3">
@@ -557,6 +549,7 @@ import { useProfileReimportStore } from '@/stores/profileReimport'
 import { storeToRefs } from 'pinia'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
+import { googleMapsUrl } from '@/lib/map/googleMapsUrl'
 
 const router = useRouter()
 const route = useRoute()
@@ -599,12 +592,11 @@ const mapCenter = computed<[number, number] | undefined>(() => {
   return site ? [site.latitude, site.longitude] : undefined
 })
 
-// A plain external link (not a click handler) so it works exactly the same on mobile as desktop -
-// no JS map interaction needed, just opens the device's own Google Maps app/tab.
-const googleMapsUrl = computed(() => {
+// Backs the 'g' keyboard shortcut below - the visible link now lives in the map's own popup (see
+// DiveSiteMapPopup) instead of a separate on-page button, but the shortcut still needs the URL.
+const diveSiteGoogleMapsUrl = computed(() => {
   const site = dive.value?.site
-  if (!site) return undefined
-  return `https://www.google.com/maps/search/?api=1&query=${site.latitude},${site.longitude}`
+  return site ? googleMapsUrl(site.latitude, site.longitude) : undefined
 })
 
 const viewDivesForSuit = (suitId: number) => {
@@ -899,11 +891,16 @@ const handleDiveViewKeydown = (event: KeyboardEvent) => {
       router.push({ name: 'DiveView', params: { diveId: previousId } })
     }
   }
-  // 'g' opens the dive site in Google Maps - same destination as the map-pin link next to the
-  // site name, just reachable without a mouse. window.open (not location.href) so it opens a new
+  // 'g' opens the dive site in Google Maps - same destination as the link inside the map's own
+  // popup, just reachable without a mouse. window.open (not location.href) so it opens a new
   // tab/app rather than navigating away from the dive itself.
-  if (event.key.toLowerCase() === 'g' && !event.ctrlKey && !event.metaKey && googleMapsUrl.value) {
-    window.open(googleMapsUrl.value, '_blank', 'noopener,noreferrer')
+  if (
+    event.key.toLowerCase() === 'g' &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    diveSiteGoogleMapsUrl.value
+  ) {
+    window.open(diveSiteGoogleMapsUrl.value, '_blank', 'noopener,noreferrer')
   }
   // 'c' copies a shareable link to this dive to the clipboard.
   if (event.key.toLowerCase() === 'c' && !event.ctrlKey && !event.metaKey) {

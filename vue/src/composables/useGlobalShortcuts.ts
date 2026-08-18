@@ -4,6 +4,7 @@ import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 
 const LEADER_TIMEOUT_MS = 1500
+const FEEDBACK_DURATION_MS = 1500
 
 // The app-content scroll container is <main>, not window/body (it has its own overflow-y-auto) -
 // window.scrollTo would silently do nothing.
@@ -52,27 +53,50 @@ export function useGlobalShortcuts() {
   const isNothingFocused = (): boolean =>
     document.activeElement === null || document.activeElement === document.body
 
-  const LEADER_ACTIONS: Record<string, () => void> = {
-    p: () => {
-      showCommandPalette.value = !showCommandPalette.value
+  // The leader indicator ("␣ leader…") disappears the instant a sequence completes, which is too
+  // fast to actually read what just happened - this keeps the same indicator showing what fired,
+  // for a moment, before fading. label mirrors leaderShortcuts in lib/shortcuts/shortcutDocs.ts.
+  const lastActionLabel = ref<string | null>(null)
+  let feedbackTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+  const flashFeedback = (label: string) => {
+    lastActionLabel.value = label
+    if (feedbackTimeoutId) clearTimeout(feedbackTimeoutId)
+    feedbackTimeoutId = setTimeout(() => {
+      lastActionLabel.value = null
+      feedbackTimeoutId = null
+    }, FEEDBACK_DURATION_MS)
+  }
+
+  type LeaderAction = { label: string; run: () => void }
+
+  const LEADER_ACTIONS: Record<string, LeaderAction> = {
+    // No <leader>p for the Command Palette - Ctrl/Cmd+P and Ctrl/Cmd+K already open it, and 'p'
+    // means "previous" on every page that has next/previous shortcuts (DiveView, DiveList,
+    // Stats, StatsTimeline), so reusing it here would just be confusing, not useful.
+    '?': {
+      label: 'Help',
+      run: () => {
+        showHelpMenu.value = !showHelpMenu.value
+      },
     },
-    '?': () => {
-      showHelpMenu.value = !showHelpMenu.value
-    },
-    b: () => safeBack(),
-    f: () => safeForward(),
-    h: () => router.push({ name: 'Home' }),
-    d: () => router.push({ name: 'DiveList' }),
-    s: () => router.push({ name: 'Stats' }),
-    t: () => router.push({ name: 'StatsTimeline' }),
+    b: { label: 'Back', run: () => safeBack() },
+    f: { label: 'Forward', run: () => safeForward() },
+    h: { label: 'Home', run: () => router.push({ name: 'Home' }) },
+    d: { label: 'Dive List', run: () => router.push({ name: 'DiveList' }) },
+    s: { label: 'Statistics', run: () => router.push({ name: 'Stats' }) },
+    t: { label: 'Trends', run: () => router.push({ name: 'StatsTimeline' }) },
     // Guarded the same as every other editing entry point - locked mode has no way to reach Upload.
-    u: () => {
-      if (!readOnly.value) router.push({ name: 'DiveCreate' })
+    u: {
+      label: 'Upload',
+      run: () => {
+        if (!readOnly.value) router.push({ name: 'DiveCreate' })
+      },
     },
-    l: () => toggleReadOnly(),
+    l: { label: 'Toggle Lock', run: () => toggleReadOnly() },
     // Space Space (leader, tapped twice) - vim's `gg` equivalent for "scroll to top", since
     // there's no single physical key that reads naturally as "top" the way it does in vim.
-    ' ': () => scrollContentToTop(),
+    ' ': { label: 'Scroll to Top', run: () => scrollContentToTop() },
   }
 
   const handleGlobalKeydown = (event: KeyboardEvent) => {
@@ -115,7 +139,8 @@ export function useGlobalShortcuts() {
       clearLeader()
       if (action) {
         event.preventDefault()
-        action()
+        action.run()
+        flashFeedback(action.label)
       }
       return
     }
@@ -173,7 +198,8 @@ export function useGlobalShortcuts() {
   onUnmounted(() => {
     window.removeEventListener('keydown', handleGlobalKeydown)
     clearLeader()
+    if (feedbackTimeoutId) clearTimeout(feedbackTimeoutId)
   })
 
-  return { showCommandPalette, showHelpMenu, leaderPending }
+  return { showCommandPalette, showHelpMenu, leaderPending, lastActionLabel }
 }

@@ -8,15 +8,18 @@
   <!-- Help Menu -->
   <HelpMenu v-model="showHelpMenu" />
 
-  <!-- Leader-key indicator: Space is remapped to the vim <leader> key (see handleGlobalKeydown) -
+  <!-- Leader-key indicator: Space is remapped to the vim <leader> key (see useGlobalShortcuts) -
        a brief on-screen cue that a leader sequence is armed, since otherwise pressing Space would
-       silently do nothing until the next key lands. -->
+       silently do nothing until the next key lands. Once the sequence completes, this switches to
+       showing which action just fired (lastActionLabel) for a moment before fading out, instead
+       of just vanishing the instant the second key lands - too fast to actually read otherwise. -->
   <Transition name="fade">
     <div
-      v-if="leaderPending"
+      v-if="leaderPending || lastActionLabel"
       class="fixed bottom-4 left-4 z-50 px-3 py-1.5 rounded-lg bg-gray-900/90 dark:bg-gray-700/90 text-white text-xs font-mono shadow-lg"
     >
-      ␣ leader…
+      <template v-if="leaderPending">␣ leader…</template>
+      <template v-else>␣ {{ lastActionLabel }}</template>
     </div>
   </Transition>
 
@@ -86,7 +89,7 @@ const { router } = useNavigation()
 const { getWithToken } = useApi()
 const backgroundUploadStore = useBackgroundUploadStore()
 const { updatedId: backgroundUpdatedId } = storeToRefs(backgroundUploadStore)
-const { showCommandPalette, showHelpMenu, leaderPending } = useGlobalShortcuts()
+const { showCommandPalette, showHelpMenu, leaderPending, lastActionLabel } = useGlobalShortcuts()
 
 // Page name - can be empty or use current route path
 const route = useRoute()

@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-full h-full">
+  <div class="relative w-full h-full" :class="{ 'allow-popup-overflow': props.compact }">
     <l-map
       ref="mapRef"
       :zoom="mapZoom"
@@ -7,8 +7,10 @@
       :max-zoom="16"
       :min-zoom="3"
       :use-global-leaflet="true"
+      :class="{ 'cursor-pointer': props.linkToAllSites }"
       @update:zoom="(z) => onMapUpdate(undefined, z)"
       @update:center="(c) => onMapUpdate(c, undefined)"
+      @click="handleMapClick"
     >
       <l-tile-layer :url="tileUrl" :attribution="attribution" />
       <l-marker-cluster-group
@@ -28,7 +30,11 @@
           :icon="siteIcons.get(item.site.id)"
         >
           <l-popup>
-            <DiveSiteMapPopup :site="item.site" :dive-info="item.diveInfo" />
+            <DiveSiteMapPopup
+              :site="item.site"
+              :dive-info="item.diveInfo"
+              :compact="props.compact"
+            />
           </l-popup>
         </l-marker>
       </l-marker-cluster-group>
@@ -38,6 +44,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
 import { LMarkerClusterGroup } from 'vue-leaflet-markercluster'
 import { divIcon } from 'leaflet'
@@ -60,6 +67,15 @@ interface Props {
    * `sites` was built from just the one dive being viewed — its "count" is always 1 there and
    * isn't a real count of anything. */
   showDiveCountBadge?: boolean
+  /** Clicking the map background (not a marker - Leaflet already stops marker clicks from
+   * reaching the map's own click handler) navigates to the all-sites map. Used for a small,
+   * single-site map standing in as a "view on the map" link, e.g. DiveView - not the default,
+   * since it would make no sense on the all-sites map itself. */
+  linkToAllSites?: boolean
+  /** Renders popups compactly (see DiveSiteMapPopup) and lets them overflow the map's own bounds
+   * instead of being clipped by it - for a map box too short to fit a full popup, e.g. DiveView's
+   * small preview map. Leave off for a map with enough room that a popup always fits inside it. */
+  compact?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -67,10 +83,15 @@ const props = withDefaults(defineProps<Props>(), {
   showDiveCountBadge: true,
 })
 
+const router = useRouter()
 const themeStore = useThemeStore()
 const { getWithToken } = useApi()
 const customIconUrl = ref<string | null>(null)
 const mapRef = ref<InstanceType<typeof LMap> | null>(null)
+
+const handleMapClick = () => {
+  if (props.linkToAllSites) router.push({ name: 'MapView' })
+}
 const [mapView, setMapView] = usePersistentMapView('map-picker-view', {
   lat: 46,
   lon: 8,
@@ -155,6 +176,16 @@ onMounted(async () => {
 :deep(.leaflet-container) {
   height: 100%;
   width: 100%;
+}
+
+/* Leaflet's own stylesheet clips everything (including popups) to the container's bounds via
+   overflow: hidden - fine on a map with room to spare, but on a short "compact" map (e.g.
+   DiveView's small preview) a popup taller than the box gets its top cut off and becomes
+   unreadable, no matter where the map auto-pans to. Letting popups overflow instead of shrinking
+   the map to fit is the standard trade-off here - see DiveSiteMapPopup's own `compact` prop for
+   the other half of this (keeping popup content short enough that it rarely needs to anyway). */
+.allow-popup-overflow :deep(.leaflet-container) {
+  overflow: visible;
 }
 
 :deep(.leaflet-popup-content) {

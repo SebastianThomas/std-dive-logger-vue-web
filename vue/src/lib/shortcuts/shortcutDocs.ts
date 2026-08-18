@@ -5,7 +5,6 @@ export type ShortcutEntry = { label: string; key: string }
 // here since that map is keyed by the raw event key (including '?'), not meant for iteration/
 // display on its own.
 export const leaderShortcuts: ShortcutEntry[] = [
-  { label: 'Command Palette', key: 'p' },
   { label: 'Help', key: '?' },
   { label: 'Back', key: 'b' },
   { label: 'Forward', key: 'f' },
