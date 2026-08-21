@@ -95,6 +95,7 @@ import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { type User } from '@/lib/types/user'
 import SuitManagement from '@/components/dive/SuitManagement.vue'
 import CcrUnitManagement from '@/components/dive/CcrUnitManagement.vue'
@@ -148,7 +149,7 @@ onMounted(async () => {
     user.value = res.data
   } catch (err) {
     console.error(err)
-    toast.error('Failed to load user profile')
+    toast.error(`Failed to load user profile: ${extractErrorDetail(err)}`)
   }
   window.addEventListener('keydown', handleProfileKeydown)
 })
@@ -193,7 +194,7 @@ const confirmDeregister = async () => {
     router.push({ name: 'AuthSignup' })
   } catch (err) {
     console.error(err)
-    toast.error('Failed to deregister account')
+    toast.error(`Failed to deregister account: ${extractErrorDetail(err)}`)
   } finally {
     deregistering.value = false
   }

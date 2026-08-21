@@ -161,6 +161,7 @@
 import { ref, computed, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import AutocompleteInput from '@/components/AutocompleteInput.vue'
 import type { User, Group } from '@/lib/types/user'
 import type { PagedResult } from '@/lib/types/dive'
@@ -226,7 +227,7 @@ const deletePerson = async (id: number) => {
     toast.success('Removed person')
     await fetchAllReaders()
   } catch (err) {
-    toast.error('Failed to remove person')
+    toast.error(`Failed to remove person: ${extractErrorDetail(err)}`)
     console.error(err)
   } finally {
     busy.value = false
@@ -241,7 +242,7 @@ const deleteGroup = async (id: number | undefined) => {
     toast.success('Removed group')
     await fetchAllReaders()
   } catch (err) {
-    toast.error('Failed to remove group')
+    toast.error(`Failed to remove group: ${extractErrorDetail(err)}`)
     console.error(err)
   } finally {
     busy.value = false
@@ -269,7 +270,7 @@ const handleAddPerson = async () => {
     selectedPerson.value = null
     showAddPersonForm.value = false
   } catch (err) {
-    toast.error('Failed to add person')
+    toast.error(`Failed to add person: ${extractErrorDetail(err)}`)
     console.error(err)
   } finally {
     busy.value = false
@@ -286,7 +287,7 @@ const handleAddGroup = async () => {
     showAddGroupForm.value = false
     await fetchAllReaders()
   } catch (err) {
-    toast.error('Failed to add group')
+    toast.error(`Failed to add group: ${extractErrorDetail(err)}`)
     console.error(err)
   } finally {
     busy.value = false

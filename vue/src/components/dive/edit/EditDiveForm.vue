@@ -535,6 +535,14 @@
                 />
               </div>
             </div>
+            <p
+              v-if="cylinder.gas.o2 + cylinder.gas.he > 1.001"
+              class="text-xs text-red-600 dark:text-red-400"
+            >
+              O2 + He can't exceed 100% (currently
+              {{ Math.round((cylinder.gas.o2 + cylinder.gas.he) * 100) }}%) - the rest is implied
+              to be N2, so this would go negative.
+            </p>
             <p class="text-xs text-gray-500 dark:text-gray-400">
               Leave usage start/end unset if this cylinder was used for the whole dive - the
               common case, needing no extra data entry. Only set these if more than one cylinder

@@ -121,6 +121,7 @@
 import { ref, computed, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import debounce from '@/lib/utils/debounce'
 import type { CertificationAgency } from '@/lib/types/user'
 
@@ -212,7 +213,7 @@ const addNewAgency = async () => {
     select(res.data)
   } catch (err) {
     console.error('Failed to add certification agency:', err)
-    toast.error('Failed to add agency - it may already exist under a different spelling.')
+    toast.error(`Failed to add agency: ${extractErrorDetail(err)}`)
   } finally {
     adding.value = false
   }

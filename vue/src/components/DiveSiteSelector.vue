@@ -166,6 +166,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import DiveSiteSearch from '@/components/DiveSiteSearch.vue'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
@@ -248,7 +249,7 @@ const confirmSelection = async () => {
       emit('site-created', data)
     } catch (err) {
       console.error('Failed to create dive site:', err)
-      toast.error('Failed to create dive site. Please try again.')
+      toast.error(`Failed to create dive site: ${extractErrorDetail(err)}`)
     } finally {
       loading.value = false
     }

@@ -270,6 +270,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useNavigation } from '@/composables/useNavigation'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { toast } from 'vue-sonner'
 import PendingImportRow from '@/components/dive/import/PendingImportRow.vue'
 import DivesoftDiveList, {
@@ -400,19 +401,16 @@ const handleStageSuccess = (res: StageImportResult, toastId: string | number) =>
 const handleStageError = (err: unknown, toastId: string | number) => {
   toast.dismiss(toastId)
   if (axios.isAxiosError(err) && err.response) {
-    const data = err.response.data as
-      | { title?: string; detail?: string }
-      | StageImportResult
+    const data = err.response.data as { title?: string; detail?: string } | StageImportResult
     if ('staged' in data && 'errors' in data) {
       status.value = `Error: Could not parse ${data.errors.length} dive(s): \n${data.errors.join('\n')}`
     } else {
-      status.value = `Error: ${data.title ?? 'Import failed'} (${data.detail ?? 'No more information'})`
+      status.value = `Error: ${extractErrorDetail(err)}`
     }
-    toast.error(`Import failed: ${status.value}`, { duration: 10000 })
   } else {
-    status.value = 'Error: Import failed'
-    toast.error('Import failed. Please try again.', { duration: 10000 })
+    status.value = 'Error: Please try again.'
   }
+  toast.error(`Import failed: ${status.value.replace(/^Error: /, '')}`, { duration: 10000 })
 }
 
 const handleSubmit = async () => {

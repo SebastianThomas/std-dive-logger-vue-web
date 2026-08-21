@@ -63,8 +63,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
-import axios from 'axios'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { type PagedResult } from '@/lib/types/dive'
 import { type GroupMember } from '@/lib/types/user'
 import GroupPopover from '@/components/share/GroupPopover.vue'
@@ -88,18 +88,13 @@ const joinGroup = async (groupName: string): Promise<boolean> => {
     await fetchGroups()
     return true
   } catch (err: unknown) {
-    if (!axios.isAxiosError(err)) {
-      console.error(err)
-      toast.error('Could not join group')
-      return false
-    }
-    const backendMessage: string = err.response?.data?.detail
-    if (backendMessage?.includes('already requested')) {
+    console.error(err)
+    const detail = extractErrorDetail(err)
+    if (detail.includes('already requested')) {
       toast.warning('You already requested to be a member of this group.')
     } else {
-      toast.error('Failed to join group. Please try again.')
+      toast.error(`Failed to join group: ${detail}`)
     }
-    console.error(err)
     return false
   } finally {
     joiningGroup.value = false
@@ -115,18 +110,13 @@ const addGroup = async (groupName: string): Promise<boolean> => {
     await fetchGroups()
     return true
   } catch (err: unknown) {
-    if (!axios.isAxiosError(err)) {
-      console.error(err)
-      toast.error('Could not create group')
-      return false
-    }
-    const backendMessage: string = err.response?.data?.detail
-    if (backendMessage?.includes('A group with this name already exists.')) {
+    console.error(err)
+    const detail = extractErrorDetail(err)
+    if (detail.includes('A group with this name already exists.')) {
       toast.warning('A group with this name already exists.')
     } else {
-      toast.error('Failed to create group. Please try again.')
+      toast.error(`Failed to create group: ${detail}`)
     }
-    console.error(err)
     return false
   } finally {
     addingGroup.value = false

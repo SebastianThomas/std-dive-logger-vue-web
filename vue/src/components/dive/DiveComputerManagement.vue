@@ -157,6 +157,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemCardGrid from '@/components/ItemCardGrid.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
@@ -256,7 +257,7 @@ const cleanupUnusedComputers = async () => {
     }
   } catch (err) {
     console.error('Failed to cleanup unused dive computers:', err)
-    toast.error('Failed to cleanup unused dive computers')
+    toast.error(`Failed to cleanup unused dive computers: ${extractErrorDetail(err)}`)
   } finally {
     cleaning.value = false
   }
@@ -285,7 +286,7 @@ const saveDiveComputer = async () => {
     await loadDiveComputers()
   } catch (err) {
     console.error('Failed to save dive computer:', err)
-    toast.error(`Failed to save the computer`)
+    toast.error(`Failed to save the computer: ${extractErrorDetail(err)}`)
   } finally {
     saving.value = false
   }

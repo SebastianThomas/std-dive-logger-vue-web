@@ -163,6 +163,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { toast } from 'vue-sonner'
 import { DIVE_SITE_TYPE_LABELS, type DiveSite, type DiveSiteType } from '@/lib/types/dive'
 
@@ -231,8 +232,8 @@ const save = async () => {
     site.value = res.data
     editing.value = false
     toast.success('Dive site updated')
-  } catch {
-    toast.error('Failed to update dive site')
+  } catch (err) {
+    toast.error(`Failed to update dive site: ${extractErrorDetail(err)}`)
   } finally {
     saving.value = false
   }

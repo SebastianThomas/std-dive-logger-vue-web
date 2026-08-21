@@ -121,6 +121,7 @@
 import { ref, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import DiveSiteSearch from '@/components/DiveSiteSearch.vue'
 import DiveSiteSelector from '@/components/DiveSiteSelector.vue'
 import type { Dive, DiveSite } from '@/lib/types/dive'
@@ -176,7 +177,7 @@ const submit = async () => {
     emit('created', res.data)
   } catch (err) {
     console.error('Failed to save manual dive:', err)
-    toast.error('Failed to save manual dive. Please check the fields and try again.')
+    toast.error(`Failed to save manual dive: ${extractErrorDetail(err)}`)
   } finally {
     submitting.value = false
   }

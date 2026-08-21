@@ -36,6 +36,7 @@
 import { ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { formatDate } from '@/lib/utils/timeUtils'
 import debounce from '@/lib/utils/debounce'
 import type { DiveWithoutProfiles, PagedResult } from '@/lib/types/dive'
@@ -80,7 +81,7 @@ const handleLinkDive = async (buddyDiveId: number) => {
     emit('diveLinked', buddyDiveId)
   } catch (err) {
     console.error('Link failed', err)
-    toast.error('Failed to link dive')
+    toast.error(`Failed to link dive: ${extractErrorDetail(err)}`)
   }
 }
 

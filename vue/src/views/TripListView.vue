@@ -62,6 +62,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { toast } from 'vue-sonner'
 import { DIVE_TRIP_TYPE_LABELS, type DiveTrip, type DiveTripType } from '@/lib/types/trip'
 
@@ -78,8 +79,8 @@ const load = async () => {
   try {
     const res = await getWithToken<DiveTrip[]>('/v1/dive-trips')
     trips.value = res.data
-  } catch {
-    toast.error('Failed to load trips')
+  } catch (err) {
+    toast.error(`Failed to load trips: ${extractErrorDetail(err)}`)
   } finally {
     loading.value = false
   }
@@ -92,8 +93,8 @@ const create = async () => {
     await postWithToken<DiveTrip>('/v1/dive-trips', { name: newName.value.trim(), type: newType.value })
     newName.value = ''
     await load()
-  } catch {
-    toast.error('Failed to create trip')
+  } catch (err) {
+    toast.error(`Failed to create trip: ${extractErrorDetail(err)}`)
   } finally {
     creating.value = false
   }

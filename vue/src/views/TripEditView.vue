@@ -211,6 +211,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { toast } from 'vue-sonner'
 import {
   DIVE_TRIP_TYPE_LABELS,
@@ -289,8 +290,8 @@ const load = async () => {
       buddyName: t.buddyUser?.name ?? t.buddyName ?? '',
       role: t.role,
     }))
-  } catch {
-    toast.error('Failed to load trip')
+  } catch (err) {
+    toast.error(`Failed to load trip: ${extractErrorDetail(err)}`)
   } finally {
     loading.value = false
   }
@@ -305,8 +306,8 @@ const saveDetails = async () => {
     })
     trip.value = res.data
     toast.success('Trip updated')
-  } catch {
-    toast.error('Failed to update trip')
+  } catch (err) {
+    toast.error(`Failed to update trip: ${extractErrorDetail(err)}`)
   }
 }
 
@@ -315,8 +316,8 @@ const removeTrip = async () => {
     await deleteWithToken(`/v1/dive-trips/${tripId()}`)
     toast.success('Trip deleted')
     router.push({ name: 'TripList' })
-  } catch {
-    toast.error('Failed to delete trip')
+  } catch (err) {
+    toast.error(`Failed to delete trip: ${extractErrorDetail(err)}`)
   }
 }
 
@@ -345,8 +346,8 @@ const addDiveMember = async (diveId: number) => {
     diveSearchQuery.value = ''
     diveSearchResults.value = []
     await load()
-  } catch {
-    toast.error('Failed to add dive to trip')
+  } catch (err) {
+    toast.error(`Failed to add dive to trip: ${extractErrorDetail(err)}`)
   }
 }
 
@@ -354,8 +355,8 @@ const removeDiveMember = async (diveId: number) => {
   try {
     await deleteWithToken(`/v1/dive-trips/${tripId()}/members/dives/${diveId}`)
     await load()
-  } catch {
-    toast.error('Failed to remove dive')
+  } catch (err) {
+    toast.error(`Failed to remove dive: ${extractErrorDetail(err)}`)
   }
 }
 
@@ -365,8 +366,8 @@ const addSubTripFromSelect = async (event: Event) => {
   try {
     await postWithToken(`/v1/dive-trips/${tripId()}/members/trips/${childId}`, {})
     await load()
-  } catch {
-    toast.error('Could not add sub-trip (this may create a cycle)')
+  } catch (err) {
+    toast.error(`Could not add sub-trip: ${extractErrorDetail(err)}`)
   }
 }
 
@@ -374,8 +375,8 @@ const removeTripMember = async (childTripId: number) => {
   try {
     await deleteWithToken(`/v1/dive-trips/${tripId()}/members/trips/${childTripId}`)
     await load()
-  } catch {
-    toast.error('Failed to remove sub-trip')
+  } catch (err) {
+    toast.error(`Failed to remove sub-trip: ${extractErrorDetail(err)}`)
   }
 }
 
@@ -393,8 +394,8 @@ const saveDefaultTeam = async () => {
         ),
     )
     toast.success('Default team roster saved')
-  } catch {
-    toast.error('Failed to save roster')
+  } catch (err) {
+    toast.error(`Failed to save roster: ${extractErrorDetail(err)}`)
   } finally {
     savingTeam.value = false
   }

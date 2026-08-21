@@ -155,6 +155,7 @@
 import { ref, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { BUDDY_ROLE_LABELS, type BuddyRole } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
@@ -203,7 +204,7 @@ const applyNamedRole = async (name: string) => {
     toast.success(`Updated "${name}"'s role across your dives`)
   } catch (err) {
     console.error('Failed to set named buddy role:', err)
-    toast.error('Failed to update role.')
+    toast.error(`Failed to update role: ${extractErrorDetail(err)}`)
   } finally {
     applyingNamedRole.value = null
   }
@@ -217,7 +218,7 @@ const applyLinkedRole = async (buddy: User) => {
     toast.success(`Updated "${buddy.name}"'s role across your dives`)
   } catch (err) {
     console.error('Failed to set linked buddy role:', err)
-    toast.error('Failed to update role.')
+    toast.error(`Failed to update role: ${extractErrorDetail(err)}`)
   } finally {
     applyingLinkedRole.value = null
   }

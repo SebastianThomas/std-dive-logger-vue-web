@@ -77,6 +77,7 @@ import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { useNavigation } from '@/composables/useNavigation'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import EditDiveForm from '@/components/dive/edit/EditDiveForm.vue'
 import type {
   Dive,
@@ -228,7 +229,7 @@ const fetchDive = async () => {
   } catch (err) {
     error.value = 'Could not load dive data.'
     console.error(err)
-    toast.error('Failed to load dive data')
+    toast.error(`Failed to load dive data: ${extractErrorDetail(err)}`)
   } finally {
     loading.value = false
   }
@@ -270,7 +271,7 @@ const tryCreateNewSite = async (
     }
   } catch (err) {
     console.error(err)
-    toast.error('Failed to create new dive site.')
+    toast.error(`Failed to create new dive site: ${extractErrorDetail(err)}`)
     return null
   }
 }
@@ -290,7 +291,7 @@ const getSitePayload = async (
       existingSites = res.data
     } catch (err) {
       console.error(err)
-      toast.error('Failed to check for existing dive site.')
+      toast.error(`Failed to check for existing dive site: ${extractErrorDetail(err)}`)
       return null
     }
 
@@ -320,7 +321,25 @@ const getSitePayload = async (
     : null
 }
 
+/** Mirrors the backend's Gas invariant (O2 + He can't exceed 100%, since N2 is implied as the
+ * remainder) so a bad cylinder mix is caught here, in the frontend, rather than only surfacing as
+ * a 400 from the server after a round trip. */
+const invalidCylinders = computed(
+  () =>
+    (formData.value.configuration?.cylinders ?? []).filter(
+      (cylinder) => cylinder.gas.o2 + cylinder.gas.he > 1.001,
+    ).length,
+)
+
 const handleSubmit = async () => {
+  if (invalidCylinders.value > 0) {
+    toast.error(
+      `${invalidCylinders.value} cylinder${invalidCylinders.value === 1 ? '' : 's'} ` +
+        `have O2 + He over 100% - fix the gas mix before saving.`,
+    )
+    return
+  }
+
   submitting.value = true
   const newSite = formData.value.diveSite ?? null
 
@@ -379,7 +398,7 @@ const handleSubmit = async () => {
     safeBack()
   } catch (err) {
     console.error(err)
-    toast.error('Failed to update dive.')
+    toast.error(`Failed to update dive: ${extractErrorDetail(err)}`, { duration: 10000 })
   } finally {
     submitting.value = false
   }

@@ -266,6 +266,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import type {
@@ -367,7 +368,7 @@ const loadSuits = async () => {
     suits.value = res.data.result ?? []
   } catch (err) {
     console.error('Failed to load suits', err)
-    toast.error('Failed to load suits')
+    toast.error(`Failed to load suits: ${extractErrorDetail(err)}`)
   } finally {
     suitsLoading.value = false
   }
@@ -382,7 +383,7 @@ const loadCcrUnits = async () => {
     ccrUnits.value = res.data.result ?? []
   } catch (err) {
     console.error('Failed to load CCR units', err)
-    toast.error('Failed to load CCR units')
+    toast.error(`Failed to load CCR units: ${extractErrorDetail(err)}`)
   } finally {
     ccrUnitsLoading.value = false
   }
@@ -513,7 +514,7 @@ const handleBaseConfigurationUpdate = async () => {
     emit('refresh')
   } catch (err) {
     console.error('Failed to update base configuration', err)
-    toast.error('Failed to update base configuration')
+    toast.error(`Failed to update base configuration: ${extractErrorDetail(err)}`)
   } finally {
     updatingBaseConfiguration.value = false
   }
@@ -539,7 +540,7 @@ const handleSuitUpdate = async () => {
     emit('refresh')
   } catch (err) {
     console.error('Failed to update suit', err)
-    toast.error('Failed to update suit')
+    toast.error(`Failed to update suit: ${extractErrorDetail(err)}`)
   } finally {
     updatingSuit.value = false
   }
@@ -567,7 +568,7 @@ const handleCcrUnitUpdate = async () => {
     emit('refresh')
   } catch (err) {
     console.error('Failed to update CCR unit', err)
-    toast.error('Failed to update CCR unit')
+    toast.error(`Failed to update CCR unit: ${extractErrorDetail(err)}`)
   } finally {
     updatingCcrUnit.value = false
   }
@@ -593,7 +594,7 @@ const handleWeightUpdate = async () => {
     emit('refresh')
   } catch (err) {
     console.error('Failed to update weight', err)
-    toast.error('Failed to update weight')
+    toast.error(`Failed to update weight: ${extractErrorDetail(err)}`)
   } finally {
     updatingWeight.value = false
   }
@@ -620,7 +621,7 @@ const handleMerge = async () => {
     emit('close')
   } catch (err) {
     console.error('Failed to merge dives', err)
-    toast.error('Failed to merge dives')
+    toast.error(`Failed to merge dives: ${extractErrorDetail(err)}`)
   } finally {
     merging.value = false
   }
@@ -640,19 +641,24 @@ const confirmBulkDelete = async () => {
   const ids = props.selectedDives.map((d) => d.id)
 
   const results = await Promise.allSettled(ids.map((id) => deleteWithToken(`/v1/dives/${id}`)))
-  const failed = results.filter((r) => r.status === 'rejected')
+  const failed = results.filter(
+    (r): r is PromiseRejectedResult => r.status === 'rejected',
+  )
   const succeeded = results.length - failed.length
 
   if (failed.length) {
-    failed.forEach((r) => console.error('Failed to delete dive', (r as PromiseRejectedResult).reason))
+    failed.forEach((r) => console.error('Failed to delete dive', r.reason))
   }
 
   if (failed.length === 0) {
     toast.success(`Successfully deleted ${succeeded} dive(s)`)
   } else if (succeeded === 0) {
-    toast.error(`Failed to delete ${failed.length} dive(s)`)
+    toast.error(`Failed to delete ${failed.length} dive(s): ${extractErrorDetail(failed[0]?.reason)}`)
   } else {
-    toast.error(`${succeeded} of ${ids.length} dive(s) deleted, ${failed.length} failed`)
+    toast.error(
+      `${succeeded} of ${ids.length} dive(s) deleted, ${failed.length} failed: ` +
+        extractErrorDetail(failed[0]?.reason),
+    )
   }
 
   bulkDeleting.value = false

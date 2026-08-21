@@ -102,6 +102,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { unzipSync } from 'fflate'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
 import { useAuthStore } from '@/stores/auth'
 import type { DivePhoto, DivePhotoUploadUrlResponse } from '@/lib/types/dive'
@@ -160,7 +161,7 @@ async function loadPhotos() {
     await Promise.all(photos.value.map((p) => loadThumbnail(p.id)))
   } catch (err) {
     console.error('Failed to load dive photos', err)
-    error.value = 'Could not load photos.'
+    error.value = `Could not load photos: ${extractErrorDetail(err)}`
   } finally {
     loading.value = false
   }
@@ -221,6 +222,7 @@ async function handleFilesSelected(event: Event) {
   error.value = ''
   let uploadedCount = 0
   let failedCount = 0
+  let lastFailureDetail = ''
   try {
     // Flatten selection into a single list of (name, blob-like) uploads: zip archives expand
     // into their individual image entries first, plain image files pass through as-is - both
@@ -241,6 +243,7 @@ async function handleFilesSelected(event: Event) {
         } catch (err) {
           console.error('Failed to unzip archive', file.name, err)
           failedCount += 1
+          lastFailureDetail = extractErrorDetail(err)
         }
       } else {
         toUpload.push({ name: file.name, blob: file })
@@ -255,6 +258,7 @@ async function handleFilesSelected(event: Event) {
       } catch (err) {
         console.error('Failed to upload dive photo', name, err)
         failedCount += 1
+        lastFailureDetail = extractErrorDetail(err)
       }
     }
   } finally {
@@ -266,8 +270,10 @@ async function handleFilesSelected(event: Event) {
     toast.success(`Uploaded ${uploadedCount} photo${uploadedCount === 1 ? '' : 's'}.`)
   }
   if (failedCount > 0) {
-    error.value = `${failedCount} photo${failedCount === 1 ? '' : 's'} failed to upload.`
-    toast.error(error.value)
+    error.value =
+      `${failedCount} photo${failedCount === 1 ? '' : 's'} failed to upload` +
+      (lastFailureDetail ? `: ${lastFailureDetail}` : '.')
+    toast.error(error.value, { duration: 10000 })
   }
 }
 
@@ -293,8 +299,8 @@ async function handleImportFromUrl() {
     showLinkInput.value = false
   } catch (err) {
     console.error('Failed to import photo(s) from URL', err)
-    error.value = 'Could not import from that link.'
-    toast.error(error.value)
+    error.value = `Could not import from that link: ${extractErrorDetail(err)}`
+    toast.error(error.value, { duration: 10000 })
   } finally {
     uploading.value = false
   }
@@ -314,7 +320,7 @@ async function deletePhoto(photo: DivePhoto) {
     }
   } catch (err) {
     console.error('Failed to delete dive photo', err)
-    toast.error('Could not delete photo.')
+    toast.error(`Could not delete photo: ${extractErrorDetail(err)}`)
   }
 }
 

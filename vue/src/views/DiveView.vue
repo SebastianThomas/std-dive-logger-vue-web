@@ -600,6 +600,7 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { formatISoDurationToTime, formatDate } from '@/lib/utils/timeUtils'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import DiveSearchAndLink from '@/components/DiveSearchAndLink.vue'
@@ -819,7 +820,7 @@ const fetchDive = async () => {
     fetchDiveTripTerminology(requestedDiveId)
   } catch (err) {
     if (requestId !== fetchDiveRequestId) return
-    error.value = err instanceof Error ? err.message : 'Failed to fetch dive'
+    error.value = `Failed to fetch dive: ${extractErrorDetail(err)}`
   } finally {
     if (requestId === fetchDiveRequestId) loading.value = false
   }
@@ -898,7 +899,7 @@ const handleDeleteProfile = async () => {
     toast.success('Profile deleted')
   } catch (err) {
     console.error('Delete profile failed', err)
-    toast.error('Failed to delete profile')
+    toast.error(`Failed to delete profile: ${extractErrorDetail(err)}`)
   } finally {
     deletingProfile.value = false
     showDeleteProfileModal.value = false
@@ -917,7 +918,7 @@ const handleDelete = async () => {
     router.push({ name: 'DiveList' })
   } catch (err) {
     console.error('Delete failed', err)
-    toast.error('Failed to delete dive')
+    toast.error(`Failed to delete dive: ${extractErrorDetail(err)}`)
     deletingDive.value = false
   }
 }

@@ -250,6 +250,7 @@ import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '../composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import BulkActionsModal from '@/components/dive/BulkActionsModal.vue'
 import DiveListTable from '@/components/DiveListTable.vue'
 import PageSelector from '@/components/PageSelector.vue'
@@ -545,8 +546,8 @@ const fetchDives = async () => {
       return
     }
     console.error(e)
-    status.value = 'Failed to load dives.'
-    toast.error('Failed to load dives.')
+    status.value = `Failed to load dives: ${extractErrorDetail(e)}`
+    toast.error(status.value)
   } finally {
     if (requestId === fetchRequestId) {
       isLoading.value = false

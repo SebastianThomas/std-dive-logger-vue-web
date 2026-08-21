@@ -55,6 +55,7 @@
 import { ref, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import type { TagDefinition } from '@/lib/types/dive'
 import TagBadge from './TagBadge.vue'
 
@@ -120,7 +121,7 @@ const createAndSelect = async () => {
     selectTag(res.data)
   } catch (e) {
     console.error('Failed to create tag', e)
-    toast.error('Failed to create tag. Please try again.')
+    toast.error(`Failed to create tag: ${extractErrorDetail(e)}`)
   }
 }
 

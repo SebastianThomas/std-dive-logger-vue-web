@@ -19,6 +19,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import axios from 'axios'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 
 const router = useRouter()
 const route = useRoute()
@@ -43,7 +44,7 @@ onMounted(async () => {
     router.push({ name: 'AuthLogin' })
   } catch (err) {
     console.error(err)
-    toast.error('Could not verify your email. The link may have expired.')
+    toast.error(`Could not verify your email: ${extractErrorDetail(err)}`)
     router.push({ name: 'Home' })
   }
 })

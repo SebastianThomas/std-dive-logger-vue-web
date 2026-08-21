@@ -179,6 +179,7 @@
 import { ref, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import CertificationAgencyPicker from '@/components/CertificationAgencyPicker.vue'
 import type { Certification, CertificationAgency } from '@/lib/types/user'
@@ -275,7 +276,7 @@ const saveCertification = async () => {
     await loadCertifications()
   } catch (err) {
     console.error('Failed to save certification:', err)
-    toast.error('Failed to save certification.')
+    toast.error(`Failed to save certification: ${extractErrorDetail(err)}`)
   } finally {
     saving.value = false
   }
@@ -288,7 +289,7 @@ const deleteCertification = async (cert: Certification) => {
     await loadCertifications()
   } catch (err) {
     console.error('Failed to delete certification:', err)
-    toast.error('Failed to delete certification.')
+    toast.error(`Failed to delete certification: ${extractErrorDetail(err)}`)
   }
 }
 

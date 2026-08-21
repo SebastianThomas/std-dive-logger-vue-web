@@ -29,6 +29,7 @@
 import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import type { DiveWithoutProfiles } from '@/lib/types/dive'
 
@@ -62,7 +63,7 @@ const regeneratePreview = async () => {
     emit('preview-regenerated', res.data)
   } catch (err) {
     console.error('Failed to regenerate preview', err)
-    toast.error('Failed to regenerate preview')
+    toast.error(`Failed to regenerate preview: ${extractErrorDetail(err)}`)
   } finally {
     isRegenerating.value = false
   }
