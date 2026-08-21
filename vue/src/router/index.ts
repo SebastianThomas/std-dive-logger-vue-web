@@ -138,6 +138,12 @@ const router = createRouter({
       component: () => import('../views/TagManagerView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/backfill',
+      name: 'Backfill',
+      component: () => import('../views/BackfillView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

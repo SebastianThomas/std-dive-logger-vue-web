@@ -246,9 +246,10 @@ export type DiveConfigurationCylinder = {
   role: CylinderRole
   /** Both null means "used for the whole dive" - the common single-cylinder case, no extra data
    * entry required. Only set when more than one cylinder of the same role was used across the
-   * dive (e.g. twin/sidemount cylinders switched partway through). */
-  usageStart?: string | null
-  usageEnd?: string | null
+   * dive (e.g. twin/sidemount cylinders switched partway through). Epoch millis, like every other
+   * `Instant` field the backend serializes (e.g. `DiveSummary.start`) - NOT an ISO string. */
+  usageStart?: number | null
+  usageEnd?: number | null
 }
 
 /** Computed from tracked cylinders - see CylinderConsumptionCalculator (backend). Every field is
@@ -294,9 +295,26 @@ export type NamedBuddy = {
 export type TeamTerminology = 'BUDDY' | 'TEAM'
 
 export type DiveLeader = {
-  type: 'SELF' | 'NAMED' | 'LINKED'
+  // UNSET means nobody has ever made an explicit choice for this dive - must not be displayed as
+  // if the owner (SELF) confirmed leading it.
+  type: 'SELF' | 'NAMED' | 'LINKED' | 'UNSET'
   namedBuddyId?: number | null
   linkedDiveId?: number | null
+}
+
+export type DiveBackfillMissingField =
+  | 'VISIBILITY'
+  | 'GAS_CONSUMPTION'
+  | 'WATER_TYPE'
+  | 'LEADER'
+  | 'NOTES'
+
+export type DiveBackfillStatus = {
+  diveId: number
+  number: number
+  diveIdentifier: string
+  diveStart?: number | null
+  missingFields: DiveBackfillMissingField[]
 }
 
 export type Dive = {

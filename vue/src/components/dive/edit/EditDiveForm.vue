@@ -124,6 +124,7 @@
           class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
           @change="updateLeader(($event.target as HTMLSelectElement).value)"
         >
+          <option value="unset">Not set</option>
           <option value="self">Me</option>
           <option
             v-for="buddy in leaderSelectableNamedBuddies"
@@ -296,46 +297,6 @@
               @input="
                 updateCurrentField('description', ($event.target as HTMLInputElement).value)
               "
-            />
-          </div>
-        </div>
-      </fieldset>
-
-      <!-- Gas Consumption -->
-      <fieldset v-if="modelValue.gasConsumption" class="border rounded p-4">
-        <legend class="font-medium mb-3">Gas Consumption</legend>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label for="sac-bar" class="block mb-2">SAC (bar/min)</label>
-            <input
-              id="sac-bar"
-              :value="modelValue.gasConsumption.sacBar ?? ''"
-              type="number"
-              step="0.01"
-              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              @input="handleNumberInput('gasConsumption.sacBar', $event)"
-            />
-          </div>
-          <div>
-            <label for="rmv-liters" class="block mb-2">RMV (l/min)</label>
-            <input
-              id="rmv-liters"
-              :value="modelValue.gasConsumption.rmvLiters ?? ''"
-              type="number"
-              step="0.01"
-              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              @input="handleNumberInput('gasConsumption.rmvLiters', $event)"
-            />
-          </div>
-          <div>
-            <label for="total-liters" class="block mb-2">Total Gas (l)</label>
-            <input
-              id="total-liters"
-              :value="modelValue.gasConsumption.totalLiters ?? ''"
-              type="number"
-              step="0.1"
-              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              @input="handleNumberInput('gasConsumption.totalLiters', $event)"
             />
           </div>
         </div>
@@ -527,9 +488,8 @@
                   :value="cylinder.role"
                   class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
                   @change="
-                    updateCylinderField(
+                    updateCylinderRole(
                       index,
-                      'role',
                       ($event.target as HTMLSelectElement).value as CylinderRole,
                     )
                   "
@@ -577,8 +537,30 @@
             </div>
             <p class="text-xs text-gray-500 dark:text-gray-400">
               Leave usage start/end unset if this cylinder was used for the whole dive - the
-              common case, needing no extra data entry.
+              common case, needing no extra data entry. Only set these if more than one cylinder
+              of this same role was used across the dive (e.g. a twinset switch, or a bailout
+              stage only breathed during part of the ascent) and you know the actual clock times.
             </p>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs mb-1">Usage Start</label>
+                <input
+                  :value="epochMillisToLocalInput(cylinder.usageStart)"
+                  type="datetime-local"
+                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                  @input="updateCylinderUsageField(index, 'usageStart', $event)"
+                />
+              </div>
+              <div>
+                <label class="block text-xs mb-1">Usage End</label>
+                <input
+                  :value="epochMillisToLocalInput(cylinder.usageEnd)"
+                  type="datetime-local"
+                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                  @input="updateCylinderUsageField(index, 'usageEnd', $event)"
+                />
+              </div>
+            </div>
             <button
               type="button"
               class="text-xs text-red-600 hover:text-red-700"
@@ -586,6 +568,48 @@
             >
               Remove cylinder
             </button>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- Gas Consumption: whole-dive manually-entered SAC/RMV, placed right after Cylinders since
+           that's the more precise per-cylinder alternative to this figure (see the RMV/Bailout
+           RMV/O2/Diluent figures on the dive view page, computed from cylinders when tracked). -->
+      <fieldset v-if="modelValue.gasConsumption" class="border rounded p-4">
+        <legend class="font-medium mb-3">Gas Consumption</legend>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label for="sac-bar" class="block mb-2">SAC (bar/min)</label>
+            <input
+              id="sac-bar"
+              :value="modelValue.gasConsumption.sacBar ?? ''"
+              type="number"
+              step="0.01"
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              @input="handleNumberInput('gasConsumption.sacBar', $event)"
+            />
+          </div>
+          <div>
+            <label for="rmv-liters" class="block mb-2">RMV (l/min)</label>
+            <input
+              id="rmv-liters"
+              :value="modelValue.gasConsumption.rmvLiters ?? ''"
+              type="number"
+              step="0.01"
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              @input="handleNumberInput('gasConsumption.rmvLiters', $event)"
+            />
+          </div>
+          <div>
+            <label for="total-liters" class="block mb-2">Total Gas (l)</label>
+            <input
+              id="total-liters"
+              :value="modelValue.gasConsumption.totalLiters ?? ''"
+              type="number"
+              step="0.1"
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              @input="handleNumberInput('gasConsumption.totalLiters', $event)"
+            />
           </div>
         </div>
       </fieldset>
@@ -700,6 +724,7 @@ interface DiveFormData {
   configuration?: DiveConfiguration | null
   leaderNamedBuddyId?: number | null
   leaderBuddyDiveId?: number | null
+  leaderSelfExplicit?: boolean
   teamTerminology?: TeamTerminology | null
 }
 
@@ -867,7 +892,7 @@ const leaderSelectValue = computed(() => {
   if (props.modelValue.leaderBuddyDiveId != null) {
     return `linked:${props.modelValue.leaderBuddyDiveId}`
   }
-  return 'self'
+  return props.modelValue.leaderSelfExplicit ? 'self' : 'unset'
 })
 
 const updateLeader = (value: string) => {
@@ -876,18 +901,28 @@ const updateLeader = (value: string) => {
       ...props.modelValue,
       leaderNamedBuddyId: Number(value.slice('named:'.length)),
       leaderBuddyDiveId: null,
+      leaderSelfExplicit: false,
     })
   } else if (value.startsWith('linked:')) {
     emit('update:modelValue', {
       ...props.modelValue,
       leaderNamedBuddyId: null,
       leaderBuddyDiveId: Number(value.slice('linked:'.length)),
+      leaderSelfExplicit: false,
+    })
+  } else if (value === 'self') {
+    emit('update:modelValue', {
+      ...props.modelValue,
+      leaderNamedBuddyId: null,
+      leaderBuddyDiveId: null,
+      leaderSelfExplicit: true,
     })
   } else {
     emit('update:modelValue', {
       ...props.modelValue,
       leaderNamedBuddyId: null,
       leaderBuddyDiveId: null,
+      leaderSelfExplicit: false,
     })
   }
 }
@@ -1028,6 +1063,40 @@ const updateCylinderGasField = (index: number, field: 'o2' | 'he', event: Event)
   // Inputs are entered as whole percent (e.g. 21) - stored as a 0-1 fraction.
   const percent = Number((event.target as HTMLInputElement).value)
   updateCylinderField(index, 'gas', { ...current.gas, [field]: percent / 100 })
+}
+
+const updateCylinderRole = (index: number, role: CylinderRole) => {
+  const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
+  const current = cylinders[index]
+  if (!current) return
+  // A CC O2 cylinder (the CCR's own oxygen supply) is virtually always pure O2 - default the mix
+  // to 100% when this role is picked, rather than leaving whatever was there before (often plain
+  // air, since that's the default for a newly-added cylinder). Still freely editable afterward,
+  // e.g. down to 99.5% for industrial-grade O2.
+  const gas = role === 'O2' ? { o2: 1, he: 0 } : current.gas
+  cylinders[index] = { ...current, role, gas }
+  updateCylinders(cylinders)
+}
+
+// datetime-local inputs work in local time with no timezone, same conversion the manual-entry
+// form's start-time field already uses - see ManualDiveEntryForm.vue.
+const epochMillisToLocalInput = (millis?: number | null): string => {
+  if (millis == null) return ''
+  const date = new Date(millis)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  )
+}
+
+const updateCylinderUsageField = (
+  index: number,
+  field: 'usageStart' | 'usageEnd',
+  event: Event,
+) => {
+  const value = (event.target as HTMLInputElement).value
+  updateCylinderField(index, field, value === '' ? null : new Date(value).getTime())
 }
 
 const updateConfigSuitField = (field: string, value: string | number | undefined) => {

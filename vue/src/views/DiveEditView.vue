@@ -137,6 +137,7 @@ interface DiveFormData {
   configuration?: DiveConfiguration | null
   leaderNamedBuddyId?: number | null
   leaderBuddyDiveId?: number | null
+  leaderSelfExplicit?: boolean
   teamTerminology?: TeamTerminology | null
 }
 
@@ -200,6 +201,7 @@ const fetchDive = async () => {
       configuration: dive.configuration,
       leaderNamedBuddyId: dive.leader.type === 'NAMED' ? dive.leader.namedBuddyId : null,
       leaderBuddyDiveId: dive.leader.type === 'LINKED' ? dive.leader.linkedDiveId : null,
+      leaderSelfExplicit: dive.leader.type === 'SELF',
       teamTerminology: dive.teamTerminology,
     }
     // Smart default: this dive has no explicit terminology override of its own yet - prefill the
@@ -330,6 +332,20 @@ const handleSubmit = async () => {
     return
   }
 
+  // The backend's Gas record requires o2+n2+he+h2 to sum to 100% - the cylinder editor only ever
+  // tracks/edits o2 and he (n2 is implied, see DiveConfigurationCylinder's own doc comment), so n2
+  // has to be filled in here before sending or the backend's JSON deserialization rejects the
+  // whole request (it has no way to infer n2 from a partial gas object itself).
+  const configurationPayload = formData.value.configuration
+    ? {
+        ...formData.value.configuration,
+        cylinders: (formData.value.configuration.cylinders ?? []).map((cylinder) => ({
+          ...cylinder,
+          gas: { ...cylinder.gas, n2: 1 - cylinder.gas.o2 - cylinder.gas.he, h2: 0 },
+        })),
+      }
+    : null
+
   const payload = {
     id: diveId.value,
     number: formData.value.diveNumber ?? 1,
@@ -341,10 +357,11 @@ const handleSubmit = async () => {
     waterType: formData.value.waterType ?? null,
     current: formData.value.current ?? null,
     gasConsumption: formData.value.gasConsumption ?? null,
-    configuration: formData.value.configuration ?? null,
+    configuration: configurationPayload,
     suitId: formData.value.configuration?.suit?.id ?? null,
     leaderNamedBuddyId: formData.value.leaderNamedBuddyId ?? null,
     leaderBuddyDiveId: formData.value.leaderBuddyDiveId ?? null,
+    leaderSelfExplicit: formData.value.leaderSelfExplicit ?? false,
     teamTerminology: formData.value.teamTerminology ?? null,
   }
 
