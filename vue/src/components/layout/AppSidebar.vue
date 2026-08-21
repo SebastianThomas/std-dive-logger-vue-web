@@ -31,6 +31,9 @@
     <router-link :to="{ name: 'MapView' }">
       <MenuItem icon="map" text="Sites" :is-visible="isVisible" />
     </router-link>
+    <router-link :to="{ name: 'TripList' }">
+      <MenuItem icon="compass" text="Trips" :is-visible="isVisible" />
+    </router-link>
     <router-link :to="{ name: 'Stats' }">
       <MenuItem icon="chart-line" text="Statistics" :is-visible="isVisible" />
     </router-link>

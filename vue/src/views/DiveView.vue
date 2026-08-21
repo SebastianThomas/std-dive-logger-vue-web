@@ -59,7 +59,16 @@
         class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 flex flex-col"
       >
         <div class="flex justify-between items-start mb-2 gap-4">
-          <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
+            <span
+              v-if="isManualDive"
+              class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+              title="Logged manually - no dive computer profile was recorded"
+            >
+              Manually logged
+            </span>
+          </div>
           <div class="flex flex-col items-end gap-2 shrink-0">
             <div class="flex gap-2">
               <RouterLink
@@ -309,16 +318,41 @@
             {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
           </button>
         </InfoCard>
-        <InfoCard title="Buddies">
+        <InfoCard :title="buddyTerminologyPlural">
           <p
             v-if="!dive.namedBuddies.length && !dive.buddiesDives?.length"
             class="text-xs text-gray-400 dark:text-gray-500"
           >
-            No buddies recorded
+            No {{ buddyTerminologyPlural.toLowerCase() }} recorded
           </p>
           <ul v-else class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-            <li v-for="name in dive.namedBuddies" :key="`named-${name}`">{{ name }}</li>
+            <li v-for="buddy in dive.namedBuddies" :key="`named-${buddy.id}`">
+              {{ buddy.name }}
+              <span v-if="buddy.role" class="text-gray-400 dark:text-gray-500">
+                ({{ BUDDY_ROLE_LABELS[buddy.role] }})</span
+              >
+              <span v-if="dive.leader.type === 'NAMED' && dive.leader.namedBuddyId === buddy.id">
+                &middot; led the dive</span
+              >
+            </li>
+            <li v-for="linked in dive.buddiesDives" :key="`linked-${linked.diveId}`">
+              <RouterLink
+                :to="{ name: 'DiveView', params: { diveId: linked.diveId } }"
+                class="text-blue-600 hover:underline"
+              >
+                {{ linked.buddy.name }}
+              </RouterLink>
+              <span v-if="dive.leader.type === 'LINKED' && dive.leader.linkedDiveId === linked.diveId">
+                &middot; led the dive</span
+              >
+            </li>
           </ul>
+          <p
+            v-if="dive.leader.type === 'SELF'"
+            class="text-xs text-gray-400 dark:text-gray-500 mt-1"
+          >
+            {{ dive.user.name }} led the dive
+          </p>
         </InfoCard>
       </InfoCardRow>
 
@@ -361,7 +395,15 @@
            is a small value or two, so they share this one wrapping row instead of each
            getting a full-width panel with its own header (Cylinders keeps its own panel below
            - it's a small table, not a single value/pair). -->
-      <InfoCardRow v-if="dive.configuration || dive.visibility?.feeling || hasGasConsumption">
+      <InfoCardRow
+        v-if="
+          dive.configuration ||
+          dive.visibility?.feeling ||
+          hasGasConsumption ||
+          dive.waterType ||
+          dive.current
+        "
+      >
         <InfoCard v-if="dive.configuration?.suit?.type" title="Suit">
           <button
             v-if="dive.configuration.suit.id"
@@ -398,6 +440,20 @@
         <InfoCard v-if="dive.visibility?.feeling" title="Visibility">
           <span class="capitalize">{{ dive.visibility.feeling.toLowerCase() }}</span>
           <span v-if="dive.visibility.meters != null"> &middot; {{ dive.visibility.meters }} m</span>
+        </InfoCard>
+        <InfoCard v-if="dive.waterType" title="Water Type">
+          <span>{{ WATER_TYPE_LABELS[dive.waterType] }}</span>
+        </InfoCard>
+        <InfoCard v-if="dive.current" title="Current">
+          <span v-if="dive.current.feeling != null">{{ dive.current.feeling }} / 5</span>
+          <span v-if="dive.current.knots != null">
+            <span v-if="dive.current.feeling != null"> &middot; </span>{{ dive.current.knots }} kn
+          </span>
+          <span
+            v-if="dive.current.description"
+            class="block text-xs text-gray-500 dark:text-gray-400"
+            >{{ dive.current.description }}</span
+          >
         </InfoCard>
         <!-- SAC deliberately dropped: it's not meaningful for CCR (no continuous OC breathing
              rate on a closed loop) and depends on cylinder size even for OC, so it isn't
@@ -493,12 +549,22 @@
           <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
             Dive Profile
           </h2>
-          <button @click="graphOpen = true" class="text-sm text-blue-600 hover:underline">
+          <button
+            v-if="!isManualDive"
+            @click="graphOpen = true"
+            class="text-sm text-blue-600 hover:underline"
+          >
             Expand
           </button>
         </div>
+        <div
+          v-if="isManualDive"
+          class="px-4 pb-6 text-sm text-gray-500 dark:text-gray-400 text-center"
+        >
+          No profile recorded - this dive was logged manually.
+        </div>
         <DiveGraphContainer
-          v-if="dive.profiles"
+          v-else-if="dive.profiles"
           ref="embeddedGraphRef"
           :profiles="dive.profiles"
           :dive-id="diveId"
@@ -506,6 +572,12 @@
           @profile-trimmed="handleProfileTrimmed"
         />
       </div>
+
+      <!-- Trip badges (WS7) - all lookup logic lives inside the component itself. -->
+      <DiveTripBadges :dive-id="dive.id" />
+
+      <!-- Photo Gallery (WS4) - all gallery logic lives inside the component itself. -->
+      <DivePhotoGallery :dive-id="dive.id" :read-only="readOnly || !isMine" />
 
       <!-- Notes Panel -->
       <div
@@ -538,13 +610,20 @@ import InfoCardRow from '@/components/InfoCardRow.vue'
 import SharePopover from '@/components/share/SharePopover.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import ProfileReimportModal from '@/components/dive/view/ProfileReimportModal.vue'
+import DivePhotoGallery from '@/components/dive/DivePhotoGallery.vue'
+import DiveTripBadges from '@/components/dive/DiveTripBadges.vue'
 import type { Dive, DiveComputer } from '@/lib/types/dive'
 import {
   BASE_CONFIGURATION_LABELS,
   SUIT_TYPE_LABELS,
   CYLINDER_ROLE_LABELS,
+  WATER_TYPE_LABELS,
+  BUDDY_ROLE_LABELS,
   isCcrBaseConfiguration,
+  type TeamTerminology,
 } from '@/lib/types/dive'
+import type { DiveTrip } from '@/lib/types/trip'
+import { useTeamTerminology } from '@/composables/useTeamTerminology'
 import { computeGasList, isGaugeModeProfile, type GasListEntry } from '@/lib/dive/gasRoles'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import TagBadge from '@/components/dive/TagBadge.vue'
@@ -564,6 +643,10 @@ const { readOnly } = useReadOnlyMode()
 
 const diveId = computed(() => Number(route.params.diveId))
 const dive = ref<Dive | null>(null)
+// Populated after the dive loads (see fetchDive) - the first of this dive's trips that has its
+// own terminology override set, used as useTeamTerminology's middle fallback step.
+const diveTripTerminology = ref<TeamTerminology | null>(null)
+const { plural: buddyTerminologyPlural } = useTeamTerminology(dive, diveTripTerminology)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const graphOpen = ref(false)
@@ -621,6 +704,13 @@ const viewDivesByTag = (tagId: number) => {
 const viewDivesForComputer = (computerId: number) => {
   router.push({ name: 'DiveList', query: { computerId: computerId.toString() } })
 }
+
+// A manual dive's synthetic profile is attached to a fixed "Manual Entry" dive computer
+// (see DiveService.createEmptyDive on the backend) - no dedicated DB flag exists, this is the
+// same signal the backend itself uses to build the profile, so it's safe to sniff here too.
+const isManualDive = computed(
+  () => dive.value?.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
+)
 
 const firstProfile = computed(() => dive.value?.profiles[0])
 const lastProfile = computed(() => {
@@ -718,16 +808,33 @@ let fetchDiveRequestId = 0
 const fetchDive = async () => {
   const requestId = ++fetchDiveRequestId
   const requestedDiveId = diveId.value
+  // Reset rather than leaving the previous dive's resolved terminology on screen until this
+  // dive's own fetchDiveTripTerminology call resolves.
+  diveTripTerminology.value = null
   try {
     loading.value = true
     const res = await getWithToken<Dive>(`/v1/dives/${requestedDiveId}`)
     if (requestId !== fetchDiveRequestId) return
     dive.value = res.data
+    fetchDiveTripTerminology(requestedDiveId)
   } catch (err) {
     if (requestId !== fetchDiveRequestId) return
     error.value = err instanceof Error ? err.message : 'Failed to fetch dive'
   } finally {
     if (requestId === fetchDiveRequestId) loading.value = false
+  }
+}
+
+const fetchDiveTripTerminology = async (forDiveId: number) => {
+  try {
+    const res = await getWithToken<DiveTrip[]>(`/v1/dive-trips/for-dive/${forDiveId}`)
+    if (diveId.value !== forDiveId) return
+    diveTripTerminology.value = res.data.find((t) => t.teamTerminology)?.teamTerminology ?? null
+  } catch {
+    // A stale request's failure (e.g. the user has since navigated to a different dive) must
+    // never clobber whatever the now-current dive's terminology fetch already resolved.
+    if (diveId.value !== forDiveId) return
+    diveTripTerminology.value = null
   }
 }
 

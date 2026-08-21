@@ -42,6 +42,11 @@
           <BuddyManagement />
         </section>
 
+        <!-- Certifications Section -->
+        <section v-if="user" class="border-t pt-6 space-y-4">
+          <CertificationManagement />
+        </section>
+
         <!-- Danger Zone -->
         <section v-if="!readOnly" class="border-t pt-6 space-y-4">
           <h2 class="text-lg font-medium text-red-600">Permanently Delete Account</h2>
@@ -95,6 +100,7 @@ import SuitManagement from '@/components/dive/SuitManagement.vue'
 import CcrUnitManagement from '@/components/dive/CcrUnitManagement.vue'
 import DiveComputerManagement from '@/components/dive/DiveComputerManagement.vue'
 import BuddyManagement from '@/components/dive/BuddyManagement.vue'
+import CertificationManagement from '@/components/CertificationManagement.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import UserIconUploadModal from '@/components/UserIconUploadModal.vue'
 import UserBackgroundUploadModal from '@/components/UserBackgroundUploadModal.vue'

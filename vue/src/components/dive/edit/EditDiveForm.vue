@@ -56,30 +56,42 @@
 
       <!-- Dive Buddies -->
       <div>
-        <label for="buddies" class="block mb-2 font-medium">Dive Buddies</label>
-        <div class="flex flex-wrap gap-2 mb-2">
-          <span
+        <label for="buddies" class="block mb-2 font-medium">{{ terminologyPlural }}</label>
+        <ul v-if="(modelValue.diveBuddies || []).length" class="mb-2 space-y-1">
+          <li
             v-for="buddy in modelValue.diveBuddies || []"
-            :key="buddy"
-            class="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+            :key="buddy.name"
+            class="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-lg text-sm"
           >
-            {{ buddy }}
+            <span class="flex-1">{{ buddy.name }}</span>
+            <select
+              :value="buddy.role ?? ''"
+              class="text-xs p-1 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              @change="
+                setBuddyRole(buddy.name, ($event.target as HTMLSelectElement).value as BuddyRole | '')
+              "
+            >
+              <option value="">No role</option>
+              <option v-for="(label, role) in BUDDY_ROLE_LABELS" :key="role" :value="role">
+                {{ label }}
+              </option>
+            </select>
             <button
               type="button"
-              class="ml-2 text-red-500 font-bold hover:text-red-700"
-              @click="removeBuddy(buddy)"
+              class="text-red-500 font-bold hover:text-red-700"
+              @click="removeBuddy(buddy.name)"
             >
               ×
             </button>
-          </span>
-        </div>
+          </li>
+        </ul>
         <div class="relative">
           <input
             id="buddies"
             v-model="buddyInput"
             type="text"
             class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-            placeholder="Enter a buddy and press Enter"
+            :placeholder="`Enter a ${terminologySingular.toLowerCase()} and press Enter`"
             autocomplete="off"
             @input="fetchBuddySuggestions"
             @focus="showBuddyDropdown = true"
@@ -100,6 +112,62 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Dive leader: only already-saved buddies/linked dives are selectable here - a buddy just
+           typed in this session has no id yet to reference until saved once. -->
+      <div>
+        <label for="dive-leader" class="block mb-2 font-medium">Who Led This Dive?</label>
+        <select
+          id="dive-leader"
+          :value="leaderSelectValue"
+          class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+          @change="updateLeader(($event.target as HTMLSelectElement).value)"
+        >
+          <option value="self">Me</option>
+          <option
+            v-for="buddy in leaderSelectableNamedBuddies"
+            :key="`named-${buddy.id}`"
+            :value="`named:${buddy.id}`"
+          >
+            {{ buddy.name }}
+          </option>
+          <option
+            v-for="linked in existingBuddyDives || []"
+            :key="`linked-${linked.diveId}`"
+            :value="`linked:${linked.diveId}`"
+          >
+            {{ linked.buddy.name }}
+          </option>
+        </select>
+        <p
+          v-if="(modelValue.diveBuddies || []).some((b) => !isExistingBuddy(b.name))"
+          class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+        >
+          A newly-added buddy can be set as leader after this dive is saved once.
+        </p>
+      </div>
+
+      <!-- Buddy/team terminology -->
+      <div>
+        <label for="team-terminology" class="block mb-2 font-medium">Wording</label>
+        <select
+          id="team-terminology"
+          :value="modelValue.teamTerminology ?? ''"
+          class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+          @change="
+            updateField(
+              'teamTerminology',
+              ($event.target as HTMLSelectElement).value
+                ? (($event.target as HTMLSelectElement).value as TeamTerminology)
+                : null,
+            )
+          "
+        >
+          <option value="">Default (Buddy)</option>
+          <option value="BUDDY">Buddy</option>
+          <option value="TEAM">Team</option>
+        </select>
       </div>
 
       <!-- Slot for caller to inject content between Buddies and Notes (e.g. Tags) -->
@@ -157,6 +225,76 @@
               placeholder="Optional description"
               @input="
                 updateVisibilityField('description', ($event.target as HTMLInputElement).value)
+              "
+            />
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- Water Type & Current: unlike Visibility/GasConsumption, these are genuinely optional and
+           not pre-created on every dive, so this fieldset always renders rather than being gated
+           on an already-non-null value. -->
+      <fieldset class="border rounded p-4">
+        <legend class="font-medium mb-3">Water Type & Current</legend>
+        <div class="space-y-3">
+          <div>
+            <label for="water-type" class="block mb-2">Water Type</label>
+            <select
+              id="water-type"
+              :value="modelValue.waterType ?? ''"
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              @change="
+                updateField(
+                  'waterType',
+                  ($event.target as HTMLSelectElement).value
+                    ? (($event.target as HTMLSelectElement).value as WaterType)
+                    : null,
+                )
+              "
+            >
+              <option value="">Unspecified</option>
+              <option value="SALT">Salt</option>
+              <option value="FRESH">Fresh</option>
+              <option value="BRACKISH">Brackish</option>
+            </select>
+          </div>
+          <div>
+            <label for="current-feeling" class="block mb-2">Current Strength (0-5)</label>
+            <input
+              id="current-feeling"
+              :value="modelValue.current?.feeling ?? ''"
+              type="number"
+              min="0"
+              max="5"
+              step="1"
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              placeholder="Optional"
+              @input="handleNumberInput('current.feeling', $event)"
+            />
+          </div>
+          <div>
+            <label for="current-knots" class="block mb-2">Current Speed (knots)</label>
+            <input
+              id="current-knots"
+              :value="modelValue.current?.knots ?? ''"
+              type="number"
+              min="0"
+              step="0.1"
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              placeholder="Optional"
+              @input="handleNumberInput('current.knots', $event)"
+            />
+          </div>
+          <div>
+            <label for="current-description" class="block mb-2">Description</label>
+            <input
+              id="current-description"
+              :value="modelValue.current?.description ?? ''"
+              type="text"
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              placeholder="Optional description"
+              @input="
+                updateCurrentField('description', ($event.target as HTMLInputElement).value)
               "
             />
           </div>
@@ -514,7 +652,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useApi } from '@/composables/useApi'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
 import DiveSiteSearch from '@/components/DiveSiteSearch.vue'
@@ -523,6 +661,8 @@ import CcrUnitSelector from '@/components/dive/edit/CcrUnitSelector.vue'
 import {
   type DiveSite,
   type Visibility,
+  type WaterType,
+  type Current,
   type GasConsumption,
   type DiveConfiguration,
   type DiveConfigurationCylinder,
@@ -531,26 +671,46 @@ import {
   type CcrUnit,
   type Dive,
   type PagedResult,
+  type BuddyRole,
+  type TeamTerminology,
+  type NamedBuddy,
   BASE_CONFIGURATION_LABELS,
   SUIT_TYPE_LABELS,
   CYLINDER_ROLE_LABELS,
+  BUDDY_ROLE_LABELS,
   isCcrBaseConfiguration,
 } from '@/lib/types/dive'
+import type { User } from '@/lib/types/user'
+
+export interface EditableNamedBuddy {
+  name: string
+  role?: BuddyRole | null
+}
 
 interface DiveFormData {
   diveNumber?: number
   diveName?: string
   diveSite?: DiveSite | null
-  diveBuddies?: string[]
+  diveBuddies?: EditableNamedBuddy[]
   notes?: string
   visibility?: Visibility | null
+  waterType?: WaterType | null
+  current?: Current | null
   gasConsumption?: GasConsumption | null
   configuration?: DiveConfiguration | null
+  leaderNamedBuddyId?: number | null
+  leaderBuddyDiveId?: number | null
+  teamTerminology?: TeamTerminology | null
 }
 
 const props = defineProps<{
   modelValue: DiveFormData
   userId: number
+  /** Already-persisted named buddies (with real ids) - only these can be picked as the dive
+   * leader, since a brand-new buddy added in this editing session has no id yet (see the leader
+   * picker's own note below for why). */
+  existingNamedBuddies?: NamedBuddy[]
+  existingBuddyDives?: { buddy: User; diveId: number }[]
 }>()
 
 const emit = defineEmits<{
@@ -616,6 +776,12 @@ const handleMapConfirm = () => {
   }
 }
 
+const hasBuddyNamed = (name: string) =>
+  (props.modelValue.diveBuddies ?? []).some((b) => b.name === name)
+
+const isExistingBuddy = (name: string) =>
+  (props.existingNamedBuddies ?? []).some((b) => b.name === name)
+
 const fetchBuddySuggestions = () => {
   if (buddyDebounce) clearTimeout(buddyDebounce)
   const q = buddyInput.value.trim()
@@ -628,37 +794,19 @@ const fetchBuddySuggestions = () => {
       const res = await getWithToken<string[]>(
         `/v1/dives/buddies/autocomplete?query=${encodeURIComponent(q)}`,
       )
-      buddySuggestions.value = (res.data ?? []).filter(
-        (n) => !(props.modelValue.diveBuddies ?? []).includes(n),
-      )
+      buddySuggestions.value = (res.data ?? []).filter((n) => !hasBuddyNamed(n))
     } catch {
       buddySuggestions.value = []
     }
   }, 200)
 }
 
-const selectBuddySuggestion = (name: string) => {
-  if (!props.modelValue.diveBuddies?.includes(name)) {
-    emit('update:modelValue', {
-      ...props.modelValue,
-      diveBuddies: [...(props.modelValue.diveBuddies || []), name],
-    })
-  }
-  buddyInput.value = ''
-  buddySuggestions.value = []
-  showBuddyDropdown.value = false
-}
-
-const hideBuddyDropdown = () => {
-  setTimeout(() => {
-    showBuddyDropdown.value = false
-  }, 150)
-}
-
-const addBuddy = () => {
-  const name = buddyInput.value.trim()
-  if (name && !props.modelValue.diveBuddies?.includes(name)) {
-    const newBuddies = [...(props.modelValue.diveBuddies || []), name]
+const addBuddyByName = (name: string) => {
+  if (name && !hasBuddyNamed(name)) {
+    const newBuddies: EditableNamedBuddy[] = [
+      ...(props.modelValue.diveBuddies || []),
+      { name, role: null },
+    ]
     emit('update:modelValue', { ...props.modelValue, diveBuddies: newBuddies })
   }
   buddyInput.value = ''
@@ -666,9 +814,82 @@ const addBuddy = () => {
   showBuddyDropdown.value = false
 }
 
+const selectBuddySuggestion = (name: string) => addBuddyByName(name)
+
+const hideBuddyDropdown = () => {
+  setTimeout(() => {
+    showBuddyDropdown.value = false
+  }, 150)
+}
+
+const addBuddy = () => addBuddyByName(buddyInput.value.trim())
+
+// Only buddies still present in the live (editable) buddy list can be picked as leader - a buddy
+// removed from that list this session must also disappear from here, even though
+// existingNamedBuddies (the load-time snapshot used to resolve real ids) doesn't itself change.
+const leaderSelectableNamedBuddies = computed(() => {
+  const liveNames = new Set((props.modelValue.diveBuddies ?? []).map((b) => b.name))
+  return (props.existingNamedBuddies ?? []).filter((b) => liveNames.has(b.name))
+})
+
 const removeBuddy = (name: string) => {
-  const newBuddies = (props.modelValue.diveBuddies || []).filter((b) => b !== name)
+  const newBuddies = (props.modelValue.diveBuddies || []).filter((b) => b.name !== name)
+  const removedWasLeader =
+    props.modelValue.leaderNamedBuddyId != null &&
+    (props.existingNamedBuddies ?? []).some(
+      (b) => b.name === name && b.id === props.modelValue.leaderNamedBuddyId,
+    )
+  emit('update:modelValue', {
+    ...props.modelValue,
+    diveBuddies: newBuddies,
+    ...(removedWasLeader ? { leaderNamedBuddyId: null } : {}),
+  })
+}
+
+const setBuddyRole = (name: string, role: BuddyRole | '') => {
+  const newBuddies = (props.modelValue.diveBuddies || []).map((b) =>
+    b.name === name ? { ...b, role: role || null } : b,
+  )
   emit('update:modelValue', { ...props.modelValue, diveBuddies: newBuddies })
+}
+
+const terminologyPlural = computed(() =>
+  props.modelValue.teamTerminology === 'TEAM' ? 'Team' : 'Buddies',
+)
+const terminologySingular = computed(() =>
+  props.modelValue.teamTerminology === 'TEAM' ? 'Team Member' : 'Buddy',
+)
+
+const leaderSelectValue = computed(() => {
+  if (props.modelValue.leaderNamedBuddyId != null) {
+    return `named:${props.modelValue.leaderNamedBuddyId}`
+  }
+  if (props.modelValue.leaderBuddyDiveId != null) {
+    return `linked:${props.modelValue.leaderBuddyDiveId}`
+  }
+  return 'self'
+})
+
+const updateLeader = (value: string) => {
+  if (value.startsWith('named:')) {
+    emit('update:modelValue', {
+      ...props.modelValue,
+      leaderNamedBuddyId: Number(value.slice('named:'.length)),
+      leaderBuddyDiveId: null,
+    })
+  } else if (value.startsWith('linked:')) {
+    emit('update:modelValue', {
+      ...props.modelValue,
+      leaderNamedBuddyId: null,
+      leaderBuddyDiveId: Number(value.slice('linked:'.length)),
+    })
+  } else {
+    emit('update:modelValue', {
+      ...props.modelValue,
+      leaderNamedBuddyId: null,
+      leaderBuddyDiveId: null,
+    })
+  }
 }
 
 // Handle number input to avoid null values being displayed
@@ -683,6 +904,8 @@ const handleNumberInput = (path: string, event: Event) => {
     updateField(parts[0] as keyof DiveFormData, numValue)
   } else if (parts[0] === 'visibility' && parts[1]) {
     updateVisibilityField(parts[1] as keyof Visibility, numValue)
+  } else if (parts[0] === 'current' && parts[1]) {
+    updateCurrentField(parts[1] as keyof Current, numValue)
   } else if (parts[0] === 'gasConsumption') {
     updateGasConsumptionField(parts[1] as keyof GasConsumption, numValue)
   } else if (parts[0] === 'configuration') {
@@ -699,6 +922,16 @@ const updateVisibilityField = (field: keyof Visibility, value: string | number |
     ...props.modelValue,
     visibility: {
       ...props.modelValue.visibility!,
+      [field]: value,
+    },
+  })
+}
+
+const updateCurrentField = (field: keyof Current, value: string | number | undefined) => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    current: {
+      ...props.modelValue.current,
       [field]: value,
     },
   })

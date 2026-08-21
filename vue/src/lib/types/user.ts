@@ -31,3 +31,24 @@ export type GroupWithMembers = Group & {
   admins: User[]
   members: User[]
 }
+
+export type CertificationAgency = {
+  id: number
+  name: string
+  fullName?: string | null
+  websiteUrl?: string | null
+  description?: string | null
+}
+
+export type Certification = {
+  id: number
+  userId: number
+  agency: CertificationAgency
+  level: string
+  certDate: string
+  certId?: string | null
+  instructorName?: string | null
+  facility?: string | null
+  courseLink?: string | null
+  certificationLink?: string | null
+}

@@ -121,6 +121,21 @@ export type Visibility = {
   feeling: VisibilityFeeling
 }
 
+export type WaterType = 'SALT' | 'FRESH' | 'BRACKISH'
+
+export const WATER_TYPE_LABELS: Record<WaterType, string> = {
+  SALT: 'Salt',
+  FRESH: 'Fresh',
+  BRACKISH: 'Brackish',
+}
+
+export type Current = {
+  knots?: number
+  description?: string
+  /** 0 (none) to 5 (strong) - a plain feeling scale, not a named enum like VisibilityFeeling. */
+  feeling?: number
+}
+
 export type GasConsumption = {
   sacBar: number
   rmvLiters: number
@@ -255,6 +270,35 @@ export type DiveConfiguration = {
   ccrUnit?: CcrUnit | null
 }
 
+export type BuddyRole =
+  | 'MORE_EXPERIENCED'
+  | 'EQUAL_EXPERIENCE'
+  | 'LESS_EXPERIENCED'
+  | 'INSTRUCTOR'
+  | 'DIVEMASTER'
+
+export const BUDDY_ROLE_LABELS: Record<BuddyRole, string> = {
+  MORE_EXPERIENCED: 'More experienced',
+  EQUAL_EXPERIENCE: 'Equal experience',
+  LESS_EXPERIENCED: 'Less experienced',
+  INSTRUCTOR: 'Instructor',
+  DIVEMASTER: 'Divemaster',
+}
+
+export type NamedBuddy = {
+  id: number
+  name: string
+  role?: BuddyRole | null
+}
+
+export type TeamTerminology = 'BUDDY' | 'TEAM'
+
+export type DiveLeader = {
+  type: 'SELF' | 'NAMED' | 'LINKED'
+  namedBuddyId?: number | null
+  linkedDiveId?: number | null
+}
+
 export type Dive = {
   id: number
   user: User
@@ -271,10 +315,15 @@ export type Dive = {
   buddiesDives: {
     buddy: User
     diveId: number
+    role?: BuddyRole | null
   }[]
-  namedBuddies: string[]
+  namedBuddies: NamedBuddy[]
   summary: DiveSummary
   tags: TagDefinition[]
+  waterType?: WaterType | null
+  current?: Current | null
+  leader: DiveLeader
+  teamTerminology?: TeamTerminology | null
 }
 
 export type DiveWithoutProfiles = {
@@ -287,6 +336,7 @@ export type DiveWithoutProfiles = {
   buddiesDives: {
     buddy: User
     diveId: number
+    role?: BuddyRole | null
   }[]
   namedBuddies: string[]
   summary: DiveSummary
@@ -405,11 +455,50 @@ export type BuddyDive = {
   diveId: number
 }
 
+export type DiveSiteType =
+  | 'WRECK'
+  | 'REEF'
+  | 'WALL'
+  | 'CAVE'
+  | 'CAVERN'
+  | 'DRIFT'
+  | 'MUCK'
+  | 'SHORE'
+  | 'BOAT'
+  | 'ARTIFICIAL_REEF'
+  | 'OTHER'
+
+export const DIVE_SITE_TYPE_LABELS: Record<DiveSiteType, string> = {
+  WRECK: 'Wreck',
+  REEF: 'Reef',
+  WALL: 'Wall',
+  CAVE: 'Cave',
+  CAVERN: 'Cavern',
+  DRIFT: 'Drift',
+  MUCK: 'Muck',
+  SHORE: 'Shore',
+  BOAT: 'Boat',
+  ARTIFICIAL_REEF: 'Artificial Reef',
+  OTHER: 'Other',
+}
+
+export type DiveSiteLink = {
+  id?: number
+  url: string
+  label?: string
+}
+
 export type DiveSite = {
   id?: number
   name: string
   latitude: number
   longitude: number
+  description?: string | null
+  countryRegion?: string | null
+  maxDepth?: number | null
+  type?: DiveSiteType | null
+  links?: DiveSiteLink[]
+  canEdit?: boolean
 }
 
 export type BasicDiveInfo = {
@@ -425,6 +514,28 @@ export type SiteWithDives = {
   // every site - fetch it lazily via GET /v1/dives/sites/{id}/dives when actually needed (e.g. a
   // map marker's popup opening). diveCount above is always present either way.
   diveInfo?: BasicDiveInfo[]
+}
+
+/**
+ * Metadata for a dive photo (WS4). Deliberately carries no storage path/URL - photos are
+ * proxy-only, fetched (authenticated) through `GET /v1/dives/{diveId}/photos/{id}`, never from a
+ * public URL.
+ */
+export type DivePhoto = {
+  id: number
+  diveId: number
+  contentType: string
+  byteSize: number
+  uploadedByUserId: number
+  caption?: string | null
+  takenAt?: number | null
+  createdAt: number
+  confirmed: boolean
+}
+
+export type DivePhotoUploadUrlResponse = {
+  photoId: number
+  uploadUrl: string
 }
 
 export type AlignmentType =

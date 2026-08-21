@@ -55,6 +55,24 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/dives/sites/:siteId',
+      name: 'DiveSiteDetail',
+      component: () => import('../views/DiveSiteDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/trips',
+      name: 'TripList',
+      component: () => import('../views/TripListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/trips/:tripId',
+      name: 'TripEdit',
+      component: () => import('../views/TripEditView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/analytics',
       name: 'Analytics',
       component: () => import('../views/AnalyticsView.vue'),

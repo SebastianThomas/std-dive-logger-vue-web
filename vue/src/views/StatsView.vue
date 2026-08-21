@@ -70,6 +70,24 @@
           <button
             :class="[
               'p-4 rounded-lg border-2 transition-all',
+              selectedStat === 'site-type'
+                ? 'border-teal-600 bg-teal-50 dark:bg-teal-900/20'
+                : 'border-gray-300 dark:border-gray-600 hover:border-teal-400',
+            ]"
+            @click="selectStat('site-type')"
+          >
+            <div class="flex items-center gap-3">
+              <i class="fas fa-water text-2xl text-teal-600"></i>
+              <div class="text-left">
+                <h3 class="font-semibold">By Site Type</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Wreck, reef, wall, ...</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            :class="[
+              'p-4 rounded-lg border-2 transition-all',
               selectedStat === 'buddy'
                 ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-orange-400',
@@ -81,6 +99,24 @@
               <div class="text-left">
                 <h3 class="font-semibold">By Buddy</h3>
                 <p class="text-sm text-gray-600 dark:text-gray-400">Stats per dive buddy</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            :class="[
+              'p-4 rounded-lg border-2 transition-all',
+              selectedStat === 'buddy-roles'
+                ? 'border-rose-600 bg-rose-50 dark:bg-rose-900/20'
+                : 'border-gray-300 dark:border-gray-600 hover:border-rose-400',
+            ]"
+            @click="selectStat('buddy-roles')"
+          >
+            <div class="flex items-center gap-3">
+              <i class="fas fa-user-shield text-2xl text-rose-600"></i>
+              <div class="text-left">
+                <h3 class="font-semibold">By Buddy Role</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400">How often each role was set</p>
               </div>
             </div>
           </button>
@@ -170,6 +206,21 @@
         </div>
       </div>
 
+      <!-- Site Type Stats -->
+      <div v-else-if="selectedStat === 'site-type'" class="space-y-6">
+        <div
+          v-for="item in siteTypeStats"
+          :key="item.key"
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+        >
+          <h2 class="text-xl font-bold mb-4">
+            <i class="fas fa-water mr-2 text-teal-600"></i
+            >{{ item.key === 'UNSPECIFIED' ? 'Unspecified' : siteTypeLabel(item.key) }}
+          </h2>
+          <StatCard :stats="item.stats" />
+        </div>
+      </div>
+
       <!-- Buddy Stats -->
       <div v-else-if="selectedStat === 'buddy'" class="space-y-6">
         <div
@@ -181,6 +232,56 @@
             <i class="fas fa-user mr-2 text-orange-600"></i>{{ item.key || 'Unknown' }}
           </h2>
           <StatCard :stats="item.stats" />
+        </div>
+      </div>
+
+      <!-- Buddy Role Stats -->
+      <div v-else-if="selectedStat === 'buddy-roles' && buddyRoleStats" class="space-y-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <h2 class="text-xl font-bold mb-4">
+            <i class="fas fa-user-shield mr-2 text-rose-600"></i>Overall
+          </h2>
+          <BuddyRoleCountList :counts="buddyRoleStats.overall" />
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <h2 class="text-lg font-semibold mb-3">By Buddy</h2>
+          <div class="space-y-3">
+            <div v-for="b in buddyRoleStats.byBuddy" :key="b.group">
+              <h3 class="font-medium mb-1">{{ b.group }} <span class="text-sm text-gray-400">({{ b.total }})</span></h3>
+              <BuddyRoleCountList :counts="b.counts" />
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <h2 class="text-lg font-semibold mb-3">By Site</h2>
+          <div class="space-y-3">
+            <div v-for="b in buddyRoleStats.bySite" :key="b.group">
+              <h3 class="font-medium mb-1">{{ b.group }} <span class="text-sm text-gray-400">({{ b.total }})</span></h3>
+              <BuddyRoleCountList :counts="b.counts" />
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <h2 class="text-lg font-semibold mb-3">By Year</h2>
+          <div class="space-y-3">
+            <div v-for="b in buddyRoleStats.byYear" :key="b.group">
+              <h3 class="font-medium mb-1">{{ b.group }} <span class="text-sm text-gray-400">({{ b.total }})</span></h3>
+              <BuddyRoleCountList :counts="b.counts" />
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <h2 class="text-lg font-semibold mb-3">By Month</h2>
+          <div class="space-y-3">
+            <div v-for="b in buddyRoleStats.byMonth" :key="b.group">
+              <h3 class="font-medium mb-1">{{ b.group }} <span class="text-sm text-gray-400">({{ b.total }})</span></h3>
+              <BuddyRoleCountList :counts="b.counts" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -298,24 +399,41 @@ import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 import { useRouter, useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import StatCard from '@/components/StatCard.vue'
+import BuddyRoleCountList from '@/components/stats/BuddyRoleCountList.vue'
 import type {
   UserDiveStats,
   UserDiveStatsByYear,
   UserDiveStatsBySite,
+  UserDiveStatsBySiteType,
   UserDiveStatsByBuddy,
   UserDiveStatsByBaseConfiguration,
   UserDiveStatsByTag,
+  BuddyRoleStats,
 } from '@/lib/types/stats'
-import { BASE_CONFIGURATION_LABELS, type BaseConfiguration } from '@/lib/types/dive'
+import {
+  BASE_CONFIGURATION_LABELS,
+  type BaseConfiguration,
+  DIVE_SITE_TYPE_LABELS,
+  type DiveSiteType,
+} from '@/lib/types/dive'
 
 const router = useRouter()
 const route = useRoute()
 const { getWithToken } = useApi()
 
-type StatType = 'overall' | 'year' | 'site' | 'buddy' | 'base' | 'tag'
+type StatType = 'overall' | 'year' | 'site' | 'site-type' | 'buddy' | 'buddy-roles' | 'base' | 'tag'
 
 // Fixed order, matching the tab row in the template - also what 'n'/'p' step through below.
-const STAT_TYPES: StatType[] = ['overall', 'year', 'site', 'buddy', 'base', 'tag']
+const STAT_TYPES: StatType[] = [
+  'overall',
+  'year',
+  'site',
+  'site-type',
+  'buddy',
+  'buddy-roles',
+  'base',
+  'tag',
+]
 
 const selectedStat = ref<StatType>('overall')
 const loading = ref(false)
@@ -326,14 +444,18 @@ const cache = ref<{
   overall: UserDiveStats | null
   year: UserDiveStatsByYear | null
   site: UserDiveStatsBySite[] | null
+  'site-type': UserDiveStatsBySiteType[] | null
   buddy: UserDiveStatsByBuddy[] | null
+  'buddy-roles': BuddyRoleStats | null
   base: UserDiveStatsByBaseConfiguration[] | null
   tag: UserDiveStatsByTag[] | null
 }>({
   overall: null,
   year: null,
   site: null,
+  'site-type': null,
   buddy: null,
+  'buddy-roles': null,
   base: null,
   tag: null,
 })
@@ -341,7 +463,9 @@ const cache = ref<{
 const overallStats = computed(() => cache.value.overall)
 const yearStats = computed(() => cache.value.year || [])
 const siteStats = computed(() => cache.value.site || [])
+const siteTypeStats = computed(() => cache.value['site-type'] || [])
 const buddyStats = computed(() => cache.value.buddy || [])
+const buddyRoleStats = computed(() => cache.value['buddy-roles'])
 const baseStats = computed(() => cache.value.base || [])
 const tagStats = computed(() => cache.value.tag || [])
 
@@ -382,6 +506,7 @@ const toggleTagFilter = async (tagId: number) => {
 }
 
 const baseConfigLabel = (key: BaseConfiguration) => BASE_CONFIGURATION_LABELS[key]
+const siteTypeLabel = (key: string) => DIVE_SITE_TYPE_LABELS[key as DiveSiteType] ?? key
 
 const selectStat = async (stat: StatType) => {
   // Ignore if clicking the same stat that's already selected
@@ -412,8 +537,12 @@ const loadStat = async (stat: StatType) => {
       url += '/year'
     } else if (stat === 'site') {
       url += '/dive-site'
+    } else if (stat === 'site-type') {
+      url += '/site-type'
     } else if (stat === 'buddy') {
       url += '/buddy'
+    } else if (stat === 'buddy-roles') {
+      url += '/buddy-roles'
     } else if (stat === 'base') {
       url += '/base-configuration'
     } else if (stat === 'tag') {
@@ -424,7 +553,9 @@ const loadStat = async (stat: StatType) => {
       | UserDiveStats
       | UserDiveStatsByYear
       | UserDiveStatsBySite[]
+      | UserDiveStatsBySiteType[]
       | UserDiveStatsByBuddy[]
+      | BuddyRoleStats
       | UserDiveStatsByBaseConfiguration[]
       | UserDiveStatsByTag[]
     const response = await getWithToken<StatsResponse>(url)
@@ -435,8 +566,12 @@ const loadStat = async (stat: StatType) => {
       cache.value.year = response.data as UserDiveStatsByYear
     } else if (stat === 'site') {
       cache.value.site = response.data as UserDiveStatsBySite[]
+    } else if (stat === 'site-type') {
+      cache.value['site-type'] = response.data as UserDiveStatsBySiteType[]
     } else if (stat === 'buddy') {
       cache.value.buddy = response.data as UserDiveStatsByBuddy[]
+    } else if (stat === 'buddy-roles') {
+      cache.value['buddy-roles'] = response.data as BuddyRoleStats
     } else if (stat === 'base') {
       cache.value.base = response.data as UserDiveStatsByBaseConfiguration[]
     } else if (stat === 'tag') {
@@ -478,7 +613,7 @@ const handleStatsKeydown = (event: KeyboardEvent) => {
   if (event.key.toLowerCase() === 'p') {
     cycleStat(-1)
   }
-  // 1-6 jump straight to a tab by its position, same fixed order as STAT_TYPES/n/p.
+  // 1-9 jump straight to a tab by its position, same fixed order as STAT_TYPES/n/p.
   if (/^[1-9]$/.test(event.key)) {
     const stat = STAT_TYPES[Number(event.key) - 1]
     if (stat) selectStat(stat)

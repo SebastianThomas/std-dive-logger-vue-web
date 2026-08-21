@@ -11,6 +11,13 @@
       <i class="fa-solid fa-map-location-dot"></i>
       Google Maps
     </a>
+    <router-link
+      :to="{ name: 'DiveSiteDetail', params: { siteId: String(site.id) } }"
+      class="maps-link"
+    >
+      <i class="fa-solid fa-circle-info"></i>
+      Site details
+    </router-link>
 
     <!-- Compact: a single fixed-height link to the filtered dive list, not an inline (and
          potentially long) per-dive list - keeps the popup's total height predictable regardless

@@ -5,7 +5,7 @@
       <button
         type="button"
         class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-        @click="loadBuddies"
+        @click="loadAll"
         :disabled="loading"
       >
         {{ loading ? 'Loading...' : 'Refresh' }}
@@ -13,26 +13,98 @@
     </div>
 
     <p v-if="loading" class="text-sm text-gray-600 dark:text-gray-400">Loading buddies...</p>
-    <p v-else-if="buddies.length === 0" class="text-sm text-gray-600 dark:text-gray-400">
-      No named dive buddies yet.
-    </p>
 
-    <ul
-      v-else
-      class="divide-y divide-gray-200 dark:divide-gray-700 border dark:border-gray-600 rounded-lg"
-    >
-      <li v-for="name in buddies" :key="name" class="flex items-center justify-between px-4 py-2">
-        <span>{{ name }}</span>
-        <button
-          v-if="!readOnly"
-          type="button"
-          class="px-2 py-1 text-xs rounded border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-          @click="openRenameModal(name)"
+    <!-- Named buddies -->
+    <div>
+      <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Named Buddies</h4>
+      <p v-if="!loading && buddies.length === 0" class="text-sm text-gray-600 dark:text-gray-400">
+        No named dive buddies yet.
+      </p>
+      <ul
+        v-else-if="buddies.length"
+        class="divide-y divide-gray-200 dark:divide-gray-700 border dark:border-gray-600 rounded-lg"
+      >
+        <li
+          v-for="name in buddies"
+          :key="name"
+          class="flex flex-wrap items-center justify-between gap-2 px-4 py-2"
         >
-          Rename
-        </button>
-      </li>
-    </ul>
+          <span>{{ name }}</span>
+          <div v-if="!readOnly" class="flex items-center gap-2">
+            <select
+              v-model="namedRoleSelections[name]"
+              class="text-xs p-1 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            >
+              <option value="">No role</option>
+              <option v-for="(label, role) in BUDDY_ROLE_LABELS" :key="role" :value="role">
+                {{ label }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="px-2 py-1 text-xs rounded border border-emerald-600 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors whitespace-nowrap"
+              :disabled="applyingNamedRole === name"
+              @click="applyNamedRole(name)"
+            >
+              {{ applyingNamedRole === name ? 'Applying...' : 'Apply to all dives' }}
+            </button>
+            <button
+              type="button"
+              class="px-2 py-1 text-xs rounded border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+              @click="openRenameModal(name)"
+            >
+              Rename
+            </button>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Linked buddies -->
+    <div>
+      <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Linked Buddies</h4>
+      <p
+        v-if="!loading && linkedBuddies.length === 0"
+        class="text-sm text-gray-600 dark:text-gray-400"
+      >
+        No linked dive buddies yet.
+      </p>
+      <ul
+        v-else-if="linkedBuddies.length"
+        class="divide-y divide-gray-200 dark:divide-gray-700 border dark:border-gray-600 rounded-lg"
+      >
+        <li
+          v-for="buddy in linkedBuddies"
+          :key="buddy.id"
+          class="flex flex-wrap items-center justify-between gap-2 px-4 py-2"
+        >
+          <span>{{ buddy.name }}</span>
+          <div v-if="!readOnly" class="flex items-center gap-2">
+            <select
+              v-model="linkedRoleSelections[buddy.id]"
+              class="text-xs p-1 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            >
+              <option value="">No role</option>
+              <option v-for="(label, role) in BUDDY_ROLE_LABELS" :key="role" :value="role">
+                {{ label }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="px-2 py-1 text-xs rounded border border-emerald-600 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors whitespace-nowrap"
+              :disabled="applyingLinkedRole === buddy.id"
+              @click="applyLinkedRole(buddy)"
+            >
+              {{ applyingLinkedRole === buddy.id ? 'Applying...' : 'Apply to all dives' }}
+            </button>
+          </div>
+        </li>
+      </ul>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        Sets this buddy's role as rated from your own side, across every dive you've linked with
+        them - it does not change how they rate you.
+      </p>
+    </div>
 
     <!-- Rename Modal -->
     <div
@@ -84,12 +156,20 @@ import { ref, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
+import { BUDDY_ROLE_LABELS, type BuddyRole } from '@/lib/types/dive'
+import type { User } from '@/lib/types/user'
 
 const { getWithToken, putWithToken } = useApi()
 const { readOnly } = useReadOnlyMode()
 
 const buddies = ref<string[]>([])
+const linkedBuddies = ref<User[]>([])
 const loading = ref(false)
+
+const namedRoleSelections = ref<Record<string, BuddyRole | ''>>({})
+const linkedRoleSelections = ref<Record<number, BuddyRole | ''>>({})
+const applyingNamedRole = ref<string | null>(null)
+const applyingLinkedRole = ref<number | null>(null)
 
 const showModal = ref(false)
 const renamingFrom = ref('')
@@ -99,15 +179,47 @@ const error = ref('')
 
 const canSave = computed(() => newName.value.trim().length > 0)
 
-const loadBuddies = async () => {
+const loadAll = async () => {
   loading.value = true
   try {
-    const res = await getWithToken<string[]>('/v1/dives/buddies')
-    buddies.value = res.data ?? []
+    const [namedRes, linkedRes] = await Promise.all([
+      getWithToken<string[]>('/v1/dives/buddies'),
+      getWithToken<User[]>('/v1/dives/buddies/users'),
+    ])
+    buddies.value = namedRes.data ?? []
+    linkedBuddies.value = linkedRes.data ?? []
   } catch (err) {
     console.error('Failed to load buddies:', err)
   } finally {
     loading.value = false
+  }
+}
+
+const applyNamedRole = async (name: string) => {
+  const role = namedRoleSelections.value[name] || null
+  applyingNamedRole.value = name
+  try {
+    await putWithToken(`/v1/dives/buddies/${encodeURIComponent(name)}/role`, { role })
+    toast.success(`Updated "${name}"'s role across your dives`)
+  } catch (err) {
+    console.error('Failed to set named buddy role:', err)
+    toast.error('Failed to update role.')
+  } finally {
+    applyingNamedRole.value = null
+  }
+}
+
+const applyLinkedRole = async (buddy: User) => {
+  const role = linkedRoleSelections.value[buddy.id] || null
+  applyingLinkedRole.value = buddy.id
+  try {
+    await putWithToken(`/v1/dives/buddies/users/${buddy.id}/role`, { role })
+    toast.success(`Updated "${buddy.name}"'s role across your dives`)
+  } catch (err) {
+    console.error('Failed to set linked buddy role:', err)
+    toast.error('Failed to update role.')
+  } finally {
+    applyingLinkedRole.value = null
   }
 }
 
@@ -147,5 +259,5 @@ const saveRename = async () => {
   }
 }
 
-loadBuddies()
+loadAll()
 </script>

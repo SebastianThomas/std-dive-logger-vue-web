@@ -216,6 +216,12 @@
             </div>
           </div>
         </div>
+
+        <!-- Manual dive entry: deliberately secondary, not a third tab beside Upload/Divesoft -
+             no real profile is ever produced from this, so it must never be the default path. -->
+        <div class="mt-4">
+          <ManualDiveEntryForm v-if="!readOnly" @created="onManualDiveCreated" />
+        </div>
       </div>
 
       <!-- Review step: nothing has been persisted yet, review and confirm each staged dive -->
@@ -269,7 +275,9 @@ import PendingImportRow from '@/components/dive/import/PendingImportRow.vue'
 import DivesoftDiveList, {
   type DivesoftDiveListItem,
 } from '@/components/dive/import/DivesoftDiveList.vue'
+import ManualDiveEntryForm from '@/components/dive/import/ManualDiveEntryForm.vue'
 import type {
+  Dive,
   DiveWithoutProfiles,
   StageImportResult,
   PendingImportSummary,
@@ -542,6 +550,10 @@ const onCommitted = (pendingImportId: number, dive: DiveWithoutProfiles) => {
 
 const onDiscarded = (pendingImportId: number) => {
   stagedImports.value = stagedImports.value.filter((s) => s.id !== pendingImportId)
+}
+
+const onManualDiveCreated = (dive: Dive) => {
+  router.push({ name: 'DiveView', params: { diveId: dive.id } })
 }
 
 // "Good enough" fast path: commits every staged import that already has everything it needs

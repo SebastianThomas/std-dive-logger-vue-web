@@ -17,7 +17,13 @@
       </div>
 
       <div v-else class="flex-1 overflow-auto space-y-6">
-        <EditDiveForm v-if="currentUserId" v-model="formData" :user-id="currentUserId">
+        <EditDiveForm
+          v-if="currentUserId"
+          v-model="formData"
+          :user-id="currentUserId"
+          :existing-named-buddies="loadedDive?.namedBuddies"
+          :existing-buddy-dives="loadedDive?.buddiesDives"
+        >
           <!-- Tags — placed between Buddies and Notes via the form's slot -->
           <div class="border rounded p-4">
             <h3 class="font-medium mb-3">Tags</h3>
@@ -76,10 +82,14 @@ import type {
   Dive,
   DiveSite,
   Visibility,
+  WaterType,
+  Current,
   GasConsumption,
   DiveConfiguration,
   TagDefinition,
+  TeamTerminology,
 } from '@/lib/types/dive'
+import type { EditableNamedBuddy } from '@/components/dive/edit/EditDiveForm.vue'
 import type { User } from '@/lib/types/user'
 import TagSelector from '@/components/dive/TagSelector.vue'
 import TagBadge from '@/components/dive/TagBadge.vue'
@@ -118,16 +128,25 @@ interface DiveFormData {
   diveNumber?: number
   diveName?: string
   diveSite?: DiveSite | null
-  diveBuddies?: string[]
+  diveBuddies?: EditableNamedBuddy[]
   notes?: string
   visibility?: Visibility | null
+  waterType?: WaterType | null
+  current?: Current | null
   gasConsumption?: GasConsumption | null
   configuration?: DiveConfiguration | null
+  leaderNamedBuddyId?: number | null
+  leaderBuddyDiveId?: number | null
+  teamTerminology?: TeamTerminology | null
 }
 
 const formData = ref<DiveFormData>({
   diveBuddies: [],
 })
+
+/** The dive as last fetched from the backend - kept around so the leader picker can offer only
+ * already-persisted named buddies/linked dives (see EditDiveForm's own note on why). */
+const loadedDive = ref<Dive | null>(null)
 
 const selectedTags = ref<TagDefinition[]>([])
 /** Auto-detected tags fetched fresh from the backend on load. */
@@ -166,16 +185,38 @@ const fetchDive = async () => {
     }
 
     currentUserId.value = dive.user.id
+    loadedDive.value = dive
 
     formData.value = {
       diveNumber: dive.number,
       diveName: dive.customIdentifier,
       diveSite: dive.site,
-      diveBuddies: dive.namedBuddies ?? [],
+      diveBuddies: (dive.namedBuddies ?? []).map((b) => ({ name: b.name, role: b.role })),
       notes: dive.notes,
       visibility: dive.visibility,
+      waterType: dive.waterType,
+      current: dive.current,
       gasConsumption: dive.gasConsumption,
       configuration: dive.configuration,
+      leaderNamedBuddyId: dive.leader.type === 'NAMED' ? dive.leader.namedBuddyId : null,
+      leaderBuddyDiveId: dive.leader.type === 'LINKED' ? dive.leader.linkedDiveId : null,
+      teamTerminology: dive.teamTerminology,
+    }
+    // Smart default: this dive has no explicit terminology override of its own yet - prefill the
+    // picker with the user's own most recent explicit choice (on some other dive) rather than
+    // leaving it on a bare "Default (Buddy)". If the user saves without touching the picker, that
+    // becomes this dive's own explicit choice too - same as any other prefilled form default.
+    if (!dive.teamTerminology) {
+      try {
+        const defaultRes = await getWithToken<TeamTerminology | null>(
+          '/v1/dives/team-terminology/default',
+        )
+        if (defaultRes.data) {
+          formData.value.teamTerminology = defaultRes.data
+        }
+      } catch (err) {
+        console.error('Failed to fetch terminology default', err)
+      }
     }
     originalSite.value = dive.site
     // Split tags: manual ones go into the selector, auto-detected ones are shown separately
@@ -297,9 +338,14 @@ const handleSubmit = async () => {
     namedBuddies: formData.value.diveBuddies ?? null,
     notes: formData.value.notes ?? null,
     visibility: formData.value.visibility ?? null,
+    waterType: formData.value.waterType ?? null,
+    current: formData.value.current ?? null,
     gasConsumption: formData.value.gasConsumption ?? null,
     configuration: formData.value.configuration ?? null,
     suitId: formData.value.configuration?.suit?.id ?? null,
+    leaderNamedBuddyId: formData.value.leaderNamedBuddyId ?? null,
+    leaderBuddyDiveId: formData.value.leaderBuddyDiveId ?? null,
+    teamTerminology: formData.value.teamTerminology ?? null,
   }
 
   try {

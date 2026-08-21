@@ -235,6 +235,15 @@ const commands = computed<Command[]>(() => {
       category: 'navigation',
     },
     {
+      id: 'nav-trips',
+      label: 'Go to Trips',
+      description: 'View dive trips and courses',
+      icon: '🧭',
+      action: () => router.push({ name: 'TripList' }),
+      keywords: ['trips', 'courses', 'trip', 'course', 'groups'],
+      category: 'navigation',
+    },
+    {
       id: 'nav-profile',
       label: 'Go to Profile',
       description: 'View and edit your profile',
