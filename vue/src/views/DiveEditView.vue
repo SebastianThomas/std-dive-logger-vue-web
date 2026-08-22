@@ -335,7 +335,8 @@ const handleSubmit = async () => {
   if (invalidCylinders.value > 0) {
     toast.error(
       `${invalidCylinders.value} cylinder${invalidCylinders.value === 1 ? '' : 's'} ` +
-        `have O2 + He over 100% - fix the gas mix before saving.`,
+        `${invalidCylinders.value === 1 ? 'has' : 'have'} O2 + He over 100% - fix the gas mix` +
+        ` before saving.`,
     )
     return
   }

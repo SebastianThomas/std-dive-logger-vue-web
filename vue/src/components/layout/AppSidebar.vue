@@ -43,6 +43,9 @@
     <router-link :to="{ name: 'TagManager' }">
       <MenuItem icon="tags" text="Tags" :is-visible="isVisible" />
     </router-link>
+    <router-link :to="{ name: 'Backfill' }">
+      <MenuItem icon="list-check" text="Backfill" :is-visible="isVisible" />
+    </router-link>
     <router-link :to="{ name: 'Profile' }">
       <MenuItem icon="user-pen" text="Profile" :is-visible="isVisible" />
     </router-link>

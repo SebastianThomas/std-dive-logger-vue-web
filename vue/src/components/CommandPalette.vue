@@ -244,6 +244,15 @@ const commands = computed<Command[]>(() => {
       category: 'navigation',
     },
     {
+      id: 'nav-backfill',
+      label: 'Go to Backfill',
+      description: 'Fill in gaps on sparsely-logged dives',
+      icon: '🧩',
+      action: () => router.push({ name: 'Backfill' }),
+      keywords: ['backfill', 'missing', 'incomplete', 'gaps'],
+      category: 'navigation',
+    },
+    {
       id: 'nav-profile',
       label: 'Go to Profile',
       description: 'View and edit your profile',
