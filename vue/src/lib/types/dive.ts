@@ -373,6 +373,8 @@ export type PendingImportSource =
   | 'JSON_SUUNTO'
   | 'UDDF_SHEARWATER'
   | 'XML_SUBSURFACE'
+  | 'XML_SHEARWATER'
+  | 'DL7_SHEARWATER'
 
 /** Cheap, review-only view of a staged (not yet persisted) import - never carries profile data. */
 export type PendingImportSummary = {
