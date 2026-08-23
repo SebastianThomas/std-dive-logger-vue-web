@@ -12,6 +12,10 @@ export type UserDiveStats = {
   nrOfSites?: number
   maxTemp?: Temperature
   minTemp?: Temperature
+  // Per-dive max TTS, then averaged/maxed across dives - not an average/max of raw per-sample
+  // TTS readings.
+  avgMaxTimeToSurface?: Duration
+  maxMaxTimeToSurface?: Duration
 }
 
 type UserDiveStatsBy<K> = { key: K; stats: UserDiveStats }

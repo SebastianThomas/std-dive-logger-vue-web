@@ -21,6 +21,8 @@ export type TimelineMetric =
   | 'avgTemperature'
   | 'avgVisibility'
   | 'avgWeight'
+  | 'avgMaxTts'
+  | 'maxMaxTts'
 
 export type TimelineMetricConfig = {
   show: boolean
@@ -38,6 +40,8 @@ export const DEFAULT_TIMELINE_METRIC_CONFIGS: Record<TimelineMetric, TimelineMet
   avgTemperature: { show: false, color: '#ef4444' },
   avgVisibility: { show: false, color: '#22c55e' },
   avgWeight: { show: false, color: '#f97316' },
+  avgMaxTts: { show: false, color: '#0ea5e9' },
+  maxMaxTts: { show: false, color: '#0369a1' },
 }
 
 /** Dimension the currently-selected metric(s) can be split into one line per category by. */
@@ -61,6 +65,8 @@ export const timelineMetricUnits: Record<TimelineMetric, string | null> = {
   avgTemperature: '°C',
   avgVisibility: 'm',
   avgWeight: 'kg',
+  avgMaxTts: 'min',
+  maxMaxTts: 'min',
 }
 
 export const timelineMetricDisplayNames: Record<TimelineMetric, string> = {
@@ -74,6 +80,8 @@ export const timelineMetricDisplayNames: Record<TimelineMetric, string> = {
   avgTemperature: 'Avg Temperature',
   avgVisibility: 'Avg Visibility',
   avgWeight: 'Avg Weight',
+  avgMaxTts: 'Avg Max TTS',
+  maxMaxTts: 'Max TTS',
 }
 
 export type StatsTimeSeriesPoint = {
@@ -92,6 +100,9 @@ export type StatsTimeSeriesPoint = {
   avgTemperatureCelsius?: number
   avgVisibilityMeters?: number
   avgWeightKg?: number
+  // Per-dive max TTS, then averaged/maxed across the dives in this bucket.
+  avgMaxTimeToSurfaceSeconds?: number
+  maxMaxTimeToSurfaceSeconds?: number
 }
 
 export type StatsTimeSeries = {

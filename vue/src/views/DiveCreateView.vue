@@ -55,7 +55,8 @@
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Multiple files supported</p>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Supported formats: UDDF, XML, FIT (POSB not yet supported)
+                Supported formats: UDDF, XML, FIT, JSON (Suunto app export) - POSB not yet
+                supported
               </p>
             </button>
             <input
@@ -63,7 +64,7 @@
               type="file"
               class="hidden"
               multiple
-              accept=".uddf,.xml,.posb,.fit"
+              accept=".uddf,.xml,.posb,.fit,.json"
               @change="onFileInput"
             />
             <ul
@@ -212,6 +213,12 @@
                   the Shearwater Cloud app before exporting to auto-merge the uploaded dive into an
                   existing dive with the same number.
                 </li>
+                <li>
+                  Suunto: prefer the <strong>JSON</strong> export (Suunto app/SuuntoLink) over
+                  <strong>FIT</strong> when you have a choice - the FIT export from these dive
+                  computers doesn't include NDL, deco stop time, gas switches, or time-to-surface,
+                  all of which the JSON export has.
+                </li>
               </ul>
             </div>
           </div>
@@ -319,12 +326,12 @@ const handleDrop = (e: DragEvent) => {
     const droppedFiles = Array.from(e.dataTransfer.files)
     const validFiles = droppedFiles.filter((file) => {
       const ext = file.name.split('.').pop()?.toLowerCase()
-      const validExts = ['uddf', 'xml', 'posb', 'fit']
+      const validExts = ['uddf', 'xml', 'posb', 'fit', 'json']
       return validExts.includes(ext || '')
     })
     if (validFiles.length < droppedFiles.length) {
       status.value =
-        'Warning: Some files were skipped due to unsupported format. Supported: UDDF, XML, FIT, POSB.'
+        'Warning: Some files were skipped due to unsupported format. Supported: UDDF, XML, FIT, JSON, POSB.'
     }
     files.value = validFiles
   }
@@ -335,12 +342,12 @@ const onFileInput = (e: Event) => {
   if (target.files) {
     const validFiles = Array.from(target.files).filter((file) => {
       const ext = file.name.split('.').pop()?.toLowerCase()
-      const validExts = ['uddf', 'xml', 'posb', 'fit']
+      const validExts = ['uddf', 'xml', 'posb', 'fit', 'json']
       return validExts.includes(ext || '')
     })
     if (validFiles.length < target.files.length) {
       status.value =
-        'Warning: Some files were skipped due to unsupported format. Supported: UDDF, XML, FIT, POSB.'
+        'Warning: Some files were skipped due to unsupported format. Supported: UDDF, XML, FIT, JSON, POSB.'
     }
     files.value = validFiles
   }

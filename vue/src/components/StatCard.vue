@@ -10,6 +10,18 @@
     />
     <StatItem label="Total Time" :value="formatDuration(stats.totalTime)" icon="clock" />
     <StatItem
+      label="Avg Max TTS"
+      :value="formatDuration(stats.avgMaxTimeToSurface)"
+      icon="arrow-up"
+      v-if="stats.avgMaxTimeToSurface"
+    />
+    <StatItem
+      label="Max TTS"
+      :value="formatDuration(stats.maxMaxTimeToSurface)"
+      icon="arrow-up"
+      v-if="stats.maxMaxTimeToSurface"
+    />
+    <StatItem
       label="Dive Buddies"
       :value="stats.nrOfBuddies.toString()"
       icon="people-group"

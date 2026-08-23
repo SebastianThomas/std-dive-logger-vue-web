@@ -69,6 +69,9 @@ export type DiveMeasurement = {
   // Rebreather loop state (closed-circuit vs open-circuit/bailout) at this sample. Absent for
   // OC-only dives and for sources that don't report it (e.g. FIT/Garmin).
   mode?: 'OC' | 'CC'
+  // Time needed for a safe ascent from here (device-assumed ascent rate) - not the same as being
+  // in mandatory deco, a plain ascent from a few meters still reads a small non-zero value here.
+  timeToSurface?: Duration
 }
 
 export type DiveMeasurementWithId = {
@@ -111,6 +114,7 @@ export type DiveSummary = {
   averageDepth: number
   bottomTime: Duration
   surfaceIntervalBefore: Duration
+  maxTimeToSurface?: Duration
 }
 
 export type VisibilityFeeling = 'HIGH' | 'AVERAGE' | 'LOW'
@@ -362,7 +366,13 @@ export type DiveWithoutProfiles = {
 }
 export type UploadDiveResult = { dives: DiveWithoutProfiles[]; errors: string[] }
 
-export type PendingImportSource = 'DIVESOFT' | 'FIT_GARMIN' | 'UDDF_SHEARWATER' | 'XML_SUBSURFACE'
+export type PendingImportSource =
+  | 'DIVESOFT'
+  | 'FIT_GARMIN'
+  | 'FIT_SUUNTO'
+  | 'JSON_SUUNTO'
+  | 'UDDF_SHEARWATER'
+  | 'XML_SUBSURFACE'
 
 /** Cheap, review-only view of a staged (not yet persisted) import - never carries profile data. */
 export type PendingImportSummary = {

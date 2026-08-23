@@ -132,6 +132,10 @@ function metricValue(p: StatsTimeSeriesPoint, metric: TimelineMetric): number | 
       return p.avgVisibilityMeters ?? null
     case 'avgWeight':
       return p.avgWeightKg ?? null
+    case 'avgMaxTts':
+      return p.avgMaxTimeToSurfaceSeconds != null ? p.avgMaxTimeToSurfaceSeconds / 60 : null
+    case 'maxMaxTts':
+      return p.maxMaxTimeToSurfaceSeconds != null ? p.maxMaxTimeToSurfaceSeconds / 60 : null
     default:
       return null
   }
