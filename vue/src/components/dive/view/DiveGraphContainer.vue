@@ -200,7 +200,7 @@
       v-model:left-axis-metric="leftAxisMetric"
       v-model:right-axis-metric="rightAxisMetric"
     />
-    <div class="relative h-75">
+    <div class="relative h-100 md:h-125">
       <DiveGraph
         :profiles="profiles"
         :visible-profiles="visibleProfiles"

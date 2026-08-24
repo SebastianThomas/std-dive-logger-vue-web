@@ -164,6 +164,7 @@ import { interpolateAt, stepAfterValueAt, valueAtForMetric } from '@/lib/graph/v
 import { LruCache } from '@/lib/utils/lruCache'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import { computeRangeStats } from '@/lib/graph/rangeStats'
+import { nearestSampleTime } from '@/lib/graph/snapToSample'
 import { splitByTimeGap, medianSampleIntervalMs } from '@/lib/graph/lineSegments'
 
 type Props = {
@@ -1200,11 +1201,12 @@ function renderTrimOverlay() {
             if (!trimRange.value || !timeScale.value) return
             const tVal = toReal(timeScale.value.invert(event.x))
             const clamped = Math.min(Math.max(tVal, profile.start), profile.end)
+            const snapped = nearestSampleTime(profile, clamped)
             const MIN_GAP_MS = 1000
             if (key === 'start') {
-              trimRange.value.start = Math.min(clamped, trimRange.value.end - MIN_GAP_MS)
+              trimRange.value.start = Math.min(snapped, trimRange.value.end - MIN_GAP_MS)
             } else {
-              trimRange.value.end = Math.max(clamped, trimRange.value.start + MIN_GAP_MS)
+              trimRange.value.end = Math.max(snapped, trimRange.value.start + MIN_GAP_MS)
             }
             renderTrimOverlay()
           }),

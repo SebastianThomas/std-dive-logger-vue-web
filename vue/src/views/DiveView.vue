@@ -288,6 +288,42 @@
         </div>
       </div>
 
+      <!-- Dive Profile Graph - placed right below the header's own quick-scan cards (Depth/Bottom
+           Time/CNS/GF99) so it's visible without scrolling, ahead of the denser
+           gases/computers/buddies/cylinders detail below it. Still standalone with nothing beside
+           it. -->
+      <div
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full flex flex-col"
+        ref="embeddedGraphCardRef"
+      >
+        <div class="flex justify-between items-center p-4">
+          <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
+            Dive Profile
+          </h2>
+          <button
+            v-if="!isManualDive"
+            @click="graphOpen = true"
+            class="text-sm text-blue-600 hover:underline"
+          >
+            Expand
+          </button>
+        </div>
+        <div
+          v-if="isManualDive"
+          class="px-4 pb-6 text-sm text-gray-500 dark:text-gray-400 text-center"
+        >
+          No profile recorded - this dive was logged manually.
+        </div>
+        <DiveGraphContainer
+          v-else-if="dive.profiles"
+          ref="embeddedGraphRef"
+          :profiles="dive.profiles"
+          :dive-id="diveId"
+          @profiles-aligned="handleProfilesAligned"
+          @profile-trimmed="handleProfileTrimmed"
+        />
+      </div>
+
       <!-- Details Grid -->
       <InfoCardRow>
         <InfoCard title="Gases">
@@ -327,31 +363,47 @@
           </p>
           <ul v-else class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
             <li v-for="buddy in dive.namedBuddies" :key="`named-${buddy.id}`">
-              {{ buddy.name }}
+              <span
+                :class="{
+                  'font-semibold':
+                    dive.leader.type === 'NAMED' && dive.leader.namedBuddyId === buddy.id,
+                }"
+                :title="
+                  dive.leader.type === 'NAMED' && dive.leader.namedBuddyId === buddy.id
+                    ? 'Dive leader'
+                    : undefined
+                "
+              >
+                {{ buddy.name }}
+              </span>
               <span v-if="buddy.role" class="text-gray-400 dark:text-gray-500">
                 ({{ BUDDY_ROLE_LABELS[buddy.role] }})</span
-              >
-              <span v-if="dive.leader.type === 'NAMED' && dive.leader.namedBuddyId === buddy.id">
-                &middot; led the dive</span
               >
             </li>
             <li v-for="linked in dive.buddiesDives" :key="`linked-${linked.diveId}`">
               <RouterLink
                 :to="{ name: 'DiveView', params: { diveId: linked.diveId } }"
                 class="text-blue-600 hover:underline"
+                :class="{
+                  'font-semibold':
+                    dive.leader.type === 'LINKED' && dive.leader.linkedDiveId === linked.diveId,
+                }"
+                :title="
+                  dive.leader.type === 'LINKED' && dive.leader.linkedDiveId === linked.diveId
+                    ? 'Dive leader'
+                    : undefined
+                "
               >
                 {{ linked.buddy.name }}
               </RouterLink>
-              <span v-if="dive.leader.type === 'LINKED' && dive.leader.linkedDiveId === linked.diveId">
-                &middot; led the dive</span
-              >
             </li>
           </ul>
           <p
             v-if="dive.leader.type === 'SELF'"
-            class="text-xs text-gray-400 dark:text-gray-500 mt-1"
+            class="text-xs font-semibold mt-1"
+            title="Dive leader"
           >
-            {{ dive.user.name }} led the dive
+            {{ dive.user.name }}
           </p>
         </InfoCard>
       </InfoCardRow>
@@ -492,85 +544,49 @@
 
       <!-- Cylinders - the one piece of Configuration dense enough to keep its own panel; Suit/Base
            Config/CCR Unit/Weight/Visibility/Gas Consumption moved into the compact InfoCardRow
-           above. -->
+           above. One compact line per cylinder (label · label · ...) rather than a padded
+           sub-card with a 2-line label/value grid for each field - a sidemount/CCR dive with
+           several cylinders no longer dominates the page. -->
       <div
         v-if="dive.configuration?.cylinders?.length"
-        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
+        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 md:p-4"
       >
-        <h2 class="text-lg font-semibold mb-3">Cylinders</h2>
-        <div class="space-y-3">
+        <h2 class="text-sm font-semibold mb-2">Cylinders</h2>
+        <div class="divide-y divide-gray-100 dark:divide-gray-700 text-xs">
           <div
             v-for="(cylinder, idx) in dive.configuration.cylinders"
             :key="idx"
-            class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+            class="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-1.5"
           >
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-              <div>
-                <span class="text-gray-600 dark:text-gray-400">Size</span>
-                <p class="font-semibold">
-                  {{ cylinder.size.value }} {{ cylinder.size.unit === 'LITER' ? 'l' : 'cf' }}
-                </p>
-              </div>
-              <div>
-                <span class="text-gray-600 dark:text-gray-400">Gas</span>
-                <p class="font-semibold">
-                  {{ Math.round(cylinder.gas.o2 * 100) }}/{{ Math.round(cylinder.gas.he * 100) }}
-                </p>
-              </div>
-              <div>
-                <span class="text-gray-600 dark:text-gray-400">Role</span>
-                <p class="font-semibold">{{ CYLINDER_ROLE_LABELS[cylinder.role] }}</p>
-              </div>
-              <div v-if="cylinder.startBar !== undefined && cylinder.startBar !== null">
-                <span class="text-gray-600 dark:text-gray-400">Start Pressure</span>
-                <p class="font-semibold">{{ cylinder.startBar }} bar</p>
-              </div>
-              <div v-if="cylinder.endBar !== undefined && cylinder.endBar !== null">
-                <span class="text-gray-600 dark:text-gray-400">End Pressure</span>
-                <p class="font-semibold">{{ cylinder.endBar }} bar</p>
-              </div>
-              <div v-if="cylinder.notes">
-                <span class="text-gray-600 dark:text-gray-400">Notes</span>
-                <p class="font-semibold">{{ cylinder.notes }}</p>
-              </div>
-            </div>
+            <span class="font-semibold">
+              {{ cylinder.size.value }} {{ cylinder.size.unit === 'LITER' ? 'l' : 'cf' }}
+            </span>
+            <span class="text-gray-400 dark:text-gray-500">&middot;</span>
+            <span>{{ Math.round(cylinder.gas.o2 * 100) }}/{{ Math.round(cylinder.gas.he * 100) }}</span>
+            <span class="text-gray-400 dark:text-gray-500">&middot;</span>
+            <span class="text-gray-600 dark:text-gray-400">{{
+              CYLINDER_ROLE_LABELS[cylinder.role]
+            }}</span>
+            <template v-if="cylinder.startBar !== undefined && cylinder.startBar !== null">
+              <span class="text-gray-400 dark:text-gray-500">&middot;</span>
+              <span
+                >{{ cylinder.startBar
+                }}<template v-if="cylinder.endBar !== undefined && cylinder.endBar !== null"
+                  >&rarr;{{ cylinder.endBar }}</template
+                >
+                bar</span
+              >
+            </template>
+            <template v-else-if="cylinder.endBar !== undefined && cylinder.endBar !== null">
+              <span class="text-gray-400 dark:text-gray-500">&middot;</span>
+              <span>&rarr;{{ cylinder.endBar }} bar</span>
+            </template>
+            <template v-if="cylinder.notes">
+              <span class="text-gray-400 dark:text-gray-500">&middot;</span>
+              <span class="text-gray-500 dark:text-gray-400 italic">{{ cylinder.notes }}</span>
+            </template>
           </div>
         </div>
-      </div>
-
-      <!-- Dive Profile Graph - the lowermost card except for Notes below it: everything else on
-           the page is a quick-scan summary, so the (comparatively heavy) graph itself is the last
-           thing reached, not the first. Still standalone with nothing beside it. -->
-      <div
-        class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full flex flex-col"
-        ref="embeddedGraphCardRef"
-      >
-        <div class="flex justify-between items-center p-4">
-          <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
-            Dive Profile
-          </h2>
-          <button
-            v-if="!isManualDive"
-            @click="graphOpen = true"
-            class="text-sm text-blue-600 hover:underline"
-          >
-            Expand
-          </button>
-        </div>
-        <div
-          v-if="isManualDive"
-          class="px-4 pb-6 text-sm text-gray-500 dark:text-gray-400 text-center"
-        >
-          No profile recorded - this dive was logged manually.
-        </div>
-        <DiveGraphContainer
-          v-else-if="dive.profiles"
-          ref="embeddedGraphRef"
-          :profiles="dive.profiles"
-          :dive-id="diveId"
-          @profiles-aligned="handleProfilesAligned"
-          @profile-trimmed="handleProfileTrimmed"
-        />
       </div>
 
       <!-- Trip badges (WS7) - all lookup logic lives inside the component itself. -->
