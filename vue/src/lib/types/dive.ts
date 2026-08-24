@@ -146,6 +146,41 @@ export type GasConsumption = {
   totalLiters: number
 }
 
+// --- Reimport-in-place (see DiveController's /profiles/{id}/reimport + /reimport/{pid}/commit) -
+
+export type ReimportFieldConflict<T> = { existing: T; reimported: T }
+
+export type ReimportConflicts = {
+  notes?: ReimportFieldConflict<string>
+  visibility?: ReimportFieldConflict<Visibility>
+  namedBuddies?: ReimportFieldConflict<string[]>
+  gasConsumption?: ReimportFieldConflict<GasConsumption>
+}
+
+export function reimportHasAnyConflict(conflicts: ReimportConflicts): boolean {
+  return (
+    conflicts.notes != null ||
+    conflicts.visibility != null ||
+    conflicts.namedBuddies != null ||
+    conflicts.gasConsumption != null
+  )
+}
+
+export type ReimportPreviewResult = {
+  pendingImportId: number
+  conflicts: ReimportConflicts
+}
+
+export type ReimportChoice = 'EXISTING' | 'NEW'
+export type ReimportBuddiesChoice = 'EXISTING' | 'NEW' | 'UNION'
+
+export type ReimportResolution = {
+  notes?: ReimportChoice | null
+  visibility?: ReimportChoice | null
+  namedBuddies?: ReimportBuddiesChoice | null
+  gasConsumption?: ReimportChoice | null
+}
+
 export type SuitType =
   | 'NONE'
   | 'RASHGUARD'
