@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  elapsedMinutesSeconds,
+  epochFromElapsedMinutesSeconds,
   formatISoDurationToMinutes,
   formatISoDurationToTime,
   parseISODuration,
@@ -188,6 +190,42 @@ describe('timeUtils', () => {
 
     it('should pad single digits correctly', () => {
       expect(formatISoDurationToMinutes('PT1H5M3S')).toBe('65 min')
+    })
+  })
+
+  describe('elapsedMinutesSeconds / epochFromElapsedMinutesSeconds', () => {
+    const diveStart = 1_700_000_000_000
+
+    it('returns null for an unset (null/undefined) value', () => {
+      expect(elapsedMinutesSeconds(null, diveStart)).toBeNull()
+      expect(elapsedMinutesSeconds(undefined, diveStart)).toBeNull()
+    })
+
+    it('splits an epoch timestamp into minutes/seconds elapsed since start', () => {
+      const epoch = diveStart + (12 * 60 + 34) * 1000
+      expect(elapsedMinutesSeconds(epoch, diveStart)).toEqual({ minutes: 12, seconds: 34 })
+    })
+
+    it('clamps a timestamp before the dive start to 0:00 rather than going negative', () => {
+      expect(elapsedMinutesSeconds(diveStart - 5000, diveStart)).toEqual({
+        minutes: 0,
+        seconds: 0,
+      })
+    })
+
+    it('round-trips through epochFromElapsedMinutesSeconds', () => {
+      const epoch = epochFromElapsedMinutesSeconds(45, 30, diveStart)
+      expect(elapsedMinutesSeconds(epoch, diveStart)).toEqual({ minutes: 45, seconds: 30 })
+    })
+
+    it('clamps negative minutes/seconds inputs to 0 rather than shifting before the dive start', () => {
+      expect(epochFromElapsedMinutesSeconds(-3, -10, diveStart)).toBe(diveStart)
+    })
+
+    it('clamps an out-of-range seconds value to 59 rather than rolling into the next minute', () => {
+      expect(epochFromElapsedMinutesSeconds(1, 90, diveStart)).toBe(
+        epochFromElapsedMinutesSeconds(1, 59, diveStart),
+      )
     })
   })
 })

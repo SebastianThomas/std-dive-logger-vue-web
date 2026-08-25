@@ -57,22 +57,20 @@ export function isGaugeModeProfile(profile: DiveProfile): boolean {
 /**
  * A measurement's CCR role, or `null` when there's genuinely nothing to go on for this specific
  * sample. `measurement.mode` (when the source device reports it at all) is authoritative - it's
- * the device's own record of which loop it was in, not an inference. Only measurements from
- * sources that never report `mode` (per DiveMeasurement.mode's own doc comment, e.g. FIT/Garmin)
- * fall back to the older PO2-telemetry-presence heuristic, and even that only commits to
- * "diluent" when PO2 telemetry is actually present - it no longer defaults a mode-less,
- * PO2-less sample to "bailout" just because it lacks PO2, since a transient telemetry gap while
- * genuinely on-loop looks identical to that.
+ * the device's own record of which loop it was in, not an inference.
+ *
+ * A mode-less sample used to fall back to guessing "diluent" whenever any PO2 telemetry
+ * (measured or calculated) was present - dropped after a real dive (a CCR unit's own computer
+ * alongside a separate mode-less bailout/backup computer) showed why that's unsound: a plain OC
+ * computer can report a *calculated* PPO2 (gas% x depth, see ShearwaterXmlReaderService's own
+ * measured-vs-calculated fix) on some samples and not others with no bearing on circuit state at
+ * all, so the same bailout gas ended up split into a spurious "(Diluent)" entry and a spurious
+ * unlabeled one for the exact same composition. A mode-less sample now always resolves to `null`
+ * - no role claimed - rather than risk a wrong one.
  */
-function measurementRole(measurement: {
-  mode?: 'OC' | 'CC'
-  po2?: { measured?: number; calculated?: number }
-}): GasRole | null {
+function measurementRole(measurement: { mode?: 'OC' | 'CC' }): GasRole | null {
   if (measurement.mode === 'CC') return 'diluent'
   if (measurement.mode === 'OC') return 'bailout'
-  if (measurement.po2?.measured !== undefined || measurement.po2?.calculated !== undefined) {
-    return 'diluent'
-  }
   return null
 }
 

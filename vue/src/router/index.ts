@@ -61,6 +61,24 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/gear/suits/:suitId',
+      name: 'SuitDetail',
+      component: () => import('../views/SuitDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/gear/computers/:computerId',
+      name: 'DiveComputerDetail',
+      component: () => import('../views/DiveComputerDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/gear/ccr-units/:ccrUnitId',
+      name: 'CcrUnitDetail',
+      component: () => import('../views/CcrUnitDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/trips',
       name: 'TripList',
       component: () => import('../views/TripListView.vue'),
@@ -106,6 +124,24 @@ const router = createRouter({
       path: '/profile',
       name: 'Profile',
       component: () => import('../views/ProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/profile/equipment',
+      name: 'ProfileEquipment',
+      component: () => import('../views/ProfileEquipmentView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/profile/buddies',
+      name: 'ProfileBuddies',
+      component: () => import('../views/ProfileBuddiesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/profile/certifications',
+      name: 'ProfileCertifications',
+      component: () => import('../views/ProfileCertificationsView.vue'),
       meta: { requiresAuth: true },
     },
     {

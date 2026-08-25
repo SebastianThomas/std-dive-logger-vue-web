@@ -122,10 +122,9 @@
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Instructor (optional)</label>
-          <input
+          <BuddyNameAutocomplete
             v-model="form.instructorName"
-            type="text"
-            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            placeholder="Instructor name"
           />
         </div>
         <div>
@@ -182,6 +181,7 @@ import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import CertificationAgencyPicker from '@/components/CertificationAgencyPicker.vue'
+import BuddyNameAutocomplete from '@/components/dive/BuddyNameAutocomplete.vue'
 import type { Certification, CertificationAgency } from '@/lib/types/user'
 
 const { getWithToken, postWithToken, putWithToken, deleteWithToken } = useApi()

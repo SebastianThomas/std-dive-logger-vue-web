@@ -85,33 +85,14 @@
             </button>
           </li>
         </ul>
-        <div class="relative">
-          <input
-            id="buddies"
-            v-model="buddyInput"
-            type="text"
-            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-            :placeholder="`Enter a ${terminologySingular.toLowerCase()} and press Enter`"
-            autocomplete="off"
-            @input="fetchBuddySuggestions"
-            @focus="showBuddyDropdown = true"
-            @blur="hideBuddyDropdown"
-            @keydown.enter.prevent="addBuddy"
-          />
-          <div
-            v-if="showBuddyDropdown && buddySuggestions.length"
-            class="absolute top-full left-0 right-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg mt-1 z-20 max-h-48 overflow-y-auto shadow-lg"
-          >
-            <div
-              v-for="name in buddySuggestions"
-              :key="name"
-              class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm"
-              @mousedown.prevent="selectBuddySuggestion(name)"
-            >
-              {{ name }}
-            </div>
-          </div>
-        </div>
+        <BuddyNameAutocomplete
+          id="buddies"
+          v-model="buddyInput"
+          :placeholder="`Enter a ${terminologySingular.toLowerCase()} and press Enter`"
+          :exclude-names="(modelValue.diveBuddies || []).map((b) => b.name)"
+          @select="addBuddyByName"
+          @enter="addBuddy"
+        />
       </div>
 
       <!-- Dive leader: only already-saved buddies/linked dives are selectable here - a buddy just
@@ -485,6 +466,7 @@
               <div>
                 <label class="block text-xs mb-1">Role</label>
                 <select
+                  v-if="isCcrBaseConfiguration(modelValue.configuration.base)"
                   :value="cylinder.role"
                   class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
                   @change="
@@ -494,10 +476,29 @@
                     )
                   "
                 >
-                  <option v-for="(label, role) in CYLINDER_ROLE_LABELS" :key="role" :value="role">
-                    {{ label }}
+                  <!-- A cylinder already carrying a role outside Diluent/O2/Bailout (e.g. stale
+                       "OC" from before this restriction existed, or from a mode switch) still
+                       shows its real stored value here rather than going blank - it just isn't
+                       offered as a choice for a cylinder that doesn't already have it. -->
+                  <option
+                    v-if="!CCR_CYLINDER_ROLES.includes(cylinder.role)"
+                    :value="cylinder.role"
+                  >
+                    {{ CYLINDER_ROLE_LABELS[cylinder.role] }}
+                  </option>
+                  <option v-for="role in CCR_CYLINDER_ROLES" :key="role" :value="role">
+                    {{ CYLINDER_ROLE_LABELS[role] }}
                   </option>
                 </select>
+                <!-- OC dives only ever have one sensible role - shown fixed, not a real dropdown,
+                     rather than offering CCR-only choices (Diluent/O2/Bailout) that don't apply. -->
+                <input
+                  v-else
+                  :value="CYLINDER_ROLE_LABELS[cylinder.role]"
+                  type="text"
+                  disabled
+                  class="w-full p-1.5 text-sm border rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-600 cursor-not-allowed"
+                />
               </div>
               <div>
                 <label class="block text-xs mb-1">O2 %</label>
@@ -551,22 +552,79 @@
             </p>
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <label class="block text-xs mb-1">Usage Start</label>
-                <input
-                  :value="epochMillisToLocalInput(cylinder.usageStart)"
-                  type="datetime-local"
-                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                  @input="updateCylinderUsageField(index, 'usageStart', $event)"
-                />
+                <label class="block text-xs mb-1">Usage Start (mm:ss since dive start)</label>
+                <div class="flex items-center gap-1">
+                  <input
+                    :value="elapsedMinutesSeconds(cylinder.usageStart, diveStart)?.minutes ?? ''"
+                    type="number"
+                    min="0"
+                    placeholder="mm"
+                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                    @input="updateCylinderUsageElapsed(index, 'usageStart', 'minutes', $event)"
+                  />
+                  <span class="text-sm text-gray-500">:</span>
+                  <input
+                    :value="elapsedMinutesSeconds(cylinder.usageStart, diveStart)?.seconds ?? ''"
+                    type="number"
+                    min="0"
+                    max="59"
+                    placeholder="ss"
+                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                    @input="updateCylinderUsageElapsed(index, 'usageStart', 'seconds', $event)"
+                  />
+                </div>
               </div>
               <div>
-                <label class="block text-xs mb-1">Usage End</label>
-                <input
-                  :value="epochMillisToLocalInput(cylinder.usageEnd)"
-                  type="datetime-local"
-                  class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                  @input="updateCylinderUsageField(index, 'usageEnd', $event)"
-                />
+                <label class="block text-xs mb-1">Usage End (mm:ss since dive start)</label>
+                <div class="flex items-center gap-1">
+                  <input
+                    :value="elapsedMinutesSeconds(cylinder.usageEnd, diveStart)?.minutes ?? ''"
+                    type="number"
+                    min="0"
+                    placeholder="mm"
+                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                    @input="updateCylinderUsageElapsed(index, 'usageEnd', 'minutes', $event)"
+                  />
+                  <span class="text-sm text-gray-500">:</span>
+                  <input
+                    :value="elapsedMinutesSeconds(cylinder.usageEnd, diveStart)?.seconds ?? ''"
+                    type="number"
+                    min="0"
+                    max="59"
+                    placeholder="ss"
+                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                    @input="updateCylinderUsageElapsed(index, 'usageEnd', 'seconds', $event)"
+                  />
+                </div>
+              </div>
+            </div>
+            <!-- Suggested from the primary computer's own gas-switch history: only offered while
+                 Usage Start/End are both still unset, so it never second-guesses a value the
+                 diver already entered. The first (longest) match fills this row directly; any
+                 other matching window is offered as its own extra cylinder row, since one row can
+                 only hold one window. -->
+            <div
+              v-if="!cylinder.usageStart && !cylinder.usageEnd && cylinderSuggestions[index]?.length"
+              class="text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-2 space-y-1"
+            >
+              <p class="text-blue-800 dark:text-blue-200">
+                This gas matches the primary computer's log during:
+              </p>
+              <div class="flex flex-wrap gap-1">
+                <button
+                  v-for="(window, wIndex) in cylinderSuggestions[index]"
+                  :key="wIndex"
+                  type="button"
+                  class="px-2 py-1 rounded border"
+                  :class="
+                    wIndex === 0
+                      ? 'border-blue-500 bg-blue-100 dark:bg-blue-800/40 text-blue-900 dark:text-blue-100 font-medium'
+                      : 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800/30'
+                  "
+                  @click="applySuggestedWindow(index, window, wIndex === 0)"
+                >
+                  {{ formatElapsedRange(window) }}{{ wIndex === 0 ? ' (suggested)' : '' }}
+                </button>
               </div>
             </div>
             <button
@@ -702,6 +760,7 @@ import {
   type Suit,
   type CcrUnit,
   type Dive,
+  type DiveProfile,
   type PagedResult,
   type BuddyRole,
   type TeamTerminology,
@@ -709,10 +768,13 @@ import {
   BASE_CONFIGURATION_LABELS,
   SUIT_TYPE_LABELS,
   CYLINDER_ROLE_LABELS,
+  CCR_CYLINDER_ROLES,
   BUDDY_ROLE_LABELS,
   isCcrBaseConfiguration,
 } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
+import { elapsedMinutesSeconds, epochFromElapsedMinutesSeconds } from '@/lib/utils/timeUtils'
+import { findGasMatchWindows, primaryProfile, type UsageWindow } from '@/lib/dive/cylinderUsageWindows'
 
 export interface EditableNamedBuddy {
   name: string
@@ -744,6 +806,13 @@ const props = defineProps<{
    * picker's own note below for why). */
   existingNamedBuddies?: NamedBuddy[]
   existingBuddyDives?: { buddy: User; diveId: number }[]
+  /** The dive's own start time (epoch millis) - Usage Start/End are edited as minutes:seconds
+   * elapsed since this, not an absolute clock time. */
+  diveStart: number
+  /** Full profile data (with per-sample gas), used only to suggest cylinder Usage windows by
+   * finding when the primary computer actually had this gas selected. Undefined/empty just means
+   * no suggestions are offered - never required for the form to otherwise function. */
+  profiles?: DiveProfile[]
 }>()
 
 const emit = defineEmits<{
@@ -754,9 +823,6 @@ const { getWithToken } = useApi()
 
 const showMap = ref(false)
 const buddyInput = ref('')
-const buddySuggestions = ref<string[]>([])
-const showBuddyDropdown = ref(false)
-let buddyDebounce: ReturnType<typeof setTimeout> | null = null
 const selectedCoords = ref<{ lat: number; lon: number } | null>(null)
 const showSuitModal = ref(false)
 const showCcrUnitModal = ref(false)
@@ -815,25 +881,6 @@ const hasBuddyNamed = (name: string) =>
 const isExistingBuddy = (name: string) =>
   (props.existingNamedBuddies ?? []).some((b) => b.name === name)
 
-const fetchBuddySuggestions = () => {
-  if (buddyDebounce) clearTimeout(buddyDebounce)
-  const q = buddyInput.value.trim()
-  if (!q) {
-    buddySuggestions.value = []
-    return
-  }
-  buddyDebounce = setTimeout(async () => {
-    try {
-      const res = await getWithToken<string[]>(
-        `/v1/dives/buddies/autocomplete?query=${encodeURIComponent(q)}`,
-      )
-      buddySuggestions.value = (res.data ?? []).filter((n) => !hasBuddyNamed(n))
-    } catch {
-      buddySuggestions.value = []
-    }
-  }, 200)
-}
-
 const addBuddyByName = (name: string) => {
   if (name && !hasBuddyNamed(name)) {
     const newBuddies: EditableNamedBuddy[] = [
@@ -843,16 +890,6 @@ const addBuddyByName = (name: string) => {
     emit('update:modelValue', { ...props.modelValue, diveBuddies: newBuddies })
   }
   buddyInput.value = ''
-  buddySuggestions.value = []
-  showBuddyDropdown.value = false
-}
-
-const selectBuddySuggestion = (name: string) => addBuddyByName(name)
-
-const hideBuddyDropdown = () => {
-  setTimeout(() => {
-    showBuddyDropdown.value = false
-  }, 150)
 }
 
 const addBuddy = () => addBuddyByName(buddyInput.value.trim())
@@ -1010,7 +1047,11 @@ const emptyCylinder = (): DiveConfigurationCylinder => ({
   endBar: null,
   notes: '',
   gas: { o2: 0.21, he: 0 },
-  role: 'OC',
+  // OC is the only valid role on an OC dive; on CCR, default to the most common first cylinder
+  // (Diluent) rather than OC, which isn't even a selectable option there.
+  role: isCcrBaseConfiguration(props.modelValue.configuration?.base ?? 'SINGLE_TANK')
+    ? 'DILUENT'
+    : 'OC',
   usageStart: null,
   usageEnd: null,
 })
@@ -1086,25 +1127,82 @@ const updateCylinderRole = (index: number, role: CylinderRole) => {
   updateCylinders(cylinders)
 }
 
-// datetime-local inputs work in local time with no timezone, same conversion the manual-entry
-// form's start-time field already uses - see ManualDiveEntryForm.vue.
-const epochMillisToLocalInput = (millis?: number | null): string => {
-  if (millis == null) return ''
-  const date = new Date(millis)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+const updateCylinderUsageElapsed = (
+  index: number,
+  field: 'usageStart' | 'usageEnd',
+  part: 'minutes' | 'seconds',
+  event: Event,
+) => {
+  const cylinders = props.modelValue.configuration?.cylinders ?? []
+  const current = cylinders[index]
+  if (!current) return
+  const rawValue = (event.target as HTMLInputElement).value
+  if (rawValue === '') {
+    // Clearing either half clears the whole field - a lone minutes or seconds value with the
+    // other part missing isn't a usable timestamp.
+    updateCylinderField(index, field, null)
+    return
+  }
+  const existing = elapsedMinutesSeconds(current[field], props.diveStart) ?? {
+    minutes: 0,
+    seconds: 0,
+  }
+  const next = { ...existing, [part]: Math.max(0, Number(rawValue)) }
+  updateCylinderField(
+    index,
+    field,
+    epochFromElapsedMinutesSeconds(next.minutes, next.seconds, props.diveStart),
   )
 }
 
-const updateCylinderUsageField = (
-  index: number,
-  field: 'usageStart' | 'usageEnd',
-  event: Event,
-) => {
-  const value = (event.target as HTMLInputElement).value
-  updateCylinderField(index, field, value === '' ? null : new Date(value).getTime())
+const formatElapsedRange = (window: UsageWindow): string => {
+  const start = elapsedMinutesSeconds(window.start, props.diveStart)
+  const end = elapsedMinutesSeconds(window.end, props.diveStart)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const fmt = (t: { minutes: number; seconds: number } | null) =>
+    t ? `${pad(t.minutes)}:${pad(t.seconds)}` : '?'
+  return `${fmt(start)}–${fmt(end)}`
+}
+
+// One suggestion list per cylinder index, computed from the primary profile's actual gas-switch
+// history - see cylinderUsageWindows.ts. Only meaningful while Usage Start/End are unset (the
+// template hides the panel once either is set), but computed for every cylinder regardless so a
+// row's suggestions are ready the moment its gas% settles, without a per-row watcher.
+const cylinderSuggestions = computed<UsageWindow[][]>(() => {
+  const cylinders = props.modelValue.configuration?.cylinders ?? []
+  const profile = primaryProfile(props.profiles)
+  if (!profile) return cylinders.map(() => [])
+  return cylinders.map((cylinder) => {
+    const windows = findGasMatchWindows(profile.measurements, cylinder.gas)
+    // Longest first, so index 0 (the visually "suggested" one and the one a click on it applies
+    // to this row) is the most plausible real usage window, not just whichever came first.
+    return [...windows].sort((a, b) => b.end - b.start - (a.end - a.start))
+  })
+})
+
+const applySuggestedWindow = (index: number, window: UsageWindow, isDefault: boolean) => {
+  if (isDefault) {
+    // The current row has no usage set yet - fill it directly.
+    const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
+    const current = cylinders[index]
+    if (!current) return
+    cylinders[index] = { ...current, usageStart: window.start, usageEnd: window.end }
+    updateCylinders(cylinders)
+    return
+  }
+  // A non-default match is a second, non-contiguous window for the same gas (e.g. a bailout
+  // breathed twice) - one cylinder row only holds one window, so it becomes its own new row
+  // (same size/role/gas as the row it was suggested for) rather than overwriting the current one.
+  const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
+  const source = cylinders[index]
+  if (!source) return
+  cylinders.splice(index + 1, 0, {
+    ...source,
+    id: -Date.now(),
+    usageStart: window.start,
+    usageEnd: window.end,
+  })
+  updateCylinders(cylinders)
 }
 
 const updateConfigSuitField = (field: string, value: string | number | undefined) => {

@@ -1140,7 +1140,9 @@ function renderModeTransitions() {
 }
 
 // Shaded regions for whatever's currently outside the trim selection, plus two draggable handles
-// at its start/end. No-op (clears any stale ones) when not in trim mode.
+// at its start/end. No-op (clears any stale ones) when not in trim mode. Only ever tears down and
+// rebuilds the DOM - call updateTrimOverlayPositions() instead for a per-tick reposition (see its
+// own doc comment for why the distinction matters).
 function renderTrimOverlay() {
   if (!trimOverlayLayer.value) return
   trimOverlayLayer.value.selectAll('*').remove()
@@ -1148,36 +1150,31 @@ function renderTrimOverlay() {
   const range = trimRange.value
   if (!profile || !range || !timeScale.value) return
 
-  const { toVirtual, toReal } = timeMapper.value
-  const x = (t: number): number => timeScale.value!(toVirtual(t))
   const h = innerHeight.value
 
-  const shadeCut = (fromT: number, toT: number) => {
-    const left = Math.min(x(fromT), x(toT))
-    const width = Math.abs(x(toT) - x(fromT))
-    if (width <= 0) return
-    trimOverlayLayer.value
-      ?.append('rect')
-      .attr('x', left)
-      .attr('y', 0)
-      .attr('width', width)
-      .attr('height', h)
-      .attr('fill', '#000')
-      .attr('fill-opacity', 0.35)
-      .style('pointer-events', 'none')
-  }
-  shadeCut(profile.start, range.start)
-  shadeCut(range.end, profile.end)
+  trimOverlayLayer.value
+    .append('rect')
+    .attr('class', 'trim-shade-lead')
+    .attr('y', 0)
+    .attr('height', h)
+    .attr('fill', '#000')
+    .attr('fill-opacity', 0.35)
+    .style('pointer-events', 'none')
+  trimOverlayLayer.value
+    .append('rect')
+    .attr('class', 'trim-shade-tail')
+    .attr('y', 0)
+    .attr('height', h)
+    .attr('fill', '#000')
+    .attr('fill-opacity', 0.35)
+    .style('pointer-events', 'none')
 
   // A visible thin line plus a wider, invisible grab area (easier to hit than the line itself,
   // especially on touch) - both move together since they're in the same handle group.
   const makeHandle = (key: 'start' | 'end') => {
-    const handleX = x(range[key])
     const group = trimOverlayLayer.value!.append('g').attr('class', `trim-handle-${key}`)
     group
       .append('line')
-      .attr('x1', handleX)
-      .attr('x2', handleX)
       .attr('y1', 0)
       .attr('y2', h)
       .attr('stroke', '#0ea5e9')
@@ -1186,7 +1183,6 @@ function renderTrimOverlay() {
     const GRAB_WIDTH = 16
     group
       .append('rect')
-      .attr('x', handleX - GRAB_WIDTH / 2)
       .attr('y', 0)
       .attr('width', GRAB_WIDTH)
       .attr('height', h)
@@ -1199,6 +1195,7 @@ function renderTrimOverlay() {
           .on('start', (event: { sourceEvent?: Event }) => event.sourceEvent?.stopPropagation())
           .on('drag', (event: { x: number }) => {
             if (!trimRange.value || !timeScale.value) return
+            const { toReal } = timeMapper.value
             const tVal = toReal(timeScale.value.invert(event.x))
             const clamped = Math.min(Math.max(tVal, profile.start), profile.end)
             const snapped = nearestSampleTime(profile, clamped)
@@ -1208,12 +1205,66 @@ function renderTrimOverlay() {
             } else {
               trimRange.value.end = Math.max(snapped, trimRange.value.start + MIN_GAP_MS)
             }
-            renderTrimOverlay()
+            updateTrimOverlayPositions()
           }),
       )
   }
   makeHandle('start')
   makeHandle('end')
+
+  updateTrimOverlayPositions()
+}
+
+// Repositions the already-built overlay (shading + both handles) to match the current trimRange,
+// by updating attributes on the existing DOM nodes rather than removing/re-appending them.
+//
+// This used to just be another call to renderTrimOverlay() - which works fine to enter trim mode,
+// but calling it on every 'drag' tick was the actual bug behind "the trim handle won't move":
+// d3-drag computes each drag tick's pointer position relative to the *specific* DOM node the
+// gesture started on (captured once, in a closure, at mousedown). renderTrimOverlay() deletes and
+// recreates that exact node on every tick (selectAll('*').remove(), then re-append) - so by the
+// second tick, the node backing the in-progress gesture is already detached from the document,
+// and d3 can no longer resolve real screen coordinates against it. The handle would silently stop
+// tracking the cursor after the very first pixel of movement. Reusing the same nodes across ticks
+// keeps the gesture's reference node alive for its whole duration.
+function updateTrimOverlayPositions() {
+  if (!trimOverlayLayer.value) return
+  const profile = trimProfile.value
+  const range = trimRange.value
+  if (!profile || !range || !timeScale.value) return
+
+  const { toVirtual } = timeMapper.value
+  const x = (t: number): number => timeScale.value!(toVirtual(t))
+
+  const positionShade = (
+    fromT: number,
+    toT: number,
+    sel: Selection<SVGRectElement, unknown, null, undefined>,
+  ) => {
+    const left = Math.min(x(fromT), x(toT))
+    const width = Math.abs(x(toT) - x(fromT))
+    sel.attr('x', left).attr('width', width).style('display', width <= 0 ? 'none' : '')
+  }
+  positionShade(
+    profile.start,
+    range.start,
+    trimOverlayLayer.value.select<SVGRectElement>('rect.trim-shade-lead'),
+  )
+  positionShade(
+    range.end,
+    profile.end,
+    trimOverlayLayer.value.select<SVGRectElement>('rect.trim-shade-tail'),
+  )
+
+  const positionHandle = (key: 'start' | 'end') => {
+    const handleX = x(range[key])
+    const group = trimOverlayLayer.value!.select(`g.trim-handle-${key}`)
+    group.select('line').attr('x1', handleX).attr('x2', handleX)
+    const GRAB_WIDTH = 16
+    group.select('rect').attr('x', handleX - GRAB_WIDTH / 2)
+  }
+  positionHandle('start')
+  positionHandle('end')
 }
 
 // Recolors the axis tick sitting exactly at the 1.6 bar guideline (added via

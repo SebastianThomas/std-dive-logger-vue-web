@@ -88,6 +88,31 @@ export function parseISODurationToMinutes(duration?: string | null): number {
 }
 
 /**
+ * Splits an absolute epoch-millis timestamp into whole minutes/seconds elapsed since a dive's
+ * start - for editable "time since start" fields (e.g. a cylinder's Usage Start/End) where a
+ * diver thinks in "12 minutes in", not an absolute clock time. Returns null for an unset value so
+ * the two number inputs can render empty rather than "0:00".
+ */
+export function elapsedMinutesSeconds(
+  epochMs: number | null | undefined,
+  startMs: number,
+): { minutes: number; seconds: number } | null {
+  if (epochMs == null) return null
+  const totalSeconds = Math.max(0, Math.round((epochMs - startMs) / 1000))
+  return { minutes: Math.floor(totalSeconds / 60), seconds: totalSeconds % 60 }
+}
+
+/** Inverse of {@link elapsedMinutesSeconds} - combines minutes+seconds elapsed since a dive's
+ * start back into an absolute epoch-millis timestamp for storage. */
+export function epochFromElapsedMinutesSeconds(
+  minutes: number,
+  seconds: number,
+  startMs: number,
+): number {
+  return startMs + (Math.max(0, minutes) * 60 + Math.max(0, Math.min(59, seconds))) * 1000
+}
+
+/**
  * Formats elapsed time from milliseconds to a human-readable string.
  * Displays as "Xs", "MM:SS", or "HH:MM:SS" depending on duration.
  * @param timeMs The time value in milliseconds

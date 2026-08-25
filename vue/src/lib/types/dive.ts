@@ -241,6 +241,7 @@ export type CcrUnit = {
   name: string
   notes: string
   isPublic: boolean
+  defaultBaseConfiguration?: BaseConfiguration | null
 }
 
 // Display labels for SuitType values
@@ -270,9 +271,15 @@ export type CylinderRole = 'OC' | 'DILUENT' | 'O2' | 'BAILOUT'
 export const CYLINDER_ROLE_LABELS: Record<CylinderRole, string> = {
   OC: 'OC',
   DILUENT: 'Diluent',
-  O2: 'O2 supply',
+  O2: 'O2',
   BAILOUT: 'Bailout',
 }
+
+/** The only roles that make sense to pick on a CCR dive - a diluent/O2/bailout cylinder has no
+ * meaning on OC, and OC's own single role isn't a real choice there either (see
+ * EditDiveForm.vue's cylinder Role field, which is a fixed, non-editable "OC" for an OC dive
+ * rather than a dropdown at all). */
+export const CCR_CYLINDER_ROLES: CylinderRole[] = ['DILUENT', 'O2', 'BAILOUT']
 
 export type DiveConfigurationCylinder = {
   id: number

@@ -76,7 +76,12 @@ describe('computeGasList', () => {
     expect(result[0]?.roleLabel).toBe('Bailout')
   })
 
-  it('falls back to PO2-telemetry presence as Diluent when the source never reports mode', () => {
+  it('does not guess Diluent from PO2-telemetry presence alone when the source never reports mode', () => {
+    // A mode-less computer reporting PO2 (measured or calculated) used to be assumed CCR and
+    // defaulted to "Diluent" - wrong for a plain OC bailout/backup computer that also happens to
+    // report a calculated PPO2 on some samples, which produced a spurious extra entry for a gas
+    // actually breathed as bailout (or with no determinable role at all). No role is asserted now
+    // regardless of PO2 presence.
     const profiles = [
       profile([
         measurement(1, 0, gas(0.21), { measured: 1.1 }),
@@ -85,7 +90,8 @@ describe('computeGasList', () => {
     ]
     const result = computeGasList(profiles, true)
     expect(result).toHaveLength(1)
-    expect(result[0]?.roleLabel).toBe('Diluent')
+    expect(result[0]?.role).toBeNull()
+    expect(result[0]?.roleLabel).toBeNull()
   })
 
   it('does not guess Bailout for a mode-less sample that simply has no PO2 telemetry', () => {

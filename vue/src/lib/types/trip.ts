@@ -19,6 +19,16 @@ export type DiveTrip = {
   createdAt: number
 }
 
+// GET /v1/dive-trips returns this, not a plain DiveTrip[] - each entry carries the earliest/latest
+// start date across every dive transitively under that trip (including nested sub-trips), used to
+// order the list by actual diving activity rather than by id/creation order. Both null for a trip
+// with no dives logged under it yet.
+export type DiveTripListEntry = {
+  trip: DiveTrip
+  firstDiveDate: number | null
+  lastDiveDate: number | null
+}
+
 export type DiveTripMember = {
   type: 'DIVE' | 'TRIP'
   dive?: BasicDiveInfo | null

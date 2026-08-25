@@ -16,7 +16,10 @@
               Delete trip
             </button>
           </div>
-          <form class="grid grid-cols-1 md:grid-cols-3 gap-3" @submit.prevent="saveDetails">
+          <!-- Auto-saves on blur/Enter/change - no separate Save button, so every field on this
+               page behaves the same way instead of some needing an explicit click and others
+               (add/remove dive, add/remove sub-trip) already saving immediately. -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label class="block text-sm font-medium mb-1">Name</label>
               <input
@@ -24,11 +27,17 @@
                 type="text"
                 class="w-full rounded border px-2 py-1.5 dark:bg-gray-700"
                 required
+                @blur="saveDetails"
+                @keydown.enter="($event.target as HTMLInputElement).blur()"
               />
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Type</label>
-              <select v-model="form.type" class="w-full rounded border px-2 py-1.5 dark:bg-gray-700">
+              <select
+                v-model="form.type"
+                class="w-full rounded border px-2 py-1.5 dark:bg-gray-700"
+                @change="saveDetails"
+              >
                 <option value="TRIP">Trip</option>
                 <option value="COURSE">Course</option>
               </select>
@@ -38,26 +47,20 @@
               <select
                 v-model="form.teamTerminology"
                 class="w-full rounded border px-2 py-1.5 dark:bg-gray-700"
+                @change="saveDetails"
               >
                 <option :value="null">Default (Buddy)</option>
                 <option value="BUDDY">Buddy</option>
                 <option value="TEAM">Team</option>
               </select>
             </div>
-            <div class="md:col-span-3">
-              <button
-                type="submit"
-                class="px-4 py-1.5 bg-blue-600 text-white! rounded hover:bg-blue-700"
-              >
-                Save
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
 
-        <!-- Members -->
+        <!-- Contents: the dives and/or sub-trips directly under this trip - "Members" used to
+             read too much like people, when this list is never divers. -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-4">
-          <h2 class="text-lg font-semibold">Members</h2>
+          <h2 class="text-lg font-semibold">Contents</h2>
 
           <ul v-if="members.length" class="divide-y divide-gray-200 dark:divide-gray-700">
             <li v-for="(m, idx) in members" :key="idx" class="py-2 flex items-center justify-between">
@@ -93,7 +96,7 @@
               </template>
             </li>
           </ul>
-          <p v-else class="text-sm text-gray-400 italic">No members yet.</p>
+          <p v-else class="text-sm text-gray-400 italic">Nothing added yet.</p>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t dark:border-gray-700">
             <div>
@@ -136,10 +139,44 @@
                 Nesting a trip that would create a cycle is rejected automatically.
               </p>
             </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Add a range of dives (by number)</label>
+              <div class="flex items-center gap-2">
+                <input
+                  v-model.number="diveRangeFrom"
+                  type="number"
+                  min="1"
+                  placeholder="From #"
+                  class="w-full rounded border px-2 py-1.5 dark:bg-gray-700"
+                />
+                <span class="text-gray-400">–</span>
+                <input
+                  v-model.number="diveRangeTo"
+                  type="number"
+                  min="1"
+                  placeholder="To #"
+                  class="w-full rounded border px-2 py-1.5 dark:bg-gray-700"
+                />
+                <button
+                  type="button"
+                  :disabled="addingRange || !diveRangeFrom || !diveRangeTo"
+                  class="shrink-0 px-3 py-1.5 bg-blue-600 text-white! rounded hover:bg-blue-700 disabled:opacity-50"
+                  @click="addDiveRange"
+                >
+                  {{ addingRange ? 'Adding…' : 'Add' }}
+                </button>
+              </div>
+              <p class="text-xs text-gray-400 mt-1">
+                Adds every one of your own dives numbered in this inclusive range, e.g. dives you
+                logged consecutively on the same liveaboard.
+              </p>
+            </div>
           </div>
         </div>
 
-        <!-- Default team roster -->
+        <!-- Default team roster - auto-saves the whole roster on any field's blur/Enter/change,
+             and immediately on removing an entry (adding a blank entry doesn't save until it's
+             actually given a name). -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-3">
           <h2 class="text-lg font-semibold">Default Team Roster</h2>
           <p class="text-xs text-gray-400">
@@ -147,22 +184,30 @@
             (only if the dive doesn't already have any). Edited normally per-dive from there.
           </p>
           <div v-for="(entry, idx) in defaultTeamForm" :key="idx" class="flex gap-2 items-center">
-            <input
+            <BuddyNameAutocomplete
               v-if="entry.buddyUserId == null"
               v-model="entry.buddyName"
-              type="text"
               placeholder="Buddy name"
-              class="flex-1 rounded border px-2 py-1.5 dark:bg-gray-700"
+              input-class="flex-1 rounded border px-2 py-1.5 dark:bg-gray-700"
+              class="flex-1"
+              :exclude-names="defaultTeamForm.map((e) => e.buddyName).filter((n) => n !== entry.buddyName)"
+              @select="saveDefaultTeam"
+              @blur="saveDefaultTeam"
+              @enter="saveDefaultTeam"
             />
             <span v-else class="flex-1 px-2 py-1.5 text-sm">
               {{ entry.buddyName }} <span class="text-xs text-gray-400">(linked user)</span>
             </span>
-            <select v-model="entry.role" class="rounded border px-2 py-1.5 dark:bg-gray-700">
+            <select
+              v-model="entry.role"
+              class="rounded border px-2 py-1.5 dark:bg-gray-700"
+              @change="saveDefaultTeam"
+            >
               <option v-for="(label, key) in BUDDY_ROLE_LABELS" :key="key" :value="key">
                 {{ label }}
               </option>
             </select>
-            <button type="button" class="px-2 text-red-600 hover:text-red-800" @click="defaultTeamForm.splice(idx, 1)">
+            <button type="button" class="px-2 text-red-600 hover:text-red-800" @click="removeRosterEntry(idx)">
               <i class="fas fa-trash"></i>
             </button>
           </div>
@@ -173,16 +218,6 @@
           >
             + Add roster entry
           </button>
-          <div>
-            <button
-              type="button"
-              :disabled="savingTeam"
-              class="px-4 py-1.5 bg-blue-600 text-white! rounded hover:bg-blue-700 disabled:opacity-50"
-              @click="saveDefaultTeam"
-            >
-              {{ savingTeam ? 'Saving…' : 'Save Roster' }}
-            </button>
-          </div>
         </div>
 
         <!-- All dives transitively -->
@@ -213,12 +248,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { toast } from 'vue-sonner'
+import BuddyNameAutocomplete from '@/components/dive/BuddyNameAutocomplete.vue'
 import {
   DIVE_TRIP_TYPE_LABELS,
   type DiveTrip,
   type DiveTripType,
   type DiveTripMember,
   type DiveTripDefaultTeamMember,
+  type DiveTripListEntry,
 } from '@/lib/types/trip'
 import {
   BUDDY_ROLE_LABELS,
@@ -256,26 +293,35 @@ const savingTeam = ref(false)
 const diveSearchQuery = ref('')
 const diveSearchResults = ref<DiveWithoutProfiles[]>([])
 
+const diveRangeFrom = ref<number | null>(null)
+const diveRangeTo = ref<number | null>(null)
+const addingRange = ref(false)
+
 const addableTrips = computed(() =>
   allTrips.value.filter(
     (t) => t.id !== trip.value?.id && !members.value.some((m) => m.subTrip?.id === t.id),
   ),
 )
 
-const load = async () => {
-  loading.value = true
+// `showSpinner: false` is used after an in-place mutation (add/remove a dive or sub-trip) - those
+// re-fetch the same data but must not flip `loading` back to true, which would unmount the whole
+// page behind the loading spinner and remount it a moment later (a visible full-page "flash" for
+// what should just be one list quietly updating).
+const load = async (options: { showSpinner?: boolean } = {}) => {
+  const showSpinner = options.showSpinner ?? true
+  if (showSpinner) loading.value = true
   try {
     const [tripRes, membersRes, divesRes, allTripsRes] = await Promise.all([
       getWithToken<DiveTrip>(`/v1/dive-trips/${tripId()}`),
       getWithToken<DiveTripMember[]>(`/v1/dive-trips/${tripId()}/members`),
       getWithToken<PagedResult<BasicDiveInfo>>(`/v1/dive-trips/${tripId()}/dives?pageSize=200`),
-      getWithToken<DiveTrip[]>('/v1/dive-trips'),
+      getWithToken<DiveTripListEntry[]>('/v1/dive-trips'),
     ])
     trip.value = tripRes.data
     members.value = membersRes.data
     transitiveDives.value = divesRes.data.result
     transitiveDivesTotal.value = divesRes.data.totalElements
-    allTrips.value = allTripsRes.data
+    allTrips.value = allTripsRes.data.map((e) => e.trip)
     form.value = {
       name: tripRes.data.name,
       type: tripRes.data.type,
@@ -293,11 +339,16 @@ const load = async () => {
   } catch (err) {
     toast.error(`Failed to load trip: ${extractErrorDetail(err)}`)
   } finally {
-    loading.value = false
+    if (showSpinner) loading.value = false
   }
 }
 
+// Auto-save, triggered on blur/Enter/change - silent on success (no toast for every field tabbed
+// through), still loud on failure. Skips entirely on a blank name (e.g. cleared then tabbed away
+// from) rather than sending a request the backend would just reject - the field keeps whatever
+// was last actually saved until a real name is typed.
 const saveDetails = async () => {
+  if (!form.value.name.trim()) return
   try {
     const res = await putWithToken<DiveTrip>(`/v1/dive-trips/${tripId()}`, {
       name: form.value.name,
@@ -305,7 +356,6 @@ const saveDetails = async () => {
       teamTerminology: form.value.teamTerminology,
     })
     trip.value = res.data
-    toast.success('Trip updated')
   } catch (err) {
     toast.error(`Failed to update trip: ${extractErrorDetail(err)}`)
   }
@@ -322,18 +372,37 @@ const removeTrip = async () => {
 }
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
+// A dive already under this trip (directly, or via a nested sub-trip) is filtered out of the
+// suggestions - re-adding it would just be a confusing no-op duplicate. Purely client-side: the
+// search endpoint itself has no "exclude these ids" param, and doesn't need one for this - but a
+// naive single-page fetch-then-filter could come up short (or empty) if most of the trip's own
+// dives happen to rank in that first page, so this fetches extra pages first, at least enough raw
+// results to *guarantee* room for real new ones even in the worst case (every one of this trip's
+// own dives appears in what's fetched): (dives already under this trip) + SEARCH_RESULT_BUFFER.
+const SEARCH_RESULT_BUFFER = 10
 const searchDives = () => {
   if (searchTimeout) clearTimeout(searchTimeout)
   searchTimeout = setTimeout(async () => {
-    if (!diveSearchQuery.value.trim()) {
+    const query = diveSearchQuery.value.trim()
+    if (!query) {
       diveSearchResults.value = []
       return
     }
+    const alreadyIncludedIds = new Set(transitiveDives.value.map((d) => d.id))
+    const neededRawResults = alreadyIncludedIds.size + SEARCH_RESULT_BUFFER
     try {
-      const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(
-        `/v1/dives/search?page=0&query=${encodeURIComponent(diveSearchQuery.value.trim())}`,
-      )
-      diveSearchResults.value = res.data.result
+      const collected: DiveWithoutProfiles[] = []
+      let page = 0
+      for (;;) {
+        const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(
+          `/v1/dives/search?page=${page}&query=${encodeURIComponent(query)}`,
+        )
+        collected.push(...res.data.result)
+        const isLastPage = res.data.result.length === 0 || page + 1 >= res.data.totalPages
+        if (collected.length >= neededRawResults || isLastPage) break
+        page++
+      }
+      diveSearchResults.value = collected.filter((d) => !alreadyIncludedIds.has(d.id))
     } catch {
       diveSearchResults.value = []
     }
@@ -345,16 +414,59 @@ const addDiveMember = async (diveId: number) => {
     await postWithToken(`/v1/dive-trips/${tripId()}/members/dives/${diveId}`, {})
     diveSearchQuery.value = ''
     diveSearchResults.value = []
-    await load()
+    await load({ showSpinner: false })
   } catch (err) {
     toast.error(`Failed to add dive to trip: ${extractErrorDetail(err)}`)
+  }
+}
+
+// Adds every one of the user's own dives numbered in [diveRangeFrom, diveRangeTo] - e.g. a run of
+// consecutive liveaboard dives - in one action instead of searching and clicking each one.
+const addDiveRange = async () => {
+  const from = diveRangeFrom.value
+  const to = diveRangeTo.value
+  if (!from || !to) return
+  if (from > to) {
+    toast.error('The starting dive number must be at or before the ending one.')
+    return
+  }
+  addingRange.value = true
+  try {
+    const alreadyIncludedIds = new Set(transitiveDives.value.map((d) => d.id))
+    const matches: DiveWithoutProfiles[] = []
+    let page = 0
+    for (;;) {
+      const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(
+        `/v1/dives/filtered?minNumber=${from}&maxNumber=${to}&sortCol=NUMBER&sortDirection=ASCENDING&page=${page}`,
+      )
+      matches.push(...res.data.result)
+      const isLastPage = res.data.result.length === 0 || page + 1 >= res.data.totalPages
+      if (isLastPage) break
+      page++
+    }
+    const toAdd = matches.filter((d) => !alreadyIncludedIds.has(d.id))
+    if (!toAdd.length) {
+      toast.error(`No dives numbered ${from}–${to} were found to add.`)
+      return
+    }
+    for (const dive of toAdd) {
+      await postWithToken(`/v1/dive-trips/${tripId()}/members/dives/${dive.id}`, {})
+    }
+    diveRangeFrom.value = null
+    diveRangeTo.value = null
+    await load({ showSpinner: false })
+    toast.success(`Added ${toAdd.length} dive${toAdd.length === 1 ? '' : 's'} to the trip.`)
+  } catch (err) {
+    toast.error(`Failed to add dive range: ${extractErrorDetail(err)}`)
+  } finally {
+    addingRange.value = false
   }
 }
 
 const removeDiveMember = async (diveId: number) => {
   try {
     await deleteWithToken(`/v1/dive-trips/${tripId()}/members/dives/${diveId}`)
-    await load()
+    await load({ showSpinner: false })
   } catch (err) {
     toast.error(`Failed to remove dive: ${extractErrorDetail(err)}`)
   }
@@ -365,7 +477,7 @@ const addSubTripFromSelect = async (event: Event) => {
   if (!childId) return
   try {
     await postWithToken(`/v1/dive-trips/${tripId()}/members/trips/${childId}`, {})
-    await load()
+    await load({ showSpinner: false })
   } catch (err) {
     toast.error(`Could not add sub-trip: ${extractErrorDetail(err)}`)
   }
@@ -374,12 +486,19 @@ const addSubTripFromSelect = async (event: Event) => {
 const removeTripMember = async (childTripId: number) => {
   try {
     await deleteWithToken(`/v1/dive-trips/${tripId()}/members/trips/${childTripId}`)
-    await load()
+    await load({ showSpinner: false })
   } catch (err) {
     toast.error(`Failed to remove sub-trip: ${extractErrorDetail(err)}`)
   }
 }
 
+const removeRosterEntry = (idx: number) => {
+  defaultTeamForm.value.splice(idx, 1)
+  saveDefaultTeam()
+}
+
+// Auto-save, triggered on any roster row's blur/Enter/change - silent on success, loud on
+// failure (same convention as saveDetails above).
 const saveDefaultTeam = async () => {
   savingTeam.value = true
   try {
@@ -393,7 +512,6 @@ const saveDefaultTeam = async () => {
             : { buddyName: e.buddyName.trim(), role: e.role },
         ),
     )
-    toast.success('Default team roster saved')
   } catch (err) {
     toast.error(`Failed to save roster: ${extractErrorDetail(err)}`)
   } finally {

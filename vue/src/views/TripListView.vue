@@ -30,22 +30,31 @@
         <div v-if="loading" class="text-center text-gray-400 py-8">
           <i class="fas fa-spinner fa-spin"></i>
         </div>
-        <ul v-else-if="trips.length" class="divide-y divide-gray-200 dark:divide-gray-700">
-          <li v-for="trip in trips" :key="trip.id" class="py-3">
+        <ul v-else-if="entries.length" class="divide-y divide-gray-200 dark:divide-gray-700">
+          <li v-for="entry in entries" :key="entry.trip.id" class="py-3">
             <router-link
-              :to="{ name: 'TripEdit', params: { tripId: String(trip.id) } }"
+              :to="{ name: 'TripEdit', params: { tripId: String(entry.trip.id) } }"
               class="flex items-center justify-between hover:text-blue-600"
             >
-              <span class="font-medium">{{ trip.name }}</span>
+              <div>
+                <span class="font-medium">{{ entry.trip.name }}</span>
+                <p class="text-xs text-gray-400 dark:text-gray-500">
+                  {{
+                    entry.lastDiveDate
+                      ? `Last dive ${formatDate(entry.lastDiveDate)}`
+                      : 'No dives logged yet'
+                  }}
+                </p>
+              </div>
               <span
-                class="text-xs px-2 py-0.5 rounded-full"
+                class="text-xs px-2 py-0.5 rounded-full shrink-0"
                 :class="
-                  trip.type === 'COURSE'
+                  entry.trip.type === 'COURSE'
                     ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200'
                     : 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200'
                 "
               >
-                {{ DIVE_TRIP_TYPE_LABELS[trip.type] }}
+                {{ DIVE_TRIP_TYPE_LABELS[entry.trip.type] }}
               </span>
             </router-link>
           </li>
@@ -63,12 +72,16 @@
 import { ref, onMounted } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
+import { formatDate } from '@/lib/utils/timeUtils'
 import { toast } from 'vue-sonner'
-import { DIVE_TRIP_TYPE_LABELS, type DiveTrip, type DiveTripType } from '@/lib/types/trip'
+import { DIVE_TRIP_TYPE_LABELS, type DiveTrip, type DiveTripListEntry, type DiveTripType } from '@/lib/types/trip'
 
 const { getWithToken, postWithToken } = useApi()
 
-const trips = ref<DiveTrip[]>([])
+// Already ordered by the backend (each trip's own most recent transitive dive, newest first, a
+// dive-less trip pinned to the top) - see DiveTripDataService.findTripsByOwnerWithDateRange's own
+// doc comment for why never by id/creation order.
+const entries = ref<DiveTripListEntry[]>([])
 const loading = ref(true)
 const creating = ref(false)
 const newName = ref('')
@@ -77,8 +90,8 @@ const newType = ref<DiveTripType>('TRIP')
 const load = async () => {
   loading.value = true
   try {
-    const res = await getWithToken<DiveTrip[]>('/v1/dive-trips')
-    trips.value = res.data
+    const res = await getWithToken<DiveTripListEntry[]>('/v1/dive-trips')
+    entries.value = res.data
   } catch (err) {
     toast.error(`Failed to load trips: ${extractErrorDetail(err)}`)
   } finally {

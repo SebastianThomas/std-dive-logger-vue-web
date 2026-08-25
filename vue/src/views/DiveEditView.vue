@@ -18,11 +18,13 @@
 
       <div v-else class="flex-1 overflow-auto space-y-6">
         <EditDiveForm
-          v-if="currentUserId"
+          v-if="currentUserId && loadedDive"
           v-model="formData"
           :user-id="currentUserId"
           :existing-named-buddies="loadedDive?.namedBuddies"
           :existing-buddy-dives="loadedDive?.buddiesDives"
+          :dive-start="loadedDive.summary.start"
+          :profiles="loadedDive.profiles"
         >
           <!-- Tags — placed between Buddies and Notes via the form's slot -->
           <div class="border rounded p-4">

@@ -5,46 +5,12 @@
   >
     <main class="max-w-5xl w-full mx-auto p-6">
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 space-y-8">
-        <!-- Header -->
-        <div class="flex items-center gap-6">
-          <!-- Profile Picture Placeholder -->
-          <div
-            class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl font-semibold"
-          >
-            {{ user?.name?.charAt(0).toUpperCase() ?? '?' }}
-          </div>
-
-          <!-- User Info -->
-          <div>
-            <h1 class="text-2xl font-semibold">User Profile</h1>
-            <p v-if="user" class="text-gray-700 dark:text-gray-300 mt-1">
-              <strong>Username:</strong> {{ user.name }}
-            </p>
-          </div>
-        </div>
+        <ProfileTabs :user="user" />
 
         <!-- Account Section -->
         <section class="space-y-2" v-if="!user">
           <h2 class="text-lg font-medium">Account</h2>
           <p>Loading...</p>
-        </section>
-
-        <!-- Configurations Section -->
-        <section v-if="user" class="border-t pt-6 space-y-4">
-          <h2 class="text-lg font-medium">Equipment Configurations</h2>
-          <SuitManagement :user-id="user.id" />
-          <CcrUnitManagement :user-id="user.id" />
-          <DiveComputerManagement :user-id="user.id" />
-        </section>
-
-        <!-- Buddies Section -->
-        <section v-if="user" class="border-t pt-6 space-y-4">
-          <BuddyManagement />
-        </section>
-
-        <!-- Certifications Section -->
-        <section v-if="user" class="border-t pt-6 space-y-4">
-          <CertificationManagement />
         </section>
 
         <!-- Danger Zone -->
@@ -97,11 +63,7 @@ import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { type User } from '@/lib/types/user'
-import SuitManagement from '@/components/dive/SuitManagement.vue'
-import CcrUnitManagement from '@/components/dive/CcrUnitManagement.vue'
-import DiveComputerManagement from '@/components/dive/DiveComputerManagement.vue'
-import BuddyManagement from '@/components/dive/BuddyManagement.vue'
-import CertificationManagement from '@/components/CertificationManagement.vue'
+import ProfileTabs from '@/components/ProfileTabs.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import UserIconUploadModal from '@/components/UserIconUploadModal.vue'
 import UserBackgroundUploadModal from '@/components/UserBackgroundUploadModal.vue'

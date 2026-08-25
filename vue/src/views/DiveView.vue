@@ -69,66 +69,55 @@
               Manually logged
             </span>
           </div>
-          <div class="flex flex-col items-end gap-2 shrink-0">
-            <div class="flex gap-2">
-              <RouterLink
-                v-if="isMine && !readOnly"
-                :to="{ name: 'DiveEdit', params: { diveId: dive.id } }"
-              >
-                <button class="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
-                  Edit
-                </button>
-              </RouterLink>
-              <button
-                v-if="isMine && !readOnly"
-                @click="showShareModal = true"
-                class="bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
-              >
-                Share
+          <div class="flex gap-2 shrink-0">
+            <RouterLink
+              v-if="isMine && !readOnly"
+              :to="{ name: 'DiveEdit', params: { diveId: dive.id } }"
+            >
+              <button class="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
+                Edit
               </button>
-              <button
-                v-if="isMine && !readOnly"
-                @click="showDeleteModal = true"
-                class="bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
-              >
-                Delete
-              </button>
-              <button
-                v-else-if="!isMine && !readOnly"
-                @click="showLinkModal = true"
-                class="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
-              >
-                Link Dive
-              </button>
-            </div>
-            <!-- Tags, desktop position: directly under the action buttons. On narrow screens this
-                 copy is hidden - a second copy below the site/date line takes over there instead,
-                 since "under the buttons" doesn't read well once the header stacks into one
-                 column. -->
-            <div v-if="dive.tags?.length" class="hidden md:flex flex-wrap gap-1 justify-end max-w-xs">
-              <TagBadge
-                v-for="tag in dive.tags"
-                :key="tag.id"
-                :name="tag.name"
-                :auto-detected="!!tag.autoDetectRule"
-                @click="viewDivesByTag(tag.id)"
-                class="cursor-pointer"
-              />
-            </div>
+            </RouterLink>
+            <button
+              v-if="isMine && !readOnly"
+              @click="showShareModal = true"
+              class="bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
+            >
+              Share
+            </button>
+            <button
+              v-if="isMine && !readOnly"
+              @click="showDeleteModal = true"
+              class="bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
+            >
+              Delete
+            </button>
+            <button
+              v-else-if="!isMine && !readOnly"
+              @click="showLinkModal = true"
+              class="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
+            >
+              Link Dive
+            </button>
           </div>
         </div>
-        <p class="text-gray-500 dark:text-gray-400 text-sm">
-          {{ dive.site.name }} · {{ summary?.start ? formatDate(summary.start) : 'No start date' }}
-        </p>
-        <div v-if="dive.tags?.length" class="flex md:hidden flex-wrap gap-1 mt-2">
-          <TagBadge
-            v-for="tag in dive.tags"
-            :key="tag.id"
-            :name="tag.name"
-            :auto-detected="!!tag.autoDetectRule"
-            @click="viewDivesByTag(tag.id)"
-            class="cursor-pointer"
-          />
+        <!-- Site/date and tags share one line - tags used to sit up under the action buttons,
+             visually stranded between the title and this line rather than reading as part of it. -->
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">
+            {{ dive.site.name }} ·
+            {{ summary?.start ? formatDate(summary.start) : 'No start date' }}
+          </p>
+          <div v-if="dive.tags?.length" class="flex flex-wrap gap-1">
+            <TagBadge
+              v-for="tag in dive.tags"
+              :key="tag.id"
+              :name="tag.name"
+              :auto-detected="!!tag.autoDetectRule"
+              @click="viewDivesByTag(tag.id)"
+              class="cursor-pointer"
+            />
+          </div>
         </div>
       </div>
 
@@ -231,7 +220,8 @@
               lastProfileSummary?.endCNS !== undefined ||
               lastProfileSummary?.o2Toxicity !== undefined ||
               showGf99Start ||
-              profilesWithSurfacingGf.length
+              profilesWithSurfacingGf.length ||
+              summary?.maxTimeToSurface !== undefined
             "
           >
             <!-- CNS Information -->
@@ -284,6 +274,103 @@
                 <span class="font-semibold">{{ p.summary.endN2!.toFixed(0) }}%</span>
               </div>
             </InfoCard>
+
+            <!-- Max TTS: device-assumed-ascent-rate seconds-to-surface, peaked across every
+                 profile - present whenever the source format carries it (Suunto JSON, Shearwater
+                 native XML, Subsurface XML/UDDF's derived estimate), not just for a genuine
+                 mandatory-stop dive (see AGENTS.md's Ceiling-vs-TTS distinction). -->
+            <InfoCard
+              v-if="summary?.maxTimeToSurface !== undefined"
+              title="Max TTS"
+              :value="formatDiveTime(summary.maxTimeToSurface)"
+            />
+          </InfoCardRow>
+
+          <!-- Details Grid - kept in this same column (not its own full-width row further down
+               the page) so the column's own content comes closer to matching the map's height
+               next to it, instead of leaving a large mismatched gap below a couple of short rows. -->
+          <InfoCardRow>
+            <InfoCard title="Gases">
+              <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                <li
+                  v-for="entry in allGases"
+                  :key="`${entry.gas.o2}/${entry.gas.he}/${entry.gas.n2}/${entry.role ?? 'none'}`"
+                >
+                  <GasDisplay
+                    :gas="entry.gas"
+                    :show-details="showGasDetails"
+                    :role-label="entry.roleLabel"
+                    :contributing-computers="entry.contributingComputers"
+                  />
+                </li>
+                <li v-if="allGases.length === 0" class="text-gray-400 dark:text-gray-500">
+                  No gas data
+                </li>
+              </ul>
+            </InfoCard>
+            <InfoCard title="Dive Computers">
+              <RouterLink
+                class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
+                v-for="computer in uniqueComputers"
+                :key="computer.id"
+                :to="{ name: 'DiveComputerDetail', params: { computerId: computer.id } }"
+              >
+                {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
+              </RouterLink>
+            </InfoCard>
+            <InfoCard :title="buddyTerminologyPlural">
+              <p
+                v-if="!dive.namedBuddies.length && !dive.buddiesDives?.length"
+                class="text-xs text-gray-400 dark:text-gray-500"
+              >
+                No {{ buddyTerminologyPlural.toLowerCase() }} recorded
+              </p>
+              <ul v-else class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                <li v-for="buddy in dive.namedBuddies" :key="`named-${buddy.id}`">
+                  <span
+                    :class="{
+                      'font-semibold':
+                        dive.leader.type === 'NAMED' && dive.leader.namedBuddyId === buddy.id,
+                    }"
+                    :title="
+                      dive.leader.type === 'NAMED' && dive.leader.namedBuddyId === buddy.id
+                        ? 'Dive leader'
+                        : undefined
+                    "
+                  >
+                    {{ buddy.name }}
+                  </span>
+                  <span v-if="buddy.role" class="text-gray-400 dark:text-gray-500">
+                    ({{ BUDDY_ROLE_LABELS[buddy.role] }})</span
+                  >
+                </li>
+                <li v-for="linked in dive.buddiesDives" :key="`linked-${linked.diveId}`">
+                  <RouterLink
+                    :to="{ name: 'DiveView', params: { diveId: linked.diveId } }"
+                    class="text-blue-600 hover:underline"
+                    :class="{
+                      'font-semibold':
+                        dive.leader.type === 'LINKED' &&
+                        dive.leader.linkedDiveId === linked.diveId,
+                    }"
+                    :title="
+                      dive.leader.type === 'LINKED' && dive.leader.linkedDiveId === linked.diveId
+                        ? 'Dive leader'
+                        : undefined
+                    "
+                  >
+                    {{ linked.buddy.name }}
+                  </RouterLink>
+                </li>
+              </ul>
+              <p
+                v-if="dive.leader.type === 'SELF'"
+                class="text-xs font-semibold mt-1"
+                title="Dive leader"
+              >
+                {{ dive.user.name }}
+              </p>
+            </InfoCard>
           </InfoCardRow>
         </div>
       </div>
@@ -323,90 +410,6 @@
           @profile-trimmed="handleProfileTrimmed"
         />
       </div>
-
-      <!-- Details Grid -->
-      <InfoCardRow>
-        <InfoCard title="Gases">
-          <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-            <li
-              v-for="entry in allGases"
-              :key="`${entry.gas.o2}/${entry.gas.he}/${entry.gas.n2}/${entry.role ?? 'none'}`"
-            >
-              <GasDisplay
-                :gas="entry.gas"
-                :show-details="showGasDetails"
-                :role-label="entry.roleLabel"
-                :contributing-computers="entry.contributingComputers"
-              />
-            </li>
-            <li v-if="allGases.length === 0" class="text-gray-400 dark:text-gray-500">
-              No gas data
-            </li>
-          </ul>
-        </InfoCard>
-        <InfoCard title="Dive Computers">
-          <button
-            class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
-            v-for="computer in uniqueComputers"
-            :key="computer.id"
-            @click="viewDivesForComputer(computer.id)"
-          >
-            {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
-          </button>
-        </InfoCard>
-        <InfoCard :title="buddyTerminologyPlural">
-          <p
-            v-if="!dive.namedBuddies.length && !dive.buddiesDives?.length"
-            class="text-xs text-gray-400 dark:text-gray-500"
-          >
-            No {{ buddyTerminologyPlural.toLowerCase() }} recorded
-          </p>
-          <ul v-else class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-            <li v-for="buddy in dive.namedBuddies" :key="`named-${buddy.id}`">
-              <span
-                :class="{
-                  'font-semibold':
-                    dive.leader.type === 'NAMED' && dive.leader.namedBuddyId === buddy.id,
-                }"
-                :title="
-                  dive.leader.type === 'NAMED' && dive.leader.namedBuddyId === buddy.id
-                    ? 'Dive leader'
-                    : undefined
-                "
-              >
-                {{ buddy.name }}
-              </span>
-              <span v-if="buddy.role" class="text-gray-400 dark:text-gray-500">
-                ({{ BUDDY_ROLE_LABELS[buddy.role] }})</span
-              >
-            </li>
-            <li v-for="linked in dive.buddiesDives" :key="`linked-${linked.diveId}`">
-              <RouterLink
-                :to="{ name: 'DiveView', params: { diveId: linked.diveId } }"
-                class="text-blue-600 hover:underline"
-                :class="{
-                  'font-semibold':
-                    dive.leader.type === 'LINKED' && dive.leader.linkedDiveId === linked.diveId,
-                }"
-                :title="
-                  dive.leader.type === 'LINKED' && dive.leader.linkedDiveId === linked.diveId
-                    ? 'Dive leader'
-                    : undefined
-                "
-              >
-                {{ linked.buddy.name }}
-              </RouterLink>
-            </li>
-          </ul>
-          <p
-            v-if="dive.leader.type === 'SELF'"
-            class="text-xs font-semibold mt-1"
-            title="Dive leader"
-          >
-            {{ dive.user.name }}
-          </p>
-        </InfoCard>
-      </InfoCardRow>
 
       <!-- Profiles Row: only relevant (and only shown) once a dive actually has more than
            one profile - lets you remove one attached to the wrong dive by mistake (e.g. via
@@ -457,14 +460,13 @@
         "
       >
         <InfoCard v-if="dive.configuration?.suit?.type" title="Suit">
-          <button
+          <RouterLink
             v-if="dive.configuration.suit.id"
-            type="button"
-            @click="viewDivesForSuit(dive.configuration.suit.id)"
+            :to="{ name: 'SuitDetail', params: { suitId: dive.configuration.suit.id } }"
             class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
           >
             {{ suitLabel }}
-          </button>
+          </RouterLink>
           <span v-else>{{ suitLabel }}</span>
         </InfoCard>
         <InfoCard v-if="dive.configuration?.base" title="Base Config">
@@ -478,7 +480,12 @@
           "
           title="CCR Unit"
         >
-          <span>{{ dive.configuration.ccrUnit.name }}</span>
+          <RouterLink
+            :to="{ name: 'CcrUnitDetail', params: { ccrUnitId: dive.configuration.ccrUnit.id } }"
+            class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
+          >
+            {{ dive.configuration.ccrUnit.name }}
+          </RouterLink>
         </InfoCard>
         <InfoCard
           v-if="dive.configuration?.weight !== undefined && dive.configuration.weight !== null"
@@ -592,9 +599,6 @@
       <!-- Trip badges (WS7) - all lookup logic lives inside the component itself. -->
       <DiveTripBadges :dive-id="dive.id" />
 
-      <!-- Photo Gallery (WS4) - all gallery logic lives inside the component itself. -->
-      <DivePhotoGallery :dive-id="dive.id" :read-only="readOnly || !isMine" />
-
       <!-- Notes Panel -->
       <div
         v-if="dive.notes"
@@ -603,6 +607,10 @@
         <h2 class="text-lg font-semibold mb-3">Notes</h2>
         <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ dive.notes }}</p>
       </div>
+
+      <!-- Photo Gallery (WS4) - always the very last thing on the page, after Notes - all
+           gallery logic lives inside the component itself. -->
+      <DivePhotoGallery :dive-id="dive.id" :read-only="readOnly || !isMine" />
     </div>
 
     <div v-else-if="loading" class="text-center py-20">Loading...</div>
@@ -703,23 +711,21 @@ const diveSiteGoogleMapsUrl = computed(() => {
   return site ? googleMapsUrl(site.latitude, site.longitude) : undefined
 })
 
-const viewDivesForSuit = (suitId: number) => {
-  router.push({ name: 'DiveList', query: { suitId: suitId.toString() } })
-}
-
+// The suit's own `notes` field doubles as its display name (see SuitManagement.vue/SuitSelector.vue's
+// "Name: ..." convention - there's no separate name column) - shown as the primary text, with the
+// formatted type as a secondary parenthetical, matching how Dive Computers already shows
+// "customIdentifier (manufacturer)". Falls back to just the type (+ thickness) when no name is set.
 const suitLabel = computed(() => {
   const suit = dive.value?.configuration?.suit
   if (!suit?.type) return ''
-  const label = SUIT_TYPE_LABELS[suit.type]
-  return suit.thickness != null ? `${label} · ${suit.thickness} mm` : label
+  const typeLabel = SUIT_TYPE_LABELS[suit.type]
+  const name = suit.notes?.trim()
+  if (name) return `${name} (${typeLabel})`
+  return suit.thickness != null ? `${typeLabel} · ${suit.thickness} mm` : typeLabel
 })
 
 const viewDivesByTag = (tagId: number) => {
   router.push({ name: 'DiveList', query: { tagIds: String(tagId) } })
-}
-
-const viewDivesForComputer = (computerId: number) => {
-  router.push({ name: 'DiveList', query: { computerId: computerId.toString() } })
 }
 
 // A manual dive's synthetic profile is attached to a fixed "Manual Entry" dive computer
