@@ -91,10 +91,13 @@ const backgroundUploadStore = useBackgroundUploadStore()
 const { updatedId: backgroundUpdatedId } = storeToRefs(backgroundUploadStore)
 const { showCommandPalette, showHelpMenu, leaderPending, lastActionLabel } = useGlobalShortcuts()
 
-// Page name - can be empty or use current route path
+// Page name shown next to the logo in the header - the route's own name is a bare PascalCase
+// identifier (e.g. "DiveComputerDetail"), not something to show a user directly, so split it into
+// separate words before it's glued onto "Dive Together Log ".
 const route = useRoute()
 const pageName = computed(() => {
-  return route.name?.toString() || ''
+  const name = route.name?.toString() ?? ''
+  return name.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
 })
 
 // Helper functions

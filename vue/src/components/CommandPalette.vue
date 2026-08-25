@@ -236,7 +236,7 @@ const commands = computed<Command[]>(() => {
     },
     {
       id: 'nav-trips',
-      label: 'Go to Trips',
+      label: 'Go to Trips & Courses',
       description: 'View dive trips and courses',
       icon: '🧭',
       action: () => router.push({ name: 'TripList' }),

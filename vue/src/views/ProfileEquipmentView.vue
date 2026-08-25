@@ -8,7 +8,7 @@
         <ProfileTabs :user="user" />
 
         <section v-if="user" class="space-y-4">
-          <h2 class="text-lg font-medium">Equipment Configurations</h2>
+          <h2 class="text-lg font-semibold mb-2">Equipment Configurations</h2>
           <SuitManagement :user-id="user.id" />
           <CcrUnitManagement :user-id="user.id" />
           <DiveComputerManagement :user-id="user.id" />

@@ -3,7 +3,7 @@
     <div class="w-full max-w-2xl space-y-6">
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
         <div class="flex items-center justify-between mb-4">
-          <h1 class="text-2xl font-bold">Dive Trips</h1>
+          <h1 class="text-2xl font-bold">Dive Trips & Courses</h1>
         </div>
 
         <form class="flex gap-2 mb-4" @submit.prevent="create">
