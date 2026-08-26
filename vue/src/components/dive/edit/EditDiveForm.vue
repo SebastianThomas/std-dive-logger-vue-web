@@ -346,16 +346,20 @@
           </div>
         </div>
 
-        <!-- Base Configuration -->
+        <!-- Base Configuration - the diver's own rig, independent of CCR (see CCR Unit sections
+             below). "Not specified" is a real, first-class choice, never guessed. -->
         <div class="border-t pt-4">
           <div>
             <label for="base-config" class="block mb-2">Base Configuration</label>
             <select
               id="base-config"
-              :value="modelValue.configuration.base ?? BASE_CONFIGURATION_LABELS['OTHER']"
+              :value="modelValue.configuration.base ?? ''"
               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              @change="updateConfigField('base', ($event.target as HTMLSelectElement).value)"
+              @change="
+                updateConfigField('base', ($event.target as HTMLSelectElement).value || null)
+              "
             >
+              <option value="">Not specified</option>
               <option v-for="(c, k) in BASE_CONFIGURATION_LABELS" :value="k" :key="k">
                 {{ c }}
               </option>
@@ -363,8 +367,8 @@
           </div>
         </div>
 
-        <!-- CCR Unit (only relevant for CCR rigs; managed via external entity like Suit) -->
-        <div v-if="isCcrBaseConfiguration(modelValue.configuration.base)" class="border-t pt-4">
+        <!-- CCR Unit - independent of Base Configuration; managed via external entity like Suit. -->
+        <div class="border-t pt-4">
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-medium">CCR Unit</h3>
@@ -390,9 +394,59 @@
               <span class="font-semibold">Notes:</span>
               {{ formatSuitNotesPreview(modelValue.configuration.ccrUnit.notes) }}
             </div>
+            <button
+              type="button"
+              class="text-red-500 hover:text-red-700 text-xs"
+              @click="clearCcrUnit"
+            >
+              Remove
+            </button>
           </div>
           <p v-else class="mt-3 text-sm text-gray-500 dark:text-gray-400">
             No CCR unit selected.
+          </p>
+        </div>
+
+        <!-- Second CCR Unit - for a genuine dual-rebreather setup. Each unit's own mount position
+             (set on the unit itself, see CcrUnitManagement) says how it's worn, so any combination
+             of two units is representable. Only offered once a primary unit is picked, since a
+             "second" unit with no "first" doesn't make sense. -->
+        <div v-if="modelValue.configuration.ccrUnit" class="border-t pt-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium">Second CCR Unit</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                For a dual-rebreather dive. Optional.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+              @click="showSecondaryCcrUnitModal = true"
+            >
+              Choose / Create CCR Unit
+            </button>
+          </div>
+
+          <div v-if="modelValue.configuration.secondaryCcrUnit" class="mt-3 text-sm space-y-1">
+            <div>
+              <span class="font-semibold">Name:</span>
+              {{ modelValue.configuration.secondaryCcrUnit.name }}
+            </div>
+            <div v-if="modelValue.configuration.secondaryCcrUnit.notes">
+              <span class="font-semibold">Notes:</span>
+              {{ formatSuitNotesPreview(modelValue.configuration.secondaryCcrUnit.notes) }}
+            </div>
+            <button
+              type="button"
+              class="text-red-500 hover:text-red-700 text-xs"
+              @click="clearSecondaryCcrUnit"
+            >
+              Remove
+            </button>
+          </div>
+          <p v-else class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+            No second CCR unit selected.
           </p>
         </div>
 
@@ -486,7 +540,7 @@
               <div>
                 <label class="block text-xs mb-1">Role</label>
                 <select
-                  v-if="isCcrBaseConfiguration(modelValue.configuration.base)"
+                  v-if="hasCcrUnit"
                   :value="cylinder.role"
                   class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
                   @change="
@@ -740,6 +794,14 @@
       @close="showCcrUnitModal = false"
     />
 
+    <!-- Second CCR Unit modal -->
+    <CcrUnitSelector
+      v-if="showSecondaryCcrUnitModal"
+      :current-ccr-unit="modelValue.configuration?.secondaryCcrUnit ?? null"
+      @ccr-unit-selected="handleSecondaryCcrUnitSelected"
+      @close="showSecondaryCcrUnitModal = false"
+    />
+
     <!-- Map Modal -->
     <div
       v-if="showMap"
@@ -785,7 +847,6 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useApi } from '@/composables/useApi'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
 import DiveSiteSearch from '@/components/DiveSiteSearch.vue'
 import BuddyNameAutocomplete from '@/components/dive/BuddyNameAutocomplete.vue'
@@ -803,9 +864,7 @@ import {
   type Suit,
   type SuitType,
   type CcrUnit,
-  type Dive,
   type DiveProfile,
-  type PagedResult,
   type BuddyRole,
   type TeamTerminology,
   type NamedBuddy,
@@ -815,7 +874,6 @@ import {
   CYLINDER_ROLE_LABELS,
   CCR_CYLINDER_ROLES,
   BUDDY_ROLE_LABELS,
-  isCcrBaseConfiguration,
 } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
 import { elapsedMinutesSeconds, epochFromElapsedMinutesSeconds } from '@/lib/utils/timeUtils'
@@ -865,13 +923,18 @@ const emit = defineEmits<{
   'update:modelValue': [value: DiveFormData]
 }>()
 
-const { getWithToken } = useApi()
-
 const showMap = ref(false)
 const buddyInput = ref('')
 const selectedCoords = ref<{ lat: number; lon: number } | null>(null)
 const showSuitModal = ref(false)
 const showCcrUnitModal = ref(false)
+const showSecondaryCcrUnitModal = ref(false)
+
+// Whether this dive uses any CCR unit at all - independent of Base Configuration (the diver's own
+// rig), which no longer implies anything about CCR.
+const hasCcrUnit = computed(
+  () => !!(props.modelValue.configuration?.ccrUnit || props.modelValue.configuration?.secondaryCcrUnit),
+)
 
 // Mirrors the "fully-blank hides the card" check in DiveView.vue's suitLabel - only offer the
 // ad-hoc type picker once there's genuinely no saved-suit info to show instead, since the two are
@@ -1081,7 +1144,7 @@ const updateGasConsumptionField = (field: keyof GasConsumption, value: number | 
   })
 }
 
-const updateConfigField = (field: string, value: string | number | undefined) => {
+const updateConfigField = (field: string, value: string | number | null | undefined) => {
   emit('update:modelValue', {
     ...props.modelValue,
     configuration: {
@@ -1101,11 +1164,10 @@ const emptyCylinder = (): DiveConfigurationCylinder => ({
   endBar: null,
   notes: '',
   gas: { o2: 0.21, he: 0 },
-  // OC is the only valid role on an OC dive; on CCR, default to the most common first cylinder
-  // (Diluent) rather than OC, which isn't even a selectable option there.
-  role: isCcrBaseConfiguration(props.modelValue.configuration?.base ?? 'SINGLE_TANK')
-    ? 'DILUENT'
-    : 'OC',
+  // OC is the only valid role on a dive with no CCR unit; once one's attached, default to the
+  // most common first cylinder (Diluent) rather than OC, which isn't even a selectable option
+  // there.
+  role: hasCcrUnit.value ? 'DILUENT' : 'OC',
   usageStart: null,
   usageEnd: null,
 })
@@ -1321,7 +1383,9 @@ const updateAdHocSuitType = (value: string) => {
   })
 }
 
-// CCR unit management helpers
+// CCR unit management helpers - primary and secondary slots are independent, each unit's own
+// mount position (set on the unit itself) says how it's worn, so no base-configuration inference
+// is needed here anymore.
 const handleCcrUnitSelected = (ccrUnit: CcrUnit) => {
   emit('update:modelValue', {
     ...props.modelValue,
@@ -1331,35 +1395,38 @@ const handleCcrUnitSelected = (ccrUnit: CcrUnit) => {
     },
   })
   showCcrUnitModal.value = false
-  inferBaseConfigurationFromCcrUnit(ccrUnit.id)
 }
 
-// A given CCR rig is almost always dived in the same rig configuration (e.g. a sidemount
-// rebreather stays a sidemount rebreather) - rather than asking the diver to re-pick "Sidemount
-// CCR" every single time, look at the most recent dive that already used this unit and carry its
-// base configuration forward. Best-effort: a brand-new unit with no dive history, or a lookup
-// failure, just leaves the current selection untouched.
-const inferBaseConfigurationFromCcrUnit = async (ccrUnitId: number) => {
-  // Don't clobber an already-CCR selection the diver may have made deliberately.
-  if (
-    props.modelValue.configuration?.base &&
-    isCcrBaseConfiguration(props.modelValue.configuration.base)
-  ) {
-    return
-  }
-  try {
-    const listRes = await getWithToken<PagedResult<{ id: number }>>(
-      `/v1/dives/ccrUnit?ccrUnitId=${ccrUnitId}&page=0&sortCol=NUMBER&sortDirection=DESCENDING`,
-    )
-    const mostRecentId = listRes.data.result[0]?.id
-    if (mostRecentId === undefined) return
-    const diveRes = await getWithToken<Dive>(`/v1/dives/${mostRecentId}`)
-    const inferredBase = diveRes.data.configuration?.base
-    if (inferredBase && isCcrBaseConfiguration(inferredBase)) {
-      updateConfigField('base', inferredBase)
-    }
-  } catch (err) {
-    console.error('Failed to infer base configuration from CCR unit history', err)
-  }
+const clearCcrUnit = () => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    configuration: {
+      ...props.modelValue.configuration!,
+      ccrUnit: null,
+      // A second unit with no primary doesn't make sense - clear it too.
+      secondaryCcrUnit: null,
+    },
+  })
+}
+
+const handleSecondaryCcrUnitSelected = (ccrUnit: CcrUnit) => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    configuration: {
+      ...props.modelValue.configuration!,
+      secondaryCcrUnit: ccrUnit,
+    },
+  })
+  showSecondaryCcrUnitModal.value = false
+}
+
+const clearSecondaryCcrUnit = () => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    configuration: {
+      ...props.modelValue.configuration!,
+      secondaryCcrUnit: null,
+    },
+  })
 }
 </script>

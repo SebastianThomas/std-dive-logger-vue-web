@@ -475,19 +475,22 @@
         <InfoCard v-if="dive.configuration?.base" title="Base Config">
           <span>{{ BASE_CONFIGURATION_LABELS[dive.configuration.base] }}</span>
         </InfoCard>
-        <InfoCard
-          v-if="
-            dive.configuration &&
-            isCcrBaseConfiguration(dive.configuration.base) &&
-            dive.configuration.ccrUnit
-          "
-          title="CCR Unit"
-        >
+        <InfoCard v-if="dive.configuration?.ccrUnit" title="CCR Unit">
           <RouterLink
             :to="{ name: 'CcrUnitDetail', params: { ccrUnitId: dive.configuration.ccrUnit.id } }"
             class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
           >
             {{ dive.configuration.ccrUnit.name }}
+          </RouterLink>
+          <RouterLink
+            v-if="dive.configuration.secondaryCcrUnit"
+            :to="{
+              name: 'CcrUnitDetail',
+              params: { ccrUnitId: dive.configuration.secondaryCcrUnit.id },
+            }"
+            class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
+          >
+            {{ dive.configuration.secondaryCcrUnit.name }}
           </RouterLink>
         </InfoCard>
         <InfoCard
@@ -647,7 +650,6 @@ import {
   CYLINDER_ROLE_LABELS,
   WATER_TYPE_LABELS,
   BUDDY_ROLE_LABELS,
-  isCcrBaseConfiguration,
   type TeamTerminology,
 } from '@/lib/types/dive'
 import type { DiveTrip } from '@/lib/types/trip'
@@ -808,9 +810,7 @@ const uniqueComputers = computed(() => {
 const allGases = computed<GasListEntry[]>(() => {
   const currentDive = dive.value
   if (!currentDive?.profiles) return []
-  const isCcr = currentDive.configuration?.base
-    ? isCcrBaseConfiguration(currentDive.configuration.base)
-    : false
+  const isCcr = !!(currentDive.configuration?.ccrUnit || currentDive.configuration?.secondaryCcrUnit)
   return computeGasList(currentDive.profiles, isCcr)
 })
 

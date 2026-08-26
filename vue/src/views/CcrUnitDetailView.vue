@@ -12,8 +12,8 @@
       </div>
       <div v-else-if="unit" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-4">
         <h1 class="text-2xl font-bold">{{ unit.name }}</h1>
-        <p v-if="unit.defaultBaseConfiguration" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ BASE_CONFIGURATION_LABELS[unit.defaultBaseConfiguration] }}
+        <p v-if="unit.mountPosition" class="text-sm text-gray-500 dark:text-gray-400">
+          {{ CCR_MOUNT_POSITION_LABELS[unit.mountPosition] }}
         </p>
         <p v-if="unit.notes" class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
           {{ unit.notes }}
@@ -59,7 +59,7 @@ import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { formatDate } from '@/lib/utils/timeUtils'
 import { useEntityDiveStats } from '@/composables/useEntityDiveStats'
-import { BASE_CONFIGURATION_LABELS, type CcrUnit } from '@/lib/types/dive'
+import { CCR_MOUNT_POSITION_LABELS, type CcrUnit } from '@/lib/types/dive'
 
 const route = useRoute()
 const { getWithToken } = useApi()

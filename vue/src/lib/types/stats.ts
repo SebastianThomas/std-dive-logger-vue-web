@@ -25,7 +25,9 @@ export type UserDiveStatsByYear = {
 }
 
 export type UserDiveStatsByBuddy = UserDiveStatsBy<string>
-export type UserDiveStatsByBaseConfiguration = UserDiveStatsBy<BaseConfiguration>
+// null key means "not specified" - a real group, not a data gap, since BaseConfiguration is
+// never guessed.
+export type UserDiveStatsByBaseConfiguration = UserDiveStatsBy<BaseConfiguration | null>
 export type UserDiveStatsByTag = UserDiveStatsBy<TagDefinition>
 
 export type UserDiveStatsBySite = UserDiveStatsBy<DiveSite>

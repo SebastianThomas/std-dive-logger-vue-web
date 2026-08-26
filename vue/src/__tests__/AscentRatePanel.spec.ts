@@ -37,6 +37,7 @@ function buildProfile(depths: number[], stepSeconds = 5, epochOffset = 0, id = 0
       manufacturer: { id: 0, name: 'Test' },
       serialNumber: '',
       customIdentifier: '',
+      ccrUnitId: null,
     },
     start: measurements[0]?.measurement.time ?? 0,
     end: measurements[measurements.length - 1]?.measurement.time ?? 0,

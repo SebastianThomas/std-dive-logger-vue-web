@@ -205,43 +205,27 @@ export type Suit = {
   notes: string
 }
 
-export type BaseConfiguration =
-  | 'SINGLE_TANK'
-  | 'SINGLE_TANK_AVELO'
-  | 'SIDEMOUNT'
-  | 'BACKMOUNT_DOUBLES'
-  | 'BACKMOUNT_CCR'
-  | 'SIDEMOUNT_CCR'
-  | 'CHESTMOUNT_CCR_SIDEMOUNT_BAILOUT'
-  | 'CHESTMOUNT_CCR_BACKMOUNT_BAILOUT'
-  | 'DUAL_CCR_BACKMOUNT'
-  | 'DUAL_CCR_SIDEMOUNT'
-  | 'DUAL_CCR_BACKMOUNT_SIDEMOUNT'
-  | 'DUAL_CCR_BACKMOUNT_CHESTMOUNT'
-  | 'DUAL_CCR_SIDEMOUNT_CHESTMOUNT'
-  | 'OTHER'
+// How the diver's own cylinders (whether OC-only or CCR bailout) are rigged - independent of
+// whether/how many CCR units are in play (see CcrUnit.mountPosition and
+// DiveConfiguration.ccrUnit/secondaryCcrUnit below). Cylinder count/size is tracked in even finer
+// detail via DiveConfiguration.cylinders and isn't duplicated here.
+export type BaseConfiguration = 'BACKMOUNT' | 'SIDEMOUNT'
 
 // Display labels for BaseConfiguration values
 export const BASE_CONFIGURATION_LABELS: Record<BaseConfiguration, string> = {
-  SINGLE_TANK: 'Single Tank',
-  SINGLE_TANK_AVELO: 'Single Tank (Avelo)',
+  BACKMOUNT: 'Backmount',
   SIDEMOUNT: 'Sidemount',
-  BACKMOUNT_DOUBLES: 'Backmount Doubles',
-  BACKMOUNT_CCR: 'Backmount CCR',
-  SIDEMOUNT_CCR: 'Sidemount CCR',
-  CHESTMOUNT_CCR_SIDEMOUNT_BAILOUT: 'Chestmount CCR (Sidemount Bailout)',
-  CHESTMOUNT_CCR_BACKMOUNT_BAILOUT: 'Chestmount CCR (Backmount Bailout)',
-  DUAL_CCR_BACKMOUNT: 'Dual CCR (Backmount)',
-  DUAL_CCR_SIDEMOUNT: 'Dual CCR (Sidemount)',
-  DUAL_CCR_BACKMOUNT_SIDEMOUNT: 'Dual CCR (Backmount + Sidemount)',
-  DUAL_CCR_BACKMOUNT_CHESTMOUNT: 'Dual CCR (Backmount + Chestmount)',
-  DUAL_CCR_SIDEMOUNT_CHESTMOUNT: 'Dual CCR (Sidemount + Chestmount)',
-  OTHER: 'Other',
 }
 
-// A CCR unit only ever applies when the rig itself is some closed-circuit rebreather variant.
-export function isCcrBaseConfiguration(base: BaseConfiguration): boolean {
-  return base.includes('CCR')
+// How a specific CcrUnit is worn - an intrinsic property of that physical unit, not of any one
+// dive. Unlike a diver's own BaseConfiguration (backmount/sidemount only), a rebreather can also
+// be chestmounted.
+export type CcrMountPosition = 'BACKMOUNT' | 'SIDEMOUNT' | 'CHESTMOUNT'
+
+export const CCR_MOUNT_POSITION_LABELS: Record<CcrMountPosition, string> = {
+  BACKMOUNT: 'Backmount',
+  SIDEMOUNT: 'Sidemount',
+  CHESTMOUNT: 'Chestmount',
 }
 
 export type CcrUnit = {
@@ -250,7 +234,7 @@ export type CcrUnit = {
   name: string
   notes: string
   isPublic: boolean
-  defaultBaseConfiguration?: BaseConfiguration | null
+  mountPosition?: CcrMountPosition | null
 }
 
 // Display labels for SuitType values
@@ -321,12 +305,17 @@ export type CylinderConsumption = {
 
 export type DiveConfiguration = {
   suit: Suit
-  base: BaseConfiguration
+  /** The diver's own rig - independent of CCR (see ccrUnit/secondaryCcrUnit below). Null means
+   * "not specified" and is never guessed. */
+  base?: BaseConfiguration | null
   weight: number
   weightFeeling?: WeightFeeling
   cylinders: DiveConfigurationCylinder[]
-  /** Only meaningful when `base` is a CCR variant — see {@link isCcrBaseConfiguration}. */
+  /** A dive can reference up to two CCR units for genuine dual-rebreather setups - each unit's
+   * own CcrMountPosition says how it's worn, so every combination (e.g. one backmount + one
+   * sidemount) is representable without a dedicated value per pairing. */
   ccrUnit?: CcrUnit | null
+  secondaryCcrUnit?: CcrUnit | null
   /** A suit type noted for this dive with no specific saved Suit behind it (e.g. a one-off
    * rental). Independent of `suit` — the two are meant to be mutually exclusive in the UI
    * (picking one clears the other) but nothing enforces that here. */

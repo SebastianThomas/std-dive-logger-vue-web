@@ -24,7 +24,13 @@ function measurement(
 function profileOf(measurements: DiveMeasurementWithId[]): DiveProfile {
   return {
     id: 1,
-    diveComputer: { id: 1, manufacturer: { id: 1, name: 'Test' }, serialNumber: '', customIdentifier: '' },
+    diveComputer: {
+      id: 1,
+      manufacturer: { id: 1, name: 'Test' },
+      serialNumber: '',
+      customIdentifier: '',
+      ccrUnitId: null,
+    },
     start: measurements[0]?.measurement.time ?? 0,
     end: measurements[measurements.length - 1]?.measurement.time ?? 0,
     measurements,

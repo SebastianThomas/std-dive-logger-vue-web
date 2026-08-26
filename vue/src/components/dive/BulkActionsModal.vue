@@ -127,8 +127,8 @@
                 </p>
               </div>
 
-              <!-- CCR Unit: only relevant for (and only ever applied to) CCR-configured dives -->
-              <div v-if="ccrEligibleCount > 0" class="space-y-2">
+              <!-- CCR Unit: independent of Base Configuration, applies to any selected dive -->
+              <div class="space-y-2">
                 <label for="bulk-ccr-unit" class="text-sm font-medium">CCR Unit</label>
                 <div class="flex gap-2">
                   <select
@@ -152,10 +152,6 @@
                 <p v-if="ccrUnitsLoading" class="text-xs text-gray-500">Loading CCR units...</p>
                 <p v-else-if="!ccrUnits.length" class="text-xs text-gray-500">
                   No CCR units found. Create one in your profile first.
-                </p>
-                <p v-if="ccrEligibleCount < selectedCount" class="text-xs text-gray-500">
-                  Only applies to the {{ ccrEligibleCount }} of {{ selectedCount }} selected dives
-                  that are CCR-configured.
                 </p>
               </div>
 
@@ -277,11 +273,7 @@ import type {
   BaseConfiguration,
   DiveConfiguration,
 } from '@/lib/types/dive'
-import {
-  BASE_CONFIGURATION_LABELS,
-  suitTypeLabel,
-  isCcrBaseConfiguration,
-} from '@/lib/types/dive'
+import { BASE_CONFIGURATION_LABELS, suitTypeLabel } from '@/lib/types/dive'
 
 const props = defineProps<{
   open: boolean
@@ -308,9 +300,6 @@ const suits = ref<Suit[]>([])
 const suitsLoading = ref(false)
 const ccrUnits = ref<CcrUnit[]>([])
 const ccrUnitsLoading = ref(false)
-/** How many of the currently-selected dives are CCR-configured — the bulk CCR-unit update only
- * ever touches this subset, mirroring the backend's own silent-skip-non-CCR behavior. */
-const ccrEligibleCount = ref(0)
 const updatingBaseConfiguration = ref(false)
 const updatingSuit = ref(false)
 const updatingCcrUnit = ref(false)
@@ -338,7 +327,7 @@ const canUpdateSuit = computed(
 const canUpdateCcrUnit = computed(
   () =>
     Boolean(selectedCcrUnitId.value) &&
-    ccrEligibleCount.value > 0 &&
+    selectedIds.value.length > 0 &&
     !updatingCcrUnit.value &&
     !ccrUnitsLoading.value,
 )
@@ -351,7 +340,6 @@ const resetForm = () => {
   selectedSuitId.value = null
   selectedCcrUnitId.value = null
   weightInput.value = null
-  ccrEligibleCount.value = 0
   expandedSection.value = null
 }
 
@@ -454,13 +442,7 @@ const prefillCommonValues = async () => {
       selectedSuitId.value = sameSuitId
     }
 
-    const ccrEligibleDives = dives.filter((d) =>
-      d.configuration?.base ? isCcrBaseConfiguration(d.configuration.base) : false,
-    )
-    ccrEligibleCount.value = ccrEligibleDives.length
-    const sameCcrUnitId = allSameOrNull<number>(
-      ccrEligibleDives.map((d) => d.configuration?.ccrUnit?.id),
-    )
+    const sameCcrUnitId = allSameOrNull<number>(dives.map((d) => d.configuration?.ccrUnit?.id))
     if (sameCcrUnitId !== null) {
       selectedCcrUnitId.value = sameCcrUnitId
     }

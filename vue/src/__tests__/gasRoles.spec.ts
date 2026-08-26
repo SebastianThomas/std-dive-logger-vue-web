@@ -37,6 +37,7 @@ function profile(measurements: DiveMeasurementWithId[], computerName = 'Test'): 
       manufacturer: { id: 1, name: 'Test' },
       serialNumber: '',
       customIdentifier: computerName,
+      ccrUnitId: null,
     },
     start: measurements[0]?.measurement.time ?? 0,
     end: measurements[measurements.length - 1]?.measurement.time ?? 0,

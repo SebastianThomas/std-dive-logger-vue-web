@@ -37,6 +37,9 @@
         @edit="editCcrUnit(unit)"
         @delete="confirmDeleteUnit(unit)"
       >
+        <p v-if="unit.mountPosition" class="text-xs text-gray-600 dark:text-gray-400">
+          {{ CCR_MOUNT_POSITION_LABELS[unit.mountPosition] }}
+        </p>
         <p v-if="unit.notes" class="text-xs text-gray-600 dark:text-gray-400">
           {{ formatNotesPreview(unit.notes) }}
         </p>
@@ -98,6 +101,18 @@
               v-model="form.notes"
               placeholder="Optional"
             />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Mount Position</label>
+            <select
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              v-model="form.mountPosition"
+            >
+              <option :value="null">Not specified</option>
+              <option v-for="(label, position) in CCR_MOUNT_POSITION_LABELS" :key="position" :value="position">
+                {{ label }}
+              </option>
+            </select>
           </div>
           <StyledCheckbox
             v-model="form.isPublic"
@@ -187,7 +202,7 @@ import CcrUnitNameInput from '@/components/dive/edit/CcrUnitNameInput.vue'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 import debounce from '@/lib/utils/debounce'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
-import type { CcrUnit, PagedResult } from '@/lib/types/dive'
+import { CCR_MOUNT_POSITION_LABELS, type CcrMountPosition, type CcrUnit, type PagedResult } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
@@ -207,11 +222,18 @@ const loading = ref(false)
 const showModal = ref(false)
 const modalMode = ref<'create' | 'edit'>('create')
 const saving = ref(false)
-const form = ref<{ id: number | null; name: string; notes: string; isPublic: boolean }>({
+const form = ref<{
+  id: number | null
+  name: string
+  notes: string
+  isPublic: boolean
+  mountPosition: CcrMountPosition | null
+}>({
   id: null,
   name: '',
   notes: '',
   isPublic: false,
+  mountPosition: null,
 })
 
 const diverSearchQuery = ref('')
@@ -333,7 +355,7 @@ const loadCcrUnits = async () => {
 
 const openCreateModal = () => {
   modalMode.value = 'create'
-  form.value = { id: null, name: '', notes: '', isPublic: false }
+  form.value = { id: null, name: '', notes: '', isPublic: false, mountPosition: null }
   showModal.value = true
 }
 
@@ -344,6 +366,7 @@ const editCcrUnit = (unit: CcrUnit) => {
     name: unit.name,
     notes: unit.notes ?? '',
     isPublic: unit.isPublic ?? false,
+    mountPosition: unit.mountPosition ?? null,
   }
   showModal.value = true
 }
@@ -365,6 +388,7 @@ const saveCcrUnit = async () => {
         name: form.value.name,
         notes: form.value.notes,
         isPublic: form.value.isPublic,
+        mountPosition: form.value.mountPosition,
       })
     } else {
       await putWithToken(`/v1/dives/configuration/ccrUnit/${form.value.id}`, {

@@ -97,10 +97,10 @@
           <div>
             <span>{{ buddy.name }}</span>
             <span
-              v-if="linkedDefaults[buddy.id]"
+              v-if="linkedDefaultLabel(buddy.id)"
               class="ml-2 text-xs text-gray-500 dark:text-gray-400"
             >
-              (default: {{ BUDDY_ROLE_LABELS[linkedDefaults[buddy.id]] }})
+              (default: {{ linkedDefaultLabel(buddy.id) }})
             </span>
           </div>
           <div v-if="!readOnly" class="flex items-center gap-2">
@@ -208,6 +208,11 @@ const namedDefaults = ref<Record<string, BuddyRole>>({})
 const linkedDefaults = ref<Record<number, BuddyRole>>({})
 const savingNamedDefault = ref<string | null>(null)
 const savingLinkedDefault = ref<number | null>(null)
+
+const linkedDefaultLabel = (buddyId: number): string => {
+  const role = linkedDefaults.value[buddyId]
+  return role ? BUDDY_ROLE_LABELS[role] : ''
+}
 
 const showModal = ref(false)
 const renamingFrom = ref('')

@@ -289,7 +289,7 @@
       <div v-else-if="selectedStat === 'base'" class="space-y-6">
         <div
           v-for="item in baseStats"
-          :key="item.key"
+          :key="item.key ?? 'unspecified'"
           class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
         >
           <h2 class="text-xl font-bold mb-4">
@@ -505,7 +505,8 @@ const toggleTagFilter = async (tagId: number) => {
   }
 }
 
-const baseConfigLabel = (key: BaseConfiguration) => BASE_CONFIGURATION_LABELS[key]
+const baseConfigLabel = (key: BaseConfiguration | null) =>
+  key ? BASE_CONFIGURATION_LABELS[key] : 'Not specified'
 const siteTypeLabel = (key: string) => DIVE_SITE_TYPE_LABELS[key as DiveSiteType] ?? key
 
 const selectStat = async (stat: StatType) => {

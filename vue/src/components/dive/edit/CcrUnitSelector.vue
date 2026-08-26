@@ -99,6 +99,18 @@
             placeholder="Optional"
           />
         </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Mount Position</label>
+          <select
+            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            v-model="form.mountPosition"
+          >
+            <option :value="null">Not specified</option>
+            <option v-for="(label, position) in CCR_MOUNT_POSITION_LABELS" :key="position" :value="position">
+              {{ label }}
+            </option>
+          </select>
+        </div>
         <div class="md:col-span-2">
           <StyledCheckbox
             v-model="form.isPublic"
@@ -149,7 +161,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useApi } from '@/composables/useApi'
 import CcrUnitNameInput from '@/components/dive/edit/CcrUnitNameInput.vue'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
-import type { CcrUnit, PagedResult } from '@/lib/types/dive'
+import { CCR_MOUNT_POSITION_LABELS, type CcrMountPosition, type CcrUnit, type PagedResult } from '@/lib/types/dive'
 
 interface Props {
   currentCcrUnit?: CcrUnit | null
@@ -173,11 +185,18 @@ const loading = ref(false)
 const saving = ref(false)
 const selectedCcrUnitId = ref<number | null>(props.currentCcrUnit?.id ?? null)
 
-const form = ref<{ id: number | null; name: string; notes: string; isPublic: boolean }>({
+const form = ref<{
+  id: number | null
+  name: string
+  notes: string
+  isPublic: boolean
+  mountPosition: CcrMountPosition | null
+}>({
   id: null,
   name: '',
   notes: '',
   isPublic: false,
+  mountPosition: null,
 })
 
 // Preview: show first 3 words or minimum 20 characters
@@ -214,7 +233,7 @@ const loadCcrUnits = async () => {
 
 const startCreateCcrUnit = () => {
   mode.value = 'create'
-  form.value = { id: null, name: '', notes: '', isPublic: false }
+  form.value = { id: null, name: '', notes: '', isPublic: false, mountPosition: null }
 }
 
 const startEditCcrUnit = () => {
@@ -227,6 +246,7 @@ const startEditCcrUnit = () => {
     name: existing.name,
     notes: existing.notes ?? '',
     isPublic: existing.isPublic ?? false,
+    mountPosition: existing.mountPosition ?? null,
   }
 }
 
@@ -255,6 +275,7 @@ const saveCcrUnit = async () => {
         name: form.value.name,
         notes: form.value.notes,
         isPublic: form.value.isPublic,
+        mountPosition: form.value.mountPosition,
       })
       await loadCcrUnits()
       emit('ccr-unit-selected', res.data)
