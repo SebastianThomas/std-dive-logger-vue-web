@@ -308,7 +308,7 @@
           <div v-if="modelValue.configuration.suit" class="mt-3 text-sm space-y-1">
             <div>
               <span class="font-semibold">Type:</span>
-              {{ SUIT_TYPE_LABELS[modelValue.configuration.suit.type] }}
+              {{ suitTypeLabel(modelValue.configuration.suit.type) }}
             </div>
             <div
               v-if="
@@ -323,6 +323,26 @@
               <span class="font-semibold">Name:</span>
               {{ formatSuitNotesPreview(modelValue.configuration.suit.notes) }}
             </div>
+          </div>
+
+          <div v-if="!hasMeaningfulSuit" class="mt-3">
+            <label
+              for="ad-hoc-suit-type"
+              class="block mb-2 text-sm text-gray-600 dark:text-gray-400"
+            >
+              No specific suit? Note the type instead (e.g. a rental)
+            </label>
+            <select
+              id="ad-hoc-suit-type"
+              :value="modelValue.configuration.adHocSuitType ?? ''"
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              @change="updateAdHocSuitType(($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">Not specified</option>
+              <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">
+                {{ label }}
+              </option>
+            </select>
           </div>
         </div>
 
@@ -638,6 +658,28 @@
         </div>
       </fieldset>
 
+      <!-- Average Depth: only editable for a manually-entered dive, which has no real
+           depth-time profile to compute one from (its synthetic surface/max-depth/surface
+           samples aren't a real dive shape) - genuinely unknown unless entered here. A dive
+           with a real computer profile always has this computed automatically instead. -->
+      <fieldset v-if="isManualDive" class="border rounded p-4">
+        <legend class="font-medium mb-3">Average Depth</legend>
+        <div>
+          <label for="average-depth" class="block mb-2"
+            >Average Depth (m) - only if known, leave blank otherwise</label
+          >
+          <input
+            id="average-depth"
+            :value="modelValue.averageDepth ?? ''"
+            type="number"
+            step="0.1"
+            min="0"
+            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            @input="handleNumberInput('averageDepth', $event)"
+          />
+        </div>
+      </fieldset>
+
       <!-- Gas Consumption: whole-dive manually-entered SAC/RMV, placed right after Cylinders since
            that's the more precise per-cylinder alternative to this figure (see the RMV/Bailout
            RMV/O2/Diluent figures on the dive view page, computed from cylinders when tracked). -->
@@ -746,6 +788,7 @@ import { ref, computed } from 'vue'
 import { useApi } from '@/composables/useApi'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
 import DiveSiteSearch from '@/components/DiveSiteSearch.vue'
+import BuddyNameAutocomplete from '@/components/dive/BuddyNameAutocomplete.vue'
 import SuitSelector from '@/components/dive/edit/SuitSelector.vue'
 import CcrUnitSelector from '@/components/dive/edit/CcrUnitSelector.vue'
 import {
@@ -758,6 +801,7 @@ import {
   type DiveConfigurationCylinder,
   type CylinderRole,
   type Suit,
+  type SuitType,
   type CcrUnit,
   type Dive,
   type DiveProfile,
@@ -766,6 +810,7 @@ import {
   type TeamTerminology,
   type NamedBuddy,
   BASE_CONFIGURATION_LABELS,
+  suitTypeLabel,
   SUIT_TYPE_LABELS,
   CYLINDER_ROLE_LABELS,
   CCR_CYLINDER_ROLES,
@@ -796,6 +841,7 @@ interface DiveFormData {
   leaderBuddyDiveId?: number | null
   leaderSelfExplicit?: boolean
   teamTerminology?: TeamTerminology | null
+  averageDepth?: number | null
 }
 
 const props = defineProps<{
@@ -826,6 +872,14 @@ const buddyInput = ref('')
 const selectedCoords = ref<{ lat: number; lon: number } | null>(null)
 const showSuitModal = ref(false)
 const showCcrUnitModal = ref(false)
+
+// Mirrors the "fully-blank hides the card" check in DiveView.vue's suitLabel - only offer the
+// ad-hoc type picker once there's genuinely no saved-suit info to show instead, since the two are
+// meant to be mutually exclusive in the UI.
+const hasMeaningfulSuit = computed(() => {
+  const suit = props.modelValue.configuration?.suit
+  return !!(suit && (suit.type || suit.notes?.trim() || suit.thickness != null))
+})
 // Notes preview formatter: first three words, ensure >= 20 chars
 const formatSuitNotesPreview = (notes?: string) => {
   const text = (notes ?? '').trim()
@@ -1164,6 +1218,15 @@ const formatElapsedRange = (window: UsageWindow): string => {
   return `${fmt(start)}–${fmt(end)}`
 }
 
+// A manually-entered dive's synthetic surface/max-depth/surface profile is on a fixed "Manual
+// Entry" computer (see DiveService#createEmptyDive) - same duck-typed signal DiveView.vue's own
+// isManualDive already uses, no dedicated flag exists. Average Depth is only ever editable here
+// for a manual dive - for a real profile it's always computed server-side and any value sent here
+// would just be silently ignored.
+const isManualDive = computed(
+  () => props.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
+)
+
 // One suggestion list per cylinder index, computed from the primary profile's actual gas-switch
 // history - see cylinderUsageWindows.ts. Only meaningful while Usage Start/End are unset (the
 // template hides the panel once either is set), but computed for every cylinder regardless so a
@@ -1241,6 +1304,19 @@ const applySuitToModel = (suit: Suit) => {
     configuration: {
       ...props.modelValue.configuration!,
       suit,
+      // Picking a specific saved suit clears any noted ad-hoc type - the two are mutually
+      // exclusive in the UI.
+      adHocSuitType: null,
+    },
+  })
+}
+
+const updateAdHocSuitType = (value: string) => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    configuration: {
+      ...props.modelValue.configuration!,
+      adHocSuitType: (value || null) as SuitType | null,
     },
   })
 }

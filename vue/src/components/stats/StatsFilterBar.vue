@@ -138,7 +138,7 @@ import FilterDropdown from '@/components/ui/FilterDropdown.vue'
 import { TIMELINE_GRANULARITIES, type TimelineGranularity } from '@/lib/types/statsTimeline'
 import type { StatsTimelineFilters } from '@/lib/types/statsTimeline'
 import type { TagDefinition, DiveSite, Suit, CcrUnit } from '@/lib/types/dive'
-import { BASE_CONFIGURATION_LABELS, SUIT_TYPE_LABELS, type BaseConfiguration } from '@/lib/types/dive'
+import { BASE_CONFIGURATION_LABELS, suitTypeLabel, type BaseConfiguration } from '@/lib/types/dive'
 import type { UserDiveStatsBySite } from '@/lib/types/stats'
 import type { PagedResult } from '@/lib/types/dive'
 
@@ -199,7 +199,7 @@ const clearFilters = () => {
 }
 
 const formatSuitLabel = (suit: Suit): string => {
-  const parts = [SUIT_TYPE_LABELS[suit.type]]
+  const parts = [suitTypeLabel(suit.type)]
   if (suit.thickness) {
     parts.push(`${suit.thickness}mm`)
   }

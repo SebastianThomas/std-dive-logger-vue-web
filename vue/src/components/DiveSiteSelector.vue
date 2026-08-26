@@ -58,6 +58,7 @@
           <div>
             <label class="block text-sm font-medium mb-2">Create New Dive Site</label>
             <input
+              ref="newSiteNameInput"
               v-model="newSiteName"
               type="text"
               placeholder="Enter dive site name..."
@@ -164,7 +165,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import DiveSiteSearch from '@/components/DiveSiteSearch.vue'
@@ -176,13 +177,22 @@ import type { MapCoords } from '@/components/DiveSiteMapPicker.vue'
 
 interface Props {
   /** Pre-fills the search box and "create new" name when the caller already knows which
-   * dive site name couldn't be resolved (e.g. an import that referenced a missing site). */
+   * dive site name couldn't be resolved (e.g. an import that referenced a missing site, or a
+   * search the diver already typed that came up empty). */
   initialName?: string
 }
 
 const props = defineProps<Props>()
 
 const newSiteName = ref(props.initialName ?? '')
+const newSiteNameInput = ref<HTMLInputElement | null>(null)
+
+// Focused on open so a diver who already typed a name (search came up empty) can go straight to
+// "Create on Map" without an extra click - most useful precisely when initialName is prefilled,
+// but harmless to always do since this is the modal's own natural starting field either way.
+onMounted(() => {
+  nextTick(() => newSiteNameInput.value?.focus())
+})
 const selectedSite = ref<DiveSite | null>(null)
 const isCreatingNew = ref(false)
 const mapLat = ref<number | null>(null)

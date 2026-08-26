@@ -65,7 +65,7 @@
             >
               <option value="" disabled>Select a suit</option>
               <option v-for="s in suits" :key="s.id" :value="s.id">
-                {{ SUIT_TYPE_LABELS[s.type]
+                {{ suitTypeLabel(s.type)
                 }}<span v-if="s.thickness !== undefined && s.thickness !== null">
                   - {{ s.thickness }}mm</span
                 >
@@ -91,11 +91,12 @@
       <!-- Create/Edit mode -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label class="block text-sm font-medium mb-1">Type *</label>
+          <label class="block text-sm font-medium mb-1">Type</label>
           <select
             class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
             v-model="form.type"
           >
+            <option :value="null">Not specified</option>
             <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">
               {{ label }}
             </option>
@@ -155,7 +156,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useApi } from '@/composables/useApi'
 import type { Suit, PagedResult } from '@/lib/types/dive'
-import { SUIT_TYPE_LABELS } from '@/lib/types/dive'
+import { SUIT_TYPE_LABELS, suitTypeLabel } from '@/lib/types/dive'
 
 interface Props {
   currentSuit?: Suit | null
@@ -188,7 +189,7 @@ const form = ref<{
   userId: Suit['userId']
 }>({
   id: null,
-  type: 'NONE',
+  type: null,
   thickness: null,
   notes: '',
   userId: props.userId,

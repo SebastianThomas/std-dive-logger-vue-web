@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import debounce from '@/lib/utils/debounce'
 import DiveSiteSearchResultsMap from '@/components/DiveSiteSearchResultsMap.vue'
@@ -64,6 +64,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   selected: [site: DiveSite]
+  /** Fires on every keystroke - lets a caller offering a "create new site" fallback (see
+   * DiveSiteSelector.vue) prefill that flow with whatever the diver already typed here, instead
+   * of making them retype the name after a search comes up empty. */
+  'update:searchTerm': [value: string]
 }>()
 
 const { getWithToken } = useApi()
@@ -72,6 +76,8 @@ const searchTerm = ref(props.initialValue)
 const results = ref<DiveSite[]>([])
 const showMap = ref(false)
 const searched = ref(false)
+
+watch(searchTerm, (value) => emit('update:searchTerm', value))
 
 const fetchResults = async () => {
   const query = searchTerm.value.trim()

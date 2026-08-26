@@ -25,6 +25,10 @@ export type DiveComputer = {
   manufacturer: DiveComputerManufacturer
   serialNumber: string
   customIdentifier: string
+  // Permanently paired CCR unit, if any - PUT /v1/computers/{id} treats a missing/null value as
+  // an explicit "clear the link", so any update must always echo the current value back rather
+  // than omitting it, or a rename silently unlinks the unit.
+  ccrUnitId: number | null
 }
 
 export type Deco = {
@@ -111,7 +115,9 @@ export type DiveSummary = {
   start: number
   end: number
   maxDepth: number
-  averageDepth: number
+  // null for a manually-entered dive with no real depth-time profile to average from, unless the
+  // diver explicitly set one (see EditDiveForm.vue's Average Depth field).
+  averageDepth: number | null
   bottomTime: Duration
   surfaceIntervalBefore: Duration
   maxTimeToSurface?: Duration
@@ -188,12 +194,13 @@ export type SuitType =
   | 'NEOPRENE'
   | 'MEMBRANE_DRY'
   | 'NEOPRENE_DRY'
-  | 'OTHER'
 
 export type Suit = {
   id: number
   userId: number
-  type: SuitType
+  // null means "not specified" - distinct from NONE, which means the diver actually wore no
+  // exposure suit at all.
+  type: SuitType | null
   thickness?: number | null
   notes: string
 }
@@ -205,7 +212,8 @@ export type BaseConfiguration =
   | 'BACKMOUNT_DOUBLES'
   | 'BACKMOUNT_CCR'
   | 'SIDEMOUNT_CCR'
-  | 'CHESTMOUNT_CCR'
+  | 'CHESTMOUNT_CCR_SIDEMOUNT_BAILOUT'
+  | 'CHESTMOUNT_CCR_BACKMOUNT_BAILOUT'
   | 'DUAL_CCR_BACKMOUNT'
   | 'DUAL_CCR_SIDEMOUNT'
   | 'DUAL_CCR_BACKMOUNT_SIDEMOUNT'
@@ -221,7 +229,8 @@ export const BASE_CONFIGURATION_LABELS: Record<BaseConfiguration, string> = {
   BACKMOUNT_DOUBLES: 'Backmount Doubles',
   BACKMOUNT_CCR: 'Backmount CCR',
   SIDEMOUNT_CCR: 'Sidemount CCR',
-  CHESTMOUNT_CCR: 'Chestmount CCR',
+  CHESTMOUNT_CCR_SIDEMOUNT_BAILOUT: 'Chestmount CCR (Sidemount Bailout)',
+  CHESTMOUNT_CCR_BACKMOUNT_BAILOUT: 'Chestmount CCR (Backmount Bailout)',
   DUAL_CCR_BACKMOUNT: 'Dual CCR (Backmount)',
   DUAL_CCR_SIDEMOUNT: 'Dual CCR (Sidemount)',
   DUAL_CCR_BACKMOUNT_SIDEMOUNT: 'Dual CCR (Backmount + Sidemount)',
@@ -252,7 +261,10 @@ export const SUIT_TYPE_LABELS: Record<SuitType, string> = {
   NEOPRENE: 'Neoprene',
   MEMBRANE_DRY: 'Membrane Dry',
   NEOPRENE_DRY: 'Neoprene Dry',
-  OTHER: 'Other',
+}
+
+export function suitTypeLabel(type: SuitType | null | undefined): string {
+  return type ? SUIT_TYPE_LABELS[type] : 'Not specified'
 }
 
 export type WeightFeeling = 'LIGHT' | 'GOOD' | 'HEAVY'
@@ -315,6 +327,10 @@ export type DiveConfiguration = {
   cylinders: DiveConfigurationCylinder[]
   /** Only meaningful when `base` is a CCR variant — see {@link isCcrBaseConfiguration}. */
   ccrUnit?: CcrUnit | null
+  /** A suit type noted for this dive with no specific saved Suit behind it (e.g. a one-off
+   * rental). Independent of `suit` — the two are meant to be mutually exclusive in the UI
+   * (picking one clears the other) but nothing enforces that here. */
+  adHocSuitType?: SuitType | null
 }
 
 export type BuddyRole =
@@ -336,6 +352,15 @@ export type NamedBuddy = {
   id: number
   name: string
   role?: BuddyRole | null
+}
+
+/** A saved default role for one buddy - applied automatically the next time that buddy is newly
+ * added to a dive (manually or via import). Either `buddyUser` or `buddyName` is set, never both. */
+export type DiveBuddyDefaultRole = {
+  id: number
+  buddyUser?: User | null
+  buddyName?: string | null
+  role: BuddyRole
 }
 
 export type TeamTerminology = 'BUDDY' | 'TEAM'

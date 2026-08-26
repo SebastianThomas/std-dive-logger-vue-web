@@ -279,7 +279,7 @@ import type {
 } from '@/lib/types/dive'
 import {
   BASE_CONFIGURATION_LABELS,
-  SUIT_TYPE_LABELS,
+  suitTypeLabel,
   isCcrBaseConfiguration,
 } from '@/lib/types/dive'
 
@@ -476,7 +476,7 @@ const prefillCommonValues = async () => {
 }
 
 const formatSuitLabel = (suit: Suit) => {
-  const parts = [SUIT_TYPE_LABELS[suit.type]]
+  const parts = [suitTypeLabel(suit.type)]
   if (suit.thickness) {
     parts.push(`${suit.thickness}mm`)
   }

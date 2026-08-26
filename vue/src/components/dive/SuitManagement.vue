@@ -31,7 +31,7 @@
       <ItemCard
         v-for="suit in suits"
         :key="suit.id"
-        :title="SUIT_TYPE_LABELS[suit.type]"
+        :title="suitTypeLabel(suit.type)"
         @view-dives="viewDivesForSuit(suit.id)"
         @edit="editSuit(suit)"
       >
@@ -64,6 +64,7 @@
               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
               v-model="form.type"
             >
+              <option :value="null">Not specified</option>
               <option v-for="(label, type) in SUIT_TYPE_LABELS" :value="type" :key="type">
                 {{ label }}
               </option>
@@ -122,7 +123,7 @@ import { useApi } from '@/composables/useApi'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemCardGrid from '@/components/ItemCardGrid.vue'
 import type { Suit, PagedResult } from '@/lib/types/dive'
-import { SUIT_TYPE_LABELS } from '@/lib/types/dive'
+import { SUIT_TYPE_LABELS, suitTypeLabel } from '@/lib/types/dive'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 
 interface Props {
@@ -171,7 +172,7 @@ const openCreateModal = () => {
   modalMode.value = 'create'
   form.value = {
     id: null,
-    type: 'NONE',
+    type: null,
     thickness: null,
     notes: '',
   }

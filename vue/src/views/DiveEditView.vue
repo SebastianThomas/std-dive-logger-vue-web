@@ -142,6 +142,7 @@ interface DiveFormData {
   leaderBuddyDiveId?: number | null
   leaderSelfExplicit?: boolean
   teamTerminology?: TeamTerminology | null
+  averageDepth?: number | null
 }
 
 const formData = ref<DiveFormData>({
@@ -206,6 +207,7 @@ const fetchDive = async () => {
       leaderBuddyDiveId: dive.leader.type === 'LINKED' ? dive.leader.linkedDiveId : null,
       leaderSelfExplicit: dive.leader.type === 'SELF',
       teamTerminology: dive.teamTerminology,
+      averageDepth: dive.summary.averageDepth,
     }
     // Smart default: this dive has no explicit terminology override of its own yet - prefill the
     // picker with the user's own most recent explicit choice (on some other dive) rather than
@@ -385,6 +387,10 @@ const handleSubmit = async () => {
     leaderBuddyDiveId: formData.value.leaderBuddyDiveId ?? null,
     leaderSelfExplicit: formData.value.leaderSelfExplicit ?? false,
     teamTerminology: formData.value.teamTerminology ?? null,
+    // Only meaningful (and only ever shown as editable) for a manual dive - backend ignores it
+    // for a dive with a real computer profile. null means "leave whatever's already stored", not
+    // "clear it" - same convention as notes/visibility above.
+    averageDepth: formData.value.averageDepth ?? null,
   }
 
   try {

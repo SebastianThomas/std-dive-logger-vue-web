@@ -14,7 +14,13 @@
         v-else-if="computer"
         class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-4"
       >
-        <h1 class="text-2xl font-bold">{{ computer.customIdentifier }}</h1>
+        <input
+          :value="computer.customIdentifier"
+          type="text"
+          class="text-2xl font-bold w-full p-1 -ml-1 rounded border border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+          @blur="renameComputer(($event.target as HTMLInputElement).value)"
+          @keydown.enter="($event.target as HTMLInputElement).blur()"
+        />
         <p class="text-sm text-gray-500 dark:text-gray-400">
           {{ computer.manufacturer.name }}
           <span v-if="computer.serialNumber"> &middot; S/N {{ computer.serialNumber }}</span>
@@ -49,13 +55,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { formatDate } from '@/lib/utils/timeUtils'
 import { useEntityDiveStats } from '@/composables/useEntityDiveStats'
 import type { DiveComputer } from '@/lib/types/dive'
 
 const route = useRoute()
-const { getWithToken } = useApi()
+const { getWithToken, putWithToken } = useApi()
 
 const computer = ref<DiveComputer | null>(null)
 const loading = ref(true)
@@ -81,4 +89,22 @@ const load = async () => {
 }
 
 onMounted(load)
+
+const renameComputer = async (name: string) => {
+  const trimmed = name.trim()
+  if (!computer.value || trimmed === '' || trimmed === computer.value.customIdentifier) {
+    return
+  }
+  const previous = computer.value.customIdentifier
+  computer.value = { ...computer.value, customIdentifier: trimmed }
+  try {
+    await putWithToken(`/v1/computers/${computer.value.id}`, {
+      customIdentifier: trimmed,
+      ccrUnitId: computer.value.ccrUnitId,
+    })
+  } catch (err) {
+    computer.value = { ...computer.value, customIdentifier: previous }
+    toast.error(`Failed to rename dive computer: ${extractErrorDetail(err)}`)
+  }
+}
 </script>

@@ -203,7 +203,10 @@
           <!-- Summary Cards -->
           <InfoCardRow v-if="summary">
             <InfoCard title="Max Depth" :value="`${summary.maxDepth?.toFixed(1)} m`" />
-            <InfoCard title="Avg Depth" :value="`${summary.averageDepth?.toFixed(1)} m`" />
+            <InfoCard
+              title="Avg Depth"
+              :value="summary.averageDepth != null ? `${summary.averageDepth.toFixed(1)} m` : '—'"
+            />
             <InfoCard title="Bottom Time" :value="formatDiveTime(summary.bottomTime)" />
           </InfoCardRow>
 
@@ -459,9 +462,9 @@
           dive.current
         "
       >
-        <InfoCard v-if="dive.configuration?.suit?.type" title="Suit">
+        <InfoCard v-if="suitLabel" title="Suit">
           <RouterLink
-            v-if="dive.configuration.suit.id"
+            v-if="suitIsLinkable"
             :to="{ name: 'SuitDetail', params: { suitId: dive.configuration.suit.id } }"
             class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
           >
@@ -717,11 +720,25 @@ const diveSiteGoogleMapsUrl = computed(() => {
 // "customIdentifier (manufacturer)". Falls back to just the type (+ thickness) when no name is set.
 const suitLabel = computed(() => {
   const suit = dive.value?.configuration?.suit
-  if (!suit?.type) return ''
-  const typeLabel = SUIT_TYPE_LABELS[suit.type]
-  const name = suit.notes?.trim()
-  if (name) return `${name} (${typeLabel})`
-  return suit.thickness != null ? `${typeLabel} · ${suit.thickness} mm` : typeLabel
+  const name = suit?.notes?.trim()
+  // A suit with no type set yet can still be worth showing if it at least has a name or a
+  // thickness - only fully-blank (no name, no type, no thickness) falls through below.
+  if (suit && (suit.type || name || suit.thickness != null)) {
+    const typeLabel = suit.type ? SUIT_TYPE_LABELS[suit.type] : null
+    if (name) return typeLabel ? `${name} (${typeLabel})` : name
+    if (typeLabel) return suit.thickness != null ? `${typeLabel} · ${suit.thickness} mm` : typeLabel
+    return `${suit.thickness} mm`
+  }
+  // No specific saved suit to show - fall back to the noted ad-hoc type (e.g. a rental) if any.
+  const adHocType = dive.value?.configuration?.adHocSuitType
+  return adHocType ? `${SUIT_TYPE_LABELS[adHocType]} (no specific suit)` : ''
+})
+
+// Only the real, saved suit is linkable to its own detail page - the ad-hoc fallback above has no
+// entity behind it to link to.
+const suitIsLinkable = computed(() => {
+  const suit = dive.value?.configuration?.suit
+  return !!(suit?.id && (suit.type || suit.notes?.trim() || suit.thickness != null))
 })
 
 const viewDivesByTag = (tagId: number) => {

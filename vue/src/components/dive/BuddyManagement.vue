@@ -29,7 +29,15 @@
           :key="name"
           class="flex flex-wrap items-center justify-between gap-2 px-4 py-2"
         >
-          <span>{{ name }}</span>
+          <div>
+            <span>{{ name }}</span>
+            <span
+              v-if="namedDefaults[name]"
+              class="ml-2 text-xs text-gray-500 dark:text-gray-400"
+            >
+              (default: {{ BUDDY_ROLE_LABELS[namedDefaults[name]] }})
+            </span>
+          </div>
           <div v-if="!readOnly" class="flex items-center gap-2">
             <select
               v-model="namedRoleSelections[name]"
@@ -47,6 +55,14 @@
               @click="applyNamedRole(name)"
             >
               {{ applyingNamedRole === name ? 'Applying...' : 'Apply to all dives' }}
+            </button>
+            <button
+              type="button"
+              class="px-2 py-1 text-xs rounded border border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors whitespace-nowrap"
+              :disabled="savingNamedDefault === name"
+              @click="saveNamedDefault(name)"
+            >
+              {{ savingNamedDefault === name ? 'Saving...' : 'Save as default' }}
             </button>
             <button
               type="button"
@@ -78,7 +94,15 @@
           :key="buddy.id"
           class="flex flex-wrap items-center justify-between gap-2 px-4 py-2"
         >
-          <span>{{ buddy.name }}</span>
+          <div>
+            <span>{{ buddy.name }}</span>
+            <span
+              v-if="linkedDefaults[buddy.id]"
+              class="ml-2 text-xs text-gray-500 dark:text-gray-400"
+            >
+              (default: {{ BUDDY_ROLE_LABELS[linkedDefaults[buddy.id]] }})
+            </span>
+          </div>
           <div v-if="!readOnly" class="flex items-center gap-2">
             <select
               v-model="linkedRoleSelections[buddy.id]"
@@ -96,6 +120,14 @@
               @click="applyLinkedRole(buddy)"
             >
               {{ applyingLinkedRole === buddy.id ? 'Applying...' : 'Apply to all dives' }}
+            </button>
+            <button
+              type="button"
+              class="px-2 py-1 text-xs rounded border border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors whitespace-nowrap"
+              :disabled="savingLinkedDefault === buddy.id"
+              @click="saveLinkedDefault(buddy)"
+            >
+              {{ savingLinkedDefault === buddy.id ? 'Saving...' : 'Save as default' }}
             </button>
           </div>
         </li>
@@ -157,7 +189,7 @@ import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
-import { BUDDY_ROLE_LABELS, type BuddyRole } from '@/lib/types/dive'
+import { BUDDY_ROLE_LABELS, type BuddyRole, type DiveBuddyDefaultRole } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
 
 const { getWithToken, putWithToken } = useApi()
@@ -172,6 +204,11 @@ const linkedRoleSelections = ref<Record<number, BuddyRole | ''>>({})
 const applyingNamedRole = ref<string | null>(null)
 const applyingLinkedRole = ref<number | null>(null)
 
+const namedDefaults = ref<Record<string, BuddyRole>>({})
+const linkedDefaults = ref<Record<number, BuddyRole>>({})
+const savingNamedDefault = ref<string | null>(null)
+const savingLinkedDefault = ref<number | null>(null)
+
 const showModal = ref(false)
 const renamingFrom = ref('')
 const newName = ref('')
@@ -183,16 +220,85 @@ const canSave = computed(() => newName.value.trim().length > 0)
 const loadAll = async () => {
   loading.value = true
   try {
-    const [namedRes, linkedRes] = await Promise.all([
+    const [namedRes, linkedRes, defaultsRes] = await Promise.all([
       getWithToken<string[]>('/v1/dives/buddies'),
       getWithToken<User[]>('/v1/dives/buddies/users'),
+      getWithToken<DiveBuddyDefaultRole[]>('/v1/dives/buddies/default-roles'),
     ])
     buddies.value = namedRes.data ?? []
     linkedBuddies.value = linkedRes.data ?? []
+
+    const named: Record<string, BuddyRole> = {}
+    const linked: Record<number, BuddyRole> = {}
+    for (const d of defaultsRes.data ?? []) {
+      if (d.buddyName) named[d.buddyName] = d.role
+      else if (d.buddyUser) linked[d.buddyUser.id] = d.role
+    }
+    namedDefaults.value = named
+    linkedDefaults.value = linked
+    // Prefill each row's role picker with its saved default, if any, so it's clear what's
+    // currently saved and "Apply to all dives" can reuse it without re-selecting.
+    for (const name of buddies.value) {
+      namedRoleSelections.value[name] = named[name] ?? namedRoleSelections.value[name] ?? ''
+    }
+    for (const buddy of linkedBuddies.value) {
+      linkedRoleSelections.value[buddy.id] =
+        linked[buddy.id] ?? linkedRoleSelections.value[buddy.id] ?? ''
+    }
   } catch (err) {
     console.error('Failed to load buddies:', err)
   } finally {
     loading.value = false
+  }
+}
+
+const saveNamedDefault = async (name: string) => {
+  const role = namedRoleSelections.value[name] || null
+  savingNamedDefault.value = name
+  try {
+    await putWithToken(`/v1/dives/buddies/${encodeURIComponent(name)}/default-role`, { role })
+    if (role) {
+      namedDefaults.value = { ...namedDefaults.value, [name]: role }
+    } else {
+      const rest = { ...namedDefaults.value }
+      delete rest[name]
+      namedDefaults.value = rest
+    }
+    toast.success(
+      role
+        ? `"${name}" will default to ${BUDDY_ROLE_LABELS[role]} on future dives`
+        : `Cleared "${name}"'s default role`,
+    )
+  } catch (err) {
+    console.error('Failed to save named buddy default role:', err)
+    toast.error(`Failed to save default: ${extractErrorDetail(err)}`)
+  } finally {
+    savingNamedDefault.value = null
+  }
+}
+
+const saveLinkedDefault = async (buddy: User) => {
+  const role = linkedRoleSelections.value[buddy.id] || null
+  savingLinkedDefault.value = buddy.id
+  try {
+    await putWithToken(`/v1/dives/buddies/users/${buddy.id}/default-role`, { role })
+    if (role) {
+      linkedDefaults.value = { ...linkedDefaults.value, [buddy.id]: role }
+    } else {
+      const rest = { ...linkedDefaults.value }
+      delete rest[buddy.id]
+      linkedDefaults.value = rest
+    }
+    toast.success(
+      role
+        ? `"${buddy.name}" will default to ${BUDDY_ROLE_LABELS[role]} on future dives`
+        : `Cleared "${buddy.name}"'s default role`,
+    )
+  } catch (err) {
+    console.error('Failed to save linked buddy default role:', err)
+    toast.error(`Failed to save default: ${extractErrorDetail(err)}`)
+  } finally {
+    savingLinkedDefault.value = null
   }
 }
 

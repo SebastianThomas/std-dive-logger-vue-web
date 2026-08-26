@@ -187,6 +187,7 @@ const id = ref<number | null>(null)
 const manufacturerId = ref<number | null>(null)
 const serialNumber = ref<string>('')
 const customIdentifier = ref<string>('')
+const ccrUnitId = ref<number | null>(null)
 
 const isFormValid = computed(() => {
   return manufacturerId.value !== null && serialNumber.value.trim() !== ''
@@ -220,6 +221,7 @@ const resetValue = (computer?: DiveComputer) => {
   manufacturerId.value = computer?.manufacturer.id ?? null
   serialNumber.value = computer?.serialNumber ?? ''
   customIdentifier.value = computer?.customIdentifier ?? ''
+  ccrUnitId.value = computer?.ccrUnitId ?? null
 }
 
 const openCreateModal = () => {
@@ -280,6 +282,9 @@ const saveDiveComputer = async () => {
       }
       await putWithToken(`/v1/computers/${id.value}`, {
         customIdentifier: customIdentifier.value,
+        // The backend treats an absent/null ccrUnitId as "clear the link" - always echo the
+        // current value back so a plain rename can't silently unlink the unit.
+        ccrUnitId: ccrUnitId.value,
       })
     }
     closeModal()

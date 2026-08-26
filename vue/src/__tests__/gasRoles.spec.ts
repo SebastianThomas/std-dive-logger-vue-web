@@ -137,6 +137,39 @@ describe('computeGasList', () => {
     ])
   })
 
+  it('drops mode-less samples from a computer that DOES tag mode elsewhere in the same dive, rather than showing them as spurious extra unlabeled entries', () => {
+    // Reproduces a real reported case: a CCR handset ("Perdix 2") tags mode reliably on most
+    // samples (contributing a real "21/0 Diluent" entry) but has a few mode-less gaps - some at
+    // the *same* composition (21/0) and some at a slightly different one (23/0, e.g. sensor
+    // noise during the gap) - both used to show up as spurious separate unlabeled entries. A
+    // second, genuinely mode-less bailout computer's own reading must still show up normally.
+    const handset = profile(
+      [
+        measurement(1, 0, gas(0.21), undefined, 20, 'CC'),
+        measurement(2, 30_000, gas(0.21), undefined, 20, 'CC'),
+        measurement(3, 60_000, gas(0.21)), // mode-less gap, same composition
+        measurement(4, 90_000, gas(0.23)), // mode-less gap, drifted composition
+      ],
+      'Perdix 2',
+    )
+    const bailoutComputer = profile(
+      [measurement(5, 0, gas(0.21))], // never tags mode at all
+      'Liberty Sidemount',
+    )
+
+    const result = computeGasList([handset, bailoutComputer], true)
+
+    expect(result).toHaveLength(2)
+    expect(result.every((r) => r.roleLabel !== null)).toBe(false)
+    const unlabeled = result.filter((r) => r.roleLabel === null)
+    expect(unlabeled).toHaveLength(1)
+    expect(unlabeled[0]?.contributingComputers.map((c) => c.customIdentifier)).toEqual([
+      'Liberty Sidemount',
+    ])
+    const diluent = result.find((r) => r.role === 'diluent')
+    expect(diluent?.gas).toEqual(gas(0.21))
+  })
+
   it('deduplicates by composition across profiles', () => {
     const profiles = [
       profile([measurement(1, 0, gas(0.21))]),

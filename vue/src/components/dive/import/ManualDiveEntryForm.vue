@@ -30,7 +30,11 @@
 
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium">Dive Site</label>
-        <DiveSiteSearch placeholder="Search by name..." @selected="onSiteSelected" />
+        <DiveSiteSearch
+          placeholder="Search by name..."
+          @selected="onSiteSelected"
+          @update:search-term="(value) => (typedSiteName = value)"
+        />
         <button
           type="button"
           class="self-start text-xs text-blue-600 hover:underline"
@@ -110,6 +114,7 @@
 
     <DiveSiteSelector
       v-if="showSiteSelector"
+      :initial-name="typedSiteName"
       @site-selected="onSiteChosenFromSelector"
       @site-created="onSiteChosenFromSelector"
       @close="showSiteSelector = false"
@@ -137,6 +142,10 @@ const submitting = ref(false)
 
 const selectedSite = ref<DiveSite | null>(null)
 const showSiteSelector = ref(false)
+/** Mirrors whatever the diver has typed into the search box above, so opening the "create new
+ * site" fallback (see the "Can't find it?" link below) starts pre-filled with it instead of
+ * making them retype the name they already entered. */
+const typedSiteName = ref('')
 const diveIdentifier = ref('')
 const startTimeLocal = ref('')
 const maxDepth = ref<number | null>(null)

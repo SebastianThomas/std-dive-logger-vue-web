@@ -75,6 +75,21 @@ function measurementRole(measurement: { mode?: 'OC' | 'CC' }): GasRole | null {
 }
 
 export function computeGasList(profiles: DiveProfile[], isCcr: boolean): GasListEntry[] {
+  // A profile that tags mode on at least one sample is a mode-tracking computer - any OTHER
+  // sample of its own that comes back mode-less is far more likely a parsing/tracking gap (e.g.
+  // a calibration/transition moment) than a genuinely separate "unknown role" reading, so those
+  // gaps are dropped rather than shown as spurious extra entries alongside the real ones. A
+  // computer that never tags mode at all (e.g. a plain OC bailout computer with no CC/OC concept)
+  // is unaffected - all of its samples still show up as unlabeled entries, same as before.
+  const modeTrackingProfiles = new Set<DiveProfile>()
+  if (isCcr) {
+    for (const profile of profiles) {
+      if (profile.measurements.some((m) => measurementRole(m.measurement) !== null)) {
+        modeTrackingProfiles.add(profile)
+      }
+    }
+  }
+
   // Deduplicate by composition + role (not description) - the same gas breathed via different
   // profiles/computers can have differently-worded descriptions, but it's still one gas; a
   // composition breathed as both diluent and bailout is two entries, not a merged/ambiguous one.
@@ -97,6 +112,8 @@ export function computeGasList(profiles: DiveProfile[], isCcr: boolean): GasList
       if (!gas || measurement.depth <= 0) continue
 
       const role = isCcr ? measurementRole(measurement) : null
+      if (role === null && modeTrackingProfiles.has(profile)) continue
+
       const compositionKey = `${roundToPercent(gas.o2)}-${roundToPercent(gas.n2)}-${roundToPercent(gas.he)}`
       const key = `${compositionKey}-${role ?? 'none'}`
 

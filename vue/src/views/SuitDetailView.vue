@@ -15,7 +15,7 @@
           <h1 class="text-2xl font-bold">{{ displayName }}</h1>
         </div>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          {{ SUIT_TYPE_LABELS[suit.type] }}<span v-if="suit.thickness"> &middot; {{ suit.thickness }} mm</span>
+          {{ suitTypeLabel(suit.type) }}<span v-if="suit.thickness"> &middot; {{ suit.thickness }} mm</span>
         </p>
 
         <div class="grid grid-cols-3 gap-3 text-center">
@@ -58,7 +58,7 @@ import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { formatDate } from '@/lib/utils/timeUtils'
 import { useEntityDiveStats } from '@/composables/useEntityDiveStats'
-import { SUIT_TYPE_LABELS, type Suit } from '@/lib/types/dive'
+import { suitTypeLabel, type Suit } from '@/lib/types/dive'
 
 const route = useRoute()
 const { getWithToken } = useApi()
@@ -74,7 +74,7 @@ const suitId = () => route.params.suitId as string
 // column. Falls back to the formatted type when notes is empty, same as those two components.
 const displayName = computed(() => {
   const notes = suit.value?.notes?.trim()
-  return notes || (suit.value ? SUIT_TYPE_LABELS[suit.value.type] : '')
+  return notes || (suit.value ? suitTypeLabel(suit.value.type) : '')
 })
 
 const stats = useEntityDiveStats(() =>

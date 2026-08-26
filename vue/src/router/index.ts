@@ -61,19 +61,19 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/gear/suits/:suitId',
+      path: '/profile/equipment/suits/:suitId',
       name: 'SuitDetail',
       component: () => import('../views/SuitDetailView.vue'),
       meta: { requiresAuth: true },
     },
     {
-      path: '/gear/computers/:computerId',
+      path: '/profile/equipment/computers/:computerId',
       name: 'DiveComputerDetail',
       component: () => import('../views/DiveComputerDetailView.vue'),
       meta: { requiresAuth: true },
     },
     {
-      path: '/gear/ccr-units/:ccrUnitId',
+      path: '/profile/equipment/ccr-units/:ccrUnitId',
       name: 'CcrUnitDetail',
       component: () => import('../views/CcrUnitDetailView.vue'),
       meta: { requiresAuth: true },

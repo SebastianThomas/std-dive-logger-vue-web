@@ -32,12 +32,15 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import { onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { type User } from '@/lib/types/user'
+import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 
 defineProps<{ user: User | null }>()
 
 const route = useRoute()
+const router = useRouter()
 
 const tabs = [
   { name: 'Profile', label: 'Account' },
@@ -45,4 +48,29 @@ const tabs = [
   { name: 'ProfileBuddies', label: 'Buddies' },
   { name: 'ProfileCertifications', label: 'Certifications' },
 ] as const
+
+// Left/Right arrows and vim h/l move between adjacent tabs (clamped, not wrapping - these read
+// more like pages than a cyclic carousel). Ignored while typing (e.g. renaming a buddy, editing
+// certification notes) so a stray 'l' or 'h' keystroke doesn't unexpectedly navigate away.
+const moveTab = (delta: 1 | -1) => {
+  const currentIndex = tabs.findIndex((t) => t.name === route.name)
+  if (currentIndex === -1) return
+  const nextIndex = currentIndex + delta
+  const next = tabs[nextIndex]
+  if (next) router.push({ name: next.name })
+}
+
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.ctrlKey || event.metaKey || event.altKey || isTypingTarget(event.target)) return
+  if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'h') {
+    event.preventDefault()
+    moveTab(-1)
+  } else if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'l') {
+    event.preventDefault()
+    moveTab(1)
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 </script>
