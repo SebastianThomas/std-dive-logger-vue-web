@@ -117,6 +117,42 @@
               <DiveSiteMapPicker @select="onMapCoordSelect" />
             </div>
           </div>
+
+          <!-- New site: water type is required. -->
+          <div v-if="isCreatingNew">
+            <label class="block text-sm font-medium mb-1">
+              Water type <span class="text-red-500">*</span>
+            </label>
+            <select
+              v-model="newSiteWaterType"
+              class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              required
+            >
+              <option :value="null" disabled>Select…</option>
+              <option v-for="wt in WATER_TYPES" :key="wt" :value="wt">
+                {{ WATER_TYPE_LABELS[wt] }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Existing site with no water type: optional "help improve" nudge. -->
+          <div
+            v-else-if="selectedSite.waterType == null"
+            class="rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50/60 dark:bg-sky-950/30 p-3"
+          >
+            <label class="block text-sm font-medium mb-1">
+              This site has no water type yet — add one? (optional)
+            </label>
+            <select
+              v-model="suggestWaterType"
+              class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            >
+              <option :value="null">Leave unset</option>
+              <option v-for="wt in WATER_TYPES" :key="wt" :value="wt">
+                {{ WATER_TYPE_LABELS[wt] }}
+              </option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -144,7 +180,7 @@
           <button
             v-if="selectedSite && (!isCreatingNew || (mapLat !== null && mapLon !== null))"
             type="button"
-            :disabled="loading"
+            :disabled="loading || (isCreatingNew && newSiteWaterType === null)"
             @click="confirmSelection"
             class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
@@ -172,7 +208,7 @@ import DiveSiteSearch from '@/components/DiveSiteSearch.vue'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
 import { toast } from 'vue-sonner'
-import type { DiveSite } from '@/lib/types/dive'
+import { WATER_TYPE_LABELS, WATER_TYPES, type DiveSite, type WaterType } from '@/lib/types/dive'
 import type { MapCoords } from '@/components/DiveSiteMapPicker.vue'
 
 interface Props {
@@ -198,6 +234,9 @@ const isCreatingNew = ref(false)
 const mapLat = ref<number | null>(null)
 const mapLon = ref<number | null>(null)
 const loading = ref(false)
+/** Required for a brand-new site; optional "help improve" pick for an existing one with none. */
+const newSiteWaterType = ref<WaterType | null>(null)
+const suggestWaterType = ref<WaterType | null>(null)
 
 const { postWithToken } = useApi()
 
@@ -245,10 +284,15 @@ const confirmSelection = async () => {
   }
 
   if (isCreatingNew.value) {
+    if (newSiteWaterType.value === null) {
+      toast.error('Please pick the site’s water type.')
+      return
+    }
     const body = {
       name: selectedSite.value.name,
       lat: mapLat.value,
       lon: mapLon.value,
+      waterType: newSiteWaterType.value,
     }
 
     loading.value = true
@@ -264,6 +308,17 @@ const confirmSelection = async () => {
       loading.value = false
     }
   } else {
+    // Best-effort "help improve" nudge - never blocks selecting the site.
+    if (suggestWaterType.value !== null && selectedSite.value.id) {
+      try {
+        await postWithToken<DiveSite>(`/v1/dives/sites/${selectedSite.value.id}/water-type`, {
+          waterType: suggestWaterType.value,
+        })
+        selectedSite.value = { ...selectedSite.value, waterType: suggestWaterType.value }
+      } catch (err) {
+        console.error('Failed to set water type for site:', err)
+      }
+    }
     emit('site-selected', selectedSite.value)
   }
 }

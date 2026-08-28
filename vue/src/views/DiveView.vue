@@ -458,7 +458,7 @@
           dive.configuration ||
           dive.visibility?.feeling ||
           hasGasConsumption ||
-          dive.waterType ||
+          effectiveWaterType ||
           dive.current
         "
       >
@@ -506,8 +506,11 @@
           <span class="capitalize">{{ dive.visibility.feeling.toLowerCase() }}</span>
           <span v-if="dive.visibility.meters != null"> &middot; {{ dive.visibility.meters }} m</span>
         </InfoCard>
-        <InfoCard v-if="dive.waterType" title="Water Type">
-          <span>{{ WATER_TYPE_LABELS[dive.waterType] }}</span>
+        <InfoCard v-if="effectiveWaterType" title="Water Type">
+          <span>{{ WATER_TYPE_LABELS[effectiveWaterType] }}</span>
+          <span v-if="!dive.waterType" class="text-gray-400 dark:text-gray-500">
+            &middot; site default
+          </span>
         </InfoCard>
         <InfoCard v-if="dive.current" title="Current">
           <span v-if="dive.current.feeling != null">{{ dive.current.feeling }} / 5</span>
@@ -780,6 +783,11 @@ const profilesWithSurfacingGf = computed(
   () =>
     dive.value?.profiles.filter((p) => p.summary?.endN2 !== undefined && !isGaugeModeProfile(p)) ??
     [],
+)
+
+// Water type is a dive-site property; a dive may carry its own override that wins over the site's.
+const effectiveWaterType = computed(
+  () => dive.value?.waterType ?? dive.value?.site?.waterType ?? null,
 )
 
 const hasGasConsumption = computed(() => {

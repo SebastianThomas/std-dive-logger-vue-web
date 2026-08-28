@@ -52,6 +52,22 @@
           Selected: {{ modelValue.diveSite.name }} ({{ modelValue.diveSite.latitude.toFixed(5) }},
           {{ modelValue.diveSite.longitude.toFixed(5) }})
         </p>
+        <div v-if="modelValue.diveSite && !modelValue.diveSite.id" class="mt-2">
+          <label for="new-site-water-type" class="block mb-1 text-sm font-medium">
+            New dive site — water type <span class="text-red-500">*</span>
+          </label>
+          <select
+            id="new-site-water-type"
+            :value="modelValue.diveSite.waterType ?? ''"
+            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            @change="updateNewSiteWaterType(($event.target as HTMLSelectElement).value)"
+          >
+            <option value="" disabled>Select…</option>
+            <option v-for="wt in WATER_TYPES" :key="wt" :value="wt">
+              {{ WATER_TYPE_LABELS[wt] }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <!-- Dive Buddies -->
@@ -250,14 +266,7 @@
            not pre-created on every dive, so this fieldset always renders rather than being gated
            on an already-non-null value. -->
       <fieldset id="backfill-water-type" class="border rounded p-4">
-        <legend class="font-medium mb-3">
-          Water Type &amp; Current
-          <BackfillHint
-            v-if="backfillPointAt.has('WATER_TYPE')"
-            :prominent="backfillProminent"
-            @dismiss="emit('dismiss-backfill-field', 'WATER_TYPE')"
-          />
-        </legend>
+        <legend class="font-medium mb-3">Water Type &amp; Current</legend>
         <div class="space-y-3">
           <div>
             <label for="water-type" class="block mb-2">Water Type</label>
@@ -946,6 +955,8 @@ import {
   CYLINDER_ROLE_LABELS,
   CCR_CYLINDER_ROLES,
   BUDDY_ROLE_LABELS,
+  WATER_TYPE_LABELS,
+  WATER_TYPES,
 } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
 import type { DiveBackfillMissingField } from '@/lib/types/dive'
@@ -1009,12 +1020,7 @@ const emit = defineEmits<{
 const backfillPointAt = computed<Set<DiveBackfillMissingField>>(() => {
   const outstanding = props.backfillOutstanding ?? []
   if (!outstanding.length) return new Set()
-  const stillEmpty = new Set(
-    missingBackfillFields({
-      ...props.modelValue,
-      siteWaterType: props.modelValue.diveSite?.waterType ?? null,
-    }),
-  )
+  const stillEmpty = new Set(missingBackfillFields(props.modelValue))
   return new Set(outstanding.filter((f) => stillEmpty.has(f)))
 })
 
@@ -1071,15 +1077,34 @@ const addBackfillObject = (field: 'visibility' | 'gasConsumption') => {
   }
 }
 
-const updateSite = (name: string, lat: number, lon: number) => {
+const updateSite = (
+  name: string,
+  lat: number,
+  lon: number,
+  extra?: Partial<DiveSite>,
+) => {
   emit('update:modelValue', {
     ...props.modelValue,
-    diveSite: { name, latitude: lat, longitude: lon },
+    diveSite: { name, latitude: lat, longitude: lon, ...extra },
   })
 }
 
 const onSiteSelected = (site: DiveSite) => {
-  updateSite(site.name, site.latitude, site.longitude)
+  updateSite(site.name, site.latitude, site.longitude, {
+    id: site.id,
+    waterType: site.waterType,
+  })
+}
+
+const updateNewSiteWaterType = (value: string) => {
+  if (!props.modelValue.diveSite) return
+  emit('update:modelValue', {
+    ...props.modelValue,
+    diveSite: {
+      ...props.modelValue.diveSite,
+      waterType: value ? (value as WaterType) : null,
+    },
+  })
 }
 
 const handleMapClick = (coords: { lat: number; lon: number }) => {

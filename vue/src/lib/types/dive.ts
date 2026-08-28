@@ -135,6 +135,8 @@ export type Visibility = {
 
 export type WaterType = 'SALT' | 'FRESH' | 'BRACKISH'
 
+export const WATER_TYPES: WaterType[] = ['SALT', 'FRESH', 'BRACKISH']
+
 export const WATER_TYPE_LABELS: Record<WaterType, string> = {
   SALT: 'Salt',
   FRESH: 'Fresh',
@@ -366,12 +368,7 @@ export type DiveLeader = {
 
 /** Mirrors the backend `DiveBackfillField` enum - one per checklist field the backfill guide
  * nudges the user to fill in. Extend this whenever the backend enum grows. */
-export type DiveBackfillMissingField =
-  | 'VISIBILITY'
-  | 'GAS_CONSUMPTION'
-  | 'WATER_TYPE'
-  | 'LEADER'
-  | 'NOTES'
+export type DiveBackfillMissingField = 'VISIBILITY' | 'GAS_CONSUMPTION' | 'LEADER' | 'NOTES'
 
 export type DiveBackfillStatus = {
   diveId: number

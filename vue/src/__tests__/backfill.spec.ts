@@ -3,7 +3,6 @@ import {
   missingBackfillFields,
   outstandingBackfillFields,
   isFullyDismissed,
-  waterTypeSites,
   ALL_BACKFILL_FIELDS,
 } from '@/lib/dive/backfill'
 import type { BackfillFieldSource } from '@/lib/dive/backfill'
@@ -18,7 +17,6 @@ describe('missingBackfillFields', () => {
     const full: BackfillFieldSource = {
       notes: 'Great viz, hit the wall at 30m',
       visibility: { meters: 20, description: null, feeling: 'HIGH' },
-      waterType: 'SALT',
       gasConsumption: { sacBar: 0.6, rmvLiters: 14, totalLiters: 1800 },
       leaderSelfExplicit: true,
     }
@@ -29,7 +27,6 @@ describe('missingBackfillFields', () => {
     const src: BackfillFieldSource = {
       notes: '   ',
       visibility: { meters: null, description: '  ', feeling: null },
-      waterType: 'FRESH',
       gasConsumption: { sacBar: 1, rmvLiters: 0, totalLiters: 0 },
       leaderNamedBuddyId: 7,
     }
@@ -82,19 +79,5 @@ describe('outstandingBackfillFields / isFullyDismissed', () => {
     expect(isFullyDismissed(status(['NOTES', 'LEADER'], ['NOTES']))).toBe(false)
     expect(isFullyDismissed(status([], []))).toBe(false)
     expect(isFullyDismissed(null)).toBe(false)
-  })
-
-  it('groups water-type gaps by site, most dives first, dismissed gaps excluded', () => {
-    const q = [
-      status(['WATER_TYPE', 'NOTES'], [], { siteId: 10, siteName: 'Lake' }),
-      status(['WATER_TYPE'], [], { siteId: 10, siteName: 'Lake' }),
-      status(['WATER_TYPE'], ['WATER_TYPE'], { siteId: 10, siteName: 'Lake' }), // dismissed - skip
-      status(['WATER_TYPE'], [], { siteId: 20, siteName: 'Reef' }),
-      status(['NOTES'], [], { siteId: 30, siteName: 'Quarry' }), // no water-type gap - skip
-    ]
-    expect(waterTypeSites(q)).toEqual([
-      { siteId: 10, siteName: 'Lake', diveCount: 2 },
-      { siteId: 20, siteName: 'Reef', diveCount: 1 },
-    ])
   })
 })

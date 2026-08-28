@@ -4,7 +4,6 @@ import type { DiveBackfillMissingField, DiveBackfillStatus } from '@/lib/types/d
 export const BACKFILL_FIELD_LABELS: Record<DiveBackfillMissingField, string> = {
   VISIBILITY: 'Visibility',
   GAS_CONSUMPTION: 'Gas Consumption',
-  WATER_TYPE: 'Water Type & Current',
   LEADER: 'Dive Leader',
   NOTES: 'Notes',
 }
@@ -17,7 +16,6 @@ export const BACKFILL_FIELD_LABELS: Record<DiveBackfillMissingField, string> = {
 export const BACKFILL_FIELD_ANCHORS: Record<DiveBackfillMissingField, string> = {
   VISIBILITY: 'backfill-visibility',
   GAS_CONSUMPTION: 'backfill-gas-consumption',
-  WATER_TYPE: 'backfill-water-type',
   LEADER: 'dive-leader',
   NOTES: 'backfill-notes',
 }
@@ -25,7 +23,6 @@ export const BACKFILL_FIELD_ANCHORS: Record<DiveBackfillMissingField, string> = 
 export const ALL_BACKFILL_FIELDS: DiveBackfillMissingField[] = [
   'VISIBILITY',
   'GAS_CONSUMPTION',
-  'WATER_TYPE',
   'LEADER',
   'NOTES',
 ]
@@ -38,9 +35,6 @@ export type BackfillFieldSource = {
     description?: string | null
     feeling?: unknown
   } | null
-  waterType?: unknown | null
-  /** The dive site's own water type - satisfies the gap even when the dive has no override. */
-  siteWaterType?: unknown | null
   gasConsumption?: {
     sacBar?: number | null
     rmvLiters?: number | null
@@ -71,8 +65,6 @@ export function missingBackfillFields(src: BackfillFieldSource): DiveBackfillMis
   const gasEmpty = !gas || (!gas.sacBar && !gas.rmvLiters && !gas.totalLiters)
   if (gasEmpty) missing.push('GAS_CONSUMPTION')
 
-  if (src.waterType == null && src.siteWaterType == null) missing.push('WATER_TYPE')
-
   const leaderUnset =
     src.leaderNamedBuddyId == null &&
     src.leaderBuddyDiveId == null &&
@@ -101,29 +93,3 @@ export function isFullyDismissed(
   )
 }
 
-export type WaterTypeSite = { siteId: number; siteName: string; diveCount: number }
-
-/**
- * Sites that have active (non-dismissed) dives still missing water type, with a count each - powers
- * the "set water type by site" bulk action (a dive site's water is a fixed physical property, so
- * one choice resolves the gap for every dive there at once).
- */
-export function waterTypeSites(queue: DiveBackfillStatus[]): WaterTypeSite[] {
-  const bySite = new Map<number, WaterTypeSite>()
-  for (const status of queue) {
-    if (!outstandingBackfillFields(status).includes('WATER_TYPE')) continue
-    const entry = bySite.get(status.siteId)
-    if (entry) {
-      entry.diveCount += 1
-    } else {
-      bySite.set(status.siteId, {
-        siteId: status.siteId,
-        siteName: status.siteName,
-        diveCount: 1,
-      })
-    }
-  }
-  return [...bySite.values()].sort(
-    (a, b) => b.diveCount - a.diveCount || a.siteName.localeCompare(b.siteName),
-  )
-}

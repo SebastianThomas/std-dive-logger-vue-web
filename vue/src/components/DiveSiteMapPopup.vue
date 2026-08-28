@@ -19,6 +19,25 @@
       Site details
     </router-link>
 
+    <p v-if="waterType" class="text-xs mt-1">
+      <span class="font-medium">Water:</span> {{ WATER_TYPE_LABELS[waterType] }}
+    </p>
+    <div v-else class="mt-1 text-xs">
+      <span class="block mb-1 text-gray-600 dark:text-gray-300">Help improve — water type?</span>
+      <span class="flex flex-wrap gap-1">
+        <button
+          v-for="wt in WATER_TYPES"
+          :key="wt"
+          type="button"
+          :disabled="savingWaterType"
+          class="px-1.5 py-0.5 rounded border border-sky-300 hover:bg-sky-100 disabled:opacity-50"
+          @click="setWaterType(wt)"
+        >
+          {{ WATER_TYPE_LABELS[wt] }}
+        </button>
+      </span>
+    </div>
+
     <!-- Compact: a single fixed-height link to the filtered dive list, not an inline (and
          potentially long) per-dive list - keeps the popup's total height predictable regardless
          of how many dives this site has, since a compact popup is only used where the surrounding
@@ -50,10 +69,12 @@
 </template>
 
 <script setup lang="ts">
-import type { DiveSite } from '@/lib/types/dive'
+import { WATER_TYPE_LABELS, WATER_TYPES, type DiveSite, type WaterType } from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
 import { googleMapsUrl } from '@/lib/map/googleMapsUrl'
 import { computed, onMounted, ref } from 'vue'
+import { toast } from 'vue-sonner'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 
 interface DiveInfo {
   id: number
@@ -72,9 +93,29 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const { getWithToken } = useApi()
+const emit = defineEmits<{ 'water-type-set': [waterType: WaterType] }>()
+const { getWithToken, postWithToken } = useApi()
 
 const mapsUrl = computed(() => googleMapsUrl(props.site.latitude, props.site.longitude))
+
+// Locally tracked so the popup reflects a quick-set immediately without waiting for a parent refetch.
+const localWaterType = ref<WaterType | null>(props.site.waterType ?? null)
+const waterType = computed(() => localWaterType.value ?? props.site.waterType ?? null)
+const savingWaterType = ref(false)
+
+const setWaterType = async (wt: WaterType) => {
+  savingWaterType.value = true
+  try {
+    await postWithToken<DiveSite>(`/v1/dives/sites/${props.site.id}/water-type`, { waterType: wt })
+    localWaterType.value = wt
+    emit('water-type-set', wt)
+    toast.success(`Water type set to ${WATER_TYPE_LABELS[wt]}. Thanks!`)
+  } catch (err) {
+    toast.error(`Couldn't set the water type: ${extractErrorDetail(err)}`)
+  } finally {
+    savingWaterType.value = false
+  }
+}
 
 const fetchedDiveInfo = ref<DiveInfo[] | null>(null)
 const loading = ref(false)

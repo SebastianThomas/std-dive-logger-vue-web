@@ -30,6 +30,27 @@
         </router-link>
 
         <template v-if="!editing">
+          <p v-if="site.waterType" class="text-sm">
+            <span class="font-medium">Water:</span> {{ WATER_TYPE_LABELS[site.waterType] }}
+          </p>
+          <div
+            v-else-if="site.canEdit"
+            class="rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50/60 dark:bg-sky-950/30 p-3 space-y-2"
+          >
+            <p class="text-sm font-medium">Help improve this site — what water type is it?</p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="wt in WATER_TYPES"
+                :key="wt"
+                type="button"
+                :disabled="savingWaterType"
+                class="px-2.5 py-1 text-sm rounded border border-sky-300 dark:border-sky-700 hover:bg-sky-100 dark:hover:bg-sky-900 disabled:opacity-50"
+                @click="quickSetWaterType(wt)"
+              >
+                {{ WATER_TYPE_LABELS[wt] }}
+              </button>
+            </div>
+          </div>
           <p v-if="site.type" class="text-sm">
             <span class="font-medium">Type:</span> {{ DIVE_SITE_TYPE_LABELS[site.type] }}
           </p>
@@ -69,6 +90,19 @@
         </template>
 
         <form v-else class="space-y-3" @submit.prevent="save">
+          <div>
+            <label class="block text-sm font-medium mb-1">Water type <span class="text-red-500">*</span></label>
+            <select
+              v-model="form.waterType"
+              class="w-full rounded border px-2 py-1.5 dark:bg-gray-700"
+              required
+            >
+              <option :value="null" disabled>Select…</option>
+              <option v-for="wt in WATER_TYPES" :key="wt" :value="wt">
+                {{ WATER_TYPE_LABELS[wt] }}
+              </option>
+            </select>
+          </div>
           <div>
             <label class="block text-sm font-medium mb-1">Type</label>
             <select v-model="form.type" class="w-full rounded border px-2 py-1.5 dark:bg-gray-700">
@@ -165,25 +199,35 @@ import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { toast } from 'vue-sonner'
-import { DIVE_SITE_TYPE_LABELS, type DiveSite, type DiveSiteType } from '@/lib/types/dive'
+import {
+  DIVE_SITE_TYPE_LABELS,
+  WATER_TYPE_LABELS,
+  WATER_TYPES,
+  type DiveSite,
+  type DiveSiteType,
+  type WaterType,
+} from '@/lib/types/dive'
 
 const route = useRoute()
-const { getWithToken, putWithToken } = useApi()
+const { getWithToken, putWithToken, postWithToken } = useApi()
 
 const site = ref<DiveSite | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const editing = ref(false)
 const saving = ref(false)
+const savingWaterType = ref(false)
 
 const form = ref<{
   type: DiveSiteType | null
+  waterType: WaterType | null
   countryRegion: string
   maxDepth: number | null
   description: string
   links: { url: string; label: string }[]
 }>({
   type: null,
+  waterType: null,
   countryRegion: '',
   maxDepth: null,
   description: '',
@@ -209,6 +253,7 @@ const startEditing = () => {
   if (!site.value) return
   form.value = {
     type: site.value.type ?? null,
+    waterType: site.value.waterType ?? null,
     countryRegion: site.value.countryRegion ?? '',
     maxDepth: site.value.maxDepth ?? null,
     description: site.value.description ?? '',
@@ -218,6 +263,10 @@ const startEditing = () => {
 }
 
 const save = async () => {
+  if (!form.value.waterType) {
+    toast.error('Please pick a water type before saving.')
+    return
+  }
   saving.value = true
   try {
     const res = await putWithToken<DiveSite>(`/v1/dives/sites/${siteId()}`, {
@@ -225,6 +274,7 @@ const save = async () => {
       countryRegion: form.value.countryRegion || null,
       maxDepth: form.value.maxDepth,
       type: form.value.type,
+      waterType: form.value.waterType,
       links: form.value.links
         .filter((l) => l.url.trim())
         .map((l) => ({ url: l.url.trim(), label: l.label.trim() || undefined })),
@@ -236,6 +286,21 @@ const save = async () => {
     toast.error(`Failed to update dive site: ${extractErrorDetail(err)}`)
   } finally {
     saving.value = false
+  }
+}
+
+const quickSetWaterType = async (waterType: WaterType) => {
+  savingWaterType.value = true
+  try {
+    const res = await postWithToken<DiveSite>(`/v1/dives/sites/${siteId()}/water-type`, {
+      waterType,
+    })
+    site.value = res.data
+    toast.success(`Water type set to ${WATER_TYPE_LABELS[waterType]}. Thanks!`)
+  } catch (err) {
+    toast.error(`Failed to set the water type: ${extractErrorDetail(err)}`)
+  } finally {
+    savingWaterType.value = false
   }
 }
 

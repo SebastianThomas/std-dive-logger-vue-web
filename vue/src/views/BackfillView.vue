@@ -94,46 +94,6 @@
             </template>
           </div>
 
-          <!-- Set water type by site: a dive site's water is a fixed physical property, so one
-               choice fills the gap for every dive there at once. -->
-          <div
-            v-if="waterSites.length"
-            class="rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50/60 dark:bg-sky-950/30 p-4 space-y-2"
-          >
-            <h2 class="font-semibold text-sm">Set water type by site</h2>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              Fills the Water Type gap for every one of your dives at a site in one go.
-            </p>
-            <div
-              v-for="s in waterSites"
-              :key="s.siteId"
-              class="flex flex-wrap items-center gap-2 text-sm"
-            >
-              <span class="min-w-0 flex-1 truncate">
-                {{ s.siteName }}
-                <span class="text-gray-400 dark:text-gray-500">
-                  · {{ s.diveCount }} {{ s.diveCount === 1 ? 'dive' : 'dives' }}
-                </span>
-              </span>
-              <select
-                v-model="waterChoice[s.siteId]"
-                class="p-1 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              >
-                <option :value="undefined" disabled>Water type…</option>
-                <option v-for="(label, wt) in WATER_TYPE_LABELS" :key="wt" :value="wt">
-                  {{ label }}
-                </option>
-              </select>
-              <button
-                class="px-2.5 py-1 rounded bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-50"
-                :disabled="busy || !waterChoice[s.siteId]"
-                @click="applyWaterType(s.siteId, s.siteName)"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-
           <!-- Next dive to fill in -->
           <div class="rounded-lg border-2 border-sky-300 dark:border-sky-700 p-4 space-y-3">
             <div class="flex items-center justify-between">
@@ -304,14 +264,8 @@ import {
   ALL_BACKFILL_FIELDS,
   outstandingBackfillFields,
   isFullyDismissed,
-  waterTypeSites,
 } from '@/lib/dive/backfill'
-import {
-  WATER_TYPE_LABELS,
-  type DiveBackfillMissingField,
-  type DiveBackfillStatus,
-  type WaterType,
-} from '@/lib/types/dive'
+import { type DiveBackfillMissingField, type DiveBackfillStatus } from '@/lib/types/dive'
 
 const { getWithToken, putWithToken, postWithToken } = useApi()
 
@@ -321,14 +275,11 @@ const busy = ref(false)
 const showDismissed = ref(false)
 const pendingBulk = ref<'all' | 'category' | null>(null)
 const bulkCategory = ref<DiveBackfillMissingField>('VISIBILITY')
-/** Per-site water-type choice for the "set water type by site" panel. */
-const waterChoice = ref<Record<number, WaterType>>({})
 
 const active = computed(() => queue.value.filter((s) => !isFullyDismissed(s)))
 const dismissedItems = computed(() => queue.value.filter((s) => isFullyDismissed(s)))
 const next = computed(() => active.value[0] ?? null)
 const rest = computed(() => active.value.slice(1))
-const waterSites = computed(() => waterTypeSites(queue.value))
 
 const outstandingFor = (status: DiveBackfillStatus) => outstandingBackfillFields(status)
 
@@ -424,25 +375,6 @@ const dismissCategoryEverywhere = async () => {
     toast.success(`Dismissed "${FIELD_LABELS[bulkCategory.value]}" on every dive.`)
   } catch (err) {
     toast.error(`Couldn't dismiss that category: ${extractErrorDetail(err)}`)
-  } finally {
-    busy.value = false
-  }
-}
-
-const applyWaterType = async (siteId: number, siteName: string) => {
-  const waterType = waterChoice.value[siteId]
-  if (!waterType) return
-  busy.value = true
-  try {
-    const res = await postWithToken<DiveBackfillStatus[]>('/v1/dives/backfill/water-type', {
-      siteId,
-      waterType,
-      onlyMissing: true,
-    })
-    queue.value = res.data ?? []
-    toast.success(`Set ${WATER_TYPE_LABELS[waterType]} water for your dives at ${siteName}.`)
-  } catch (err) {
-    toast.error(`Couldn't set the water type: ${extractErrorDetail(err)}`)
   } finally {
     busy.value = false
   }

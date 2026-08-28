@@ -297,8 +297,12 @@ const tryCreateNewSite = async (
     toast.error('Dive Site name cannot be empty.')
     return null
   }
+  if (!newSite?.waterType) {
+    toast.error('Pick a water type for the new dive site.')
+    return null
+  }
   try {
-    const newSiteData = { name, lat, lon }
+    const newSiteData = { name, lat, lon, waterType: newSite.waterType }
     const createdSite = await postWithToken<DiveSite>('/v1/dives/sites', newSiteData)
     const returned = createdSite.data
     if (!returned.id) {
@@ -310,6 +314,7 @@ const tryCreateNewSite = async (
       name: returned.name,
       latitude: returned.latitude,
       longitude: returned.longitude,
+      waterType: returned.waterType,
     }
   } catch (err) {
     console.error(err)
