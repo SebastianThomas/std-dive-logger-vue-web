@@ -274,11 +274,25 @@
                 )
               "
             >
-              <option value="">Unspecified</option>
+              <option value="">
+                {{
+                  modelValue.diveSite?.waterType
+                    ? `Use site default (${WATER_TYPE_LABELS[modelValue.diveSite.waterType]})`
+                    : 'Unspecified'
+                }}
+              </option>
               <option value="SALT">Salt</option>
               <option value="FRESH">Fresh</option>
               <option value="BRACKISH">Brackish</option>
             </select>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <span v-if="modelValue.diveSite?.waterType">
+                This dive site is normally
+                {{ WATER_TYPE_LABELS[modelValue.diveSite.waterType].toLowerCase() }} water — only set
+                a value here to override that for this dive.
+              </span>
+              <span v-else>Water type is usually set on the dive site, not per dive.</span>
+            </p>
           </div>
           <div>
             <label for="current-feeling" class="block mb-2">Current Strength (0-5)</label>
@@ -995,7 +1009,12 @@ const emit = defineEmits<{
 const backfillPointAt = computed<Set<DiveBackfillMissingField>>(() => {
   const outstanding = props.backfillOutstanding ?? []
   if (!outstanding.length) return new Set()
-  const stillEmpty = new Set(missingBackfillFields(props.modelValue))
+  const stillEmpty = new Set(
+    missingBackfillFields({
+      ...props.modelValue,
+      siteWaterType: props.modelValue.diveSite?.waterType ?? null,
+    }),
+  )
   return new Set(outstanding.filter((f) => stillEmpty.has(f)))
 })
 

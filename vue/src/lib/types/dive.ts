@@ -592,6 +592,8 @@ export type DiveSite = {
   countryRegion?: string | null
   maxDepth?: number | null
   type?: DiveSiteType | null
+  /** The site's water type - a physical property of the place. A dive may override it (Dive.waterType). */
+  waterType?: WaterType | null
   links?: DiveSiteLink[]
   canEdit?: boolean
 }

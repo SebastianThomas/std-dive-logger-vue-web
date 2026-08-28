@@ -39,6 +39,8 @@ export type BackfillFieldSource = {
     feeling?: unknown
   } | null
   waterType?: unknown | null
+  /** The dive site's own water type - satisfies the gap even when the dive has no override. */
+  siteWaterType?: unknown | null
   gasConsumption?: {
     sacBar?: number | null
     rmvLiters?: number | null
@@ -69,7 +71,7 @@ export function missingBackfillFields(src: BackfillFieldSource): DiveBackfillMis
   const gasEmpty = !gas || (!gas.sacBar && !gas.rmvLiters && !gas.totalLiters)
   if (gasEmpty) missing.push('GAS_CONSUMPTION')
 
-  if (src.waterType == null) missing.push('WATER_TYPE')
+  if (src.waterType == null && src.siteWaterType == null) missing.push('WATER_TYPE')
 
   const leaderUnset =
     src.leaderNamedBuddyId == null &&
