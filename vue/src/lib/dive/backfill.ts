@@ -98,3 +98,30 @@ export function isFullyDismissed(
     !!status && status.missingFields.length > 0 && outstandingBackfillFields(status).length === 0
   )
 }
+
+export type WaterTypeSite = { siteId: number; siteName: string; diveCount: number }
+
+/**
+ * Sites that have active (non-dismissed) dives still missing water type, with a count each - powers
+ * the "set water type by site" bulk action (a dive site's water is a fixed physical property, so
+ * one choice resolves the gap for every dive there at once).
+ */
+export function waterTypeSites(queue: DiveBackfillStatus[]): WaterTypeSite[] {
+  const bySite = new Map<number, WaterTypeSite>()
+  for (const status of queue) {
+    if (!outstandingBackfillFields(status).includes('WATER_TYPE')) continue
+    const entry = bySite.get(status.siteId)
+    if (entry) {
+      entry.diveCount += 1
+    } else {
+      bySite.set(status.siteId, {
+        siteId: status.siteId,
+        siteName: status.siteName,
+        diveCount: 1,
+      })
+    }
+  }
+  return [...bySite.values()].sort(
+    (a, b) => b.diveCount - a.diveCount || a.siteName.localeCompare(b.siteName),
+  )
+}

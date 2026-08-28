@@ -378,6 +378,8 @@ export type DiveBackfillStatus = {
   number: number
   diveIdentifier: string
   diveStart?: number | null
+  siteId: number
+  siteName: string
   /** Every checklist field this dive is still missing. */
   missingFields: DiveBackfillMissingField[]
   /** The subset the user has explicitly marked "no more info to add" (a per-(dive, reason) row). */
