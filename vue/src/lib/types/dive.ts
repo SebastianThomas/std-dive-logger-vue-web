@@ -126,9 +126,11 @@ export type DiveSummary = {
 export type VisibilityFeeling = 'HIGH' | 'AVERAGE' | 'LOW'
 
 export type Visibility = {
-  meters?: number
-  description?: string
-  feeling: VisibilityFeeling
+  meters?: number | null
+  description?: string | null
+  // Nullable on the backend (Visibility.EMPTY has a null feeling) - a sparsely-logged dive may
+  // have a visibility row with only a distance or note and no feeling.
+  feeling?: VisibilityFeeling | null
 }
 
 export type WaterType = 'SALT' | 'FRESH' | 'BRACKISH'
@@ -362,6 +364,8 @@ export type DiveLeader = {
   linkedDiveId?: number | null
 }
 
+/** Mirrors the backend `DiveBackfillField` enum - one per checklist field the backfill guide
+ * nudges the user to fill in. Extend this whenever the backend enum grows. */
 export type DiveBackfillMissingField =
   | 'VISIBILITY'
   | 'GAS_CONSUMPTION'
@@ -374,7 +378,10 @@ export type DiveBackfillStatus = {
   number: number
   diveIdentifier: string
   diveStart?: number | null
+  /** Every checklist field this dive is still missing. */
   missingFields: DiveBackfillMissingField[]
+  /** The subset the user has explicitly marked "no more info to add" (a per-(dive, reason) row). */
+  dismissedFields: DiveBackfillMissingField[]
 }
 
 export type Dive = {

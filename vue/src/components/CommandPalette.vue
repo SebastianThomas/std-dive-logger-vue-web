@@ -249,7 +249,7 @@ const commands = computed<Command[]>(() => {
       description: 'Fill in gaps on sparsely-logged dives',
       icon: '🧩',
       action: () => router.push({ name: 'Backfill' }),
-      keywords: ['backfill', 'missing', 'incomplete', 'gaps'],
+      keywords: ['backfill', 'missing', 'incomplete', 'gaps', 'dismiss', 'no more info'],
       category: 'navigation',
     },
     {

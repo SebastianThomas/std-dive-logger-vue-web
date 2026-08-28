@@ -98,7 +98,14 @@
       <!-- Dive leader: only already-saved buddies/linked dives are selectable here - a buddy just
            typed in this session has no id yet to reference until saved once. -->
       <div>
-        <label for="dive-leader" class="block mb-2 font-medium">Who Led This Dive?</label>
+        <label for="dive-leader" class="block mb-2 font-medium">
+          Who Led This Dive?
+          <BackfillHint
+            v-if="backfillPointAt.has('LEADER')"
+            :prominent="backfillProminent"
+            @dismiss="emit('dismiss-backfill-field', 'LEADER')"
+          />
+        </label>
         <select
           id="dive-leader"
           :value="leaderSelectValue"
@@ -156,8 +163,15 @@
       <slot />
 
       <!-- Notes -->
-      <div>
-        <label for="notes" class="block mb-2 font-medium">Notes</label>
+      <div id="backfill-notes">
+        <label for="notes" class="block mb-2 font-medium">
+          Notes
+          <BackfillHint
+            v-if="backfillPointAt.has('NOTES')"
+            :prominent="backfillProminent"
+            @dismiss="emit('dismiss-backfill-field', 'NOTES')"
+          />
+        </label>
         <textarea
           id="notes"
           :value="modelValue.notes ?? ''"
@@ -169,8 +183,15 @@
       </div>
 
       <!-- Visibility -->
-      <fieldset v-if="modelValue.visibility" class="border rounded p-4">
-        <legend class="font-medium mb-3">Visibility</legend>
+      <fieldset v-if="modelValue.visibility" id="backfill-visibility" class="border rounded p-4">
+        <legend class="font-medium mb-3">
+          Visibility
+          <BackfillHint
+            v-if="backfillPointAt.has('VISIBILITY')"
+            :prominent="backfillProminent"
+            @dismiss="emit('dismiss-backfill-field', 'VISIBILITY')"
+          />
+        </legend>
         <div class="space-y-3">
           <div>
             <label for="visibility-feeling" class="block mb-2">Feeling</label>
@@ -212,12 +233,31 @@
           </div>
         </div>
       </fieldset>
+      <!-- Backfill-flagged but no visibility row yet: offer to add one so there's somewhere to
+           enter it (the fieldset above only renders once the object exists). -->
+      <button
+        v-if="!modelValue.visibility && backfillPointAt.has('VISIBILITY')"
+        id="backfill-visibility"
+        type="button"
+        class="w-full text-left border-2 border-dashed border-amber-300 dark:border-amber-700 rounded p-3 text-sm text-amber-800 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+        @click="addBackfillObject('visibility')"
+      >
+        <i class="fa fa-plus mr-1.5" /> Add visibility details
+        <span class="text-xs opacity-70"> — or dismiss it below</span>
+      </button>
 
       <!-- Water Type & Current: unlike Visibility/GasConsumption, these are genuinely optional and
            not pre-created on every dive, so this fieldset always renders rather than being gated
            on an already-non-null value. -->
-      <fieldset class="border rounded p-4">
-        <legend class="font-medium mb-3">Water Type & Current</legend>
+      <fieldset id="backfill-water-type" class="border rounded p-4">
+        <legend class="font-medium mb-3">
+          Water Type &amp; Current
+          <BackfillHint
+            v-if="backfillPointAt.has('WATER_TYPE')"
+            :prominent="backfillProminent"
+            @dismiss="emit('dismiss-backfill-field', 'WATER_TYPE')"
+          />
+        </legend>
         <div class="space-y-3">
           <div>
             <label for="water-type" class="block mb-2">Water Type</label>
@@ -737,8 +777,15 @@
       <!-- Gas Consumption: whole-dive manually-entered SAC/RMV, placed right after Cylinders since
            that's the more precise per-cylinder alternative to this figure (see the RMV/Bailout
            RMV/O2/Diluent figures on the dive view page, computed from cylinders when tracked). -->
-      <fieldset v-if="modelValue.gasConsumption" class="border rounded p-4">
-        <legend class="font-medium mb-3">Gas Consumption</legend>
+      <fieldset v-if="modelValue.gasConsumption" id="backfill-gas-consumption" class="border rounded p-4">
+        <legend class="font-medium mb-3">
+          Gas Consumption
+          <BackfillHint
+            v-if="backfillPointAt.has('GAS_CONSUMPTION')"
+            :prominent="backfillProminent"
+            @dismiss="emit('dismiss-backfill-field', 'GAS_CONSUMPTION')"
+          />
+        </legend>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label for="sac-bar" class="block mb-2">SAC (bar/min)</label>
@@ -775,6 +822,17 @@
           </div>
         </div>
       </fieldset>
+      <!-- Backfill-flagged but no gas-consumption row yet - offer to add one. -->
+      <button
+        v-if="!modelValue.gasConsumption && backfillPointAt.has('GAS_CONSUMPTION')"
+        id="backfill-gas-consumption"
+        type="button"
+        class="w-full text-left border-2 border-dashed border-amber-300 dark:border-amber-700 rounded p-3 text-sm text-amber-800 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+        @click="addBackfillObject('gasConsumption')"
+      >
+        <i class="fa fa-plus mr-1.5" /> Add gas consumption
+        <span class="text-xs opacity-70"> — or dismiss it below</span>
+      </button>
     </form>
 
     <!-- Suit modal -->
@@ -876,8 +934,11 @@ import {
   BUDDY_ROLE_LABELS,
 } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
+import type { DiveBackfillMissingField } from '@/lib/types/dive'
 import { elapsedMinutesSeconds, epochFromElapsedMinutesSeconds } from '@/lib/utils/timeUtils'
 import { findGasMatchWindows, primaryProfile, type UsageWindow } from '@/lib/dive/cylinderUsageWindows'
+import { missingBackfillFields } from '@/lib/dive/backfill'
+import BackfillHint from '@/components/dive/edit/BackfillHint.vue'
 
 export interface EditableNamedBuddy {
   name: string
@@ -917,11 +978,26 @@ const props = defineProps<{
    * finding when the primary computer actually had this gas selected. Undefined/empty just means
    * no suggestions are offered - never required for the form to otherwise function. */
   profiles?: DiveProfile[]
+  /** Backfill gaps still outstanding for this dive (missing, not yet dismissed) - each one gets a
+   * pointer next to its field. Empty/undefined means no pointers. */
+  backfillOutstanding?: DiveBackfillMissingField[]
+  /** Prominent amber pointers (arrived from the Backfill guide) vs. slim, muted ones. */
+  backfillProminent?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: DiveFormData]
+  'dismiss-backfill-field': [field: DiveBackfillMissingField]
 }>()
+
+// Point at a field only while it's both flagged (outstanding) and still actually empty - so a
+// pointer clears the instant the user fills that field in, without a round-trip.
+const backfillPointAt = computed<Set<DiveBackfillMissingField>>(() => {
+  const outstanding = props.backfillOutstanding ?? []
+  if (!outstanding.length) return new Set()
+  const stillEmpty = new Set(missingBackfillFields(props.modelValue))
+  return new Set(outstanding.filter((f) => stillEmpty.has(f)))
+})
 
 const showMap = ref(false)
 const buddyInput = ref('')
@@ -963,6 +1039,17 @@ const formatSuitNotesPreview = (notes?: string) => {
 
 const updateField = <K extends keyof DiveFormData>(field: K, value: DiveFormData[K]) => {
   emit('update:modelValue', { ...props.modelValue, [field]: value })
+}
+
+// Seeds an empty object so the Visibility / Gas Consumption fieldset (which only renders once its
+// object is non-null) appears, giving a backfill-flagged dive somewhere to enter the value. An
+// all-empty object still counts as "missing" on the backend, so this never falsely completes a gap.
+const addBackfillObject = (field: 'visibility' | 'gasConsumption') => {
+  if (field === 'visibility') {
+    updateField('visibility', { meters: null, description: null, feeling: null })
+  } else {
+    updateField('gasConsumption', { sacBar: 0, rmvLiters: 0, totalLiters: 0 })
+  }
 }
 
 const updateSite = (name: string, lat: number, lon: number) => {

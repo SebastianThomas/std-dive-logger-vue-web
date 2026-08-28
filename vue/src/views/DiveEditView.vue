@@ -17,6 +17,14 @@
       </div>
 
       <div v-else class="flex-1 overflow-auto space-y-6">
+        <BackfillBanner
+          v-if="showBackfillBanner"
+          :outstanding="liveOutstanding"
+          :fully-dismissed="backfillFullyDismissed"
+          :prominent="fromBackfill"
+          @jump="jumpToField"
+          @restore="restoreBackfill"
+        />
         <EditDiveForm
           v-if="currentUserId && loadedDive"
           v-model="formData"
@@ -25,6 +33,9 @@
           :existing-buddy-dives="loadedDive?.buddiesDives"
           :dive-start="loadedDive.summary.start"
           :profiles="loadedDive.profiles"
+          :backfill-outstanding="liveOutstanding"
+          :backfill-prominent="fromBackfill"
+          @dismiss-backfill-field="dismissBackfillField"
         >
           <!-- Tags — placed between Buddies and Notes via the form's slot -->
           <div class="border rounded p-4">
@@ -53,7 +64,7 @@
         </EditDiveForm>
       </div>
 
-      <div class="mt-6 pt-4 border-t flex justify-end gap-3">
+      <div class="mt-6 pt-4 border-t flex flex-wrap justify-end gap-3">
         <button
           @click="safeBack"
           class="px-6 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600"
@@ -61,7 +72,16 @@
           Cancel
         </button>
         <button
-          @click="handleSubmit"
+          v-if="canOfferDismiss"
+          @click="handleSubmit(true)"
+          :disabled="submitting"
+          class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+          title="Save, then take this dive off the backfill list - nothing more to add"
+        >
+          {{ submitting ? 'Saving...' : 'Save & dismiss (no more info)' }}
+        </button>
+        <button
+          @click="handleSubmit(false)"
           :disabled="submitting"
           class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
         >
@@ -81,6 +101,7 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import EditDiveForm from '@/components/dive/edit/EditDiveForm.vue'
+import BackfillBanner from '@/components/dive/BackfillBanner.vue'
 import type {
   Dive,
   DiveSite,
@@ -91,9 +112,12 @@ import type {
   DiveConfiguration,
   TagDefinition,
   TeamTerminology,
+  DiveBackfillStatus,
+  DiveBackfillMissingField,
 } from '@/lib/types/dive'
 import type { EditableNamedBuddy } from '@/components/dive/edit/EditDiveForm.vue'
 import type { User } from '@/lib/types/user'
+import { missingBackfillFields, BACKFILL_FIELD_ANCHORS } from '@/lib/dive/backfill'
 import TagSelector from '@/components/dive/TagSelector.vue'
 import TagBadge from '@/components/dive/TagBadge.vue'
 
@@ -109,6 +133,13 @@ const myUserId = ref<number | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const submitting = ref(false)
+
+/** True when the user arrived here from the Backfill guide (?backfill=1) - drives the prominent,
+ * amber banner + pointers rather than the slim, always-on hints of a normal edit. */
+const fromBackfill = computed(() => route.query.backfill === '1')
+/** This dive's backfill status as last fetched - `missingFields` is recomputed live from the form
+ * for the pointers, but `dismissedFields` (what the user said "no info" to) only changes here. */
+const backfillStatus = ref<DiveBackfillStatus | null>(null)
 
 /**
  * Fetches the current user's own ID. Returns whether the fetch succeeded so callers can
@@ -230,6 +261,13 @@ const fetchDive = async () => {
     selectedTags.value = (dive.tags ?? []).filter((t) => !t.autoDetectRule)
     autoTags.value = (dive.tags ?? []).filter((t) => !!t.autoDetectRule)
     dismissedAutoTagIds.value = new Set()
+    // Backfill status for the in-form pointers / banner - non-fatal if it fails.
+    try {
+      const bf = await getWithToken<DiveBackfillStatus>(`/v1/dives/${diveId.value}/backfill`)
+      backfillStatus.value = bf.data
+    } catch (err) {
+      console.error('Failed to fetch backfill status', err)
+    }
   } catch (err) {
     error.value = 'Could not load dive data.'
     console.error(err)
@@ -335,7 +373,49 @@ const invalidCylinders = computed(
     ).length,
 )
 
-const handleSubmit = async () => {
+// Backfill gaps recomputed live from the form (so a pointer clears the moment its field is filled),
+// minus the ones the user has already marked "no info" for on this dive.
+const liveMissing = computed<DiveBackfillMissingField[]>(() => missingBackfillFields(formData.value))
+const liveOutstanding = computed<DiveBackfillMissingField[]>(() => {
+  const dismissed = backfillStatus.value?.dismissedFields ?? []
+  return liveMissing.value.filter((f) => !dismissed.includes(f))
+})
+const backfillFullyDismissed = computed(
+  () =>
+    liveOutstanding.value.length === 0 && (backfillStatus.value?.dismissedFields.length ?? 0) > 0,
+)
+const showBackfillBanner = computed(
+  () => !!backfillStatus.value && (liveOutstanding.value.length > 0 || backfillFullyDismissed.value),
+)
+const canOfferDismiss = computed(
+  () => !!backfillStatus.value && liveOutstanding.value.length > 0,
+)
+
+const jumpToField = (field: DiveBackfillMissingField) => {
+  document
+    .getElementById(BACKFILL_FIELD_ANCHORS[field])
+    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+const setBackfillDismissed = async (
+  reason: DiveBackfillMissingField | null,
+  dismissed: boolean,
+) => {
+  try {
+    const res = await putWithToken<DiveBackfillStatus>(
+      `/v1/dives/${diveId.value}/backfill/dismissed`,
+      { reason, dismissed },
+    )
+    backfillStatus.value = res.data
+  } catch (err) {
+    toast.error(`Couldn't update backfill status: ${extractErrorDetail(err)}`)
+  }
+}
+
+const dismissBackfillField = (field: DiveBackfillMissingField) => setBackfillDismissed(field, true)
+const restoreBackfill = () => setBackfillDismissed(null, false)
+
+const handleSubmit = async (markDismissed = false) => {
   if (invalidCylinders.value > 0) {
     toast.error(
       `${invalidCylinders.value} cylinder${invalidCylinders.value === 1 ? '' : 's'} ` +
@@ -403,7 +483,17 @@ const handleSubmit = async () => {
       dismissedAutoTagIds: [...dismissedAutoTagIds.value],
     }
     await putWithToken(`/v1/dives/${diveId.value}/tags`, tagsBody)
-    toast.success('Dive updated successfully!')
+    if (markDismissed) {
+      // Save first, then take the dive off the backfill list - the backend snapshots whatever's
+      // still missing after this save, so a field added to the checklist later resurfaces it.
+      await putWithToken(`/v1/dives/${diveId.value}/backfill/dismissed`, {
+        reason: null,
+        dismissed: true,
+      })
+      toast.success('Dive saved and taken off the backfill list.')
+    } else {
+      toast.success('Dive updated successfully!')
+    }
     safeBack()
   } catch (err) {
     console.error(err)
