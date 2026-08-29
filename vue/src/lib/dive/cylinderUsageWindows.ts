@@ -1,8 +1,8 @@
 import type { DiveMeasurementWithId, DiveProfile } from '@/lib/types/dive'
 
 export type UsageWindow = {
-  /** Epoch millis, same unit as DiveMeasurement.time / cylinder.usageStart / usageEnd - no unit
-   * conversion needed to feed a window straight into a cylinder's usage fields. */
+  /** Epoch millis, same unit as DiveMeasurement.time / a cylinder's usageWindows bounds - no unit
+   * conversion needed to feed a window straight into a cylinder's usageWindows list. */
   start: number
   end: number
 }

@@ -430,8 +430,22 @@
           </div>
         </div>
 
-        <!-- CCR Unit - independent of Base Configuration; managed via external entity like Suit. -->
-        <div class="border-t pt-4">
+        <!-- CCR Unit - independent of Base Configuration; managed via external entity like Suit.
+             Hidden on a plain OC dive (no CC-loop samples, no unit attached) behind the reveal
+             link below - see isCcrDive / ccrRevealed. -->
+        <div
+          v-if="!showCcrSection"
+          class="border-t pt-4"
+        >
+          <button
+            type="button"
+            class="text-sm text-gray-500 dark:text-gray-400 underline decoration-dotted hover:no-underline"
+            @click="ccrRevealed = true"
+          >
+            Rebreather dive? Add a CCR unit
+          </button>
+        </div>
+        <div v-else class="border-t pt-4">
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-medium">CCR Unit</h3>
@@ -570,16 +584,55 @@
             class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 space-y-2"
           >
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div>
-                <label class="block text-xs mb-1">Size (l)</label>
-                <input
-                  :value="cylinder.size.value"
-                  type="number"
-                  step="0.1"
+              <div :class="isCustomCylinder(cylinder) ? 'col-span-2' : 'col-span-2 md:col-span-1'">
+                <label class="block text-xs mb-1">Cylinder</label>
+                <select
+                  :value="cylinderStandardKey(cylinder)"
                   class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                  @input="updateCylinderSizeValue(index, $event)"
-                />
+                  @change="onCylinderStandardChange(index, $event)"
+                >
+                  <option v-for="c in STANDARD_CYLINDERS" :key="c.key" :value="c.key">
+                    {{ c.label }}
+                  </option>
+                  <option value="custom">Custom…</option>
+                </select>
               </div>
+              <template v-if="isCustomCylinder(cylinder)">
+                <div>
+                  <label class="block text-xs mb-1">Size ({{ cylinder.size.unit === 'LITER' ? 'l' : 'cf' }})</label>
+                  <input
+                    :value="cylinder.size.value"
+                    type="number"
+                    step="0.1"
+                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                    @input="updateCylinderSizeValue(index, $event)"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs mb-1">Unit</label>
+                  <select
+                    :value="cylinder.size.unit"
+                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                    @change="updateCylinderSizeUnit(index, $event)"
+                  >
+                    <option value="LITER">Litres</option>
+                    <option value="CUFT">cuft</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs mb-1">Material</label>
+                  <select
+                    :value="cylinder.material ?? ''"
+                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                    @change="updateCylinderMaterial(index, $event)"
+                  >
+                    <option value="">Not specified</option>
+                    <option v-for="(label, mat) in CYLINDER_MATERIAL_LABELS" :key="mat" :value="mat">
+                      {{ label }}
+                    </option>
+                  </select>
+                </div>
+              </template>
               <div>
                 <label class="block text-xs mb-1">Start (bar)</label>
                 <input
@@ -681,88 +734,116 @@
               {{ Math.round((cylinder.gas.o2 + cylinder.gas.he) * 100) }}%) - the rest is implied
               to be N2, so this would go negative.
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              Leave usage start/end unset if this cylinder was used for the whole dive - the
-              common case, needing no extra data entry. Only set these if more than one cylinder
-              of this same role was used across the dive (e.g. a twinset switch, or a bailout
-              stage only breathed during part of the ascent) and you know the actual clock times.
-            </p>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block text-xs mb-1">Usage Start (mm:ss since dive start)</label>
-                <div class="flex items-center gap-1">
-                  <input
-                    :value="elapsedMinutesSeconds(cylinder.usageStart, diveStart)?.minutes ?? ''"
-                    type="number"
-                    min="0"
-                    placeholder="mm"
-                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                    @input="updateCylinderUsageElapsed(index, 'usageStart', 'minutes', $event)"
-                  />
-                  <span class="text-sm text-gray-500">:</span>
-                  <input
-                    :value="elapsedMinutesSeconds(cylinder.usageStart, diveStart)?.seconds ?? ''"
-                    type="number"
-                    min="0"
-                    max="59"
-                    placeholder="ss"
-                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                    @input="updateCylinderUsageElapsed(index, 'usageStart', 'seconds', $event)"
-                  />
+            <!-- Usage windows: an ordered list of the stretches this cylinder was breathed. An
+                 empty list means "used whenever the same-role windowed cylinders weren't". -->
+            <div class="space-y-2">
+              <label class="block text-xs font-medium">Usage windows</label>
+              <div
+                v-for="(window, wIndex) in cylinder.usageWindows"
+                :key="wIndex"
+                class="grid grid-cols-2 gap-2 items-end"
+              >
+                <div>
+                  <label class="block text-xs mb-1">Start (mm:ss since dive start)</label>
+                  <div class="flex items-center gap-1">
+                    <input
+                      :value="elapsedMinutesSeconds(window.start, diveStart)?.minutes ?? ''"
+                      type="number"
+                      min="0"
+                      placeholder="mm"
+                      class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                      @input="updateCylinderUsageElapsed(index, wIndex, 'start', 'minutes', $event)"
+                    />
+                    <span class="text-sm text-gray-500">:</span>
+                    <input
+                      :value="elapsedMinutesSeconds(window.start, diveStart)?.seconds ?? ''"
+                      type="number"
+                      min="0"
+                      max="59"
+                      placeholder="ss"
+                      class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                      @input="updateCylinderUsageElapsed(index, wIndex, 'start', 'seconds', $event)"
+                    />
+                  </div>
+                </div>
+                <div class="flex items-end gap-2">
+                  <div class="flex-1">
+                    <label class="block text-xs mb-1">End (mm:ss since dive start)</label>
+                    <div class="flex items-center gap-1">
+                      <input
+                        :value="elapsedMinutesSeconds(window.end, diveStart)?.minutes ?? ''"
+                        type="number"
+                        min="0"
+                        placeholder="mm"
+                        class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                        @input="updateCylinderUsageElapsed(index, wIndex, 'end', 'minutes', $event)"
+                      />
+                      <span class="text-sm text-gray-500">:</span>
+                      <input
+                        :value="elapsedMinutesSeconds(window.end, diveStart)?.seconds ?? ''"
+                        type="number"
+                        min="0"
+                        max="59"
+                        placeholder="ss"
+                        class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                        @input="updateCylinderUsageElapsed(index, wIndex, 'end', 'seconds', $event)"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="text-xs text-red-600 hover:text-red-700 whitespace-nowrap pb-1.5"
+                    @click="removeCylinderUsageWindow(index, wIndex)"
+                  >
+                    Remove
+                  </button>
                 </div>
               </div>
-              <div>
-                <label class="block text-xs mb-1">Usage End (mm:ss since dive start)</label>
-                <div class="flex items-center gap-1">
-                  <input
-                    :value="elapsedMinutesSeconds(cylinder.usageEnd, diveStart)?.minutes ?? ''"
-                    type="number"
-                    min="0"
-                    placeholder="mm"
-                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                    @input="updateCylinderUsageElapsed(index, 'usageEnd', 'minutes', $event)"
-                  />
-                  <span class="text-sm text-gray-500">:</span>
-                  <input
-                    :value="elapsedMinutesSeconds(cylinder.usageEnd, diveStart)?.seconds ?? ''"
-                    type="number"
-                    min="0"
-                    max="59"
-                    placeholder="ss"
-                    class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                    @input="updateCylinderUsageElapsed(index, 'usageEnd', 'seconds', $event)"
-                  />
-                </div>
-              </div>
+              <button
+                type="button"
+                class="text-xs text-blue-600 hover:text-blue-700"
+                @click="addCylinderUsageWindow(index)"
+              >
+                <i class="fa fa-plus mr-1" />Add usage window
+              </button>
+              <p
+                v-if="!cylinder.usageWindows.length"
+                class="text-xs text-gray-500 dark:text-gray-400"
+              >
+                Leave empty if this cylinder was breathed whenever your other timed cylinders
+                weren't (the whole dive if none are timed).
+              </p>
             </div>
             <!-- Suggested from the primary computer's own gas-switch history: only offered while
-                 Usage Start/End are both still unset, so it never second-guesses a value the
-                 diver already entered. The first (longest) match fills this row directly; any
-                 other matching window is offered as its own extra cylinder row, since one row can
-                 only hold one window. -->
+                 this cylinder has no windows yet, so it never second-guesses windows the diver
+                 already entered. "Add" appends every matched window to this one cylinder. -->
             <div
-              v-if="!cylinder.usageStart && !cylinder.usageEnd && cylinderSuggestions[index]?.length"
+              v-if="cylinder.usageWindows.length === 0 && cylinderSuggestions[index]?.length"
               class="text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-2 space-y-1"
             >
               <p class="text-blue-800 dark:text-blue-200">
                 This gas matches the primary computer's log during:
               </p>
               <div class="flex flex-wrap gap-1">
-                <button
+                <span
                   v-for="(window, wIndex) in cylinderSuggestions[index]"
                   :key="wIndex"
-                  type="button"
-                  class="px-2 py-1 rounded border"
-                  :class="
-                    wIndex === 0
-                      ? 'border-blue-500 bg-blue-100 dark:bg-blue-800/40 text-blue-900 dark:text-blue-100 font-medium'
-                      : 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800/30'
-                  "
-                  @click="applySuggestedWindow(index, window, wIndex === 0)"
+                  class="px-2 py-1 rounded border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
                 >
                   {{ formatElapsedRange(window) }}{{ wIndex === 0 ? ' (suggested)' : '' }}
-                </button>
+                </span>
               </div>
+              <button
+                type="button"
+                class="mt-1 px-2 py-1 rounded border border-blue-500 bg-blue-100 dark:bg-blue-800/40 text-blue-900 dark:text-blue-100 font-medium hover:bg-blue-200 dark:hover:bg-blue-800/60"
+                @click="applySuggestedWindow(index)"
+              >
+                {{
+                  cylinderSuggestions[index]!.length === 1
+                    ? 'Add this window'
+                    : `Add all ${cylinderSuggestions[index]!.length} windows`
+                }}
+              </button>
             </div>
             <button
               type="button"
@@ -809,18 +890,10 @@
             @dismiss="emit('dismiss-backfill-field', 'GAS_CONSUMPTION')"
           />
         </legend>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label for="sac-bar" class="block mb-2">SAC (bar/min)</label>
-            <input
-              id="sac-bar"
-              :value="modelValue.gasConsumption.sacBar ?? ''"
-              type="number"
-              step="0.01"
-              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              @input="handleNumberInput('gasConsumption.sacBar', $event)"
-            />
-          </div>
+        <!-- SAC (bar/min) input removed: it's cylinder-size dependent so not comparable across
+             dives - RMV + total litres are. `gasConsumption.sacBar` still round-trips untouched
+             through DiveFormData and the save payload (importers/reimport use it). -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label for="rmv-liters" class="block mb-2">RMV (l/min)</label>
             <input
@@ -843,6 +916,15 @@
               @input="handleNumberInput('gasConsumption.totalLiters', $event)"
             />
           </div>
+        </div>
+        <!-- >15% consistency warning (amber inline style from CcrUnitNameInput.vue): the entered
+             figures disagree with the RMV computed from tracked cylinders, or internally. -->
+        <div
+          v-if="gasConsumptionWarning"
+          class="mt-3 flex flex-wrap items-start gap-x-2 gap-y-1 text-xs bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded px-2 py-1.5"
+        >
+          <i class="fa fa-triangle-exclamation text-amber-600 dark:text-amber-400 mt-0.5" />
+          <span class="text-amber-800 dark:text-amber-200">{{ gasConsumptionWarning }}</span>
         </div>
       </fieldset>
       <!-- Backfill-flagged but no gas-consumption row yet - offer to add one. -->
@@ -942,6 +1024,8 @@ import {
   type DiveConfiguration,
   type DiveConfigurationCylinder,
   type CylinderRole,
+  type CylinderMaterial,
+  type CylinderUsageWindow,
   type Suit,
   type SuitType,
   type CcrUnit,
@@ -953,6 +1037,7 @@ import {
   suitTypeLabel,
   SUIT_TYPE_LABELS,
   CYLINDER_ROLE_LABELS,
+  CYLINDER_MATERIAL_LABELS,
   CCR_CYLINDER_ROLES,
   BUDDY_ROLE_LABELS,
   WATER_TYPE_LABELS,
@@ -963,6 +1048,13 @@ import type { DiveBackfillMissingField } from '@/lib/types/dive'
 import { elapsedMinutesSeconds, epochFromElapsedMinutesSeconds } from '@/lib/utils/timeUtils'
 import { findGasMatchWindows, primaryProfile, type UsageWindow } from '@/lib/dive/cylinderUsageWindows'
 import { missingBackfillFields } from '@/lib/dive/backfill'
+import {
+  STANDARD_CYLINDERS,
+  DEFAULT_STANDARD_CYLINDER_KEY,
+  matchStandard,
+  inferMaterial,
+} from '@/lib/dive/cylinders'
+import { differsBeyondTolerance, impliedRmvFromTotal } from '@/lib/dive/gasConsumption'
 import BackfillHint from '@/components/dive/edit/BackfillHint.vue'
 
 export interface EditableNamedBuddy {
@@ -1008,6 +1100,14 @@ const props = defineProps<{
   backfillOutstanding?: DiveBackfillMissingField[]
   /** Prominent amber pointers (arrived from the Backfill guide) vs. slim, muted ones. */
   backfillProminent?: boolean
+  /** OC RMV derived from the loaded dive's tracked cylinders
+   * (`Dive.gasConsumptionComparison.calculatedRmvLiters`) - the baseline the live-entered gas
+   * figures are checked against for the >15% consistency warning. */
+  calculatedRmvBaseline?: number | null
+  /** Loaded dive's average depth (m) + duration (min) - used to derive an implied RMV from the
+   * entered total-litres figure for the same consistency warning + the backfill mismatch check. */
+  avgDepthMeters?: number | null
+  durationMinutes?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -1020,7 +1120,14 @@ const emit = defineEmits<{
 const backfillPointAt = computed<Set<DiveBackfillMissingField>>(() => {
   const outstanding = props.backfillOutstanding ?? []
   if (!outstanding.length) return new Set()
-  const stillEmpty = new Set(missingBackfillFields(props.modelValue))
+  const stillEmpty = new Set(
+    missingBackfillFields({
+      ...props.modelValue,
+      calculatedRmvLiters: props.calculatedRmvBaseline ?? null,
+      avgDepthMeters: props.avgDepthMeters ?? null,
+      durationMinutes: props.durationMinutes ?? null,
+    }),
+  )
   return new Set(outstanding.filter((f) => stillEmpty.has(f)))
 })
 
@@ -1036,6 +1143,20 @@ const showSecondaryCcrUnitModal = ref(false)
 const hasCcrUnit = computed(
   () => !!(props.modelValue.configuration?.ccrUnit || props.modelValue.configuration?.secondaryCcrUnit),
 )
+
+// Whether this dive looks like a rebreather dive at all: a CC loop sample anywhere in the profiles
+// (same CC-mode signal the backend calculator + useDiveGraphMetrics use) or a CCR unit already
+// attached. On a plain OC dive the CCR-unit sections are noise, so they're hidden behind a reveal
+// link (ccrRevealed) - for a manual dive / OC-only computer that was really a rebreather dive.
+const isCcrDive = computed(
+  () =>
+    hasCcrUnit.value ||
+    !!props.profiles?.some((p) =>
+      p.measurements?.some((m) => m.measurement.mode === 'CC'),
+    ),
+)
+const ccrRevealed = ref(false)
+const showCcrSection = computed(() => isCcrDive.value || ccrRevealed.value)
 
 // Mirrors the "fully-blank hides the card" check in DiveView.vue's suitLabel - only offer the
 // ad-hoc type picker once there's genuinely no saved-suit info to show instead, since the two are
@@ -1285,12 +1406,17 @@ const updateConfigField = (field: string, value: string | number | null | undefi
   })
 }
 
+const DEFAULT_CYLINDER =
+  STANDARD_CYLINDERS.find((c) => c.key === DEFAULT_STANDARD_CYLINDER_KEY) ?? STANDARD_CYLINDERS[0]!
+
 const emptyCylinder = (): DiveConfigurationCylinder => ({
   // A negative placeholder id, distinct from any real (positive) persisted cylinder id, so the
   // backend's update path can tell "this is a brand new cylinder" apart from "keep this existing
   // one" - matches how a not-yet-saved entity is conventionally represented before its first save.
   id: -Date.now(),
-  size: { unit: 'LITER', value: 12 },
+  // Defaults to the "12 L Steel" catalog entry (size + material) - see lib/dive/cylinders.ts.
+  size: { ...DEFAULT_CYLINDER.size },
+  material: DEFAULT_CYLINDER.material,
   startBar: null,
   endBar: null,
   notes: '',
@@ -1299,8 +1425,9 @@ const emptyCylinder = (): DiveConfigurationCylinder => ({
   // most common first cylinder (Diluent) rather than OC, which isn't even a selectable option
   // there.
   role: hasCcrUnit.value ? 'DILUENT' : 'OC',
-  usageStart: null,
-  usageEnd: null,
+  // Empty = "used whenever the same-role windowed cylinders aren't" (the whole dive when none
+  // are windowed) - the common single-cylinder case, no data entry required.
+  usageWindows: [],
 })
 
 const updateCylinders = (cylinders: DiveConfigurationCylinder[]) => {
@@ -1344,12 +1471,65 @@ const updateCylinderNumberField = (
   updateCylinderField(index, field, value === '' ? null : Number(value))
 }
 
+// --- Standard-cylinder picker (Part A) -------------------------------------------------------
+// The size <select> shows one catalog entry per option (size + material encoded) plus "Custom…".
+// Picking a catalog entry sets both `size` and `material`; "Custom…" reveals the litre / unit /
+// material inputs. A stored size that matches no catalog entry auto-selects "Custom…".
+// `forcedCustomIds` remembers rows where the user explicitly chose "Custom…" even though the
+// current litre value happens to match a catalog entry.
+const forcedCustomIds = ref<Set<number>>(new Set())
+
+const cylinderStandardKey = (cylinder: DiveConfigurationCylinder): string => {
+  if (forcedCustomIds.value.has(cylinder.id)) return 'custom'
+  return matchStandard(cylinder.size, cylinder.material)
+}
+const isCustomCylinder = (cylinder: DiveConfigurationCylinder): boolean =>
+  cylinderStandardKey(cylinder) === 'custom'
+
+const applyStandardCylinder = (index: number, key: string) => {
+  const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
+  const current = cylinders[index]
+  if (!current) return
+  forcedCustomIds.value.delete(current.id)
+  if (key === 'custom') {
+    forcedCustomIds.value = new Set([...forcedCustomIds.value, current.id])
+    return
+  }
+  const entry = STANDARD_CYLINDERS.find((c) => c.key === key)
+  if (!entry) return
+  cylinders[index] = { ...current, size: { ...entry.size }, material: entry.material }
+  updateCylinders(cylinders)
+}
+
+const onCylinderStandardChange = (index: number, event: Event) => {
+  applyStandardCylinder(index, (event.target as HTMLSelectElement).value)
+}
+
 const updateCylinderSizeValue = (index: number, event: Event) => {
   const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
   const current = cylinders[index]
   if (!current) return
   const value = Number((event.target as HTMLInputElement).value)
-  updateCylinderField(index, 'size', { ...current.size, value })
+  // On a custom litre change with no material set yet, seed one via the inference table so a
+  // saved row always carries a material (matching the backend's persist-time fallback).
+  const material =
+    current.material ?? inferMaterial(value, current.size.unit)
+  cylinders[index] = { ...current, size: { ...current.size, value }, material }
+  updateCylinders(cylinders)
+}
+
+const updateCylinderSizeUnit = (index: number, event: Event) => {
+  const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
+  const current = cylinders[index]
+  if (!current) return
+  const unit = (event.target as HTMLSelectElement).value as DiveConfigurationCylinder['size']['unit']
+  cylinders[index] = { ...current, size: { ...current.size, unit } }
+  updateCylinders(cylinders)
+}
+
+const updateCylinderMaterial = (index: number, event: Event) => {
+  const value = (event.target as HTMLSelectElement).value
+  updateCylinderField(index, 'material', (value || null) as CylinderMaterial | null)
 }
 
 const updateCylinderGasField = (index: number, field: 'o2' | 'he', event: Event) => {
@@ -1374,32 +1554,59 @@ const updateCylinderRole = (index: number, role: CylinderRole) => {
   updateCylinders(cylinders)
 }
 
+// --- Usage windows (Part D) ------------------------------------------------------------------
+// Each cylinder carries an ordered list of usage windows (was a single usageStart/usageEnd pair).
+// An empty list still means "used whenever the same-role windowed cylinders aren't".
+const setCylinderUsageWindows = (index: number, windows: CylinderUsageWindow[]) => {
+  const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
+  const current = cylinders[index]
+  if (!current) return
+  cylinders[index] = { ...current, usageWindows: windows }
+  updateCylinders(cylinders)
+}
+
+const addCylinderUsageWindow = (index: number) => {
+  const current = props.modelValue.configuration?.cylinders?.[index]
+  if (!current) return
+  setCylinderUsageWindows(index, [...current.usageWindows, { start: null, end: null }])
+}
+
+const removeCylinderUsageWindow = (index: number, wIndex: number) => {
+  const current = props.modelValue.configuration?.cylinders?.[index]
+  if (!current) return
+  const windows = [...current.usageWindows]
+  windows.splice(wIndex, 1)
+  setCylinderUsageWindows(index, windows)
+}
+
 const updateCylinderUsageElapsed = (
   index: number,
-  field: 'usageStart' | 'usageEnd',
+  wIndex: number,
+  bound: 'start' | 'end',
   part: 'minutes' | 'seconds',
   event: Event,
 ) => {
-  const cylinders = props.modelValue.configuration?.cylinders ?? []
-  const current = cylinders[index]
+  const current = props.modelValue.configuration?.cylinders?.[index]
   if (!current) return
+  const windows = [...current.usageWindows]
+  const window = windows[wIndex]
+  if (!window) return
   const rawValue = (event.target as HTMLInputElement).value
+  let next: number | null
   if (rawValue === '') {
-    // Clearing either half clears the whole field - a lone minutes or seconds value with the
-    // other part missing isn't a usable timestamp.
-    updateCylinderField(index, field, null)
-    return
+    // Clearing either half clears that bound - a lone minutes or seconds value with the other
+    // part missing isn't a usable timestamp.
+    next = null
+  } else {
+    const existing = elapsedMinutesSeconds(window[bound], props.diveStart) ?? {
+      minutes: 0,
+      seconds: 0,
+    }
+    const parts = { ...existing, [part]: Math.max(0, Number(rawValue)) }
+    next = epochFromElapsedMinutesSeconds(parts.minutes, parts.seconds, props.diveStart)
   }
-  const existing = elapsedMinutesSeconds(current[field], props.diveStart) ?? {
-    minutes: 0,
-    seconds: 0,
-  }
-  const next = { ...existing, [part]: Math.max(0, Number(rawValue)) }
-  updateCylinderField(
-    index,
-    field,
-    epochFromElapsedMinutesSeconds(next.minutes, next.seconds, props.diveStart),
-  )
+  windows[wIndex] = { ...window, [bound]: next }
+  setCylinderUsageWindows(index, windows)
 }
 
 const formatElapsedRange = (window: UsageWindow): string => {
@@ -1436,30 +1643,50 @@ const cylinderSuggestions = computed<UsageWindow[][]>(() => {
   })
 })
 
-const applySuggestedWindow = (index: number, window: UsageWindow, isDefault: boolean) => {
-  if (isDefault) {
-    // The current row has no usage set yet - fill it directly.
-    const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
-    const current = cylinders[index]
-    if (!current) return
-    cylinders[index] = { ...current, usageStart: window.start, usageEnd: window.end }
-    updateCylinders(cylinders)
-    return
-  }
-  // A non-default match is a second, non-contiguous window for the same gas (e.g. a bailout
-  // breathed twice) - one cylinder row only holds one window, so it becomes its own new row
-  // (same size/role/gas as the row it was suggested for) rather than overwriting the current one.
-  const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
-  const source = cylinders[index]
-  if (!source) return
-  cylinders.splice(index + 1, 0, {
-    ...source,
-    id: -Date.now(),
-    usageStart: window.start,
-    usageEnd: window.end,
-  })
-  updateCylinders(cylinders)
+// Append every gas-match window to this one cylinder's usageWindows (a cylinder now holds many),
+// deduped by start+end against what's already there. Replaces the old "spawn an extra cylinder
+// row per extra window" behaviour.
+const applySuggestedWindow = (index: number) => {
+  const current = props.modelValue.configuration?.cylinders?.[index]
+  if (!current) return
+  const suggestions = cylinderSuggestions.value[index] ?? []
+  const seen = new Set(current.usageWindows.map((w) => `${w.start}|${w.end}`))
+  const additions: CylinderUsageWindow[] = suggestions
+    .filter((w) => !seen.has(`${w.start}|${w.end}`))
+    .map((w) => ({ start: w.start, end: w.end }))
+  if (!additions.length) return
+  setCylinderUsageWindows(index, [...current.usageWindows, ...additions])
 }
+
+// Live >15% consistency check on the manually-entered gas figures (Part B): entered RMV (or the
+// RMV implied by total litres / depth / duration) vs the RMV computed from tracked cylinders, and
+// entered RMV vs its own implied-from-total value. Null = nothing to warn about.
+const gasConsumptionWarning = computed<string | null>(() => {
+  const gas = props.modelValue.gasConsumption
+  if (!gas) return null
+  const enteredRmv = gas.rmvLiters && gas.rmvLiters > 0 ? gas.rmvLiters : null
+  const implied = impliedRmvFromTotal(
+    gas.totalLiters,
+    props.avgDepthMeters ?? null,
+    props.durationMinutes ?? null,
+  )
+  const baseline = props.calculatedRmvBaseline ?? null
+  const insertedRmv = enteredRmv ?? implied
+  if (differsBeyondTolerance(insertedRmv, baseline)) {
+    return (
+      `The gas consumption entered here (~${insertedRmv!.toFixed(1)} l/min) disagrees with the ` +
+      `${baseline!.toFixed(1)} l/min computed from your tracked cylinders by more than 15% - ` +
+      `one of them is likely off.`
+    )
+  }
+  if (differsBeyondTolerance(enteredRmv, implied)) {
+    return (
+      `The RMV entered here (${enteredRmv!.toFixed(1)} l/min) and the RMV implied by the total ` +
+      `gas, average depth and duration (~${implied!.toFixed(1)} l/min) disagree by more than 15%.`
+    )
+  }
+  return null
+})
 
 const updateConfigSuitField = (field: string, value: string | number | undefined) => {
   if (!props.modelValue.configuration || !props.modelValue.configuration.suit) {

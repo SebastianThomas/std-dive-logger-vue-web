@@ -1,9 +1,11 @@
 import type { DiveBackfillMissingField, DiveBackfillStatus } from '@/lib/types/dive'
+import { differsBeyondTolerance, impliedRmvFromTotal } from '@/lib/dive/gasConsumption'
 
 /** Display labels for each backfill reason - shared by the Backfill view and the edit-page hints. */
 export const BACKFILL_FIELD_LABELS: Record<DiveBackfillMissingField, string> = {
   VISIBILITY: 'Visibility',
   GAS_CONSUMPTION: 'Gas Consumption',
+  GAS_CONSUMPTION_MISMATCH: 'Gas Consumption Mismatch',
   LEADER: 'Dive Leader',
   NOTES: 'Notes',
 }
@@ -16,6 +18,7 @@ export const BACKFILL_FIELD_LABELS: Record<DiveBackfillMissingField, string> = {
 export const BACKFILL_FIELD_ANCHORS: Record<DiveBackfillMissingField, string> = {
   VISIBILITY: 'backfill-visibility',
   GAS_CONSUMPTION: 'backfill-gas-consumption',
+  GAS_CONSUMPTION_MISMATCH: 'backfill-gas-consumption',
   LEADER: 'dive-leader',
   NOTES: 'backfill-notes',
 }
@@ -23,11 +26,13 @@ export const BACKFILL_FIELD_ANCHORS: Record<DiveBackfillMissingField, string> = 
 export const ALL_BACKFILL_FIELDS: DiveBackfillMissingField[] = [
   'VISIBILITY',
   'GAS_CONSUMPTION',
+  'GAS_CONSUMPTION_MISMATCH',
   'LEADER',
   'NOTES',
 ]
 
-/** The shape `missingBackfillFields` needs - a subset of the edit form's `DiveFormData`. */
+/** The shape `missingBackfillFields` needs - a subset of the edit form's `DiveFormData` plus the
+ * loaded dive's calculated-RMV baseline / average depth / duration (for the mismatch check). */
 export type BackfillFieldSource = {
   notes?: string | null
   visibility?: {
@@ -43,6 +48,28 @@ export type BackfillFieldSource = {
   leaderNamedBuddyId?: number | null
   leaderBuddyDiveId?: number | null
   leaderSelfExplicit?: boolean | null
+  /** OC RMV derived from tracked cylinders (`Dive.gasConsumptionComparison.calculatedRmvLiters`
+   * / `cylinderConsumption.ocRmvLiters`). Enables the `GAS_CONSUMPTION_MISMATCH` check live. */
+  calculatedRmvLiters?: number | null
+  avgDepthMeters?: number | null
+  durationMinutes?: number | null
+}
+
+/**
+ * Mirror of the backend's `GasConsumptionComparison.mismatch` (15% tolerance): the manually-entered
+ * RMV - or, absent that, the RMV implied by total litres / depth / duration - disagrees with the
+ * cylinder-derived RMV; or the entered RMV disagrees with its own implied-from-total value.
+ */
+export function gasConsumptionMismatch(src: BackfillFieldSource): boolean {
+  const gas = src.gasConsumption
+  if (!gas) return false
+  const calc = src.calculatedRmvLiters ?? null
+  const enteredRmv = gas.rmvLiters && gas.rmvLiters > 0 ? gas.rmvLiters : null
+  const implied = impliedRmvFromTotal(gas.totalLiters, src.avgDepthMeters, src.durationMinutes)
+  const insertedRmv = enteredRmv ?? implied
+  return (
+    differsBeyondTolerance(insertedRmv, calc) || differsBeyondTolerance(enteredRmv, implied)
+  )
 }
 
 /**
@@ -64,6 +91,7 @@ export function missingBackfillFields(src: BackfillFieldSource): DiveBackfillMis
   const gas = src.gasConsumption
   const gasEmpty = !gas || (!gas.sacBar && !gas.rmvLiters && !gas.totalLiters)
   if (gasEmpty) missing.push('GAS_CONSUMPTION')
+  else if (gasConsumptionMismatch(src)) missing.push('GAS_CONSUMPTION_MISMATCH')
 
   const leaderUnset =
     src.leaderNamedBuddyId == null &&

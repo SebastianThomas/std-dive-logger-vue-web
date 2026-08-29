@@ -9,8 +9,11 @@ import type { BackfillFieldSource } from '@/lib/dive/backfill'
 import type { DiveBackfillStatus } from '@/lib/types/dive'
 
 describe('missingBackfillFields', () => {
-  it('flags every field on a wholly empty dive', () => {
-    expect(missingBackfillFields({})).toEqual(ALL_BACKFILL_FIELDS)
+  it('flags every checklist gap on a wholly empty dive (not the mutually-exclusive MISMATCH one)', () => {
+    // GAS_CONSUMPTION_MISMATCH only applies once figures exist to be inconsistent - an empty dive
+    // gets plain GAS_CONSUMPTION instead. ALL_BACKFILL_FIELDS carries both for the category picker.
+    expect(missingBackfillFields({})).toEqual(['VISIBILITY', 'GAS_CONSUMPTION', 'LEADER', 'NOTES'])
+    expect(ALL_BACKFILL_FIELDS).toContain('GAS_CONSUMPTION_MISMATCH')
   })
 
   it('flags nothing on a fully filled dive', () => {
@@ -50,6 +53,64 @@ describe('missingBackfillFields', () => {
 
   it('a visibility feeling alone (no distance/description) still counts as present', () => {
     expect(missingBackfillFields({ visibility: { feeling: 'LOW' } })).not.toContain('VISIBILITY')
+  })
+})
+
+describe('GAS_CONSUMPTION_MISMATCH', () => {
+  const base: BackfillFieldSource = {
+    notes: 'x',
+    visibility: { feeling: 'HIGH' },
+    leaderSelfExplicit: true,
+  }
+
+  it('flags a dive whose entered RMV is >15% off the cylinder-derived RMV', () => {
+    const fields = missingBackfillFields({
+      ...base,
+      gasConsumption: { sacBar: 0, rmvLiters: 12, totalLiters: 0 },
+      calculatedRmvLiters: 18,
+    })
+    expect(fields).toContain('GAS_CONSUMPTION_MISMATCH')
+    expect(fields).not.toContain('GAS_CONSUMPTION')
+  })
+
+  it('does not flag when entered and calculated RMV agree within 15%', () => {
+    expect(
+      missingBackfillFields({
+        ...base,
+        gasConsumption: { sacBar: 0, rmvLiters: 16, totalLiters: 0 },
+        calculatedRmvLiters: 18,
+      }),
+    ).not.toContain('GAS_CONSUMPTION_MISMATCH')
+  })
+
+  it('uses the RMV implied by total litres / depth / duration when no RMV was entered', () => {
+    // 1800 l / (3 ata * 40 min) = 15 l/min, vs a calculated 22 => mismatch
+    expect(
+      missingBackfillFields({
+        ...base,
+        gasConsumption: { sacBar: 0, rmvLiters: 0, totalLiters: 1800 },
+        avgDepthMeters: 20,
+        durationMinutes: 40,
+        calculatedRmvLiters: 22,
+      }),
+    ).toContain('GAS_CONSUMPTION_MISMATCH')
+  })
+
+  it('flags an internal entered-RMV vs implied-from-total disagreement', () => {
+    expect(
+      missingBackfillFields({
+        ...base,
+        gasConsumption: { sacBar: 0, rmvLiters: 15, totalLiters: 3000 },
+        avgDepthMeters: 20,
+        durationMinutes: 40,
+      }),
+    ).toContain('GAS_CONSUMPTION_MISMATCH')
+  })
+
+  it('never flags a dive with no gas figures at all', () => {
+    expect(missingBackfillFields({ ...base, calculatedRmvLiters: 18 })).not.toContain(
+      'GAS_CONSUMPTION_MISMATCH',
+    )
   })
 })
 

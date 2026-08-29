@@ -1,7 +1,7 @@
 <template>
   <div class="relative w-full h-full">
     <l-map ref="mapRef" :zoom="initialZoom" :center="initialCenter" :use-global-leaflet="false">
-      <l-tile-layer :url="tileUrl" :attribution="attribution" />
+      <l-tile-layer :url="tiles.url" :attribution="tiles.attribution" />
       <l-marker
         v-for="site in sites"
         :key="site.id ?? site.name"
@@ -31,6 +31,7 @@ import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
 import { latLngBounds } from 'leaflet'
 import { useThemeStore } from '@/stores/theme'
 import { defaultIcon } from '@/lib/map/leafletIcon'
+import { mapTileLayer } from '@/lib/globals/mapTiles'
 import type { DiveSite } from '@/lib/types/dive'
 import 'leaflet/dist/leaflet.css'
 
@@ -53,17 +54,7 @@ const initialCenter = computed<[number, number]>(() => {
 })
 const initialZoom = computed(() => (props.sites.length > 1 ? 5 : 12))
 
-const tileUrl = computed(() => {
-  return themeStore.theme === 'dark'
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-})
-
-const attribution = computed(() => {
-  return themeStore.theme === 'dark'
-    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    : '&copy; OpenStreetMap contributors'
-})
+const tiles = computed(() => mapTileLayer(themeStore.theme))
 
 const fitToSites = () => {
   if (props.sites.length < 2) return

@@ -264,6 +264,24 @@ export type CylinderSize = {
   value: number
 }
 
+/** Cylinder shell material. Descriptive only for now - no consumption/buoyancy maths depends on
+ * it yet. Mirrors the backend enum
+ * `std-dive-logger-model/.../model/dive/gear/CylinderMaterial.java`. */
+export type CylinderMaterial = 'ALU' | 'STEEL'
+
+export const CYLINDER_MATERIAL_LABELS: Record<CylinderMaterial, string> = {
+  ALU: 'Aluminium',
+  STEEL: 'Steel',
+}
+
+/** One stretch of the dive a cylinder was actively breathed. Epoch millis (the serialized
+ * `Instant` form), ordered. Either bound `null` = unbounded that side. Mirrors the backend record
+ * `std-dive-logger-model/.../model/dive/gear/CylinderUsageWindow.java`. */
+export type CylinderUsageWindow = {
+  start: number | null
+  end: number | null
+}
+
 /** What a cylinder was actually used for - decides how it feeds into gas-consumption
  * calculations. See CylinderConsumptionCalculator (backend) for the full reasoning. */
 export type CylinderRole = 'OC' | 'DILUENT' | 'O2' | 'BAILOUT'
@@ -284,18 +302,20 @@ export const CCR_CYLINDER_ROLES: CylinderRole[] = ['DILUENT', 'O2', 'BAILOUT']
 export type DiveConfigurationCylinder = {
   id: number
   size: CylinderSize
+  /** Maps to `DiveConfigurationCylinder.material` on the backend. `null` for legacy/imported rows
+   * the migration couldn't infer - the UI infers one for display (see lib/dive/cylinders.ts). */
+  material?: CylinderMaterial | null
   startBar?: number | null
   endBar?: number | null
   notes?: string
   /** O2/He fraction of the gas in this cylinder - N2 is implied. */
   gas: { o2: number; he: number }
   role: CylinderRole
-  /** Both null means "used for the whole dive" - the common single-cylinder case, no extra data
-   * entry required. Only set when more than one cylinder of the same role was used across the
-   * dive (e.g. twin/sidemount cylinders switched partway through). Epoch millis, like every other
-   * `Instant` field the backend serializes (e.g. `DiveSummary.start`) - NOT an ISO string. */
-  usageStart?: number | null
-  usageEnd?: number | null
+  /** Ordered stretches of the dive this cylinder was breathed. Maps to
+   * `DiveConfigurationCylinder.usageWindows` on the backend. An empty list means "used whenever
+   * the same-role windowed cylinders weren't" - the whole dive when no same-role cylinder is
+   * windowed (the common single-cylinder case, no data entry required). */
+  usageWindows: CylinderUsageWindow[]
 }
 
 /** Computed from tracked cylinders - see CylinderConsumptionCalculator (backend). Every field is
@@ -305,6 +325,22 @@ export type CylinderConsumption = {
   bailoutRmvLiters?: number | null
   o2Liters?: number | null
   diluentLiters?: number | null
+  /** Sum of consumed litres over OC-role cylinders. Maps to `CylinderConsumptionResult
+   * .ocConsumedLiters` on the backend. */
+  ocConsumedLiters?: number | null
+}
+
+/** Backend's reconciliation of the manually-entered whole-dive gas figures against the RMV/total
+ * derived from tracked cylinders. Mirrors the record
+ * `std-dive-logger-model/.../model/dive/stats/GasConsumptionComparison.java`. `mismatch` is
+ * computed server-side with a 15% tolerance (see lib/dive/gasConsumption.ts for the mirror). */
+export type GasConsumptionComparison = {
+  insertedRmvLiters: number | null
+  insertedTotalLiters: number | null
+  impliedRmvFromTotalLiters: number | null
+  calculatedRmvLiters: number | null
+  calculatedTotalLiters: number | null
+  mismatch: boolean
 }
 
 export type DiveConfiguration = {
@@ -368,7 +404,12 @@ export type DiveLeader = {
 
 /** Mirrors the backend `DiveBackfillField` enum - one per checklist field the backfill guide
  * nudges the user to fill in. Extend this whenever the backend enum grows. */
-export type DiveBackfillMissingField = 'VISIBILITY' | 'GAS_CONSUMPTION' | 'LEADER' | 'NOTES'
+export type DiveBackfillMissingField =
+  | 'VISIBILITY'
+  | 'GAS_CONSUMPTION'
+  | 'GAS_CONSUMPTION_MISMATCH'
+  | 'LEADER'
+  | 'NOTES'
 
 export type DiveBackfillStatus = {
   diveId: number
@@ -393,6 +434,9 @@ export type Dive = {
   visibility: Visibility
   gasConsumption: GasConsumption
   cylinderConsumption?: CylinderConsumption | null
+  /** Maps to `Dive.gasConsumptionComparison` on the backend - `null` unless the dive carries
+   * manual gas figures and a calculated/implied RMV is obtainable. */
+  gasConsumptionComparison?: GasConsumptionComparison | null
   configuration: DiveConfiguration
   site: DiveSite
   profiles: DiveProfile[]

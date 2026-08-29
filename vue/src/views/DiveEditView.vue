@@ -35,6 +35,9 @@
           :profiles="loadedDive.profiles"
           :backfill-outstanding="liveOutstanding"
           :backfill-prominent="fromBackfill"
+          :calculated-rmv-baseline="calculatedRmvBaseline"
+          :avg-depth-meters="loadedDive.summary.averageDepth"
+          :duration-minutes="loadedDiveDurationMinutes"
           @dismiss-backfill-field="dismissBackfillField"
         >
           <!-- Tags — placed between Buddies and Notes via the form's slot -->
@@ -378,9 +381,32 @@ const invalidCylinders = computed(
     ).length,
 )
 
+/** OC RMV computed from the loaded dive's tracked cylinders - the baseline the manually-entered
+ * gas figures are checked against for the >15% mismatch (both the live edit-form warning and the
+ * GAS_CONSUMPTION_MISMATCH backfill chip). From the backend's own comparison record when present,
+ * else the raw cylinder-consumption RMV. */
+const calculatedRmvBaseline = computed<number | null>(
+  () =>
+    loadedDive.value?.gasConsumptionComparison?.calculatedRmvLiters ??
+    loadedDive.value?.cylinderConsumption?.ocRmvLiters ??
+    null,
+)
+const loadedDiveDurationMinutes = computed<number | null>(() => {
+  const s = loadedDive.value?.summary
+  if (!s || s.end == null || s.start == null || s.end <= s.start) return null
+  return (s.end - s.start) / 60000
+})
+
 // Backfill gaps recomputed live from the form (so a pointer clears the moment its field is filled),
 // minus the ones the user has already marked "no info" for on this dive.
-const liveMissing = computed<DiveBackfillMissingField[]>(() => missingBackfillFields(formData.value))
+const liveMissing = computed<DiveBackfillMissingField[]>(() =>
+  missingBackfillFields({
+    ...formData.value,
+    calculatedRmvLiters: calculatedRmvBaseline.value,
+    avgDepthMeters: loadedDive.value?.summary.averageDepth ?? null,
+    durationMinutes: loadedDiveDurationMinutes.value,
+  }),
+)
 const liveOutstanding = computed<DiveBackfillMissingField[]>(() => {
   const dismissed = backfillStatus.value?.dismissedFields ?? []
   return liveMissing.value.filter((f) => !dismissed.includes(f))
@@ -392,6 +418,9 @@ const backfillFullyDismissed = computed(
 const showBackfillBanner = computed(
   () => !!backfillStatus.value && (liveOutstanding.value.length > 0 || backfillFullyDismissed.value),
 )
+// Gates the "Save & dismiss (no more info)" button with `v-if` (not `:disabled`) - when nothing is
+// outstanding the button must be fully ABSENT, not shown-but-disabled: there's no gap left to
+// dismiss, so offering the action at all would be confusing. Asserted in DiveEditView.spec.ts.
 const canOfferDismiss = computed(
   () => !!backfillStatus.value && liveOutstanding.value.length > 0,
 )

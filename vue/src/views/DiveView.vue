@@ -528,11 +528,20 @@
              comparable across dives with different cylinders - RMV alone is. These come from
              tracked per-dive cylinders (Cylinders panel below), not the old whole-dive
              gasConsumption figure. -->
-        <InfoCard
-          v-if="dive.cylinderConsumption?.ocRmvLiters != null"
-          title="RMV"
-          :value="`${dive.cylinderConsumption.ocRmvLiters.toFixed(2)} l/min`"
-        />
+        <InfoCard v-if="rmvDisplay" title="RMV">
+          <div
+            class="font-semibold text-sm text-center"
+            :style="{ color: 'var(--foreground)' }"
+          >
+            {{ rmvDisplay.value.toFixed(2) }} l/min
+          </div>
+          <div
+            v-if="gasSourceNote(rmvDisplay.source)"
+            class="text-[11px] text-gray-400 dark:text-gray-500 text-center"
+          >
+            {{ gasSourceNote(rmvDisplay.source) }}
+          </div>
+        </InfoCard>
         <InfoCard
           v-if="dive.cylinderConsumption?.bailoutRmvLiters != null"
           title="Bailout RMV"
@@ -548,15 +557,46 @@
           title="Diluent Used"
           :value="`${dive.cylinderConsumption.diluentLiters.toFixed(0)} l`"
         />
-        <InfoCard
-          v-if="
-            dive.gasConsumption?.totalLiters !== undefined &&
-            dive.gasConsumption.totalLiters !== null
-          "
-          title="Total Gas"
-          :value="`${dive.gasConsumption.totalLiters.toFixed(1)} l`"
-        />
+        <InfoCard v-if="totalGasDisplay != null" title="Total Gas">
+          <div
+            class="font-semibold text-sm text-center"
+            :style="{ color: 'var(--foreground)' }"
+          >
+            {{ totalGasDisplay.toFixed(1) }} l
+          </div>
+          <div
+            v-if="gasSourceNote(gasCmp.effectiveTotalSource)"
+            class="text-[11px] text-gray-400 dark:text-gray-500 text-center"
+          >
+            {{ gasSourceNote(gasCmp.effectiveTotalSource) }}
+          </div>
+        </InfoCard>
       </InfoCardRow>
+
+      <!-- Gas-consumption mismatch: the manually-entered figures and the cylinder-derived ones
+           disagree by more than 15% - one of them is likely wrong. Amber inline style matching
+           CcrUnitNameInput.vue / BackfillBanner.vue. -->
+      <div
+        v-if="gasCmp.mismatch"
+        class="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-900 dark:text-amber-100"
+      >
+        <p class="font-medium">
+          <i class="fa fa-triangle-exclamation mr-1.5 text-amber-600 dark:text-amber-400" />
+          Gas consumption figures disagree
+        </p>
+        <p class="mt-1 text-amber-800 dark:text-amber-200">
+          <template v-if="gasCmp.reason === 'rmv-vs-total'">
+            The entered RMV ({{ gasCmp.insertedRmvLiters?.toFixed(1) }} l/min) and the RMV implied
+            by the entered total gas, average depth and duration
+            ({{ gasCmp.impliedRmvFromTotalLiters?.toFixed(1) }} l/min) differ by more than 15%.
+          </template>
+          <template v-else>
+            The entered RMV ({{ gasCmp.insertedRmvLiters?.toFixed(1) }} l/min) and the RMV computed
+            from your tracked cylinders ({{ gasCmp.calculatedRmvLiters?.toFixed(1) }} l/min) differ
+            by more than 15%.
+          </template>
+        </p>
+      </div>
 
       <!-- Cylinders - the one piece of Configuration dense enough to keep its own panel; Suit/Base
            Config/CCR Unit/Weight/Visibility/Gas Consumption moved into the compact InfoCardRow
@@ -577,6 +617,10 @@
             <span class="font-semibold">
               {{ cylinder.size.value }} {{ cylinder.size.unit === 'LITER' ? 'l' : 'cf' }}
             </span>
+            <template v-if="cylinder.material">
+              <span class="text-gray-400 dark:text-gray-500">&middot;</span>
+              <span>{{ CYLINDER_MATERIAL_LABELS[cylinder.material] }}</span>
+            </template>
             <span class="text-gray-400 dark:text-gray-500">&middot;</span>
             <span>{{ Math.round(cylinder.gas.o2 * 100) }}/{{ Math.round(cylinder.gas.he * 100) }}</span>
             <span class="text-gray-400 dark:text-gray-500">&middot;</span>
@@ -600,6 +644,13 @@
             <template v-if="cylinder.notes">
               <span class="text-gray-400 dark:text-gray-500">&middot;</span>
               <span class="text-gray-500 dark:text-gray-400 italic">{{ cylinder.notes }}</span>
+            </template>
+            <!-- Usage windows: only rendered when set (most cylinders have none = whole dive). -->
+            <template v-for="(window, wi) in cylinder.usageWindows" :key="`w-${wi}`">
+              <span class="text-gray-400 dark:text-gray-500">&middot;</span>
+              <span class="text-gray-500 dark:text-gray-400">
+                {{ usageWindowLabel(window.start) }}&ndash;{{ usageWindowLabel(window.end) }}
+              </span>
             </template>
           </div>
         </div>
@@ -634,7 +685,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
-import { formatISoDurationToTime, formatDate } from '@/lib/utils/timeUtils'
+import { formatISoDurationToTime, formatDate, elapsedMinutesSeconds } from '@/lib/utils/timeUtils'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import DiveSearchAndLink from '@/components/DiveSearchAndLink.vue'
 import DiveGraphContainer from '@/components/dive/view/DiveGraphContainer.vue'
@@ -651,10 +702,12 @@ import {
   BASE_CONFIGURATION_LABELS,
   SUIT_TYPE_LABELS,
   CYLINDER_ROLE_LABELS,
+  CYLINDER_MATERIAL_LABELS,
   WATER_TYPE_LABELS,
   BUDDY_ROLE_LABELS,
   type TeamTerminology,
 } from '@/lib/types/dive'
+import { gasConsumptionComparison } from '@/lib/dive/gasConsumption'
 import type { DiveTrip } from '@/lib/types/trip'
 import { useTeamTerminology } from '@/composables/useTeamTerminology'
 import { computeGasList, isGaugeModeProfile, type GasListEntry } from '@/lib/dive/gasRoles'
@@ -790,16 +843,51 @@ const effectiveWaterType = computed(
   () => dive.value?.waterType ?? dive.value?.site?.waterType ?? null,
 )
 
+// Reconciliation of the manually-entered whole-dive gas figures against the RMV/total derived
+// from tracked cylinders (Dive.gasConsumptionComparison, computed server-side). Drives the single
+// RMV/Total figure shown + the mismatch warning box.
+const gasCmp = computed(() =>
+  gasConsumptionComparison({ gasConsumptionComparison: dive.value?.gasConsumptionComparison ?? null }),
+)
+
+/** RMV to show (+ where it came from): the cylinder-derived figure when available, else the
+ * entered one, else the plain cylinder-consumption RMV for a dive with no manual figures. */
+const rmvDisplay = computed<{ value: number; source: 'cylinders' | 'entered' | null } | null>(() => {
+  const value = gasCmp.value.effectiveRmvLiters ?? dive.value?.cylinderConsumption?.ocRmvLiters ?? null
+  if (value == null) return null
+  const source =
+    gasCmp.value.effectiveRmvSource ??
+    (dive.value?.cylinderConsumption?.ocRmvLiters != null ? 'cylinders' : null)
+  return { value, source }
+})
+
+const totalGasDisplay = computed<number | null>(
+  () => gasCmp.value.effectiveTotalLiters ?? dive.value?.gasConsumption?.totalLiters ?? null,
+)
+
+const gasSourceNote = (source: 'cylinders' | 'entered' | null): string =>
+  source === 'cylinders' ? '· from cylinders' : source === 'entered' ? '· entered' : ''
+
 const hasGasConsumption = computed(() => {
   const cylinderConsumption = dive.value?.cylinderConsumption
   return (
     (dive.value?.gasConsumption?.totalLiters ?? null) !== null ||
+    (gasCmp.value.insertedRmvLiters ?? null) !== null ||
     (cylinderConsumption?.ocRmvLiters ?? null) !== null ||
     (cylinderConsumption?.bailoutRmvLiters ?? null) !== null ||
     (cylinderConsumption?.o2Liters ?? null) !== null ||
     (cylinderConsumption?.diluentLiters ?? null) !== null
   )
 })
+
+/** mm:ss-since-dive-start label for a cylinder usage-window bound (epoch millis or null). */
+const usageWindowLabel = (epochMs: number | null | undefined): string => {
+  const start = dive.value?.summary.start
+  if (epochMs == null || start == null) return '?'
+  const parts = elapsedMinutesSeconds(epochMs, start)
+  if (!parts) return '?'
+  return `${String(parts.minutes).padStart(2, '0')}:${String(parts.seconds).padStart(2, '0')}`
+}
 
 const uniqueComputers = computed(() => {
   const profiles = dive.value?.profiles ?? []

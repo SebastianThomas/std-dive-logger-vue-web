@@ -12,7 +12,7 @@
       @update:center="(c) => onMapUpdate(c, undefined)"
       @click="handleMapClick"
     >
-      <l-tile-layer :url="tileUrl" :attribution="attribution" />
+      <l-tile-layer :url="tiles.url" :attribution="tiles.attribution" />
       <l-marker-cluster-group
         :max-cluster-radius="80"
         :zoom-to-bounds-on-click="true"
@@ -54,6 +54,7 @@ import { useApi } from '@/composables/useApi'
 import type { SiteWithDives } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
 import { createDiveSiteIcon } from '@/lib/map/leafletIcon'
+import { mapTileLayer } from '@/lib/globals/mapTiles'
 import DiveSiteMapPopup from './DiveSiteMapPopup.vue'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -120,17 +121,7 @@ const mapCenter = computed<[number, number]>(
 )
 const mapZoom = computed(() => props.zoom ?? mapView.value.zoom)
 
-const tileUrl = computed(() => {
-  return themeStore.theme === 'dark'
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-})
-
-const attribution = computed(() => {
-  return themeStore.theme === 'dark'
-    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    : '&copy; OpenStreetMap contributors'
-})
+const tiles = computed(() => mapTileLayer(themeStore.theme))
 
 const iconCreateFunction = computed(() => (cluster: { getChildCount: () => number }) => {
   const count = cluster.getChildCount()
