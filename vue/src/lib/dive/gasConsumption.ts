@@ -1,9 +1,15 @@
-import type { Dive } from '@/lib/types/dive'
+import type {
+  CylinderContribution,
+  DiveConfigurationCylinder,
+  Dive,
+  GasConsumptionComparison,
+} from '@/lib/types/dive'
+import { cylinderWaterVolumeLiters } from '@/lib/dive/cylinders'
 
 /** Fraction-of-the-larger-value tolerance for calling two RMV / total figures inconsistent.
- * Mirrors the backend `GasConsumptionComparison.RMV_MISMATCH_TOLERANCE`. Shared with
+ * Mirrors the backend `GasConsumptionComparison.MISMATCH_TOLERANCE`. Shared with
  * `lib/dive/backfill.ts` so the `GAS_CONSUMPTION_MISMATCH` chip and the DiveView warning agree. */
-export const RMV_MISMATCH_TOLERANCE = 0.15
+export const MISMATCH_TOLERANCE = 0.15
 
 /** True when both values are usable (> 0) and differ by more than the tolerance. */
 export function differsBeyondTolerance(
@@ -12,7 +18,7 @@ export function differsBeyondTolerance(
 ): boolean {
   if (a == null || b == null || a <= 0 || b <= 0) return false
   const larger = Math.max(a, b)
-  return Math.abs(a - b) / larger > RMV_MISMATCH_TOLERANCE
+  return Math.abs(a - b) / larger > MISMATCH_TOLERANCE
 }
 
 /**
@@ -38,6 +44,10 @@ export function impliedRmvFromTotal(
   return totalLiters / (avgAmbientAta * durationMinutes)
 }
 
+/** Which pair disagrees, headline precedence: cylinder RMV first, then cylinder total, then the
+ * internal entered-RMV-vs-entered-total consistency check. */
+export type MismatchReason = 'rmv-vs-cylinders' | 'total-vs-cylinders' | 'rmv-vs-total' | null
+
 export type GasConsumptionComparisonView = {
   /** RMV to show on the dive view - the cylinder-derived figure when available, else the entered one. */
   effectiveRmvLiters: number | null
@@ -45,44 +55,154 @@ export type GasConsumptionComparisonView = {
   effectiveRmvSource: 'cylinders' | 'entered' | null
   effectiveTotalSource: 'cylinders' | 'entered' | null
   mismatch: boolean
-  /** Which pair disagrees, when `mismatch` - inferred from which fields are populated. */
-  reason: 'manual-vs-cylinders' | 'rmv-vs-total' | null
+  reason: MismatchReason
   insertedRmvLiters: number | null
+  insertedTotalLiters: number | null
   calculatedRmvLiters: number | null
+  calculatedTotalLiters: number | null
   impliedRmvFromTotalLiters: number | null
+  /** The pieces the "show the calculation" panel renders. */
+  ocPressureMinutes: number | null
+  avgDepthMeters: number | null
+  durationMinutes: number | null
+  contributions: CylinderContribution[]
+}
+
+const EMPTY_VIEW: GasConsumptionComparisonView = {
+  effectiveRmvLiters: null,
+  effectiveTotalLiters: null,
+  effectiveRmvSource: null,
+  effectiveTotalSource: null,
+  mismatch: false,
+  reason: null,
+  insertedRmvLiters: null,
+  insertedTotalLiters: null,
+  calculatedRmvLiters: null,
+  calculatedTotalLiters: null,
+  impliedRmvFromTotalLiters: null,
+  ocPressureMinutes: null,
+  avgDepthMeters: null,
+  durationMinutes: null,
+  contributions: [],
+}
+
+function reasonFor(cmp: GasConsumptionComparison): MismatchReason {
+  if (!cmp.mismatch) return null
+  if (cmp.rmvVsCalculatedMismatch) return 'rmv-vs-cylinders'
+  if (cmp.totalLitersMismatch) return 'total-vs-cylinders'
+  if (cmp.rmvVsImpliedMismatch) return 'rmv-vs-total'
+  return null
 }
 
 /**
  * Reads `dive.gasConsumptionComparison` (computed server-side) into a view model for DiveView.
- * `mismatch` is taken as-is from the backend; `reason` is inferred here from which figures are set.
+ * All mismatch flags come straight from the backend so the chip, the DiveView box and this agree.
  */
-export function gasConsumptionComparison(dive: Pick<Dive, 'gasConsumptionComparison'>): GasConsumptionComparisonView {
+export function gasConsumptionComparison(
+  dive: Pick<Dive, 'gasConsumptionComparison'>,
+): GasConsumptionComparisonView {
   const cmp = dive.gasConsumptionComparison ?? null
-  const inserted = cmp?.insertedRmvLiters ?? null
-  const calculated = cmp?.calculatedRmvLiters ?? null
-  const implied = cmp?.impliedRmvFromTotalLiters ?? null
-  const insertedTotal = cmp?.insertedTotalLiters ?? null
-  const calculatedTotal = cmp?.calculatedTotalLiters ?? null
+  if (!cmp) return EMPTY_VIEW
 
-  const effectiveRmvLiters = calculated ?? inserted
-  const effectiveTotalLiters = calculatedTotal ?? insertedTotal
-
-  let reason: GasConsumptionComparisonView['reason'] = null
-  if (cmp?.mismatch) {
-    if (differsBeyondTolerance(inserted, calculated)) reason = 'manual-vs-cylinders'
-    else if (differsBeyondTolerance(inserted, implied)) reason = 'rmv-vs-total'
-  }
+  const effectiveRmvLiters = cmp.calculatedRmvLiters ?? cmp.insertedRmvLiters
+  const effectiveTotalLiters = cmp.calculatedTotalLiters ?? cmp.insertedTotalLiters
 
   return {
     effectiveRmvLiters,
     effectiveTotalLiters,
-    effectiveRmvSource: calculated != null ? 'cylinders' : inserted != null ? 'entered' : null,
+    effectiveRmvSource:
+      cmp.calculatedRmvLiters != null ? 'cylinders' : cmp.insertedRmvLiters != null ? 'entered' : null,
     effectiveTotalSource:
-      calculatedTotal != null ? 'cylinders' : insertedTotal != null ? 'entered' : null,
-    mismatch: !!cmp?.mismatch,
+      cmp.calculatedTotalLiters != null
+        ? 'cylinders'
+        : cmp.insertedTotalLiters != null
+          ? 'entered'
+          : null,
+    mismatch: cmp.mismatch,
+    reason: reasonFor(cmp),
+    insertedRmvLiters: cmp.insertedRmvLiters,
+    insertedTotalLiters: cmp.insertedTotalLiters,
+    calculatedRmvLiters: cmp.calculatedRmvLiters,
+    calculatedTotalLiters: cmp.calculatedTotalLiters,
+    impliedRmvFromTotalLiters: cmp.impliedRmvFromTotalLiters,
+    ocPressureMinutes: cmp.ocPressureMinutes,
+    avgDepthMeters: cmp.avgDepthMeters,
+    durationMinutes: cmp.durationMinutes,
+    contributions: cmp.contributions ?? [],
+  }
+}
+
+/** Per-cylinder Δbar → litres, computed live from the edit form (mirror of the backend's
+ * `DiveEntity.cylinderContributions`). */
+function liveContributions(cylinders: DiveConfigurationCylinder[]): CylinderContribution[] {
+  return cylinders.map((c) => {
+    const waterVolumeLiters = cylinderWaterVolumeLiters(c.size)
+    const usable =
+      c.startBar != null && c.endBar != null && c.startBar - c.endBar > 0
+        ? (c.startBar - c.endBar) * waterVolumeLiters
+        : null
+    return {
+      waterVolumeLiters,
+      material: c.material ?? null,
+      role: c.role,
+      startBar: c.startBar ?? null,
+      endBar: c.endBar ?? null,
+      consumedLiters: usable,
+      usageWindows: c.usageWindows ?? [],
+    }
+  })
+}
+
+/**
+ * Builds a comparison view straight from the edit form so the warning + "show the working" panel
+ * update as the user types. The cylinder-derived RMV / total / pressure-minutes come from the last
+ * saved state (the calculator's windowed-vs-complement maths isn't re-run client-side); only the
+ * entered figures and the per-cylinder litres table are live.
+ */
+export function buildLiveComparisonView(input: {
+  enteredRmvLiters: number | null | undefined
+  enteredTotalLiters: number | null | undefined
+  cylinders: DiveConfigurationCylinder[]
+  calculatedRmvLiters: number | null | undefined
+  calculatedTotalLiters: number | null | undefined
+  ocPressureMinutes: number | null | undefined
+  avgDepthMeters: number | null | undefined
+  durationMinutes: number | null | undefined
+}): GasConsumptionComparisonView {
+  const enteredRmv =
+    input.enteredRmvLiters && input.enteredRmvLiters > 0 ? input.enteredRmvLiters : null
+  const enteredTotal =
+    input.enteredTotalLiters && input.enteredTotalLiters > 0 ? input.enteredTotalLiters : null
+  const implied = impliedRmvFromTotal(enteredTotal, input.avgDepthMeters, input.durationMinutes)
+  const insertedRmv = enteredRmv ?? implied
+  const calcRmv = input.calculatedRmvLiters ?? null
+  const calcTotal = input.calculatedTotalLiters ?? null
+
+  const rmvVsCylinders = differsBeyondTolerance(insertedRmv, calcRmv)
+  const totalVsCylinders = differsBeyondTolerance(enteredTotal, calcTotal)
+  const rmvVsTotal = differsBeyondTolerance(enteredRmv, implied)
+  const mismatch = rmvVsCylinders || totalVsCylinders || rmvVsTotal
+
+  let reason: MismatchReason = null
+  if (rmvVsCylinders) reason = 'rmv-vs-cylinders'
+  else if (totalVsCylinders) reason = 'total-vs-cylinders'
+  else if (rmvVsTotal) reason = 'rmv-vs-total'
+
+  return {
+    effectiveRmvLiters: calcRmv ?? insertedRmv,
+    effectiveTotalLiters: calcTotal ?? enteredTotal,
+    effectiveRmvSource: calcRmv != null ? 'cylinders' : insertedRmv != null ? 'entered' : null,
+    effectiveTotalSource: calcTotal != null ? 'cylinders' : enteredTotal != null ? 'entered' : null,
+    mismatch,
     reason,
-    insertedRmvLiters: inserted,
-    calculatedRmvLiters: calculated,
+    insertedRmvLiters: insertedRmv,
+    insertedTotalLiters: enteredTotal,
+    calculatedRmvLiters: calcRmv,
+    calculatedTotalLiters: calcTotal,
     impliedRmvFromTotalLiters: implied,
+    ocPressureMinutes: input.ocPressureMinutes ?? null,
+    avgDepthMeters: input.avgDepthMeters ?? null,
+    durationMinutes: input.durationMinutes ?? null,
+    contributions: liveContributions(input.cylinders),
   }
 }

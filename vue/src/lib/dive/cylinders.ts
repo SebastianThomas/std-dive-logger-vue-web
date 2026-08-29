@@ -27,6 +27,21 @@ const entry = (
   material,
 })
 
+const twin = (
+  perTank: number,
+  material: CylinderMaterial,
+  label: string,
+): StandardCylinder => ({
+  key: `${material.toLowerCase()}-twin-${perTank}`,
+  label,
+  // A manifolded twinset is one gas volume for consumption purposes - stored as the combined
+  // water volume of both tanks.
+  size: { unit: 'LITER', value: perTank * 2 },
+  material,
+})
+
+/** Advisory quick-fill list - picking one sets size + unit + material, but the fields stay fully
+ * editable and nothing is snapped on save. Twinsets are stored as their combined litres. */
 export const STANDARD_CYLINDERS: StandardCylinder[] = [
   entry(3, 'STEEL', '3 L Steel (pony)'),
   entry(5, 'STEEL', '5 L Steel'),
@@ -36,18 +51,41 @@ export const STANDARD_CYLINDERS: StandardCylinder[] = [
   entry(15, 'STEEL', '15 L Steel'),
   entry(18, 'STEEL', '18 L Steel'),
   entry(20, 'STEEL', '20 L Steel'),
-  entry(24, 'STEEL', '24 L Steel (twin 12)'),
-  entry(30, 'STEEL', '30 L Steel (twin 15)'),
   entry(5.5, 'ALU', '5.5 L Alu (AL40 / ~40 cuft)'),
   entry(7, 'ALU', '7 L Alu'),
   entry(9, 'ALU', '9 L Alu (AL63 / ~63 cuft)'),
   entry(11.1, 'ALU', '11.1 L Alu (AL80 / ~80 cuft)'),
+  twin(7, 'STEEL', '2× 7 L Steel (14 L)'),
+  twin(8, 'STEEL', '2× 8 L Steel (16 L)'),
+  twin(12, 'STEEL', '2× 12 L Steel (24 L)'),
+  twin(15, 'STEEL', '2× 15 L Steel (30 L)'),
+  twin(11.1, 'ALU', '2× 11.1 L Alu (22.2 L)'),
 ]
 
 /** The catalog entry a brand-new cylinder row defaults to. */
 export const DEFAULT_STANDARD_CYLINDER_KEY = 'steel-12'
 
 const sameValue = (a: number, b: number) => Math.abs(a - b) < 1e-6
+
+/** Nearest quick-fill entry within `tolerance` L of a custom size (same unit + material), or
+ * `null`. Frontend-only convenience - only ever applied when the user explicitly clicks "Snap". */
+export function snapToNearestStandard(
+  size: CylinderSize | undefined | null,
+  material: CylinderMaterial | null | undefined,
+  tolerance = 0.5,
+): StandardCylinder | null {
+  if (!size || size.unit !== 'LITER') return null
+  const candidates = STANDARD_CYLINDERS.filter(
+    (c) =>
+      c.size.unit === 'LITER' &&
+      Math.abs(c.size.value - size.value) <= tolerance &&
+      (material == null || c.material === material),
+  )
+  if (!candidates.length) return null
+  return candidates.reduce((best, c) =>
+    Math.abs(c.size.value - size.value) < Math.abs(best.size.value - size.value) ? c : best,
+  )
+}
 
 /**
  * The catalog key for a cylinder's exact size + material, or `'custom'` when nothing matches.
@@ -78,4 +116,11 @@ export function inferMaterial(liters: number, unit: CylinderSizeUnit): CylinderM
   if (liters <= 3.5) return 'STEEL'
   if (liters < 8.5) return 'ALU'
   return 'STEEL'
+}
+
+/** Water volume in litres - mirrors backend `CylinderSize.liters()`. A US "cuft" rating is
+ * free-gas capacity at ~3000 psi service pressure, not a physical volume. */
+export function cylinderWaterVolumeLiters(size: CylinderSize): number {
+  if (size.unit === 'CUFT') return size.value * ((28.31685 * 1.01325) / 206.843)
+  return size.value
 }

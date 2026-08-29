@@ -148,7 +148,13 @@
           @click="saveCcrUnit"
         >
           {{
-            mode === 'select' ? 'Apply' : mode === 'create' ? 'Create & Apply' : 'Update & Apply'
+            saving
+              ? 'Saving…'
+              : mode === 'select'
+                ? 'Apply'
+                : mode === 'create'
+                  ? 'Create & Apply'
+                  : 'Update & Apply'
           }}
         </button>
       </div>

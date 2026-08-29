@@ -83,11 +83,13 @@
         </button>
         <button
           type="button"
-          :disabled="!trimStats"
-          class="px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="!trimStats || trimBusy"
+          :aria-busy="trimBusy || undefined"
+          class="px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           @click="confirmTrim"
         >
-          Trim
+          <LoadingSpinner v-if="trimBusy" size="xs" />
+          {{ trimBusy ? 'Trimming…' : 'Trim' }}
         </button>
       </div>
     </div>
@@ -124,6 +126,7 @@ import {
   type ZoomTransform,
   type CurveFactory,
 } from 'd3'
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import DiveGraphTooltip, {
   type TooltipData,
   type TooltipProfileData,
@@ -213,6 +216,8 @@ type Props = {
   /** Id of the profile currently being trimmed, if any — draws the drag handles/shaded cut
    * regions and the live-stats panel for that profile. Null/undefined when not trimming. */
   trimProfileId?: number | null
+  /** The trim request is in flight — disables the Trim button and shows a spinner. */
+  trimBusy?: boolean
 }
 
 const props = defineProps<Props>()
@@ -386,7 +391,7 @@ function cancelTrim() {
 }
 
 function confirmTrim() {
-  if (!trimRange.value || props.trimProfileId == null) return
+  if (!trimRange.value || props.trimProfileId == null || props.trimBusy) return
   emit('trimConfirmed', {
     profileId: props.trimProfileId,
     start: trimRange.value.start,

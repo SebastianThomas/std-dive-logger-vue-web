@@ -36,6 +36,8 @@
           :backfill-outstanding="liveOutstanding"
           :backfill-prominent="fromBackfill"
           :calculated-rmv-baseline="calculatedRmvBaseline"
+          :calculated-total-liters-baseline="calculatedTotalLitersBaseline"
+          :oc-pressure-minutes-baseline="ocPressureMinutesBaseline"
           :avg-depth-meters="loadedDive.summary.averageDepth"
           :duration-minutes="loadedDiveDurationMinutes"
           @dismiss-backfill-field="dismissBackfillField"
@@ -100,6 +102,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useNavigation } from '@/composables/useNavigation'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
@@ -381,17 +384,33 @@ const invalidCylinders = computed(
     ).length,
 )
 
-/** OC RMV computed from the loaded dive's tracked cylinders - the baseline the manually-entered
- * gas figures are checked against for the >15% mismatch (both the live edit-form warning and the
- * GAS_CONSUMPTION_MISMATCH backfill chip). From the backend's own comparison record when present,
- * else the raw cylinder-consumption RMV. */
+/** OC RMV / total litres / pressure-minutes from the loaded dive's tracked cylinders - the
+ * baseline the manually-entered gas figures are checked against for the >15% mismatch (the live
+ * edit-form warning + the GAS_CONSUMPTION_MISMATCH backfill chip). From the backend's own
+ * comparison record when present, else the raw cylinder-consumption figures. */
 const calculatedRmvBaseline = computed<number | null>(
   () =>
     loadedDive.value?.gasConsumptionComparison?.calculatedRmvLiters ??
     loadedDive.value?.cylinderConsumption?.ocRmvLiters ??
     null,
 )
+const calculatedTotalLitersBaseline = computed<number | null>(
+  () =>
+    loadedDive.value?.gasConsumptionComparison?.calculatedTotalLiters ??
+    loadedDive.value?.cylinderConsumption?.ocConsumedLiters ??
+    null,
+)
+const ocPressureMinutesBaseline = computed<number | null>(
+  () =>
+    loadedDive.value?.gasConsumptionComparison?.ocPressureMinutes ??
+    loadedDive.value?.cylinderConsumption?.ocPressureMinutes ??
+    null,
+)
 const loadedDiveDurationMinutes = computed<number | null>(() => {
+  // The backend uses bottom time for the implied-RMV maths; prefer its figure so the live warning
+  // matches the saved one exactly.
+  const backend = loadedDive.value?.gasConsumptionComparison?.durationMinutes
+  if (backend != null && backend > 0) return backend
   const s = loadedDive.value?.summary
   if (!s || s.end == null || s.start == null || s.end <= s.start) return null
   return (s.end - s.start) / 60000
@@ -403,6 +422,7 @@ const liveMissing = computed<DiveBackfillMissingField[]>(() =>
   missingBackfillFields({
     ...formData.value,
     calculatedRmvLiters: calculatedRmvBaseline.value,
+    calculatedTotalLiters: calculatedTotalLitersBaseline.value,
     avgDepthMeters: loadedDive.value?.summary.averageDepth ?? null,
     durationMinutes: loadedDiveDurationMinutes.value,
   }),
@@ -431,20 +451,19 @@ const jumpToField = (field: DiveBackfillMissingField) => {
     ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
-const setBackfillDismissed = async (
-  reason: DiveBackfillMissingField | null,
-  dismissed: boolean,
-) => {
-  try {
-    const res = await putWithToken<DiveBackfillStatus>(
-      `/v1/dives/${diveId.value}/backfill/dismissed`,
-      { reason, dismissed },
-    )
-    backfillStatus.value = res.data
-  } catch (err) {
-    toast.error(`Couldn't update backfill status: ${extractErrorDetail(err)}`)
-  }
-}
+const { run: runBackfill } = useAsyncAction()
+const setBackfillDismissed = (reason: DiveBackfillMissingField | null, dismissed: boolean) =>
+  runBackfill(async () => {
+    try {
+      const res = await putWithToken<DiveBackfillStatus>(
+        `/v1/dives/${diveId.value}/backfill/dismissed`,
+        { reason, dismissed },
+      )
+      backfillStatus.value = res.data
+    } catch (err) {
+      toast.error(`Couldn't update backfill status: ${extractErrorDetail(err)}`)
+    }
+  })
 
 const dismissBackfillField = (field: DiveBackfillMissingField) => setBackfillDismissed(field, true)
 const restoreBackfill = () => setBackfillDismissed(null, false)

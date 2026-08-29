@@ -49,10 +49,11 @@
             </button>
             <button
               type="button"
-              class="px-2 py-1 text-xs rounded border border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+              :disabled="deleteOps.isBusy(cert.id)"
+              class="px-2 py-1 text-xs rounded border border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
               @click="deleteCertification(cert)"
             >
-              Delete
+              {{ deleteOps.isBusy(cert.id) ? 'Deleting…' : 'Delete' }}
             </button>
           </div>
         </div>
@@ -178,6 +179,7 @@
 import { ref, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { useAsyncActionSet } from '@/composables/useAsyncAction'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import CertificationAgencyPicker from '@/components/CertificationAgencyPicker.vue'
@@ -282,16 +284,18 @@ const saveCertification = async () => {
   }
 }
 
-const deleteCertification = async (cert: Certification) => {
-  try {
-    await deleteWithToken(`/v1/certifications/${cert.id}`)
-    toast.success('Certification deleted')
-    await loadCertifications()
-  } catch (err) {
-    console.error('Failed to delete certification:', err)
-    toast.error(`Failed to delete certification: ${extractErrorDetail(err)}`)
-  }
-}
+const deleteOps = useAsyncActionSet<number>()
+const deleteCertification = (cert: Certification) =>
+  deleteOps.run(cert.id, async () => {
+    try {
+      await deleteWithToken(`/v1/certifications/${cert.id}`)
+      toast.success('Certification deleted')
+      await loadCertifications()
+    } catch (err) {
+      console.error('Failed to delete certification:', err)
+      toast.error(`Failed to delete certification: ${extractErrorDetail(err)}`)
+    }
+  })
 
 loadCertifications()
 </script>

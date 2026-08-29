@@ -574,29 +574,13 @@
       </InfoCardRow>
 
       <!-- Gas-consumption mismatch: the manually-entered figures and the cylinder-derived ones
-           disagree by more than 15% - one of them is likely wrong. Amber inline style matching
-           CcrUnitNameInput.vue / BackfillBanner.vue. -->
-      <div
+           disagree by more than 15% - one of them is likely wrong. Expandable "show the working"
+           so the diver can spot a mistyped cylinder pressure vs a bad RMV. -->
+      <GasConsumptionBreakdown
         v-if="gasCmp.mismatch"
-        class="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-900 dark:text-amber-100"
-      >
-        <p class="font-medium">
-          <i class="fa fa-triangle-exclamation mr-1.5 text-amber-600 dark:text-amber-400" />
-          Gas consumption figures disagree
-        </p>
-        <p class="mt-1 text-amber-800 dark:text-amber-200">
-          <template v-if="gasCmp.reason === 'rmv-vs-total'">
-            The entered RMV ({{ gasCmp.insertedRmvLiters?.toFixed(1) }} l/min) and the RMV implied
-            by the entered total gas, average depth and duration
-            ({{ gasCmp.impliedRmvFromTotalLiters?.toFixed(1) }} l/min) differ by more than 15%.
-          </template>
-          <template v-else>
-            The entered RMV ({{ gasCmp.insertedRmvLiters?.toFixed(1) }} l/min) and the RMV computed
-            from your tracked cylinders ({{ gasCmp.calculatedRmvLiters?.toFixed(1) }} l/min) differ
-            by more than 15%.
-          </template>
-        </p>
-      </div>
+        :view="gasCmp"
+        :dive-start-ms="dive.summary.start"
+      />
 
       <!-- Cylinders - the one piece of Configuration dense enough to keep its own panel; Suit/Base
            Config/CCR Unit/Weight/Visibility/Gas Consumption moved into the compact InfoCardRow
@@ -697,6 +681,7 @@ import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import ProfileReimportModal from '@/components/dive/view/ProfileReimportModal.vue'
 import DivePhotoGallery from '@/components/dive/DivePhotoGallery.vue'
 import DiveTripBadges from '@/components/dive/DiveTripBadges.vue'
+import GasConsumptionBreakdown from '@/components/dive/GasConsumptionBreakdown.vue'
 import type { Dive, DiveComputer } from '@/lib/types/dive'
 import {
   BASE_CONFIGURATION_LABELS,

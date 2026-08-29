@@ -51,24 +51,31 @@ export type BackfillFieldSource = {
   /** OC RMV derived from tracked cylinders (`Dive.gasConsumptionComparison.calculatedRmvLiters`
    * / `cylinderConsumption.ocRmvLiters`). Enables the `GAS_CONSUMPTION_MISMATCH` check live. */
   calculatedRmvLiters?: number | null
+  /** Σ litres the tracked OC cylinders gave up (`cylinderConsumption.ocConsumedLiters`). */
+  calculatedTotalLiters?: number | null
   avgDepthMeters?: number | null
   durationMinutes?: number | null
 }
 
 /**
- * Mirror of the backend's `GasConsumptionComparison.mismatch` (15% tolerance): the manually-entered
- * RMV - or, absent that, the RMV implied by total litres / depth / duration - disagrees with the
- * cylinder-derived RMV; or the entered RMV disagrees with its own implied-from-total value.
+ * Mirror of the backend's `GasConsumptionComparison.mismatch` (15% tolerance) - OR of three checks:
+ * entered RMV (or, absent that, the RMV implied by total litres / depth / duration) vs the
+ * cylinder-derived RMV; entered total litres vs the cylinder-derived total; and the entered RMV vs
+ * its own implied-from-total value.
  */
 export function gasConsumptionMismatch(src: BackfillFieldSource): boolean {
   const gas = src.gasConsumption
   if (!gas) return false
-  const calc = src.calculatedRmvLiters ?? null
+  const calcRmv = src.calculatedRmvLiters ?? null
+  const calcTotal = src.calculatedTotalLiters ?? null
   const enteredRmv = gas.rmvLiters && gas.rmvLiters > 0 ? gas.rmvLiters : null
+  const enteredTotal = gas.totalLiters && gas.totalLiters > 0 ? gas.totalLiters : null
   const implied = impliedRmvFromTotal(gas.totalLiters, src.avgDepthMeters, src.durationMinutes)
   const insertedRmv = enteredRmv ?? implied
   return (
-    differsBeyondTolerance(insertedRmv, calc) || differsBeyondTolerance(enteredRmv, implied)
+    differsBeyondTolerance(insertedRmv, calcRmv) ||
+    differsBeyondTolerance(enteredTotal, calcTotal) ||
+    differsBeyondTolerance(enteredRmv, implied)
   )
 }
 

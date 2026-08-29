@@ -8,12 +8,21 @@
       <template v-else-if="trip">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-3">
           <div class="flex items-center justify-between">
-            <h1 class="text-2xl font-bold">{{ trip.name }}</h1>
+            <h1 class="text-2xl font-bold">
+              {{ trip.name }}
+              <span
+                v-if="detailsSaving || savingTeam"
+                class="ml-2 text-xs font-normal text-gray-400 dark:text-gray-500"
+              >
+                <LoadingSpinner size="xs" /> Saving…
+              </span>
+            </h1>
             <button
-              class="text-sm text-red-600 hover:underline"
+              class="text-sm text-red-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="deletingTrip"
               @click="removeTrip"
             >
-              Delete trip
+              {{ deletingTrip ? 'Deleting…' : 'Delete trip' }}
             </button>
           </div>
           <!-- Auto-saves on blur/Enter/change - no separate Save button, so every field on this
@@ -73,10 +82,11 @@
                   {{ m.dive.customIdentifier }}
                 </router-link>
                 <button
-                  class="text-xs text-red-600 hover:underline"
+                  class="text-xs text-red-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="memberOps.isBusy(`dive-${m.dive.id}`)"
                   @click="removeDiveMember(m.dive.id)"
                 >
-                  Remove
+                  {{ memberOps.isBusy(`dive-${m.dive.id}`) ? 'Removing…' : 'Remove' }}
                 </button>
               </template>
               <template v-else-if="m.type === 'TRIP' && m.subTrip">
@@ -88,10 +98,11 @@
                   <span class="text-xs text-gray-400">({{ DIVE_TRIP_TYPE_LABELS[m.subTrip.type] }})</span>
                 </router-link>
                 <button
-                  class="text-xs text-red-600 hover:underline"
+                  class="text-xs text-red-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="memberOps.isBusy(`subtrip-${m.subTrip.id}`)"
                   @click="removeTripMember(m.subTrip.id)"
                 >
-                  Remove
+                  {{ memberOps.isBusy(`subtrip-${m.subTrip.id}`) ? 'Removing…' : 'Remove' }}
                 </button>
               </template>
             </li>
@@ -112,7 +123,8 @@
                 <li v-for="d in diveSearchResults" :key="d.id">
                   <button
                     type="button"
-                    class="text-sm text-blue-600 hover:underline"
+                    class="text-sm text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                    :disabled="memberOps.isBusy(`add-dive-${d.id}`)"
                     @click="addDiveMember(d.id)"
                   >
                     #{{ d.number }} - {{ d.customIdentifier }}
@@ -123,7 +135,8 @@
             <div>
               <label class="block text-sm font-medium mb-1">Add a sub-trip</label>
               <select
-                class="w-full rounded border px-2 py-1.5 dark:bg-gray-700"
+                class="w-full rounded border px-2 py-1.5 dark:bg-gray-700 disabled:opacity-50"
+                :disabled="memberOps.isBusy('add-subtrip')"
                 @change="addSubTripFromSelect"
               >
                 <option value="">Select a trip…</option>
@@ -246,8 +259,10 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { useAsyncAction, useAsyncActionSet } from '@/composables/useAsyncAction'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { toast } from 'vue-sonner'
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import BuddyNameAutocomplete from '@/components/dive/BuddyNameAutocomplete.vue'
 import {
   DIVE_TRIP_TYPE_LABELS,
@@ -347,29 +362,38 @@ const load = async (options: { showSpinner?: boolean } = {}) => {
 // through), still loud on failure. Skips entirely on a blank name (e.g. cleared then tabbed away
 // from) rather than sending a request the backend would just reject - the field keeps whatever
 // was last actually saved until a real name is typed.
-const saveDetails = async () => {
+const { busy: detailsSaving, run: runDetailsSave } = useAsyncAction()
+const saveDetails = () => {
   if (!form.value.name.trim()) return
-  try {
-    const res = await putWithToken<DiveTrip>(`/v1/dive-trips/${tripId()}`, {
-      name: form.value.name,
-      type: form.value.type,
-      teamTerminology: form.value.teamTerminology,
-    })
-    trip.value = res.data
-  } catch (err) {
-    toast.error(`Failed to update trip: ${extractErrorDetail(err)}`)
-  }
+  return runDetailsSave(async () => {
+    try {
+      const res = await putWithToken<DiveTrip>(`/v1/dive-trips/${tripId()}`, {
+        name: form.value.name,
+        type: form.value.type,
+        teamTerminology: form.value.teamTerminology,
+      })
+      trip.value = res.data
+    } catch (err) {
+      toast.error(`Failed to update trip: ${extractErrorDetail(err)}`)
+    }
+  })
 }
 
-const removeTrip = async () => {
-  try {
-    await deleteWithToken(`/v1/dive-trips/${tripId()}`)
-    toast.success('Trip deleted')
-    router.push({ name: 'TripList' })
-  } catch (err) {
-    toast.error(`Failed to delete trip: ${extractErrorDetail(err)}`)
-  }
-}
+const { busy: deletingTrip, run: runDeleteTrip } = useAsyncAction()
+const removeTrip = () =>
+  runDeleteTrip(async () => {
+    try {
+      await deleteWithToken(`/v1/dive-trips/${tripId()}`)
+      toast.success('Trip deleted')
+      router.push({ name: 'TripList' })
+    } catch (err) {
+      toast.error(`Failed to delete trip: ${extractErrorDetail(err)}`)
+    }
+  })
+
+// One busy flag per trip-member row (dives + sub-trips), so a row's add/remove button locks and
+// spins without freezing the rest of the list.
+const memberOps = useAsyncActionSet<string>()
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 // A dive already under this trip (directly, or via a nested sub-trip) is filtered out of the
@@ -409,16 +433,17 @@ const searchDives = () => {
   }, 300)
 }
 
-const addDiveMember = async (diveId: number) => {
-  try {
-    await postWithToken(`/v1/dive-trips/${tripId()}/members/dives/${diveId}`, {})
-    diveSearchQuery.value = ''
-    diveSearchResults.value = []
-    await load({ showSpinner: false })
-  } catch (err) {
-    toast.error(`Failed to add dive to trip: ${extractErrorDetail(err)}`)
-  }
-}
+const addDiveMember = (diveId: number) =>
+  memberOps.run(`add-dive-${diveId}`, async () => {
+    try {
+      await postWithToken(`/v1/dive-trips/${tripId()}/members/dives/${diveId}`, {})
+      diveSearchQuery.value = ''
+      diveSearchResults.value = []
+      await load({ showSpinner: false })
+    } catch (err) {
+      toast.error(`Failed to add dive to trip: ${extractErrorDetail(err)}`)
+    }
+  })
 
 // Adds every one of the user's own dives numbered in [diveRangeFrom, diveRangeTo] - e.g. a run of
 // consecutive liveaboard dives - in one action instead of searching and clicking each one.
@@ -463,34 +488,38 @@ const addDiveRange = async () => {
   }
 }
 
-const removeDiveMember = async (diveId: number) => {
-  try {
-    await deleteWithToken(`/v1/dive-trips/${tripId()}/members/dives/${diveId}`)
-    await load({ showSpinner: false })
-  } catch (err) {
-    toast.error(`Failed to remove dive: ${extractErrorDetail(err)}`)
-  }
-}
+const removeDiveMember = (diveId: number) =>
+  memberOps.run(`dive-${diveId}`, async () => {
+    try {
+      await deleteWithToken(`/v1/dive-trips/${tripId()}/members/dives/${diveId}`)
+      await load({ showSpinner: false })
+    } catch (err) {
+      toast.error(`Failed to remove dive: ${extractErrorDetail(err)}`)
+    }
+  })
 
-const addSubTripFromSelect = async (event: Event) => {
+const addSubTripFromSelect = (event: Event) => {
   const childId = (event.target as HTMLSelectElement).value
   if (!childId) return
-  try {
-    await postWithToken(`/v1/dive-trips/${tripId()}/members/trips/${childId}`, {})
-    await load({ showSpinner: false })
-  } catch (err) {
-    toast.error(`Could not add sub-trip: ${extractErrorDetail(err)}`)
-  }
+  return memberOps.run('add-subtrip', async () => {
+    try {
+      await postWithToken(`/v1/dive-trips/${tripId()}/members/trips/${childId}`, {})
+      await load({ showSpinner: false })
+    } catch (err) {
+      toast.error(`Could not add sub-trip: ${extractErrorDetail(err)}`)
+    }
+  })
 }
 
-const removeTripMember = async (childTripId: number) => {
-  try {
-    await deleteWithToken(`/v1/dive-trips/${tripId()}/members/trips/${childTripId}`)
-    await load({ showSpinner: false })
-  } catch (err) {
-    toast.error(`Failed to remove sub-trip: ${extractErrorDetail(err)}`)
-  }
-}
+const removeTripMember = (childTripId: number) =>
+  memberOps.run(`subtrip-${childTripId}`, async () => {
+    try {
+      await deleteWithToken(`/v1/dive-trips/${tripId()}/members/trips/${childTripId}`)
+      await load({ showSpinner: false })
+    } catch (err) {
+      toast.error(`Failed to remove sub-trip: ${extractErrorDetail(err)}`)
+    }
+  })
 
 const removeRosterEntry = (idx: number) => {
   defaultTeamForm.value.splice(idx, 1)
@@ -498,8 +527,14 @@ const removeRosterEntry = (idx: number) => {
 }
 
 // Auto-save, triggered on any roster row's blur/Enter/change - silent on success, loud on
-// failure (same convention as saveDetails above).
+// failure (same convention as saveDetails above). Re-entrant calls (rapid blur/change) are
+// coalesced: the last one wins once the in-flight one settles.
+let teamSavePending = false
 const saveDefaultTeam = async () => {
+  if (savingTeam.value) {
+    teamSavePending = true
+    return
+  }
   savingTeam.value = true
   try {
     await putWithToken(
@@ -516,6 +551,10 @@ const saveDefaultTeam = async () => {
     toast.error(`Failed to save roster: ${extractErrorDetail(err)}`)
   } finally {
     savingTeam.value = false
+    if (teamSavePending) {
+      teamSavePending = false
+      void saveDefaultTeam()
+    }
   }
 }
 

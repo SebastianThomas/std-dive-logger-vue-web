@@ -23,9 +23,10 @@
       <input
         v-model="searchTerm"
         type="text"
-        placeholder="Search agencies (TDI, SSI, ...)"
+        placeholder="Search agencies (Ctrl+Space for suggestions)"
         class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
         @input="handleSearch"
+        @keydown="onKeydown"
       />
       <ul
         v-if="results.length > 0"
@@ -180,12 +181,31 @@ const handleSearch = () => {
   doSearch()
 }
 
-// Load the full list up front so a first click already shows something to pick from.
-getWithToken<CertificationAgency[]>('/v1/certifications/agencies')
-  .then((res) => {
+// Suggestions aren't shown until asked for (Ctrl/Cmd+Space, or Down-arrow on an empty field) -
+// blank query returns the user's agencies ranked by their own cert count (see CertificationService).
+const suggestNow = async () => {
+  try {
+    const res = await getWithToken<CertificationAgency[]>(
+      `/v1/certifications/agencies?query=${encodeURIComponent(searchTerm.value.trim())}`,
+    )
     results.value = res.data ?? []
-  })
-  .catch((err) => console.error('Failed to load certification agencies:', err))
+  } catch (err) {
+    console.error('Failed to load certification agencies:', err)
+    results.value = []
+  } finally {
+    searched.value = true
+  }
+}
+
+const onKeydown = (e: KeyboardEvent) => {
+  if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
+    e.preventDefault()
+    void suggestNow()
+  } else if (e.key === 'ArrowDown' && !searchTerm.value.trim() && !results.value.length) {
+    e.preventDefault()
+    void suggestNow()
+  }
+}
 
 const select = (agency: CertificationAgency) => {
   selected.value = agency

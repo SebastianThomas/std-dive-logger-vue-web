@@ -7,6 +7,7 @@
         :placeholder="placeholder"
         class="flex-1 p-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
         @input="handleSearch"
+        @keydown="onKeydown"
       />
       <button
         v-if="results.length > 0"
@@ -100,6 +101,34 @@ const fetchResults = async () => {
 }
 
 const handleSearch = debounce(fetchResults, 300)
+
+// Ctrl/Cmd+Space, or Down-arrow on an empty box → the user's own dive sites, most-dived first.
+const suggestNow = async () => {
+  const query = searchTerm.value.trim()
+  if (query) {
+    fetchResults()
+    return
+  }
+  try {
+    const res = await getWithToken<DiveSite[]>('/v1/dives/sites/mine')
+    results.value = res.data ?? []
+  } catch (err) {
+    console.error('Failed to load dive sites', err)
+    results.value = []
+  } finally {
+    searched.value = true
+  }
+}
+
+const onKeydown = (e: KeyboardEvent) => {
+  if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
+    e.preventDefault()
+    void suggestNow()
+  } else if (e.key === 'ArrowDown' && !searchTerm.value.trim() && !results.value.length) {
+    e.preventDefault()
+    void suggestNow()
+  }
+}
 
 const selectSite = (site: DiveSite) => {
   emit('selected', site)

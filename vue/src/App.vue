@@ -151,7 +151,10 @@ const mainBackgroundStyle = computed(() => {
 })
 
 // Methods
+let loggingOut = false
 const handleLogout = async () => {
+  if (loggingOut) return
+  loggingOut = true
   const url = resolveUrl('/api/auth/logout')
 
   try {
@@ -161,7 +164,6 @@ const handleLogout = async () => {
   }
 
   authStore.logout()
-  console.log('Logged out')
   router.push({ name: 'Home' })
 }
 

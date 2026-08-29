@@ -1,4 +1,8 @@
-import type { DiveMeasurementWithId, DiveProfile } from '@/lib/types/dive'
+import type {
+  DiveConfigurationCylinder,
+  DiveMeasurementWithId,
+  DiveProfile,
+} from '@/lib/types/dive'
 
 export type UsageWindow = {
   /** Epoch millis, same unit as DiveMeasurement.time / a cylinder's usageWindows bounds - no unit
@@ -66,4 +70,67 @@ export function findGasMatchWindows(
  * DiveView.vue already use throughout (there's no explicit isPrimary flag on a profile). */
 export function primaryProfile(profiles: DiveProfile[] | undefined): DiveProfile | undefined {
   return profiles?.[0]
+}
+
+export type BoundaryCandidate = {
+  /** Epoch millis - drop straight into a cylinder usage window's start/end. */
+  ms: number
+  kind: 'dive-start' | 'dive-end' | 'gas-switch' | 'gas-match' | 'other-cylinder'
+}
+
+/**
+ * Every timestamp worth offering as a one-click value for a usage-window bound: the dive's start
+ * and end, each point the primary computer's selected gas changed, the edges of each run where
+ * that gas matched this cylinder's mix, and every window bound already set on the dive's *other*
+ * cylinders (so adjacent windows can be lined up exactly). De-duped, ascending.
+ */
+export function candidateBoundaryTimes(
+  profile: DiveProfile | undefined,
+  allCylinders: DiveConfigurationCylinder[],
+  thisCylinderId: number,
+  thisCylinderGas: { o2: number; he: number },
+): BoundaryCandidate[] {
+  const out: BoundaryCandidate[] = []
+  const seen = new Set<number>()
+  // One chip per distinct timestamp - the first `push` wins, so the call order below
+  // (dive bounds, then gas switches, then gas-match edges, then other cylinders) is the priority.
+  const push = (ms: number | null | undefined, kind: BoundaryCandidate['kind']) => {
+    if (ms == null || seen.has(ms)) return
+    seen.add(ms)
+    out.push({ ms, kind })
+  }
+
+  const measurements = profile?.measurements
+    ? [...profile.measurements].sort((a, b) => a.measurement.time - b.measurement.time)
+    : []
+  if (measurements.length) {
+    push(measurements[0]!.measurement.time, 'dive-start')
+    push(measurements[measurements.length - 1]!.measurement.time, 'dive-end')
+
+    let prev: { o2: number; he: number } | null = null
+    for (const m of measurements) {
+      const g = m.measurement.gas
+      if (!g) continue
+      const cur = { o2: roundToPercent(g.o2), he: roundToPercent(g.he) }
+      if (prev && (prev.o2 !== cur.o2 || prev.he !== cur.he)) {
+        push(m.measurement.time, 'gas-switch')
+      }
+      prev = cur
+    }
+
+    for (const w of findGasMatchWindows(profile!.measurements!, thisCylinderGas)) {
+      push(w.start, 'gas-match')
+      push(w.end, 'gas-match')
+    }
+  }
+
+  for (const c of allCylinders) {
+    if (c.id === thisCylinderId) continue
+    for (const w of c.usageWindows ?? []) {
+      push(w.start, 'other-cylinder')
+      push(w.end, 'other-cylinder')
+    }
+  }
+
+  return out.sort((a, b) => a.ms - b.ms)
 }

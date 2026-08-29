@@ -14,13 +14,19 @@
         v-else-if="computer"
         class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-4"
       >
-        <input
-          :value="computer.customIdentifier"
-          type="text"
-          class="text-2xl font-bold w-full p-1 -ml-1 rounded border border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-          @blur="renameComputer(($event.target as HTMLInputElement).value)"
-          @keydown.enter="($event.target as HTMLInputElement).blur()"
-        />
+        <div class="flex items-center gap-2">
+          <input
+            :value="computer.customIdentifier"
+            type="text"
+            :disabled="renaming"
+            class="text-2xl font-bold w-full p-1 -ml-1 rounded border border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 dark:bg-gray-800 dark:text-white disabled:opacity-60"
+            @blur="renameComputer(($event.target as HTMLInputElement).value)"
+            @keydown.enter="($event.target as HTMLInputElement).blur()"
+          />
+          <span v-if="renaming" class="text-xs text-gray-400 whitespace-nowrap">
+            <LoadingSpinner size="xs" /> Saving…
+          </span>
+        </div>
         <p class="text-sm text-gray-500 dark:text-gray-400">
           {{ computer.manufacturer.name }}
           <span v-if="computer.serialNumber"> &middot; S/N {{ computer.serialNumber }}</span>
@@ -60,6 +66,7 @@ import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { formatDate } from '@/lib/utils/timeUtils'
 import { useEntityDiveStats } from '@/composables/useEntityDiveStats'
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import type { DiveComputer } from '@/lib/types/dive'
 
 const route = useRoute()
@@ -90,13 +97,20 @@ const load = async () => {
 
 onMounted(load)
 
+const renaming = ref(false)
 const renameComputer = async (name: string) => {
   const trimmed = name.trim()
-  if (!computer.value || trimmed === '' || trimmed === computer.value.customIdentifier) {
+  if (
+    renaming.value ||
+    !computer.value ||
+    trimmed === '' ||
+    trimmed === computer.value.customIdentifier
+  ) {
     return
   }
   const previous = computer.value.customIdentifier
   computer.value = { ...computer.value, customIdentifier: trimmed }
+  renaming.value = true
   try {
     await putWithToken(`/v1/computers/${computer.value.id}`, {
       customIdentifier: trimmed,
@@ -105,6 +119,8 @@ const renameComputer = async (name: string) => {
   } catch (err) {
     computer.value = { ...computer.value, customIdentifier: previous }
     toast.error(`Failed to rename dive computer: ${extractErrorDetail(err)}`)
+  } finally {
+    renaming.value = false
   }
 }
 </script>

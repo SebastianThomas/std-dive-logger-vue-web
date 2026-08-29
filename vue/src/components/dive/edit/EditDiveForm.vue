@@ -632,6 +632,15 @@
                     </option>
                   </select>
                 </div>
+                <div v-if="snapSuggestion(cylinder)" class="col-span-2">
+                  <button
+                    type="button"
+                    class="text-xs text-blue-600 hover:text-blue-700"
+                    @click="applyStandardCylinder(index, snapSuggestion(cylinder)!.key)"
+                  >
+                    <i class="fa fa-arrows-to-dot mr-1" />Snap to {{ snapSuggestion(cylinder)!.label }}
+                  </button>
+                </div>
               </template>
               <div>
                 <label class="block text-xs mb-1">Start (bar)</label>
@@ -741,71 +750,109 @@
               <div
                 v-for="(window, wIndex) in cylinder.usageWindows"
                 :key="wIndex"
-                class="grid grid-cols-2 gap-2 items-end"
+                class="space-y-1.5"
               >
-                <div>
-                  <label class="block text-xs mb-1">Start (mm:ss since dive start)</label>
-                  <div class="flex items-center gap-1">
-                    <input
-                      :value="elapsedMinutesSeconds(window.start, diveStart)?.minutes ?? ''"
-                      type="number"
-                      min="0"
-                      placeholder="mm"
-                      class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                      @input="updateCylinderUsageElapsed(index, wIndex, 'start', 'minutes', $event)"
-                    />
-                    <span class="text-sm text-gray-500">:</span>
-                    <input
-                      :value="elapsedMinutesSeconds(window.start, diveStart)?.seconds ?? ''"
-                      type="number"
-                      min="0"
-                      max="59"
-                      placeholder="ss"
-                      class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                      @input="updateCylinderUsageElapsed(index, wIndex, 'start', 'seconds', $event)"
-                    />
-                  </div>
-                </div>
-                <div class="flex items-end gap-2">
-                  <div class="flex-1">
-                    <label class="block text-xs mb-1">End (mm:ss since dive start)</label>
+                <div class="grid grid-cols-2 gap-2 items-end">
+                  <div>
+                    <label class="block text-xs mb-1">Start (mm:ss since dive start)</label>
                     <div class="flex items-center gap-1">
                       <input
-                        :value="elapsedMinutesSeconds(window.end, diveStart)?.minutes ?? ''"
+                        :value="elapsedMinutesSeconds(window.start, diveStart)?.minutes ?? ''"
                         type="number"
                         min="0"
                         placeholder="mm"
                         class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                        @input="updateCylinderUsageElapsed(index, wIndex, 'end', 'minutes', $event)"
+                        @focus="lastFocusedBound = { cyl: index, win: wIndex, bound: 'start' }"
+                        @input="updateCylinderUsageElapsed(index, wIndex, 'start', 'minutes', $event)"
                       />
                       <span class="text-sm text-gray-500">:</span>
                       <input
-                        :value="elapsedMinutesSeconds(window.end, diveStart)?.seconds ?? ''"
+                        :value="elapsedMinutesSeconds(window.start, diveStart)?.seconds ?? ''"
                         type="number"
                         min="0"
                         max="59"
                         placeholder="ss"
                         class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
-                        @input="updateCylinderUsageElapsed(index, wIndex, 'end', 'seconds', $event)"
+                        @focus="lastFocusedBound = { cyl: index, win: wIndex, bound: 'start' }"
+                        @input="updateCylinderUsageElapsed(index, wIndex, 'start', 'seconds', $event)"
                       />
                     </div>
                   </div>
+                  <div class="flex items-end gap-2">
+                    <div class="flex-1">
+                      <label class="block text-xs mb-1">End (mm:ss since dive start)</label>
+                      <div class="flex items-center gap-1">
+                        <input
+                          :value="elapsedMinutesSeconds(window.end, diveStart)?.minutes ?? ''"
+                          type="number"
+                          min="0"
+                          placeholder="mm"
+                          class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                          @focus="lastFocusedBound = { cyl: index, win: wIndex, bound: 'end' }"
+                          @input="updateCylinderUsageElapsed(index, wIndex, 'end', 'minutes', $event)"
+                        />
+                        <span class="text-sm text-gray-500">:</span>
+                        <input
+                          :value="elapsedMinutesSeconds(window.end, diveStart)?.seconds ?? ''"
+                          type="number"
+                          min="0"
+                          max="59"
+                          placeholder="ss"
+                          class="w-full p-1.5 text-sm border rounded dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                          @focus="lastFocusedBound = { cyl: index, win: wIndex, bound: 'end' }"
+                          @input="updateCylinderUsageElapsed(index, wIndex, 'end', 'seconds', $event)"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      class="text-xs text-red-600 hover:text-red-700 whitespace-nowrap pb-1.5"
+                      @click="removeCylinderUsageWindow(index, wIndex)"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+                <!-- One-click times: focus the Start or End field, then tap a chip. -->
+                <div
+                  v-if="candidateChips[index]?.length"
+                  class="flex flex-wrap items-center gap-1"
+                >
+                  <span class="text-[11px] text-gray-400">
+                    {{ boundHintFor(index, wIndex) }} →
+                  </span>
                   <button
+                    v-for="cand in candidateChips[index]"
+                    :key="`${cand.ms}-${cand.kind}`"
                     type="button"
-                    class="text-xs text-red-600 hover:text-red-700 whitespace-nowrap pb-1.5"
-                    @click="removeCylinderUsageWindow(index, wIndex)"
+                    class="px-1.5 py-0.5 rounded border text-[11px]"
+                    :class="candidateChipClass(cand.kind)"
+                    :title="CANDIDATE_KIND_LABELS[cand.kind]"
+                    @click="applyCandidate(index, wIndex, cand.ms)"
                   >
-                    Remove
+                    {{ formatElapsed(cand.ms) }}
                   </button>
                 </div>
               </div>
-              <button
-                type="button"
-                class="text-xs text-blue-600 hover:text-blue-700"
-                @click="addCylinderUsageWindow(index)"
-              >
-                <i class="fa fa-plus mr-1" />Add usage window
-              </button>
+              <div class="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  class="text-xs text-blue-600 hover:text-blue-700"
+                  @click="addCylinderUsageWindow(index)"
+                >
+                  <i class="fa fa-plus mr-1" />Add usage window
+                </button>
+                <button
+                  v-if="cylinderSuggestions[index]?.length"
+                  type="button"
+                  class="text-xs text-blue-600 hover:text-blue-700"
+                  @click="applySuggestedWindow(index)"
+                >
+                  <i class="fa fa-wand-magic-sparkles mr-1" />Fill from gas match ({{
+                    cylinderSuggestions[index]!.length
+                  }})
+                </button>
+              </div>
               <p
                 v-if="!cylinder.usageWindows.length"
                 class="text-xs text-gray-500 dark:text-gray-400"
@@ -813,37 +860,6 @@
                 Leave empty if this cylinder was breathed whenever your other timed cylinders
                 weren't (the whole dive if none are timed).
               </p>
-            </div>
-            <!-- Suggested from the primary computer's own gas-switch history: only offered while
-                 this cylinder has no windows yet, so it never second-guesses windows the diver
-                 already entered. "Add" appends every matched window to this one cylinder. -->
-            <div
-              v-if="cylinder.usageWindows.length === 0 && cylinderSuggestions[index]?.length"
-              class="text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-2 space-y-1"
-            >
-              <p class="text-blue-800 dark:text-blue-200">
-                This gas matches the primary computer's log during:
-              </p>
-              <div class="flex flex-wrap gap-1">
-                <span
-                  v-for="(window, wIndex) in cylinderSuggestions[index]"
-                  :key="wIndex"
-                  class="px-2 py-1 rounded border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
-                >
-                  {{ formatElapsedRange(window) }}{{ wIndex === 0 ? ' (suggested)' : '' }}
-                </span>
-              </div>
-              <button
-                type="button"
-                class="mt-1 px-2 py-1 rounded border border-blue-500 bg-blue-100 dark:bg-blue-800/40 text-blue-900 dark:text-blue-100 font-medium hover:bg-blue-200 dark:hover:bg-blue-800/60"
-                @click="applySuggestedWindow(index)"
-              >
-                {{
-                  cylinderSuggestions[index]!.length === 1
-                    ? 'Add this window'
-                    : `Add all ${cylinderSuggestions[index]!.length} windows`
-                }}
-              </button>
             </div>
             <button
               type="button"
@@ -917,15 +933,16 @@
             />
           </div>
         </div>
-        <!-- >15% consistency warning (amber inline style from CcrUnitNameInput.vue): the entered
-             figures disagree with the RMV computed from tracked cylinders, or internally. -->
-        <div
-          v-if="gasConsumptionWarning"
-          class="mt-3 flex flex-wrap items-start gap-x-2 gap-y-1 text-xs bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded px-2 py-1.5"
-        >
-          <i class="fa fa-triangle-exclamation text-amber-600 dark:text-amber-400 mt-0.5" />
-          <span class="text-amber-800 dark:text-amber-200">{{ gasConsumptionWarning }}</span>
-        </div>
+        <!-- >15% consistency warning + "show the working" (cylinder Δbar → litres → RMV) so a
+             mistyped cylinder pressure is easy to tell apart from a bad entered RMV. Cylinder-side
+             figures are from the last save; the per-cylinder table and entered figures are live. -->
+        <GasConsumptionBreakdown
+          v-if="liveGasView.mismatch"
+          :view="liveGasView"
+          :dive-start-ms="diveStart"
+          :default-expanded="true"
+          class="mt-3"
+        />
       </fieldset>
       <!-- Backfill-flagged but no gas-consumption row yet - offer to add one. -->
       <button
@@ -1046,15 +1063,23 @@ import {
 import type { User } from '@/lib/types/user'
 import type { DiveBackfillMissingField } from '@/lib/types/dive'
 import { elapsedMinutesSeconds, epochFromElapsedMinutesSeconds } from '@/lib/utils/timeUtils'
-import { findGasMatchWindows, primaryProfile, type UsageWindow } from '@/lib/dive/cylinderUsageWindows'
+import {
+  findGasMatchWindows,
+  primaryProfile,
+  candidateBoundaryTimes,
+  type UsageWindow,
+  type BoundaryCandidate,
+} from '@/lib/dive/cylinderUsageWindows'
 import { missingBackfillFields } from '@/lib/dive/backfill'
 import {
   STANDARD_CYLINDERS,
   DEFAULT_STANDARD_CYLINDER_KEY,
   matchStandard,
   inferMaterial,
+  snapToNearestStandard,
 } from '@/lib/dive/cylinders'
-import { differsBeyondTolerance, impliedRmvFromTotal } from '@/lib/dive/gasConsumption'
+import { buildLiveComparisonView } from '@/lib/dive/gasConsumption'
+import GasConsumptionBreakdown from '@/components/dive/GasConsumptionBreakdown.vue'
 import BackfillHint from '@/components/dive/edit/BackfillHint.vue'
 
 export interface EditableNamedBuddy {
@@ -1100,10 +1125,12 @@ const props = defineProps<{
   backfillOutstanding?: DiveBackfillMissingField[]
   /** Prominent amber pointers (arrived from the Backfill guide) vs. slim, muted ones. */
   backfillProminent?: boolean
-  /** OC RMV derived from the loaded dive's tracked cylinders
-   * (`Dive.gasConsumptionComparison.calculatedRmvLiters`) - the baseline the live-entered gas
-   * figures are checked against for the >15% consistency warning. */
+  /** OC RMV / total litres / pressure-minutes derived from the loaded dive's tracked cylinders
+   * (`Dive.gasConsumptionComparison` / `cylinderConsumption`) - the baseline the live-entered gas
+   * figures are checked against for the >15% consistency warning + backfill mismatch chip. */
   calculatedRmvBaseline?: number | null
+  calculatedTotalLitersBaseline?: number | null
+  ocPressureMinutesBaseline?: number | null
   /** Loaded dive's average depth (m) + duration (min) - used to derive an implied RMV from the
    * entered total-litres figure for the same consistency warning + the backfill mismatch check. */
   avgDepthMeters?: number | null
@@ -1124,6 +1151,7 @@ const backfillPointAt = computed<Set<DiveBackfillMissingField>>(() => {
     missingBackfillFields({
       ...props.modelValue,
       calculatedRmvLiters: props.calculatedRmvBaseline ?? null,
+      calculatedTotalLiters: props.calculatedTotalLitersBaseline ?? null,
       avgDepthMeters: props.avgDepthMeters ?? null,
       durationMinutes: props.durationMinutes ?? null,
     }),
@@ -1486,6 +1514,13 @@ const cylinderStandardKey = (cylinder: DiveConfigurationCylinder): string => {
 const isCustomCylinder = (cylinder: DiveConfigurationCylinder): boolean =>
   cylinderStandardKey(cylinder) === 'custom'
 
+// A nearby standard the user could snap a custom size onto - only when it doesn't already match
+// one exactly. Never applied automatically; the "Snap to …" button is an explicit opt-in.
+const snapSuggestion = (cylinder: DiveConfigurationCylinder) =>
+  matchStandard(cylinder.size, cylinder.material) === 'custom'
+    ? snapToNearestStandard(cylinder.size, cylinder.material)
+    : null
+
 const applyStandardCylinder = (index: number, key: string) => {
   const cylinders = [...(props.modelValue.configuration?.cylinders ?? [])]
   const current = cylinders[index]
@@ -1609,13 +1644,53 @@ const updateCylinderUsageElapsed = (
   setCylinderUsageWindows(index, windows)
 }
 
-const formatElapsedRange = (window: UsageWindow): string => {
-  const start = elapsedMinutesSeconds(window.start, props.diveStart)
-  const end = elapsedMinutesSeconds(window.end, props.diveStart)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const fmt = (t: { minutes: number; seconds: number } | null) =>
-    t ? `${pad(t.minutes)}:${pad(t.seconds)}` : '?'
-  return `${fmt(start)}–${fmt(end)}`
+const formatElapsed = (ms: number): string => {
+  const t = elapsedMinutesSeconds(ms, props.diveStart)
+  if (!t) return '?'
+  return `${String(t.minutes).padStart(2, '0')}:${String(t.seconds).padStart(2, '0')}`
+}
+
+// Which bound a candidate-time chip fills: whatever Start/End field the user last focused on this
+// window row, else its Start.
+const lastFocusedBound = ref<{ cyl: number; win: number; bound: 'start' | 'end' } | null>(null)
+
+const boundHintFor = (cyl: number, win: number): string => {
+  const f = lastFocusedBound.value
+  return f && f.cyl === cyl && f.win === win && f.bound === 'end' ? 'Set End' : 'Set Start'
+}
+
+const CANDIDATE_KIND_LABELS: Record<BoundaryCandidate['kind'], string> = {
+  'dive-start': 'Dive start',
+  'dive-end': 'Dive end',
+  'gas-switch': "Gas switch on the computer's log",
+  'gas-match': "Edge of a run where the computer's gas matched this mix",
+  'other-cylinder': "Window bound on another of this dive's cylinders",
+}
+
+const candidateChipClass = (kind: BoundaryCandidate['kind']): string =>
+  kind === 'gas-match'
+    ? 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+    : kind === 'other-cylinder'
+      ? 'border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900/30'
+      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+
+const candidateChips = computed<BoundaryCandidate[][]>(() => {
+  const cylinders = props.modelValue.configuration?.cylinders ?? []
+  const profile = primaryProfile(props.profiles)
+  return cylinders.map((c) => candidateBoundaryTimes(profile, cylinders, c.id, c.gas))
+})
+
+const applyCandidate = (cyl: number, win: number, ms: number) => {
+  const current = props.modelValue.configuration?.cylinders?.[cyl]
+  if (!current) return
+  const f = lastFocusedBound.value
+  const bound: 'start' | 'end' =
+    f && f.cyl === cyl && f.win === win ? f.bound : 'start'
+  const windows = [...current.usageWindows]
+  const window = windows[win]
+  if (!window) return
+  windows[win] = { ...window, [bound]: ms }
+  setCylinderUsageWindows(cyl, windows)
 }
 
 // A manually-entered dive's synthetic surface/max-depth/surface profile is on a fixed "Manual
@@ -1658,35 +1733,21 @@ const applySuggestedWindow = (index: number) => {
   setCylinderUsageWindows(index, [...current.usageWindows, ...additions])
 }
 
-// Live >15% consistency check on the manually-entered gas figures (Part B): entered RMV (or the
-// RMV implied by total litres / depth / duration) vs the RMV computed from tracked cylinders, and
-// entered RMV vs its own implied-from-total value. Null = nothing to warn about.
-const gasConsumptionWarning = computed<string | null>(() => {
-  const gas = props.modelValue.gasConsumption
-  if (!gas) return null
-  const enteredRmv = gas.rmvLiters && gas.rmvLiters > 0 ? gas.rmvLiters : null
-  const implied = impliedRmvFromTotal(
-    gas.totalLiters,
-    props.avgDepthMeters ?? null,
-    props.durationMinutes ?? null,
-  )
-  const baseline = props.calculatedRmvBaseline ?? null
-  const insertedRmv = enteredRmv ?? implied
-  if (differsBeyondTolerance(insertedRmv, baseline)) {
-    return (
-      `The gas consumption entered here (~${insertedRmv!.toFixed(1)} l/min) disagrees with the ` +
-      `${baseline!.toFixed(1)} l/min computed from your tracked cylinders by more than 15% - ` +
-      `one of them is likely off.`
-    )
-  }
-  if (differsBeyondTolerance(enteredRmv, implied)) {
-    return (
-      `The RMV entered here (${enteredRmv!.toFixed(1)} l/min) and the RMV implied by the total ` +
-      `gas, average depth and duration (~${implied!.toFixed(1)} l/min) disagree by more than 15%.`
-    )
-  }
-  return null
-})
+// Live consistency view for the gas fieldset - entered RMV/total vs the cylinder-derived figures
+// (from the last save) and vs the implied-from-total value. Drives the amber warning + the
+// expandable per-cylinder "show the working" breakdown.
+const liveGasView = computed(() =>
+  buildLiveComparisonView({
+    enteredRmvLiters: props.modelValue.gasConsumption?.rmvLiters,
+    enteredTotalLiters: props.modelValue.gasConsumption?.totalLiters,
+    cylinders: props.modelValue.configuration?.cylinders ?? [],
+    calculatedRmvLiters: props.calculatedRmvBaseline,
+    calculatedTotalLiters: props.calculatedTotalLitersBaseline,
+    ocPressureMinutes: props.ocPressureMinutesBaseline,
+    avgDepthMeters: props.avgDepthMeters,
+    durationMinutes: props.durationMinutes,
+  }),
+)
 
 const updateConfigSuitField = (field: string, value: string | number | undefined) => {
   if (!props.modelValue.configuration || !props.modelValue.configuration.suit) {

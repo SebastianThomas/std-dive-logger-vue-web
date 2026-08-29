@@ -21,10 +21,12 @@
           </p>
         </div>
         <button
+          :disabled="linkOps.isBusy(d.id)"
           @click="handleLinkDive(d.id)"
-          class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
+          class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Link
+          <LoadingSpinner v-if="linkOps.isBusy(d.id)" size="xs" />
+          {{ linkOps.isBusy(d.id) ? 'Linking…' : 'Link' }}
         </button>
       </li>
       <li v-if="myDives.length === 0" class="text-sm text-gray-400">No dives found</li>
@@ -36,6 +38,8 @@
 import { ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { useAsyncActionSet } from '@/composables/useAsyncAction'
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { formatDate } from '@/lib/utils/timeUtils'
 import debounce from '@/lib/utils/debounce'
@@ -74,16 +78,18 @@ const handleSearch = debounce(() => {
   fetchMyDives()
 }, 300)
 
-const handleLinkDive = async (buddyDiveId: number) => {
-  try {
-    await postWithToken(`/v1/dives/${props.currentDiveId}/link?buddyDiveId=${buddyDiveId}`, {})
-    toast.success('Dive linked successfully')
-    emit('diveLinked', buddyDiveId)
-  } catch (err) {
-    console.error('Link failed', err)
-    toast.error(`Failed to link dive: ${extractErrorDetail(err)}`)
-  }
-}
+const linkOps = useAsyncActionSet<number>()
+const handleLinkDive = (buddyDiveId: number) =>
+  linkOps.run(buddyDiveId, async () => {
+    try {
+      await postWithToken(`/v1/dives/${props.currentDiveId}/link?buddyDiveId=${buddyDiveId}`, {})
+      toast.success('Dive linked successfully')
+      emit('diveLinked', buddyDiveId)
+    } catch (err) {
+      console.error('Link failed', err)
+      toast.error(`Failed to link dive: ${extractErrorDetail(err)}`)
+    }
+  })
 
 // Initial fetch
 fetchMyDives()

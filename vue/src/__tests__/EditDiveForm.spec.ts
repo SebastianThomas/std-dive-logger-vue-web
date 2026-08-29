@@ -72,7 +72,7 @@ describe('EditDiveForm - cylinder usage windows', () => {
     expect(latestCylinders(wrapper)[0]!.usageWindows).toHaveLength(1)
   })
 
-  it('"apply all" appends every gas-match window to the one cylinder, not new rows', async () => {
+  it('"fill from gas match" appends every matched window to the one cylinder, not new rows', async () => {
     const profile = {
       id: 1,
       diveComputer: { id: 1, customIdentifier: 'X', manufacturer: { id: 1, name: 'X' } },
@@ -90,7 +90,9 @@ describe('EditDiveForm - cylinder usage windows', () => {
 
     const wrapper = mountForm(baseModel([cylinder()]), { profiles: [profile] })
 
-    const applyBtn = wrapper.findAll('button').find((b) => b.text().startsWith('Add all'))
+    const applyBtn = wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('Fill from gas match'))
     expect(applyBtn).toBeTruthy()
     await applyBtn!.trigger('click')
 

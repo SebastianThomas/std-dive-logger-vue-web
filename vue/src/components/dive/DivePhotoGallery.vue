@@ -76,10 +76,11 @@
           v-if="!readOnly"
           type="button"
           class="thumbnail-delete"
+          :disabled="deleteOps.isBusy(photo.id)"
           title="Delete photo"
           @click="deletePhoto(photo)"
         >
-          ×
+          {{ deleteOps.isBusy(photo.id) ? '…' : '×' }}
         </button>
       </div>
     </div>
@@ -102,6 +103,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { unzipSync } from 'fflate'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import { useAsyncActionSet } from '@/composables/useAsyncAction'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
 import { useAuthStore } from '@/stores/auth'
@@ -306,22 +308,25 @@ async function handleImportFromUrl() {
   }
 }
 
-async function deletePhoto(photo: DivePhoto) {
-  try {
-    await deleteWithToken(`/v1/dives/${props.diveId}/photos/${photo.id}`)
-    photos.value = photos.value.filter((p) => p.id !== photo.id)
-    const url = thumbnailUrls.value[photo.id]
-    if (url) {
-      URL.revokeObjectURL(url)
-      delete thumbnailUrls.value[photo.id]
+const deleteOps = useAsyncActionSet<number>()
+function deletePhoto(photo: DivePhoto) {
+  return deleteOps.run(photo.id, async () => {
+    try {
+      await deleteWithToken(`/v1/dives/${props.diveId}/photos/${photo.id}`)
+      photos.value = photos.value.filter((p) => p.id !== photo.id)
+      const url = thumbnailUrls.value[photo.id]
+      if (url) {
+        URL.revokeObjectURL(url)
+        delete thumbnailUrls.value[photo.id]
+      }
+      if (lightboxPhoto.value?.id === photo.id) {
+        lightboxPhoto.value = null
+      }
+    } catch (err) {
+      console.error('Failed to delete dive photo', err)
+      toast.error(`Could not delete photo: ${extractErrorDetail(err)}`)
     }
-    if (lightboxPhoto.value?.id === photo.id) {
-      lightboxPhoto.value = null
-    }
-  } catch (err) {
-    console.error('Failed to delete dive photo', err)
-    toast.error(`Could not delete photo: ${extractErrorDetail(err)}`)
-  }
+  })
 }
 
 function openLightbox(photo: DivePhoto) {

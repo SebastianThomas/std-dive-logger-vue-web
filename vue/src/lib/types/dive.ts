@@ -328,19 +328,43 @@ export type CylinderConsumption = {
   /** Sum of consumed litres over OC-role cylinders. Maps to `CylinderConsumptionResult
    * .ocConsumedLiters` on the backend. */
   ocConsumedLiters?: number | null
+  /** Depth-weighted pressure-minutes denominator behind `ocRmvLiters`. Maps to
+   * `CylinderConsumptionResult.ocPressureMinutes`. */
+  ocPressureMinutes?: number | null
+}
+
+/** One tracked cylinder's line in the gas-consistency breakdown. Mirrors the backend record
+ * `std-dive-logger-model/.../model/dive/stats/CylinderContribution.java`. */
+export type CylinderContribution = {
+  waterVolumeLiters: number
+  material: CylinderMaterial | null
+  role: CylinderRole
+  startBar: number | null
+  endBar: number | null
+  /** `(startBar - endBar) * waterVolumeLiters`, or `null` when unusable. */
+  consumedLiters: number | null
+  usageWindows: CylinderUsageWindow[]
 }
 
 /** Backend's reconciliation of the manually-entered whole-dive gas figures against the RMV/total
  * derived from tracked cylinders. Mirrors the record
- * `std-dive-logger-model/.../model/dive/stats/GasConsumptionComparison.java`. `mismatch` is
- * computed server-side with a 15% tolerance (see lib/dive/gasConsumption.ts for the mirror). */
+ * `std-dive-logger-model/.../model/dive/stats/GasConsumptionComparison.java`. The three
+ * `*Mismatch` booleans are computed server-side at a 15% tolerance; `mismatch` is their OR. See
+ * lib/dive/gasConsumption.ts for the display view-model. */
 export type GasConsumptionComparison = {
   insertedRmvLiters: number | null
   insertedTotalLiters: number | null
   impliedRmvFromTotalLiters: number | null
   calculatedRmvLiters: number | null
   calculatedTotalLiters: number | null
+  ocPressureMinutes: number | null
+  avgDepthMeters: number | null
+  durationMinutes: number | null
+  rmvVsCalculatedMismatch: boolean
+  totalLitersMismatch: boolean
+  rmvVsImpliedMismatch: boolean
   mismatch: boolean
+  contributions: CylinderContribution[]
 }
 
 export type DiveConfiguration = {

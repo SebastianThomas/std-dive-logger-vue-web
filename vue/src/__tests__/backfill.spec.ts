@@ -96,6 +96,17 @@ describe('GAS_CONSUMPTION_MISMATCH', () => {
     ).toContain('GAS_CONSUMPTION_MISMATCH')
   })
 
+  it('flags an entered total-litres that is >15% off the cylinder-derived total', () => {
+    expect(
+      missingBackfillFields({
+        ...base,
+        gasConsumption: { sacBar: 0, rmvLiters: 16, totalLiters: 1000 },
+        calculatedRmvLiters: 16, // RMV agrees
+        calculatedTotalLiters: 1800, // total does not
+      }),
+    ).toContain('GAS_CONSUMPTION_MISMATCH')
+  })
+
   it('flags an internal entered-RMV vs implied-from-total disagreement', () => {
     expect(
       missingBackfillFields({

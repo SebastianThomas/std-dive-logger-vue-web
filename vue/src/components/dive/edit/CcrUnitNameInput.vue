@@ -103,6 +103,26 @@ const fetchSuggestionsDebounced = (query: string) => {
   }, 250)
 }
 
+/** The user's own CCR units - shown on Ctrl+Space / Down-arrow when the field is empty. */
+const fetchRelevant = async (): Promise<string[]> => {
+  try {
+    const res = await getWithToken<{ result: { name: string }[] }>(
+      '/v1/dives/configuration/ccrUnit?page=0',
+    )
+    return (res.data?.result ?? []).map((u) => u.name)
+  } catch {
+    return []
+  }
+}
+
+const suggestNow = async () => {
+  showDropdown.value = true
+  activeIndex.value = -1
+  suggestions.value = props.modelValue.trim()
+    ? await fetchSuggestions(props.modelValue)
+    : await fetchRelevant()
+}
+
 const onInput = (e: Event) => {
   const value = (e.target as HTMLInputElement).value
   emit('update:modelValue', value)
@@ -128,6 +148,16 @@ const selectSuggestion = (name: string) => {
 }
 
 const onKeydown = (e: KeyboardEvent) => {
+  if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
+    e.preventDefault()
+    void suggestNow()
+    return
+  }
+  if (e.key === 'ArrowDown' && !props.modelValue.trim() && !suggestions.value.length) {
+    e.preventDefault()
+    void suggestNow()
+    return
+  }
   if (!showDropdown.value || !suggestions.value.length) return
   if (e.key === 'ArrowDown') {
     e.preventDefault()

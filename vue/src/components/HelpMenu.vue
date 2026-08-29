@@ -42,6 +42,12 @@
               </div>
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600 dark:text-gray-400"
+                  >Autocomplete suggestions (tags, sites, buddies…)</span
+                >
+                <kbd class="kbd-small">Ctrl+Space / ↓</kbd>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-600 dark:text-gray-400"
                   >Close Palette/Help (anywhere)</span
                 >
                 <kbd class="kbd-small">Esc</kbd>

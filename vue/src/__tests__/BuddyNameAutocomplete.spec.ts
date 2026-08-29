@@ -69,7 +69,7 @@ describe('BuddyNameAutocomplete', () => {
 
   it('emits enter on Enter, without adding a newline or submitting a form', async () => {
     const wrapper = mount(BuddyNameAutocomplete, { props: { modelValue: 'Alice' } })
-    await wrapper.find('input').trigger('keydown.enter')
+    await wrapper.find('input').trigger('keydown', { key: 'Enter' })
     expect(wrapper.emitted('enter')).toHaveLength(1)
   })
 

@@ -3,7 +3,12 @@
     <div
       class="w-full md:max-w-3xl bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4"
     >
-      <h1 class="text-2xl font-bold">Backfill</h1>
+      <h1 class="text-2xl font-bold">
+        Backfill
+        <span v-if="busy" class="ml-2 text-xs font-normal text-gray-400">
+          <LoadingSpinner size="xs" /> working…
+        </span>
+      </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400">
         Dives missing a newer feature or logged sparsely - fill them in one at a time instead of
         hunting for them yourself. Ordered by most gaps first, then oldest dive first, so nothing
@@ -257,6 +262,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import { formatDate } from '@/lib/utils/timeUtils'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import {

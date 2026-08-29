@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { findGasMatchWindows, primaryProfile } from '../lib/dive/cylinderUsageWindows'
-import type { DiveMeasurementWithId, DiveProfile } from '../lib/types/dive'
+import {
+  findGasMatchWindows,
+  primaryProfile,
+  candidateBoundaryTimes,
+} from '../lib/dive/cylinderUsageWindows'
+import type {
+  DiveConfigurationCylinder,
+  DiveMeasurementWithId,
+  DiveProfile,
+} from '../lib/types/dive'
 
 const sample = (id: number, time: number, gas?: { o2: number; he: number }): DiveMeasurementWithId => ({
   id,
@@ -111,5 +119,40 @@ describe('primaryProfile', () => {
   it('returns undefined for an empty or missing profile list', () => {
     expect(primaryProfile([])).toBeUndefined()
     expect(primaryProfile(undefined)).toBeUndefined()
+  })
+})
+
+describe('candidateBoundaryTimes', () => {
+  const profile = {
+    measurements: [
+      sample(1, 1000, { o2: 0.21, he: 0 }),
+      sample(2, 2000, { o2: 0.21, he: 0 }),
+      sample(3, 3000, { o2: 0.5, he: 0 }), // gas switch at 3000
+      sample(4, 4000, { o2: 0.5, he: 0 }),
+      sample(5, 5000, { o2: 0.21, he: 0 }), // switch back at 5000
+    ],
+  } as unknown as DiveProfile
+
+  const cyl = (id: number, windows: { start: number | null; end: number | null }[] = []) =>
+    ({ id, gas: { o2: 0.21, he: 0 }, usageWindows: windows }) as unknown as DiveConfigurationCylinder
+
+  it('offers dive start/end, gas switches and gas-match run edges, de-duped and ascending', () => {
+    const c = candidateBoundaryTimes(profile, [cyl(1)], 1, { o2: 0.21, he: 0 })
+    const at = (ms: number) => c.find((x) => x.ms === ms)?.kind
+    // One chip per timestamp; earlier-priority kind wins (dive bounds > switch > gas-match).
+    expect(at(1000)).toBe('dive-start')
+    expect(at(5000)).toBe('dive-end')
+    expect(at(3000)).toBe('gas-switch') // 21/0 -> 50/0
+    // 2000 is the end of the first run where the 21/0 gas matched, not a switch or a dive bound.
+    expect(at(2000)).toBe('gas-match')
+    expect(c.map((x) => x.ms)).toEqual([...c.map((x) => x.ms)].sort((a, b) => a - b))
+  })
+
+  it('includes the window bounds of the dive\'s other cylinders but not this one\'s', () => {
+    const cylinders = [cyl(1, [{ start: 1500, end: 2500 }]), cyl(2, [{ start: 4200, end: 4800 }])]
+    const c = candidateBoundaryTimes(profile, cylinders, 1, { o2: 0.21, he: 0 })
+    const other = c.filter((x) => x.kind === 'other-cylinder').map((x) => x.ms)
+    expect(other).toEqual([4200, 4800])
+    expect(other).not.toContain(1500)
   })
 })
