@@ -40,6 +40,11 @@ describe('toggleMetricSelection', () => {
     expect(result).toEqual(set('avgRmv'))
   })
 
+  it('combines the OC and bailout RMV metrics - both are l/min', () => {
+    const result = toggleMetricSelection(set('avgRmv'), 'avgBailoutRmv', true)
+    expect(result).toEqual(set('avgRmv', 'avgBailoutRmv'))
+  })
+
   it('does not mutate the input set', () => {
     const original = set('maxDepth')
     toggleMetricSelection(original, 'avgDepth', true)

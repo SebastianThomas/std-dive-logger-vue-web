@@ -13,6 +13,7 @@ export const TIMELINE_GRANULARITIES: { value: TimelineGranularity; label: string
 export type TimelineMetric =
   | 'diveCount'
   | 'avgRmv'
+  | 'avgBailoutRmv'
   | 'maxDepth'
   | 'avgDepth'
   | 'totalDiveTime'
@@ -32,6 +33,7 @@ export type TimelineMetricConfig = {
 export const DEFAULT_TIMELINE_METRIC_CONFIGS: Record<TimelineMetric, TimelineMetricConfig> = {
   diveCount: { show: true, color: '#60a5fa' },
   avgRmv: { show: false, color: '#14b8a6' },
+  avgBailoutRmv: { show: false, color: '#f59e0b' },
   maxDepth: { show: true, color: '#9CA3AF' },
   avgDepth: { show: false, color: '#6b7280' },
   totalDiveTime: { show: false, color: '#8b5cf6' },
@@ -57,6 +59,7 @@ export const BREAKDOWN_DIMENSIONS: { value: StatsBreakdownDimension | null; labe
 export const timelineMetricUnits: Record<TimelineMetric, string | null> = {
   diveCount: null,
   avgRmv: 'l/min',
+  avgBailoutRmv: 'l/min',
   maxDepth: 'm',
   avgDepth: 'm',
   totalDiveTime: 'min',
@@ -71,7 +74,8 @@ export const timelineMetricUnits: Record<TimelineMetric, string | null> = {
 
 export const timelineMetricDisplayNames: Record<TimelineMetric, string> = {
   diveCount: 'Dive Count',
-  avgRmv: 'Avg RMV',
+  avgRmv: 'Avg RMV (OC)',
+  avgBailoutRmv: 'Avg Bailout RMV (CC)',
   maxDepth: 'Max Depth',
   avgDepth: 'Avg Depth',
   totalDiveTime: 'Total Dive Time',
@@ -91,7 +95,10 @@ export type StatsTimeSeriesPoint = {
   /** Only set on entries in StatsTimeSeries.breakdown, never on .points. */
   category?: string
   diveCount: number
-  avgRmvLiters?: number
+  // OC dives' whole-dive RMV and CCR dives' bailout RMV, never pooled - see StatsTimeSeriesPoint
+  // on the backend. Each is undefined for a bucket with no dive of that type / no RMV data.
+  avgOcRmvLiters?: number
+  avgBailoutRmvLiters?: number
   maxDepth?: number
   avgDepth?: number
   totalDurationSeconds: number

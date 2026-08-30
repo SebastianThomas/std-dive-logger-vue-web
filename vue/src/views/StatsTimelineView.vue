@@ -112,6 +112,7 @@ import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 const NUMERIC_METRICS: TimelineMetric[] = [
   'diveCount',
   'avgRmv',
+  'avgBailoutRmv',
   'maxDepth',
   'avgDepth',
   'totalDiveTime',
@@ -221,8 +222,9 @@ const handleTimelineKeydown = (event: KeyboardEvent) => {
   if (event.key.toLowerCase() === 'p') {
     cycleMetric(-1)
   }
-  // 1-9 then 0 jump straight to a metric by its position in NUMERIC_METRICS (10 metrics total),
-  // same fixed order n/p step through - replaces the current selection, same as cycleMetric.
+  // 1-9 then 0 jump straight to the first ten metrics by position in NUMERIC_METRICS, same fixed
+  // order n/p step through - replaces the current selection, same as cycleMetric. Any metric past
+  // the tenth (currently just 'avgWeight') is reachable only via n/p or its checkbox.
   if (/^[0-9]$/.test(event.key)) {
     const index = event.key === '0' ? 9 : Number(event.key) - 1
     const metric = NUMERIC_METRICS[index]

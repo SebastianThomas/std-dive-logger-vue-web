@@ -115,7 +115,9 @@ function metricValue(p: StatsTimeSeriesPoint, metric: TimelineMetric): number | 
     case 'diveCount':
       return p.diveCount
     case 'avgRmv':
-      return p.avgRmvLiters ?? null
+      return p.avgOcRmvLiters ?? null
+    case 'avgBailoutRmv':
+      return p.avgBailoutRmvLiters ?? null
     case 'maxDepth':
       return p.maxDepth ?? null
     case 'avgDepth':
