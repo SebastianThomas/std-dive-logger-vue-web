@@ -11,7 +11,7 @@
     </button>
     <div
       v-if="isOpen"
-      class="absolute left-0 z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg p-3 text-left text-gray-700 dark:text-gray-200 normal-case"
+      class="absolute left-0 z-30 mt-1 w-72 max-w-[calc(100vw-2rem)] max-h-[60vh] overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg p-2.5 text-left text-gray-700 dark:text-gray-200 normal-case"
       role="dialog"
     >
       <slot />

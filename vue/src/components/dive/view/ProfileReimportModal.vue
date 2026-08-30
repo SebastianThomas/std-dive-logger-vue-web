@@ -2,19 +2,20 @@
   <div v-if="isOpen" class="modal-overlay" @click.self="close">
     <div class="modal-card">
       <div class="modal-header">
-        <h2>Reimport Profile</h2>
+        <h2>Refine profile with another file</h2>
         <button class="close-button" @click="close">×</button>
       </div>
 
       <div class="modal-body">
         <template v-if="step === 'select'">
           <p class="hint">
-            Re-parses the original dive computer file and replaces only this profile's raw
-            measurements (depth, deco stops, gas, TTS, ...). Everything else on the dive is left
-            untouched, unless the new file brings genuinely new info (like notes or gas
-            consumption) that conflicts with what's already there - you'll be asked which to keep.
-            The upload is checked against the existing profile first; an unrelated dive is
-            rejected rather than silently replacing the wrong one.
+            Re-parses a file for a dive you already logged - the same export, or a richer one in
+            another format (e.g. Shearwater native XML or Suunto JSON instead of the FIT) - and
+            replaces only this profile's raw measurements (depth, deco stops, gas, TTS, ...).
+            Everything else on the dive is left untouched, unless the new file brings genuinely
+            new info (notes, gas consumption, ...) that conflicts with what's there - you'll be
+            asked which to keep. The upload is checked against the existing profile first; an
+            unrelated dive is rejected rather than silently replacing the wrong one.
           </p>
 
           <div class="form-group">
@@ -113,7 +114,7 @@
           :disabled="isLoading || !canReimport"
         >
           <span v-if="isLoading">Checking...</span>
-          <span v-else>Reimport Profile</span>
+          <span v-else>Refine profile</span>
         </button>
         <button
           v-else-if="step === 'resolve'"

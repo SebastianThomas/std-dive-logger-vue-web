@@ -28,18 +28,17 @@
       <template v-else> How these figures were computed: </template>
     </p>
 
-    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-      <button
-        type="button"
-        class="text-xs underline decoration-dotted hover:no-underline"
-        @click="expanded = !expanded"
-      >
-        {{ expanded ? 'Hide calculation' : 'Show calculation' }}
-      </button>
-      <GasCalcGlossary />
-    </div>
+    <button
+      type="button"
+      class="mt-2 text-xs underline decoration-dotted hover:no-underline"
+      @click="expanded = !expanded"
+    >
+      {{ expanded ? 'Hide calculation' : 'Show calculation' }}
+    </button>
 
     <div v-if="expanded" class="mt-3 space-y-4 text-xs">
+      <GasCalcGlossary />
+
       <!-- Per-cylinder table -->
       <div v-if="view.contributions.length" class="overflow-x-auto">
         <table class="w-full border-collapse">

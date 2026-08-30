@@ -392,17 +392,23 @@
         class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full flex flex-col"
         ref="embeddedGraphCardRef"
       >
-        <div class="flex justify-between items-center p-4">
+        <div class="flex justify-between items-center gap-3 p-4">
           <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
             Dive Profile
           </h2>
-          <button
-            v-if="!isManualDive"
-            @click="graphOpen = true"
-            class="text-sm text-blue-600 hover:underline"
-          >
-            Expand
-          </button>
+          <div v-if="!isManualDive" class="flex items-center gap-3">
+            <button
+              v-if="isMine && !readOnly && dive.profiles?.length"
+              @click="showReimportModal = true"
+              class="text-sm text-blue-600 hover:underline"
+              title="Re-parse this dive's file (or a richer export in another format) and refresh a profile's depth / deco / TTS data in place - keeps your notes, buddies, cylinders, alignment."
+            >
+              Refine with another file
+            </button>
+            <button @click="graphOpen = true" class="text-sm text-blue-600 hover:underline">
+              Expand
+            </button>
+          </div>
         </div>
         <div
           v-if="isManualDive"
@@ -1192,9 +1198,9 @@ const handleDiveViewKeydown = (event: KeyboardEvent) => {
       .then(() => toast.success('Link copied to clipboard'))
       .catch(() => toast.error('Could not copy link'))
   }
-  // 'r' opens the Reimport Dive Profile tool directly - previously only reachable as a Command
-  // Palette secret command. Same guard as the reimportRequestId watcher below (own dive, unlocked,
-  // has at least one profile to reimport).
+  // 'r' opens the "Refine with another file" (reimport profile) tool directly - also reachable
+  // via the button in the Dive Profile card header and the Command Palette. Same guard as the
+  // reimportRequestId watcher below (own dive, unlocked, has at least one profile to reimport).
   if (
     event.key.toLowerCase() === 'r' &&
     !event.ctrlKey &&

@@ -7,18 +7,41 @@
       Open-circuit portion: {{ ocLabel }}
     </p>
 
-    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-      <button
-        type="button"
-        class="text-xs underline decoration-dotted hover:no-underline"
-        @click="expanded = !expanded"
-      >
-        {{ expanded ? 'Hide calculation' : 'Show calculation' }}
-      </button>
-      <GasCalcGlossary ccr />
-    </div>
+    <!-- Final figures - always visible, no working. "Show calculation" expands the how. -->
+    <dl class="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
+      <div v-if="cc.bailoutRmvLiters != null" class="flex items-baseline gap-1.5">
+        <dt class="text-gray-500 dark:text-gray-400">Bailout RMV</dt>
+        <dd>
+          <strong>{{ fmt(cc.bailoutRmvLiters, 1) }} l/min</strong>
+          <span v-if="bailoutLitres > 0" class="text-gray-500 dark:text-gray-400">
+            · {{ fmt(bailoutLitres, 0) }} l used</span
+          >
+        </dd>
+      </div>
+      <div v-if="cc.o2Liters != null" class="flex items-baseline gap-1.5">
+        <dt class="text-gray-500 dark:text-gray-400">O₂ injected</dt>
+        <dd>
+          <strong>{{ fmt(cc.o2Liters, 0) }} l</strong>
+        </dd>
+      </div>
+      <div v-if="cc.diluentLiters != null" class="flex items-baseline gap-1.5">
+        <dt class="text-gray-500 dark:text-gray-400">Diluent injected</dt>
+        <dd>
+          <strong>{{ fmt(cc.diluentLiters, 0) }} l</strong>
+        </dd>
+      </div>
+    </dl>
+
+    <button
+      type="button"
+      class="mt-2 text-xs underline decoration-dotted hover:no-underline"
+      @click="expanded = !expanded"
+    >
+      {{ expanded ? 'Hide calculation' : 'Show calculation' }}
+    </button>
 
     <div v-if="expanded" class="mt-3 space-y-4 text-xs">
+      <GasCalcGlossary ccr />
       <div v-if="cc.contributions?.length" class="overflow-x-auto">
         <table class="w-full border-collapse">
           <thead>
@@ -81,11 +104,11 @@
         </table>
       </div>
 
-      <dl class="space-y-2">
-        <div
-          v-if="cc.bailoutRmvLiters != null && cc.bailoutPressureMinutes != null"
-          class="flex flex-wrap items-baseline gap-x-2"
-        >
+      <dl
+        v-if="cc.bailoutRmvLiters != null && cc.bailoutPressureMinutes != null"
+        class="space-y-2"
+      >
+        <div class="flex flex-wrap items-baseline gap-x-2">
           <dt class="text-gray-500">Bailout RMV</dt>
           <dd>
             <MathFormula
@@ -96,18 +119,6 @@
                 `${fmt(cc.bailoutRmvLiters, 1)} l/min`,
               ]"
             />
-          </dd>
-        </div>
-        <div v-if="cc.o2Liters != null" class="flex flex-wrap items-baseline gap-x-2">
-          <dt class="text-gray-500">O₂ injected</dt>
-          <dd>
-            <strong>{{ fmt(cc.o2Liters, 0) }} l</strong>
-          </dd>
-        </div>
-        <div v-if="cc.diluentLiters != null" class="flex flex-wrap items-baseline gap-x-2">
-          <dt class="text-gray-500">Diluent injected</dt>
-          <dd>
-            <strong>{{ fmt(cc.diluentLiters, 0) }} l</strong>
           </dd>
         </div>
       </dl>

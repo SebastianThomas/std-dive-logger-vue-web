@@ -63,4 +63,14 @@ describe('CcrGasBreakdown', () => {
     expect(w.text()).toContain('Show calculation')
     expect(w.findComponent({ name: 'MathFormula' }).exists()).toBe(false)
   })
+
+  it('shows the final bailout RMV, litres used and injected gas without expanding', () => {
+    const w = mount(CcrGasBreakdown, { props: { cc: cc(), diveStartMs: START } })
+    expect(w.text()).toContain('22.0 l/min') // bailout RMV
+    expect(w.text()).toContain('990 l used') // Σ bailout litres
+    expect(w.text()).toContain('120 l') // O2 injected
+    expect(w.text()).toContain('300 l') // diluent injected
+    // ...but not the working
+    expect(w.findComponent({ name: 'MathFormula' }).exists()).toBe(false)
+  })
 })
