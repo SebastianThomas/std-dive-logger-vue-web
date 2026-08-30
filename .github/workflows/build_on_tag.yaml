@@ -1,4 +1,4 @@
-name: Build on Tag and Deploy Staging
+name: Build on Tag Staging
 on:
   push:
     tags: [v*]
@@ -8,9 +8,11 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Bind the job to the GitHub Environment so its secrets (CARTO_API_KEY) resolve.
+    environment: ${{ matrix.environment }}
     strategy:
       matrix:
-        environment: [staging]
+        environment: [STAGING]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -29,4 +31,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: Build with Dockerfile
+        env:
+          CARTO_API_KEY: ${{ secrets.CARTO_API_KEY }}
         run: bash ./build-frontend.sh ${{ github.ref_name }} staging
