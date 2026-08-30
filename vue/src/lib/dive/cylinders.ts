@@ -3,7 +3,8 @@ import type { CylinderMaterial, CylinderSize, CylinderSizeUnit } from '@/lib/typ
 /**
  * Frontend mirror of the backend standard-cylinder catalog
  * (`std-dive-logger-model/.../model/dive/gear/StandardCylinder.java` - `CATALOG`, `snap`,
- * `inferMaterial`). Keep both in sync: same 14 entries, same litre values, same inference table.
+ * `inferMaterial`). Keep the single-tank entries and the inference table in sync with the backend;
+ * the twinset quick-fills below are frontend-only (they resolve to a plain combined-litres size).
  *
  * All entries are stored as `LITER` water-volume values - US "cuft" ratings are free-gas capacity,
  * not water volume, and only appear in the label.
@@ -43,7 +44,8 @@ const twin = (
 /** Advisory quick-fill list - picking one sets size + unit + material, but the fields stay fully
  * editable and nothing is snapped on save. Twinsets are stored as their combined litres. */
 export const STANDARD_CYLINDERS: StandardCylinder[] = [
-  entry(3, 'STEEL', '3 L Steel (pony)'),
+  entry(2, 'STEEL', '2 L Steel'),
+  entry(3, 'STEEL', '3 L Steel'),
   entry(5, 'STEEL', '5 L Steel'),
   entry(7, 'STEEL', '7 L Steel'),
   entry(10, 'STEEL', '10 L Steel'),

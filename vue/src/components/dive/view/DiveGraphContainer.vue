@@ -141,7 +141,7 @@
 
   <!-- Embedded view -->
   <div v-else class="w-full">
-    <div class="flex justify-end px-4 mb-2 gap-2">
+    <div v-if="!minimal" class="flex justify-end px-4 mb-2 gap-2">
       <ProfileSelector
         v-if="profiles.length > 1"
         :profiles="profiles"
@@ -162,6 +162,7 @@
       </button>
     </div>
     <MetricsControlPanel
+      v-if="!minimal"
       class="px-4 mb-2"
       v-model:selected-profiles="selectedProfiles"
       :profiles-count="profiles.length"
@@ -201,7 +202,7 @@
       v-model:left-axis-metric="leftAxisMetric"
       v-model:right-axis-metric="rightAxisMetric"
     />
-    <div class="relative h-100 md:h-125">
+    <div class="relative" :class="minimal ? 'h-72 md:h-96' : 'h-100 md:h-125'">
       <DiveGraph
         :profiles="profiles"
         :visible-profiles="visibleProfiles"
@@ -220,7 +221,7 @@
         :show-gas-o2="showGasO2"
         :show-gas-n2="showGasN2"
         :show-gas-he="showGasHe"
-        :trim-profile-id="trimProfileId"
+        :trim-profile-id="minimal ? null : trimProfileId"
         :trim-busy="trimBusy"
         @trim-confirmed="confirmTrimming"
         @trim-cancelled="cancelTrimming"
@@ -248,6 +249,7 @@
       />
     </div>
     <AscentRatePanel
+      v-if="!minimal"
       class="mt-2"
       :profiles="profiles"
       :dive-id="diveId"
@@ -259,6 +261,7 @@
   </div>
 
   <ProfileAlignmentModal
+    v-if="!minimal"
     :profiles="profiles"
     :dive-id="diveId"
     :is-open="showAlignmentModal"
@@ -295,10 +298,14 @@ interface Props {
   profiles: DiveProfile[]
   diveId: number
   fullscreen?: boolean
+  /** Just the profile chart with sensible default metrics - no control panel, ascent-rate panel,
+   * trim or alignment. Used as a read-only reference on the edit page. */
+  minimal?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   fullscreen: false,
+  minimal: false,
 })
 
 const visibleProfiles = ref<boolean[]>([])

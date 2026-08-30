@@ -331,6 +331,9 @@ export type CylinderConsumption = {
   /** Depth-weighted pressure-minutes denominator behind `ocRmvLiters`. Maps to
    * `CylinderConsumptionResult.ocPressureMinutes`. */
   ocPressureMinutes?: number | null
+  /** Per-cylinder "show the working" lines. Maps to `CylinderConsumptionResult.contributions`.
+   * Populated for any dive with cylinders (incl. CCR, where `gasConsumptionComparison` is null). */
+  contributions?: CylinderContribution[]
 }
 
 /** One tracked cylinder's line in the gas-consistency breakdown. Mirrors the backend record
@@ -343,7 +346,20 @@ export type CylinderContribution = {
   endBar: number | null
   /** `(startBar - endBar) * waterVolumeLiters`, or `null` when unusable. */
   consumedLiters: number | null
+  /** The cylinder's own explicitly-entered usage windows. */
   usageWindows: CylinderUsageWindow[]
+  /** Depth-weighted pressure-minutes over this cylinder's effective windows. Populated only for a
+   * cylinder actually breathed open-circuit (OC on an OC dive, BAILOUT on a CCR dive). */
+  pressureMinutes: number | null
+  /** `consumedLiters / pressureMinutes` - this cylinder's own RMV. `null` for O2 / Diluent and
+   * when data is missing. Per-cylinder RMVs don't sum to the combined figure when cylinders share
+   * a window (combined uses the union). */
+  rmvLiters: number | null
+  /** The windows the cylinder was actually the one being breathed: its explicit `usageWindows`, or
+   * the computed complement of the same-role windowed cylinders. Empty when `coversWholeDive`. */
+  effectiveWindows: CylinderUsageWindow[]
+  /** True only when this (unwindowed) cylinder genuinely spans the whole mode-gated dive. */
+  coversWholeDive: boolean
 }
 
 /** Backend's reconciliation of the manually-entered whole-dive gas figures against the RMV/total

@@ -219,9 +219,9 @@
                right-now" gauge some dive computers also label "Surface GF" throughout the dive. -->
           <InfoCardRow
             v-if="
-              firstProfileSummary?.startCNS !== undefined ||
-              lastProfileSummary?.endCNS !== undefined ||
-              lastProfileSummary?.o2Toxicity !== undefined ||
+              cnsCoverage?.startValue != null ||
+              cnsCoverage?.endValue != null ||
+              otuCoverage?.endValue != null ||
               showGf99Start ||
               profilesWithSurfacingGf.length ||
               summary?.maxTimeToSurface !== undefined
@@ -229,40 +229,34 @@
           >
             <!-- CNS Information -->
             <InfoCard
-              v-if="
-                firstProfileSummary?.startCNS !== undefined ||
-                lastProfileSummary?.endCNS !== undefined
-              "
+              v-if="cnsCoverage && (cnsCoverage.startValue != null || cnsCoverage.endValue != null)"
               title="CNS (%)"
+              :warning="coverageNote(cnsCoverage)"
             >
-              <div
-                v-if="firstProfileSummary?.startCNS !== undefined"
-                class="flex items-center gap-2"
-              >
+              <div v-if="cnsCoverage.startValue != null" class="flex items-center gap-2">
                 <span>Start:</span>
-                <span class="font-semibold">{{ firstProfileSummary.startCNS.toFixed(0) }}</span>
+                <span class="font-semibold">{{ cnsCoverage.startValue.toFixed(0) }}</span>
               </div>
-              <div
-                v-if="lastProfileSummary?.endCNS !== undefined"
-                class="flex items-center gap-2"
-              >
+              <div v-if="cnsCoverage.endValue != null" class="flex items-center gap-2">
                 <span>End:</span>
-                <span class="font-semibold">{{ lastProfileSummary.endCNS.toFixed(0) }}</span>
+                <span class="font-semibold">{{ cnsCoverage.endValue.toFixed(0) }}</span>
               </div>
             </InfoCard>
 
             <!-- OTU Information -->
             <InfoCard
-              v-if="lastProfileSummary?.o2Toxicity !== undefined"
+              v-if="otuCoverage?.endValue != null"
               title="OTUs"
-              :value="`${lastProfileSummary?.o2Toxicity?.toFixed(0)}`"
+              :value="`${otuCoverage.endValue.toFixed(0)}`"
+              :warning="coverageNote(otuCoverage)"
             />
 
             <!-- GF99 at the start of the dive. -->
             <InfoCard
-              v-if="showGf99Start"
+              v-if="showGf99Start && gf99StartCoverage"
               title="GF99 (Start)"
-              :value="`${firstProfileSummary!.startN2!.toFixed(0)}%`"
+              :value="`${gf99StartCoverage.startValue!.toFixed(0)}%`"
+              :warning="coverageNote(gf99StartCoverage)"
             />
 
             <!-- GF99 @ Surface: each profile's own surfacing/last GF99 (DiveMeasurement.n2, the
@@ -696,6 +690,7 @@ import { gasConsumptionComparison } from '@/lib/dive/gasConsumption'
 import type { DiveTrip } from '@/lib/types/trip'
 import { useTeamTerminology } from '@/composables/useTeamTerminology'
 import { computeGasList, isGaugeModeProfile, type GasListEntry } from '@/lib/dive/gasRoles'
+import { metricCoverage, coverageNote } from '@/lib/dive/profileMetrics'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { User } from '@/lib/types/user'
@@ -795,24 +790,44 @@ const isManualDive = computed(
   () => dive.value?.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
 )
 
-const firstProfile = computed(() => dive.value?.profiles[0])
-const lastProfile = computed(() => {
-  const profiles = dive.value?.profiles
-  if (!profiles) {
-    return undefined
-  }
-  return profiles[profiles.length - 1]
-})
-const firstProfileSummary = computed(() => firstProfile.value?.summary)
-const lastProfileSummary = computed(() => lastProfile.value?.summary)
-
-// Guards the "GF99 (Start)" card: a computer in gauge mode reports n2=0 for every sample, which
-// looks identical to a real "0%" start reading unless every sample is checked, not just the
-// first one - see isGaugeModeProfile's own doc comment.
-const showGf99Start = computed(() => {
-  const profile = firstProfile.value
-  return profile?.summary?.startN2 !== undefined && !isGaugeModeProfile(profile)
-})
+// Card-level readings (CNS / OTU / GF99) come from the first / last profile that actually *has*
+// that metric - not profiles[0]/[last], which is wrong when a backup computer without the metric
+// sorts first/last - and carry a coverage warning when the profile data spans far less than the
+// logged dive. A gauge-mode computer reports n2=0 for every sample (see isGaugeModeProfile), so
+// GF99 is resolved against non-gauge profiles only.
+const profileList = computed(() => dive.value?.profiles ?? [])
+const nonGaugeProfiles = computed(() => profileList.value.filter((p) => !isGaugeModeProfile(p)))
+const cnsCoverage = computed(() =>
+  dive.value
+    ? metricCoverage(
+        profileList.value,
+        (s) => s.startCNS,
+        (s) => s.endCNS,
+        dive.value,
+      )
+    : null,
+)
+const otuCoverage = computed(() =>
+  dive.value
+    ? metricCoverage(
+        profileList.value,
+        (s) => s.o2Toxicity,
+        (s) => s.o2Toxicity,
+        dive.value,
+      )
+    : null,
+)
+const gf99StartCoverage = computed(() =>
+  dive.value
+    ? metricCoverage(
+        nonGaugeProfiles.value,
+        (s) => s.startN2,
+        (s) => s.startN2,
+        dive.value,
+      )
+    : null,
+)
+const showGf99Start = computed(() => gf99StartCoverage.value?.startValue != null)
 
 // Each profile's own surfacing/last GF99 (DiveMeasurement.n2, same value the graph's "GF99"
 // metric is drawn from) - the "GF99 @ Surface" card only lists profiles that actually have one,

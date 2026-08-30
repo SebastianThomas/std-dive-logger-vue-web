@@ -75,7 +75,13 @@ const mountView = async (dive: Dive, backfill: DiveBackfillStatus) => {
   const wrapper = mount(DiveEditView, {
     global: {
       plugins: [router],
-      stubs: { EditDiveForm: true, BackfillBanner: true, TagSelector: true, TagBadge: true },
+      stubs: {
+        EditDiveForm: true,
+        BackfillBanner: true,
+        TagSelector: true,
+        TagBadge: true,
+        DiveGraphContainer: true,
+      },
     },
   })
   await flushPromises()
@@ -104,5 +110,29 @@ describe('DiveEditView - "Save & dismiss (no more info)"', () => {
     const wrapper = await mountView(dive, status({ missingFields: ['NOTES'] }))
     const dismissBtn = wrapper.findAll('button').find((b) => b.text().includes('Save & dismiss'))
     expect(dismissBtn).toBeTruthy()
+  })
+})
+
+describe('DiveEditView - read-only reference profile', () => {
+  it('is absent for a dive with no real profile', async () => {
+    const wrapper = await mountView(completeDive(), status({}))
+    expect(wrapper.findComponent({ name: 'DiveGraphContainer' }).exists()).toBe(false)
+  })
+
+  it('renders the minimal profile graph for a dive that has one', async () => {
+    const dive = completeDive()
+    dive.profiles = [
+      {
+        id: 1,
+        diveComputer: { customIdentifier: 'Perdix' },
+        start: 0,
+        end: 2_400_000,
+        measurements: [],
+      },
+    ] as unknown as Dive['profiles']
+    const wrapper = await mountView(dive, status({}))
+    const graph = wrapper.findComponent({ name: 'DiveGraphContainer' })
+    expect(graph.exists()).toBe(true)
+    expect(graph.props('minimal')).toBe(true)
   })
 })

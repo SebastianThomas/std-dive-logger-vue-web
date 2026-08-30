@@ -132,15 +132,22 @@ export function gasConsumptionComparison(
   }
 }
 
-/** Per-cylinder Δbar → litres, computed live from the edit form (mirror of the backend's
- * `DiveEntity.cylinderContributions`). */
-function liveContributions(cylinders: DiveConfigurationCylinder[]): CylinderContribution[] {
-  return cylinders.map((c) => {
+/** Per-cylinder Δbar → litres, computed live from the edit form. The litres update as the user
+ * types; the pressure-minutes / per-cylinder RMV / effective windows need the depth profile and so
+ * come from the last save (`saved`, matched by list position) - the same limitation the live
+ * combined RMV already has. */
+function liveContributions(
+  cylinders: DiveConfigurationCylinder[],
+  saved: CylinderContribution[],
+): CylinderContribution[] {
+  return cylinders.map((c, i) => {
     const waterVolumeLiters = cylinderWaterVolumeLiters(c.size)
     const usable =
       c.startBar != null && c.endBar != null && c.startBar - c.endBar > 0
         ? (c.startBar - c.endBar) * waterVolumeLiters
         : null
+    const prior = saved[i]
+    const priorPm = prior?.pressureMinutes ?? null
     return {
       waterVolumeLiters,
       material: c.material ?? null,
@@ -149,6 +156,10 @@ function liveContributions(cylinders: DiveConfigurationCylinder[]): CylinderCont
       endBar: c.endBar ?? null,
       consumedLiters: usable,
       usageWindows: c.usageWindows ?? [],
+      pressureMinutes: priorPm,
+      rmvLiters: usable != null && priorPm != null && priorPm > 0 ? usable / priorPm : null,
+      effectiveWindows: prior?.effectiveWindows ?? c.usageWindows ?? [],
+      coversWholeDive: prior?.coversWholeDive ?? (c.usageWindows ?? []).length === 0,
     }
   })
 }
@@ -163,6 +174,8 @@ export function buildLiveComparisonView(input: {
   enteredRmvLiters: number | null | undefined
   enteredTotalLiters: number | null | undefined
   cylinders: DiveConfigurationCylinder[]
+  /** Per-cylinder figures from the last save, matched to `cylinders` by position. */
+  savedContributions?: CylinderContribution[] | null
   calculatedRmvLiters: number | null | undefined
   calculatedTotalLiters: number | null | undefined
   ocPressureMinutes: number | null | undefined
@@ -203,6 +216,6 @@ export function buildLiveComparisonView(input: {
     ocPressureMinutes: input.ocPressureMinutes ?? null,
     avgDepthMeters: input.avgDepthMeters ?? null,
     durationMinutes: input.durationMinutes ?? null,
-    contributions: liveContributions(input.cylinders),
+    contributions: liveContributions(input.cylinders, input.savedContributions ?? []),
   }
 }

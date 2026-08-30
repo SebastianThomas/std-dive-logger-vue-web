@@ -25,6 +25,30 @@
           @jump="jumpToField"
           @restore="restoreBackfill"
         />
+
+        <!-- Read-only dive profile, pinned to the top of the scroll area so pressures / times can
+             be read off it while filling in the cylinder + gas fields below. -->
+        <div
+          v-if="loadedDive && loadedDive.profiles.length && !isManualDive"
+          class="sticky top-0 z-20 -mx-1 rounded-lg border border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95"
+        >
+          <button
+            type="button"
+            class="flex w-full items-center justify-between px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300"
+            @click="showEditProfile = !showEditProfile"
+          >
+            <span><i class="fa fa-chart-area mr-1.5" />Dive profile</span>
+            <i class="fa" :class="showEditProfile ? 'fa-chevron-up' : 'fa-chevron-down'" />
+          </button>
+          <DiveGraphContainer
+            v-if="showEditProfile"
+            minimal
+            :profiles="loadedDive.profiles"
+            :dive-id="diveId"
+            class="pb-2"
+          />
+        </div>
+
         <EditDiveForm
           v-if="currentUserId && loadedDive"
           v-model="formData"
@@ -38,6 +62,7 @@
           :calculated-rmv-baseline="calculatedRmvBaseline"
           :calculated-total-liters-baseline="calculatedTotalLitersBaseline"
           :oc-pressure-minutes-baseline="ocPressureMinutesBaseline"
+          :saved-contributions="savedContributions"
           :avg-depth-meters="loadedDive.summary.averageDepth"
           :duration-minutes="loadedDiveDurationMinutes"
           @dismiss-backfill-field="dismissBackfillField"
@@ -98,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
@@ -108,6 +133,8 @@ import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import EditDiveForm from '@/components/dive/edit/EditDiveForm.vue'
 import BackfillBanner from '@/components/dive/BackfillBanner.vue'
+import DiveGraphContainer from '@/components/dive/view/DiveGraphContainer.vue'
+import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
 import type {
   Dive,
   DiveSite,
@@ -189,6 +216,15 @@ const formData = ref<DiveFormData>({
 /** The dive as last fetched from the backend - kept around so the leader picker can offer only
  * already-persisted named buddies/linked dives (see EditDiveForm's own note on why). */
 const loadedDive = ref<Dive | null>(null)
+
+// The read-only reference profile at the top of the form - manual-entry dives have only a synthetic
+// 3-point profile, nothing to reference. Collapse state remembered across edits.
+const EDIT_PROFILE_KEY = 'dive-edit-show-profile'
+const showEditProfile = ref(safeLocalStorage.getItem(EDIT_PROFILE_KEY) !== 'false')
+watch(showEditProfile, (v) => safeLocalStorage.setItem(EDIT_PROFILE_KEY, String(v)))
+const isManualDive = computed(
+  () => loadedDive.value?.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
+)
 
 const selectedTags = ref<TagDefinition[]>([])
 /** Auto-detected tags fetched fresh from the backend on load. */
@@ -404,6 +440,14 @@ const ocPressureMinutesBaseline = computed<number | null>(
   () =>
     loadedDive.value?.gasConsumptionComparison?.ocPressureMinutes ??
     loadedDive.value?.cylinderConsumption?.ocPressureMinutes ??
+    null,
+)
+// Per-cylinder figures from the last save - `cylinderConsumption` carries them even for a CCR dive
+// (where `gasConsumptionComparison` is null). Positional-matched to the form's cylinders.
+const savedContributions = computed(
+  () =>
+    loadedDive.value?.gasConsumptionComparison?.contributions ??
+    loadedDive.value?.cylinderConsumption?.contributions ??
     null,
 )
 const loadedDiveDurationMinutes = computed<number | null>(() => {

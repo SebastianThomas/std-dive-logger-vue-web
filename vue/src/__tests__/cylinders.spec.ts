@@ -69,6 +69,7 @@ describe('matchStandard', () => {
 
 describe('inferMaterial', () => {
   it('follows the mirrored inference table', () => {
+    expect(inferMaterial(2, 'LITER')).toBe('STEEL')
     expect(inferMaterial(3, 'LITER')).toBe('STEEL')
     expect(inferMaterial(3.5, 'LITER')).toBe('STEEL')
     expect(inferMaterial(5.5, 'LITER')).toBe('ALU')

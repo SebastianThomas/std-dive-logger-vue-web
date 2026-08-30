@@ -937,10 +937,11 @@
              mistyped cylinder pressure is easy to tell apart from a bad entered RMV. Cylinder-side
              figures are from the last save; the per-cylinder table and entered figures are live. -->
         <GasConsumptionBreakdown
-          v-if="liveGasView.mismatch"
+          v-if="liveGasView.mismatch || liveGasView.contributions.length"
           :view="liveGasView"
           :dive-start-ms="diveStart"
-          :default-expanded="true"
+          :default-expanded="liveGasView.mismatch"
+          live
           class="mt-3"
         />
       </fieldset>
@@ -1040,6 +1041,7 @@ import {
   type GasConsumption,
   type DiveConfiguration,
   type DiveConfigurationCylinder,
+  type CylinderContribution,
   type CylinderRole,
   type CylinderMaterial,
   type CylinderUsageWindow,
@@ -1131,6 +1133,9 @@ const props = defineProps<{
   calculatedRmvBaseline?: number | null
   calculatedTotalLitersBaseline?: number | null
   ocPressureMinutesBaseline?: number | null
+  /** Per-cylinder figures from the last save, positional-matched to the form's cylinders - live
+   * per-cylinder RMV / effective windows in the breakdown come from here (they need the profile). */
+  savedContributions?: CylinderContribution[] | null
   /** Loaded dive's average depth (m) + duration (min) - used to derive an implied RMV from the
    * entered total-litres figure for the same consistency warning + the backfill mismatch check. */
   avgDepthMeters?: number | null
@@ -1741,6 +1746,7 @@ const liveGasView = computed(() =>
     enteredRmvLiters: props.modelValue.gasConsumption?.rmvLiters,
     enteredTotalLiters: props.modelValue.gasConsumption?.totalLiters,
     cylinders: props.modelValue.configuration?.cylinders ?? [],
+    savedContributions: props.savedContributions,
     calculatedRmvLiters: props.calculatedRmvBaseline,
     calculatedTotalLiters: props.calculatedTotalLitersBaseline,
     ocPressureMinutes: props.ocPressureMinutesBaseline,

@@ -164,4 +164,60 @@ describe('buildLiveComparisonView (edit form)', () => {
     expect(view.contributions[0]!.consumedLiters).toBeGreaterThan(1200)
     expect(view.contributions[0]!.consumedLiters).toBeLessThan(2000)
   })
+
+  it('takes per-cylinder pressure-minutes / windows from the last save and recomputes RMV live', () => {
+    const view = buildLiveComparisonView({
+      enteredRmvLiters: null,
+      enteredTotalLiters: null,
+      cylinders: [cyl({ startBar: 200, endBar: 100 })], // 100 bar * 12 L = 1200 L live
+      savedContributions: [
+        {
+          waterVolumeLiters: 12,
+          material: 'STEEL',
+          role: 'OC',
+          startBar: 200,
+          endBar: 80,
+          consumedLiters: 1440,
+          usageWindows: [],
+          pressureMinutes: 80,
+          rmvLiters: 18,
+          effectiveWindows: [],
+          coversWholeDive: true,
+        },
+      ],
+      calculatedRmvLiters: 18,
+      calculatedTotalLiters: 1440,
+      ocPressureMinutes: 80,
+      avgDepthMeters: 15,
+      durationMinutes: 45,
+    })
+    const c = view.contributions[0]!
+    expect(c.pressureMinutes).toBe(80)
+    expect(c.coversWholeDive).toBe(true)
+    expect(c.rmvLiters).toBeCloseTo(1200 / 80, 5) // live litres / saved pressure-minutes
+  })
+
+  it('passes the backend contributions straight through on the read view', () => {
+    const view = gasConsumptionComparison(
+      cmp({
+        contributions: [
+          {
+            waterVolumeLiters: 7,
+            material: 'ALU',
+            role: 'OC',
+            startBar: 200,
+            endBar: 100,
+            consumedLiters: 700,
+            usageWindows: [],
+            pressureMinutes: 40,
+            rmvLiters: 17.5,
+            effectiveWindows: [],
+            coversWholeDive: true,
+          },
+        ],
+      }),
+    )
+    expect(view.contributions[0]!.rmvLiters).toBe(17.5)
+    expect(view.contributions[0]!.coversWholeDive).toBe(true)
+  })
 })
