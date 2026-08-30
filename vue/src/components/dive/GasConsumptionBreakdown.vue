@@ -28,13 +28,16 @@
       <template v-else> How these figures were computed: </template>
     </p>
 
-    <button
-      type="button"
-      class="mt-2 text-xs underline decoration-dotted hover:no-underline"
-      @click="expanded = !expanded"
-    >
-      {{ expanded ? 'Hide calculation' : 'Show calculation' }}
-    </button>
+    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+      <button
+        type="button"
+        class="text-xs underline decoration-dotted hover:no-underline"
+        @click="expanded = !expanded"
+      >
+        {{ expanded ? 'Hide calculation' : 'Show calculation' }}
+      </button>
+      <GasCalcGlossary />
+    </div>
 
     <div v-if="expanded" class="mt-3 space-y-4 text-xs">
       <!-- Per-cylinder table -->
@@ -197,6 +200,7 @@ import type { CylinderContribution, CylinderUsageWindow } from '@/lib/types/dive
 import type { GasConsumptionComparisonView } from '@/lib/dive/gasConsumption'
 import { elapsedMinutesSeconds } from '@/lib/utils/timeUtils'
 import MathFormula, { type MathNode } from '@/components/ui/MathFormula.vue'
+import GasCalcGlossary from '@/components/dive/GasCalcGlossary.vue'
 
 const props = defineProps<{
   view: GasConsumptionComparisonView

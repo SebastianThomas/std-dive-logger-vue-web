@@ -119,6 +119,18 @@
             />
           </div>
         </div>
+        <!-- Trips/courses this dive belongs to - kept up here next to the site and date, since
+             "which trip was this" is context you want before scrolling the whole dive. -->
+        <div v-if="diveTrips.length" class="mt-1.5 flex flex-wrap gap-1.5">
+          <RouterLink
+            v-for="trip in diveTrips"
+            :key="trip.id"
+            :to="{ name: 'TripEdit', params: { tripId: String(trip.id) } }"
+            class="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200 hover:opacity-80"
+          >
+            <i class="fas fa-compass mr-1"></i>{{ trip.name }}
+          </RouterLink>
+        </div>
       </div>
 
       <!-- Delete Modal -->
@@ -642,9 +654,6 @@
         </div>
       </div>
 
-      <!-- Trip badges (WS7) - all lookup logic lives inside the component itself. -->
-      <DiveTripBadges :dive-id="dive.id" />
-
       <!-- Notes Panel -->
       <div
         v-if="dive.notes"
@@ -682,7 +691,6 @@ import SharePopover from '@/components/share/SharePopover.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import ProfileReimportModal from '@/components/dive/view/ProfileReimportModal.vue'
 import DivePhotoGallery from '@/components/dive/DivePhotoGallery.vue'
-import DiveTripBadges from '@/components/dive/DiveTripBadges.vue'
 import GasConsumptionBreakdown from '@/components/dive/GasConsumptionBreakdown.vue'
 import CcrGasBreakdown from '@/components/dive/CcrGasBreakdown.vue'
 import type { Dive, DiveComputer } from '@/lib/types/dive'
@@ -718,8 +726,11 @@ const { readOnly } = useReadOnlyMode()
 
 const diveId = computed(() => Number(route.params.diveId))
 const dive = ref<Dive | null>(null)
-// Populated after the dive loads (see fetchDive) - the first of this dive's trips that has its
-// own terminology override set, used as useTeamTerminology's middle fallback step.
+// Trips/courses this dive belongs to (GET /v1/dive-trips/for-dive/{id}) - rendered as badges in
+// the header. Populated by fetchDiveTrips after the dive loads.
+const diveTrips = ref<DiveTrip[]>([])
+// The first of this dive's trips that has its own terminology override set, used as
+// useTeamTerminology's middle fallback step. Derived from the same fetch as diveTrips.
 const diveTripTerminology = ref<TeamTerminology | null>(null)
 const { plural: buddyTerminologyPlural } = useTeamTerminology(dive, diveTripTerminology)
 const loading = ref(true)
@@ -966,15 +977,16 @@ let fetchDiveRequestId = 0
 const fetchDive = async () => {
   const requestId = ++fetchDiveRequestId
   const requestedDiveId = diveId.value
-  // Reset rather than leaving the previous dive's resolved terminology on screen until this
-  // dive's own fetchDiveTripTerminology call resolves.
+  // Reset rather than leaving the previous dive's resolved trips/terminology on screen until
+  // this dive's own fetchDiveTrips call resolves.
+  diveTrips.value = []
   diveTripTerminology.value = null
   try {
     loading.value = true
     const res = await getWithToken<Dive>(`/v1/dives/${requestedDiveId}`)
     if (requestId !== fetchDiveRequestId) return
     dive.value = res.data
-    fetchDiveTripTerminology(requestedDiveId)
+    fetchDiveTrips(requestedDiveId)
   } catch (err) {
     if (requestId !== fetchDiveRequestId) return
     error.value = `Failed to fetch dive: ${extractErrorDetail(err)}`
@@ -983,15 +995,17 @@ const fetchDive = async () => {
   }
 }
 
-const fetchDiveTripTerminology = async (forDiveId: number) => {
+const fetchDiveTrips = async (forDiveId: number) => {
   try {
     const res = await getWithToken<DiveTrip[]>(`/v1/dive-trips/for-dive/${forDiveId}`)
     if (diveId.value !== forDiveId) return
+    diveTrips.value = res.data
     diveTripTerminology.value = res.data.find((t) => t.teamTerminology)?.teamTerminology ?? null
   } catch {
     // A stale request's failure (e.g. the user has since navigated to a different dive) must
-    // never clobber whatever the now-current dive's terminology fetch already resolved.
+    // never clobber whatever the now-current dive's fetch already resolved.
     if (diveId.value !== forDiveId) return
+    diveTrips.value = []
     diveTripTerminology.value = null
   }
 }

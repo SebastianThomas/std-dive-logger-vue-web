@@ -7,13 +7,16 @@
       Open-circuit portion: {{ ocLabel }}
     </p>
 
-    <button
-      type="button"
-      class="mt-2 text-xs underline decoration-dotted hover:no-underline"
-      @click="expanded = !expanded"
-    >
-      {{ expanded ? 'Hide calculation' : 'Show calculation' }}
-    </button>
+    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+      <button
+        type="button"
+        class="text-xs underline decoration-dotted hover:no-underline"
+        @click="expanded = !expanded"
+      >
+        {{ expanded ? 'Hide calculation' : 'Show calculation' }}
+      </button>
+      <GasCalcGlossary ccr />
+    </div>
 
     <div v-if="expanded" class="mt-3 space-y-4 text-xs">
       <div v-if="cc.contributions?.length" class="overflow-x-auto">
@@ -118,6 +121,7 @@ import { CYLINDER_MATERIAL_LABELS, CYLINDER_ROLE_LABELS } from '@/lib/types/dive
 import type { CylinderConsumption, CylinderUsageWindow } from '@/lib/types/dive'
 import { elapsedMinutesSeconds } from '@/lib/utils/timeUtils'
 import MathFormula from '@/components/ui/MathFormula.vue'
+import GasCalcGlossary from '@/components/dive/GasCalcGlossary.vue'
 
 const props = defineProps<{
   cc: CylinderConsumption
