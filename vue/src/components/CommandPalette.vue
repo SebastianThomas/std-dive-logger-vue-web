@@ -7,6 +7,7 @@
     >
       <div
         ref="paletteRef"
+        data-vim-exempt
         class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden outline-none"
         tabindex="-1"
         @click.stop
@@ -19,6 +20,7 @@
               ref="searchInputRef"
               v-model="searchQuery"
               type="text"
+              data-vim-exempt
               placeholder="Type a command or search..."
               class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-none rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
               @keydown.down.prevent="moveSelection(1)"
@@ -29,17 +31,11 @@
               @blur="handleInputBlur"
             />
             <!-- Vim Mode Indicator -->
-            <div
-              v-if="navigationMode === 'vim'"
-              class="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-xs font-mono"
-              :class="
-                vimMode === 'insert'
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-              "
-            >
-              {{ vimMode === 'insert' ? 'INSERT' : 'NORMAL' }}
-            </div>
+            <VimModeBadge
+              v-if="vimEnabled"
+              :mode="vimMode"
+              class="absolute right-3 top-1/2 -translate-y-1/2"
+            />
           </div>
         </div>
 
@@ -85,12 +81,12 @@
         <div
           class="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400"
         >
-          <div v-if="navigationMode === 'standard'" class="flex gap-4">
+          <div v-if="!vimEnabled" class="flex gap-4">
             <span><kbd class="kbd">↑↓</kbd> Navigate</span>
             <span><kbd class="kbd">Enter</kbd> Execute</span>
             <span><kbd class="kbd">Esc</kbd> Close</span>
           </div>
-          <div v-else-if="navigationMode === 'vim'" class="flex gap-4">
+          <div v-else class="flex gap-4">
             <span v-if="vimMode === 'insert'"><kbd class="kbd">Esc</kbd> Normal mode</span>
             <template v-else>
               <span><kbd class="kbd">j/k</kbd> Navigate</span>
@@ -114,7 +110,9 @@ import { useProfileReimportStore } from '@/stores/profileReimport'
 import { useUserIconUploadStore } from '@/stores/userIconUpload'
 import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
-import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
+import { storeToRefs } from 'pinia'
+import { useVimModeStore } from '@/stores/vimMode'
+import VimModeBadge from '@/components/vim/VimModeBadge.vue'
 
 interface Command {
   id: string
@@ -143,29 +141,19 @@ const paletteRef = ref<HTMLDivElement | null>(null)
 const resultsRef = ref<HTMLDivElement | null>(null)
 const commandRefs = ref<(Element | null)[]>([])
 
-// Navigation mode state
-type NavigationMode = 'standard' | 'vim'
+// The vim/standard toggle is the app-wide `vimMode` store now (it also governs in-field vim
+// everywhere - see composables/useVimFieldNavigation.ts). `vimMode` below is this palette's own
+// list-navigation sub-mode, only meaningful while `vimEnabled`.
 type VimMode = 'normal' | 'insert'
 
-const NAVIGATION_MODE_STORAGE_KEY = 'command-palette-navigation-mode'
-
-const getNavigationModePreference = (): NavigationMode => {
-  const saved = safeLocalStorage.getItem(NAVIGATION_MODE_STORAGE_KEY)
-  return saved === 'vim' || saved === 'standard' ? saved : 'standard'
-}
-
-const setNavigationModePreference = (mode: NavigationMode) => {
-  safeLocalStorage.setItem(NAVIGATION_MODE_STORAGE_KEY, mode)
-}
-
-const navigationMode = ref<NavigationMode>(getNavigationModePreference())
+const vimStore = useVimModeStore()
+const { enabled: vimEnabled } = storeToRefs(vimStore)
 const vimMode = ref<VimMode>('insert')
 
 const cycleNavigationMode = () => {
-  navigationMode.value = navigationMode.value === 'standard' ? 'vim' : 'standard'
-  setNavigationModePreference(navigationMode.value)
+  vimStore.toggle()
   // Reset to insert mode when switching to vim
-  if (navigationMode.value === 'vim') {
+  if (vimEnabled.value) {
     vimMode.value = 'insert'
     nextTick(() => {
       searchInputRef.value?.focus()
@@ -294,11 +282,10 @@ const commands = computed<Command[]>(() => {
     // Settings
     {
       id: 'cycle-navigation-mode',
-      label: `Switch to ${navigationMode.value === 'standard' ? 'Vim' : 'Standard'} Mode`,
-      description:
-        navigationMode.value === 'standard'
-          ? 'Enable vim-style navigation (j/k, insert mode)'
-          : 'Switch to standard arrow key navigation',
+      label: `Switch to ${vimEnabled.value ? 'Standard' : 'Vim'} Mode`,
+      description: vimEnabled.value
+        ? 'Switch to standard arrow key navigation'
+        : 'Enable vim-style navigation (j/k here, insert/normal in text fields)',
       icon: '⌨️',
       action: () => cycleNavigationMode(),
       keywords: ['vim', 'keyboard', 'navigation', 'mode', 'settings', 'standard'],
@@ -463,7 +450,7 @@ const executeSelected = () => {
 
 const handleEnterInInput = () => {
   // In vim mode, switch to normal mode first before executing
-  if (navigationMode.value !== 'vim' || vimMode.value === 'normal') {
+  if (!vimEnabled.value || vimMode.value === 'normal') {
     executeSelected()
     return
   }
@@ -493,7 +480,7 @@ const execute = (command: Command) => {
     vimMode.value = 'insert' // Reset to insert mode for next open
   } else {
     // If staying open, refocus input in insert mode
-    if (navigationMode.value === 'vim') {
+    if (vimEnabled.value) {
       vimMode.value = 'insert'
     }
     nextTick(() => {
@@ -503,7 +490,7 @@ const execute = (command: Command) => {
 }
 
 const handleEscapeInInput = () => {
-  if (navigationMode.value === 'vim') {
+  if (vimEnabled.value) {
     // In vim mode, Esc switches to normal mode
     vimMode.value = 'normal'
     searchInputRef.value?.blur()
@@ -519,21 +506,21 @@ const handleEscapeInInput = () => {
 
 const handleInputFocus = () => {
   // When input is focused, switch to insert mode in vim mode
-  if (navigationMode.value === 'vim') {
+  if (vimEnabled.value) {
     vimMode.value = 'insert'
   }
 }
 
 const handleInputBlur = () => {
   // When input loses focus in vim mode, we're in normal mode
-  if (navigationMode.value === 'vim') {
+  if (vimEnabled.value) {
     vimMode.value = 'normal'
   }
 }
 
 const handleGlobalKeydown = (event: KeyboardEvent) => {
   // In standard mode, only handle Esc when not in input
-  if (navigationMode.value === 'standard') {
+  if (!vimEnabled.value) {
     if (event.key === 'Escape' && document.activeElement !== searchInputRef.value) {
       event.preventDefault()
       close()

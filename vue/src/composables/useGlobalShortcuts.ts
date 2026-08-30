@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useNavigation } from '@/composables/useNavigation'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
+import { useVimModeStore } from '@/stores/vimMode'
 import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 
 const LEADER_TIMEOUT_MS = 1500
@@ -94,6 +95,7 @@ export function useGlobalShortcuts() {
       },
     },
     l: { label: 'Toggle Lock', run: () => toggleReadOnly() },
+    v: { label: 'Toggle Vim Mode', run: () => useVimModeStore().toggle() },
     // Space Space (leader, tapped twice) - vim's `gg` equivalent for "scroll to top", since
     // there's no single physical key that reads naturally as "top" the way it does in vim.
     ' ': { label: 'Scroll to Top', run: () => scrollContentToTop() },

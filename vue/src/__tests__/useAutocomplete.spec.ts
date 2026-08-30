@@ -68,4 +68,27 @@ describe('useAutocomplete', () => {
     ac.onKeydown(key({ key: 'Enter' }), { onEnter })
     expect(onEnter).toHaveBeenCalledWith('two')
   })
+
+  it('Ctrl+N / Ctrl+P move the highlight while a list is open, and swallow the key', () => {
+    const ac = useAutocomplete<string>({ cacheKey: 't6', fetch: vi.fn() })
+    ac.results.value = ['one', 'two', 'three']
+    ac.open.value = true
+
+    const down = key({ key: 'n', ctrlKey: true })
+    ac.onKeydown(down, {})
+    expect(ac.activeIndex.value).toBe(0)
+    expect(down.preventDefault).toHaveBeenCalled()
+    expect(down.stopPropagation).toHaveBeenCalled()
+
+    ac.onKeydown(key({ key: 'p', ctrlKey: true }), {})
+    expect(ac.activeIndex.value).toBe(2) // wraps
+  })
+
+  it('leaves Ctrl+P alone when no list is open (so it can open the Command Palette)', () => {
+    const ac = useAutocomplete<string>({ cacheKey: 't7', fetch: vi.fn() })
+    const e = key({ key: 'p', ctrlKey: true })
+    ac.onKeydown(e, {})
+    expect(e.preventDefault).not.toHaveBeenCalled()
+    expect(e.stopPropagation).not.toHaveBeenCalled()
+  })
 })

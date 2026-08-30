@@ -20,6 +20,7 @@
         type="text"
         placeholder="Search or create tag… (Ctrl+Space for suggestions)"
         class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 text-sm"
+        :data-ac-open="(dropdownOpen && (ac.results.value.length || canCreate)) || undefined"
         @input="ac.onInput(($event.target as HTMLInputElement).value)"
         @keydown="onKeydown"
         @focus="showFocus = true"

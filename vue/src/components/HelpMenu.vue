@@ -44,7 +44,7 @@
                 <span class="text-sm text-gray-600 dark:text-gray-400"
                   >Autocomplete suggestions (tags, sites, buddies…)</span
                 >
-                <kbd class="kbd-small">Ctrl+Space / ↓</kbd>
+                <kbd class="kbd-small">Ctrl+Space · ↓/↑ · Ctrl+N/P</kbd>
               </div>
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600 dark:text-gray-400"
@@ -73,6 +73,24 @@
               >
                 <span class="text-sm text-gray-600 dark:text-gray-400">{{ shortcut.label }}</span>
                 <kbd class="kbd-small">Space {{ shortcut.key }}</kbd>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vim mode (in text fields) - only while it's on -->
+          <div v-if="vimEnabled">
+            <h4
+              class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2"
+            >
+              Vim mode (in text fields)
+            </h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              In a focused field: <kbd class="kbd-small">Esc</kbd> for normal mode, then:
+            </p>
+            <div class="space-y-1">
+              <div v-for="row in NORMAL_HELP_ROWS" :key="row.label" class="flex justify-between gap-3">
+                <span class="text-sm text-gray-600 dark:text-gray-400">{{ row.label }}</span>
+                <kbd class="kbd-small whitespace-nowrap">{{ row.keys }}</kbd>
               </div>
             </div>
           </div>
@@ -131,16 +149,20 @@
 <script setup lang="ts">
 import { ref, onUnmounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import {
   leaderShortcuts,
   pageShortcuts,
   pageLabels,
   isKnownShortcutPage,
 } from '@/lib/shortcuts/shortcutDocs'
+import { NORMAL_HELP_ROWS } from '@/lib/vim/vimKeymap'
+import { useVimModeStore } from '@/stores/vimMode'
 
 const isOpen = defineModel<boolean>({ required: true })
 const remainingSeconds = ref(10)
 const route = useRoute()
+const { enabled: vimEnabled } = storeToRefs(useVimModeStore())
 const expandedSections = ref<Record<string, boolean>>({})
 
 let timeoutId: ReturnType<typeof setTimeout> | null = null

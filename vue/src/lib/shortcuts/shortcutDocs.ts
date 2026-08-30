@@ -14,6 +14,7 @@ export const leaderShortcuts: ShortcutEntry[] = [
   { label: 'Statistics', key: 's' },
   { label: 'Upload', key: 'u' },
   { label: 'Toggle Lock (read-only)', key: 'l' },
+  { label: 'Toggle Vim Mode', key: 'v' },
   { label: 'Scroll to Top', key: 'Space' },
 ]
 

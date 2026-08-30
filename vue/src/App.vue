@@ -8,6 +8,11 @@
   <!-- Help Menu -->
   <HelpMenu v-model="showHelpMenu" />
 
+  <!-- Vim mode (see useVimFieldNavigation): the INSERT/NORMAL badge on the focused field, and the
+       local `?` help popover for the in-field motions. -->
+  <VimFieldIndicator :runtime="vimRuntime" />
+  <VimFieldHelp v-model:visible="vimRuntime.helpVisible" :anchor="vimRuntime.activeRect" />
+
   <!-- Leader-key indicator: Space is remapped to the vim <leader> key (see useGlobalShortcuts) -
        a brief on-screen cue that a leader sequence is armed, since otherwise pressing Space would
        silently do nothing until the next key lands. Once the sequence completes, this switches to
@@ -65,6 +70,8 @@ import { useNavigation } from '@/composables/useNavigation'
 import { useApi } from '@/composables/useApi'
 import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
 import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
+import { useVimFieldNavigation } from '@/composables/useVimFieldNavigation'
+import { useNumberInputGuard } from '@/composables/useNumberInputGuard'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
 import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
 import type { User } from '@/lib/types/user'
@@ -73,6 +80,8 @@ import AppSidebar from './components/layout/AppSidebar.vue'
 import CopyrightNotice from './components/CopyrightNotice.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import HelpMenu from './components/HelpMenu.vue'
+import VimFieldIndicator from './components/vim/VimFieldIndicator.vue'
+import VimFieldHelp from './components/vim/VimFieldHelp.vue'
 
 // Constants
 const headerHeight = 80 as const
@@ -90,6 +99,8 @@ const { getWithToken } = useApi()
 const backgroundUploadStore = useBackgroundUploadStore()
 const { updatedId: backgroundUpdatedId } = storeToRefs(backgroundUploadStore)
 const { showCommandPalette, showHelpMenu, leaderPending, lastActionLabel } = useGlobalShortcuts()
+const { runtime: vimRuntime } = useVimFieldNavigation()
+useNumberInputGuard()
 
 // Page name shown next to the logo in the header - the route's own name is a bare PascalCase
 // identifier (e.g. "DiveComputerDetail"), not something to show a user directly, so split it into

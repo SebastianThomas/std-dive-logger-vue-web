@@ -7,6 +7,7 @@
       :class="inputClass"
       :placeholder="placeholder"
       autocomplete="off"
+      :data-ac-open="dropdownOpen || undefined"
       @input="onInput"
       @focus="showFocus = true"
       @blur="onBlur"

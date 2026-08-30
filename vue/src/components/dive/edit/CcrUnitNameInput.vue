@@ -7,6 +7,7 @@
       :value="modelValue"
       placeholder="e.g. rEvo, Poseidon SE7EN, JJ-CCR"
       autocomplete="off"
+      :data-ac-open="(showDropdown && suggestions.length > 0) || undefined"
       @input="onInput"
       @focus="onFocus"
       @blur="onBlur"
@@ -159,10 +160,14 @@ const onKeydown = (e: KeyboardEvent) => {
     return
   }
   if (!showDropdown.value || !suggestions.value.length) return
-  if (e.key === 'ArrowDown') {
+  // Ctrl/Cmd+N / Ctrl/Cmd+P mirror ArrowDown/ArrowUp; stopPropagation so Ctrl+P doesn't also
+  // open the Command Palette while a list is showing.
+  const ctrlNav = (e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'p')
+  if (ctrlNav) e.stopPropagation()
+  if (e.key === 'ArrowDown' || (ctrlNav && e.key === 'n')) {
     e.preventDefault()
     activeIndex.value = (activeIndex.value + 1) % suggestions.value.length
-  } else if (e.key === 'ArrowUp') {
+  } else if (e.key === 'ArrowUp' || (ctrlNav && e.key === 'p')) {
     e.preventDefault()
     activeIndex.value =
       activeIndex.value <= 0 ? suggestions.value.length - 1 : activeIndex.value - 1
