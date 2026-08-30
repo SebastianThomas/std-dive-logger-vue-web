@@ -956,6 +956,14 @@
         <i class="fa fa-plus mr-1.5" /> Add gas consumption
         <span class="text-xs opacity-70"> — or dismiss it below</span>
       </button>
+
+      <!-- CCR dive: bailout RMV (open-circuit portion only) + injected O2/diluent litres, from the
+           last save. No manual whole-dive entry applies. -->
+      <CcrGasBreakdown
+        v-if="ccrGasView"
+        :cc="ccrGasView"
+        :dive-start-ms="diveStart"
+      />
     </form>
 
     <!-- Suit modal -->
@@ -1042,6 +1050,7 @@ import {
   type DiveConfiguration,
   type DiveConfigurationCylinder,
   type CylinderContribution,
+  type CylinderConsumption,
   type CylinderRole,
   type CylinderMaterial,
   type CylinderUsageWindow,
@@ -1082,6 +1091,7 @@ import {
 } from '@/lib/dive/cylinders'
 import { buildLiveComparisonView } from '@/lib/dive/gasConsumption'
 import GasConsumptionBreakdown from '@/components/dive/GasConsumptionBreakdown.vue'
+import CcrGasBreakdown from '@/components/dive/CcrGasBreakdown.vue'
 import BackfillHint from '@/components/dive/edit/BackfillHint.vue'
 
 export interface EditableNamedBuddy {
@@ -1136,6 +1146,9 @@ const props = defineProps<{
   /** Per-cylinder figures from the last save, positional-matched to the form's cylinders - live
    * per-cylinder RMV / effective windows in the breakdown come from here (they need the profile). */
   savedContributions?: CylinderContribution[] | null
+  /** The loaded dive's full cylinder-consumption figures (last save) - drives the CCR breakdown,
+   * which has no live-recompute path. */
+  savedCylinderConsumption?: CylinderConsumption | null
   /** Loaded dive's average depth (m) + duration (min) - used to derive an implied RMV from the
    * entered total-litres figure for the same consistency warning + the backfill mismatch check. */
   avgDepthMeters?: number | null
@@ -1155,6 +1168,9 @@ const backfillPointAt = computed<Set<DiveBackfillMissingField>>(() => {
   const stillEmpty = new Set(
     missingBackfillFields({
       ...props.modelValue,
+      hasCylinderGasData: (props.modelValue.configuration?.cylinders ?? []).some(
+        (c) => c.startBar != null && c.endBar != null,
+      ),
       calculatedRmvLiters: props.calculatedRmvBaseline ?? null,
       calculatedTotalLiters: props.calculatedTotalLitersBaseline ?? null,
       avgDepthMeters: props.avgDepthMeters ?? null,
@@ -1741,6 +1757,18 @@ const applySuggestedWindow = (index: number) => {
 // Live consistency view for the gas fieldset - entered RMV/total vs the cylinder-derived figures
 // (from the last save) and vs the implied-from-total value. Drives the amber warning + the
 // expandable per-cylinder "show the working" breakdown.
+// A CCR dive shows the bailout / injected-gas breakdown instead of the whole-dive comparison.
+const ccrGasView = computed<CylinderConsumption | null>(() => {
+  const cc = props.savedCylinderConsumption
+  if (!cc) return null
+  const isCcr =
+    (cc.openCircuitWindows?.length ?? 0) > 0 ||
+    cc.bailoutRmvLiters != null ||
+    cc.o2Liters != null ||
+    cc.diluentLiters != null
+  return isCcr ? cc : null
+})
+
 const liveGasView = computed(() =>
   buildLiveComparisonView({
     enteredRmvLiters: props.modelValue.gasConsumption?.rmvLiters,

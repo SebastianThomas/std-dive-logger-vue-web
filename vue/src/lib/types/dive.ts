@@ -331,6 +331,12 @@ export type CylinderConsumption = {
   /** Depth-weighted pressure-minutes denominator behind `ocRmvLiters`. Maps to
    * `CylinderConsumptionResult.ocPressureMinutes`. */
   ocPressureMinutes?: number | null
+  /** Depth-weighted pressure-minutes behind `bailoutRmvLiters` (the open-circuit portion of a CCR
+   * dive only). Maps to `CylinderConsumptionResult.bailoutPressureMinutes`. */
+  bailoutPressureMinutes?: number | null
+  /** The open-circuit (mode == OC) stretches of a CCR dive, for the CCR breakdown's context line.
+   * Empty on an OC dive. Maps to `CylinderConsumptionResult.openCircuitWindows`. */
+  openCircuitWindows?: CylinderUsageWindow[]
   /** Per-cylinder "show the working" lines. Maps to `CylinderConsumptionResult.contributions`.
    * Populated for any dive with cylinders (incl. CCR, where `gasConsumptionComparison` is null). */
   contributions?: CylinderContribution[]

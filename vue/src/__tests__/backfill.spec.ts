@@ -45,6 +45,15 @@ describe('missingBackfillFields', () => {
     ).not.toContain('GAS_CONSUMPTION')
   })
 
+  it('does not flag GAS_CONSUMPTION when tracked cylinders carry pressures', () => {
+    expect(
+      missingBackfillFields({ gasConsumption: null, hasCylinderGasData: true }),
+    ).not.toContain('GAS_CONSUMPTION')
+    expect(missingBackfillFields({ gasConsumption: null, hasCylinderGasData: false })).toContain(
+      'GAS_CONSUMPTION',
+    )
+  })
+
   it('only counts the leader set when a named/linked/self choice exists', () => {
     expect(missingBackfillFields({})).toContain('LEADER')
     expect(missingBackfillFields({ leaderSelfExplicit: true })).not.toContain('LEADER')

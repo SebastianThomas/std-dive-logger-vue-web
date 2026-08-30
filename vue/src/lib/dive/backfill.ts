@@ -45,6 +45,9 @@ export type BackfillFieldSource = {
     rmvLiters?: number | null
     totalLiters?: number | null
   } | null
+  /** True when ≥1 tracked cylinder carries both start + end pressure - the calculator derives
+   * RMV / total litres from those, so a manual whole-dive entry isn't a `GAS_CONSUMPTION` gap. */
+  hasCylinderGasData?: boolean | null
   leaderNamedBuddyId?: number | null
   leaderBuddyDiveId?: number | null
   leaderSelfExplicit?: boolean | null
@@ -97,7 +100,7 @@ export function missingBackfillFields(src: BackfillFieldSource): DiveBackfillMis
 
   const gas = src.gasConsumption
   const gasEmpty = !gas || (!gas.sacBar && !gas.rmvLiters && !gas.totalLiters)
-  if (gasEmpty) missing.push('GAS_CONSUMPTION')
+  if (gasEmpty && !src.hasCylinderGasData) missing.push('GAS_CONSUMPTION')
   else if (gasConsumptionMismatch(src)) missing.push('GAS_CONSUMPTION_MISMATCH')
 
   const leaderUnset =

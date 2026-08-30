@@ -63,6 +63,7 @@
           :calculated-total-liters-baseline="calculatedTotalLitersBaseline"
           :oc-pressure-minutes-baseline="ocPressureMinutesBaseline"
           :saved-contributions="savedContributions"
+          :saved-cylinder-consumption="loadedDive.cylinderConsumption"
           :avg-depth-meters="loadedDive.summary.averageDepth"
           :duration-minutes="loadedDiveDurationMinutes"
           @dismiss-backfill-field="dismissBackfillField"
@@ -465,6 +466,9 @@ const loadedDiveDurationMinutes = computed<number | null>(() => {
 const liveMissing = computed<DiveBackfillMissingField[]>(() =>
   missingBackfillFields({
     ...formData.value,
+    hasCylinderGasData: (formData.value.configuration?.cylinders ?? []).some(
+      (c) => c.startBar != null && c.endBar != null,
+    ),
     calculatedRmvLiters: calculatedRmvBaseline.value,
     calculatedTotalLiters: calculatedTotalLitersBaseline.value,
     avgDepthMeters: loadedDive.value?.summary.averageDepth ?? null,

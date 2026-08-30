@@ -576,6 +576,14 @@
         :dive-start-ms="dive.summary.start"
       />
 
+      <!-- CCR dive: no whole-dive RMV/total to reconcile, but the bailout RMV (open-circuit portion
+           only) + injected O2/diluent litres are worth showing the working for. -->
+      <CcrGasBreakdown
+        v-else-if="showCcrBreakdown"
+        :cc="dive.cylinderConsumption!"
+        :dive-start-ms="dive.summary.start"
+      />
+
       <!-- Cylinders - the one piece of Configuration dense enough to keep its own panel; Suit/Base
            Config/CCR Unit/Weight/Visibility/Gas Consumption moved into the compact InfoCardRow
            above. One compact line per cylinder (label · label · ...) rather than a padded
@@ -676,6 +684,7 @@ import ProfileReimportModal from '@/components/dive/view/ProfileReimportModal.vu
 import DivePhotoGallery from '@/components/dive/DivePhotoGallery.vue'
 import DiveTripBadges from '@/components/dive/DiveTripBadges.vue'
 import GasConsumptionBreakdown from '@/components/dive/GasConsumptionBreakdown.vue'
+import CcrGasBreakdown from '@/components/dive/CcrGasBreakdown.vue'
 import type { Dive, DiveComputer } from '@/lib/types/dive'
 import {
   BASE_CONFIGURATION_LABELS,
@@ -877,6 +886,19 @@ const hasGasConsumption = computed(() => {
     (cylinderConsumption?.bailoutRmvLiters ?? null) !== null ||
     (cylinderConsumption?.o2Liters ?? null) !== null ||
     (cylinderConsumption?.diluentLiters ?? null) !== null
+  )
+})
+
+// CCR breakdown: the profile carries open-circuit stretches (mode == OC), or a bailout / O2 /
+// diluent figure was computed. The whole-dive GasConsumptionComparison is null for a CCR dive.
+const showCcrBreakdown = computed(() => {
+  const cc = dive.value?.cylinderConsumption
+  if (!cc) return false
+  return (
+    (cc.openCircuitWindows?.length ?? 0) > 0 ||
+    cc.bailoutRmvLiters != null ||
+    cc.o2Liters != null ||
+    cc.diluentLiters != null
   )
 })
 
