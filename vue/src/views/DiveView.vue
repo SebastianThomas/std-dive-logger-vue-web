@@ -58,7 +58,7 @@
       <div
         class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 flex flex-col"
       >
-        <div class="flex justify-between items-start mb-2 gap-4">
+        <div class="flex flex-wrap justify-between items-start mb-2 gap-x-4 gap-y-2">
           <div class="flex items-center gap-2 flex-wrap">
             <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
             <span
@@ -69,7 +69,8 @@
               Manually logged
             </span>
           </div>
-          <div class="flex gap-2 shrink-0">
+          <!-- ml-auto keeps the buttons right-aligned when they wrap onto their own line. -->
+          <div class="flex flex-wrap gap-2 justify-end ml-auto">
             <RouterLink
               v-if="isMine && !readOnly"
               :to="{ name: 'DiveEdit', params: { diveId: dive.id } }"
@@ -392,20 +393,20 @@
         class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-md w-full flex flex-col"
         ref="embeddedGraphCardRef"
       >
-        <div class="flex justify-between items-center gap-3 p-4">
+        <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-1 p-4">
           <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
             Dive Profile
           </h2>
-          <div v-if="!isManualDive" class="flex items-center gap-3">
+          <div v-if="!isManualDive" class="flex items-center gap-4 text-sm">
             <button
               v-if="isMine && !readOnly && dive.profiles?.length"
               @click="showReimportModal = true"
-              class="text-sm text-blue-600 hover:underline"
+              class="whitespace-nowrap text-blue-600 hover:underline"
               title="Re-parse this dive's file (or a richer export in another format) and refresh a profile's depth / deco / TTS data in place - keeps your notes, buddies, cylinders, alignment."
             >
-              Refine with another file
+              <i class="fa-solid fa-arrows-rotate mr-1"></i>Refine with a file
             </button>
-            <button @click="graphOpen = true" class="text-sm text-blue-600 hover:underline">
+            <button @click="graphOpen = true" class="whitespace-nowrap text-blue-600 hover:underline">
               Expand
             </button>
           </div>

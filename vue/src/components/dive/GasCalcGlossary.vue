@@ -1,8 +1,8 @@
 <template>
   <InfoPopover label="Terms">
     <dl class="space-y-1.5 text-[11px] leading-snug">
-      <div v-for="row in rows" :key="row.term" class="flex gap-1.5">
-        <dt class="shrink-0 font-semibold">
+      <div v-for="row in rows" :key="row.term">
+        <dt class="font-semibold">
           {{ row.term }}
           <span v-if="row.unit" class="font-normal text-gray-400">[{{ row.unit }}]</span>
         </dt>
