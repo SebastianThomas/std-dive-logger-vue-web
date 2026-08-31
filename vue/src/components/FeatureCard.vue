@@ -1,8 +1,8 @@
 <template>
   <div
-    class="w-full sm:min-w-75 sm:max-w-87.5 md:min-w-100 md:max-w-105 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 sm:p-8 shrink-0"
+    class="w-full sm:min-w-75 sm:max-w-87.5 md:min-w-100 md:max-w-105 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 shrink-0"
   >
-    <div class="w-full h-40 sm:h-44 md:h-48 overflow-hidden rounded-md mb-4">
+    <div class="w-full h-32 sm:h-40 md:h-48 overflow-hidden rounded-md mb-3">
       <img
         :src="feature.image"
         :alt="feature.title"
@@ -11,7 +11,9 @@
         height="192"
       />
     </div>
-    <h3 class="text-lg font-semibold mb-2 text-gray-600 dark:text-gray-400">{{ feature.title }}</h3>
+    <h3 class="text-base sm:text-lg font-semibold mb-1 text-gray-600 dark:text-gray-400">
+      {{ feature.title }}
+    </h3>
     <p class="text-gray-600 dark:text-gray-400 text-sm">{{ feature.description }}</p>
   </div>
 </template>
