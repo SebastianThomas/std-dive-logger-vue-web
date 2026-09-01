@@ -15,6 +15,7 @@ const dive: DiveWithoutProfiles = {
   namedBuddies: [],
   summary: { start: 0, end: 0, maxDepth: 30, averageDepth: 20, bottomTime: 'PT30M', surfaceIntervalBefore: 'PT0M' },
   tags: [],
+  highlighted: false,
 }
 
 async function mountTable(extraProps: Record<string, unknown> = {}) {
@@ -99,5 +100,20 @@ describe('DiveListTable row navigation', () => {
   it('does not highlight any row when focusedId is null', async () => {
     const wrapper = await mountTable({ focusedId: null })
     expect(wrapper.get('tbody tr').classes()).not.toContain('ring-2')
+  })
+
+  it('emits toggle-highlight (and not row-click) when the star is clicked', async () => {
+    const wrapper = await mountTable()
+    const star = wrapper.get('button[title="Highlight this dive"]')
+    await star.trigger('click')
+    expect(wrapper.emitted('toggle-highlight')).toEqual([[42]])
+    expect(wrapper.emitted('row-click')).toBeUndefined()
+  })
+
+  it('shows a filled star for an already-highlighted dive', async () => {
+    const wrapper = await mountTable({ dives: [{ ...dive, highlighted: true }] })
+    expect(wrapper.get('button[title="Remove highlight"]').find('i').classes()).toContain(
+      'fa-solid',
+    )
   })
 })

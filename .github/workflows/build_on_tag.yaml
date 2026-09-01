@@ -1,4 +1,4 @@
-name: Build on Tag Staging
+name: Build on Tag
 on:
   push:
     tags: [v*]
@@ -8,29 +8,39 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Bind the job to the GitHub Environment so its secrets (CARTO_API_KEY) resolve.
+    # Vite bakes the API URLs per mode, so we build both:
+    #   staging    -> :<tag>-staging  (deployed to std-dive-logger-dev)
+    #   production -> :<tag>           (deployed to std-dive-logger-prod)
+    # Each binds its matching GitHub Environment for that domain's CARTO key.
+    # PRODUCTION doesn't exist yet -> its CARTO_API_KEY is empty (keyless
+    # public basemap) until it's created; the build still succeeds.
     environment: ${{ matrix.environment }}
     strategy:
+      fail-fast: false
       matrix:
-        environment: [STAGING]
+        include:
+          - mode: staging
+            environment: STAGING
+          - mode: production
+            environment: PRODUCTION
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
-      
+
       - name: Test and Lint
         uses: ./.github/actions/test-and-lint
         with:
           frontend-dir: ${{ env.FRONTEND_DIR }}
           lint-enabled: ${{ env.LINT_ENABLED }}
-      
-      - name: Login to DockerHub 
+
+      - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
+
       - name: Build with Dockerfile
         env:
           CARTO_API_KEY: ${{ secrets.CARTO_API_KEY }}
-        run: bash ./build-frontend.sh ${{ github.ref_name }} staging
+        run: bash ./build-frontend.sh ${{ github.ref_name }} ${{ matrix.mode }}

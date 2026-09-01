@@ -53,6 +53,8 @@ export interface HomeDashboard {
   divesThisYear: number
   windows: HomeActivity
   recentDives: HomeRecentDive[]
+  /** The user's highlighted ('starred') dives, most recent first (capped server-side). */
+  highlightedDives: HomeRecentDive[]
   topBuddies: HomeBuddy[]
   records: HomeRecords
 }

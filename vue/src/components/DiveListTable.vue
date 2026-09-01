@@ -58,6 +58,21 @@
             {{ dive.number }}
           </td>
           <td class="border border-gray-400 px-3 py-2 max-w-lg wrap-break-word">
+            <button
+              v-if="dive.user.id === myUserId"
+              type="button"
+              class="mr-1.5 align-middle text-sm"
+              :class="
+                dive.highlighted
+                  ? 'text-amber-500'
+                  : 'text-gray-300 hover:text-amber-400 dark:text-gray-600'
+              "
+              :title="dive.highlighted ? 'Remove highlight' : 'Highlight this dive'"
+              :aria-pressed="dive.highlighted"
+              @click.stop="$emit('toggle-highlight', dive.id)"
+            >
+              <i :class="dive.highlighted ? 'fa-solid fa-star' : 'fa-regular fa-star'"></i>
+            </button>
             {{ dive.customIdentifier || '-' }}
           </td>
           <td class="border border-gray-400 px-3 py-2 w-40">
@@ -152,6 +167,7 @@ defineProps<{
 const emit = defineEmits<{
   'toggle-all': []
   'toggle-row': [diveId: number]
+  'toggle-highlight': [diveId: number]
   'row-click': [diveId: number]
   sort: [serverCol: SortColumn | null]
   'preview-regenerated': [dive: DiveWithoutProfiles]

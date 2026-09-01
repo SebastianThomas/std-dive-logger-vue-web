@@ -51,6 +51,19 @@
           />
         </div>
         <button
+          type="button"
+          :aria-pressed="highlightedOnly"
+          @click="toggleHighlightedOnly"
+          :class="[
+            'px-4 py-2 rounded-md border text-sm font-medium transition whitespace-nowrap',
+            highlightedOnly
+              ? 'bg-amber-500 text-white border-amber-500'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700',
+          ]"
+        >
+          <i class="fa-solid fa-star mr-1"></i>Highlighted
+        </button>
+        <button
           @click="toggleSharedDives"
           :class="[
             'px-4 py-2 rounded-md border text-sm font-medium transition',
@@ -187,7 +200,7 @@
           </div>
         </FilterDropdown>
         <button
-          v-if="hasDateTimeFilter || diveSiteId || baseConfiguration"
+          v-if="hasDateTimeFilter || diveSiteId || baseConfiguration || highlightedOnly"
           type="button"
           class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
           @click="clearTimelineFilters"
@@ -219,6 +232,7 @@
         :focused-id="focusedDiveId"
         @toggle-all="toggleAll"
         @toggle-row="toggleRow"
+        @toggle-highlight="toggleHighlight"
         @row-click="onRowClick"
         @sort="sortBy"
         @preview-regenerated="handlePreviewRegenerated"
@@ -269,7 +283,7 @@ import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 const router = useRouter()
 const route = useRoute()
 const { readOnly } = useReadOnlyMode()
-const { getWithToken } = useApi()
+const { getWithToken, putWithToken } = useApi()
 
 // State
 const dives = ref<DiveWithoutProfiles[]>([])
@@ -285,6 +299,7 @@ const pageSize = ref(20)
 
 const searchQuery = ref((route.query.search as string) || '')
 const viewShared = ref(route.query.shared === 'true')
+const highlightedOnly = ref(route.query.highlighted === '1')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const computerId = ref(route.query.computerId ? Number(route.query.computerId) : null)
 const suitId = ref(route.query.suitId ? Number(route.query.suitId) : null)
@@ -486,7 +501,7 @@ const fetchDives = async () => {
   status.value = ''
   try {
     let url = ''
-    if (hasDateTimeFilter.value) {
+    if (hasDateTimeFilter.value || highlightedOnly.value) {
       // Combines every active filter with AND semantics, unlike the standalone modes below.
       const params: string[] = [
         `page=${currentPage.value - 1}`,
@@ -502,6 +517,7 @@ const fetchDives = async () => {
       if (suitId.value) params.push(`suitId=${suitId.value}`)
       if (ccrUnitId.value) params.push(`ccrUnitId=${ccrUnitId.value}`)
       if (baseConfiguration.value) params.push(`baseConfiguration=${baseConfiguration.value}`)
+      if (highlightedOnly.value) params.push('highlighted=true')
       selectedTagIds.value.forEach((id) => params.push(`tagIds=${id}`))
       url = `/v1/dives/filtered?${params.join('&')}`
     } else if (searchQuery.value.trim()) {
@@ -558,6 +574,28 @@ const fetchDives = async () => {
 const toggleSharedDives = () => {
   viewShared.value = !viewShared.value
   currentPage.value = 1
+}
+
+const toggleHighlightedOnly = () => {
+  highlightedOnly.value = !highlightedOnly.value
+  currentPage.value = 1
+}
+
+const toggleHighlight = async (diveId: number) => {
+  const dive = dives.value.find((d) => d.id === diveId)
+  if (!dive) return
+  const next = !dive.highlighted
+  dive.highlighted = next // optimistic
+  try {
+    await putWithToken(`/v1/dives/${diveId}/highlighted`, { highlighted: next })
+    // If the highlight filter is active, a dive that was just un-highlighted should drop out.
+    if (highlightedOnly.value && !next) {
+      dives.value = dives.value.filter((d) => d.id !== diveId)
+    }
+  } catch (err) {
+    dive.highlighted = !next // revert
+    toast.error(`Couldn't update highlight: ${extractErrorDetail(err)}`)
+  }
 }
 
 const sortBy = (serverCol: SortColumn | null) => {
@@ -772,6 +810,7 @@ const updateUrlQuery = () => {
       suitId: suitId.value ? String(suitId.value) : undefined,
       ccrUnitId: ccrUnitId.value ? String(ccrUnitId.value) : undefined,
       baseConfiguration: baseConfiguration.value ?? undefined,
+      highlighted: highlightedOnly.value ? '1' : undefined,
     },
   })
 }
@@ -787,6 +826,7 @@ const clearTimelineFilters = () => {
   ccrUnitId.value = null
   selectedTagIds.value = new Set()
   searchQuery.value = ''
+  highlightedOnly.value = false
   currentPage.value = 1
 }
 
@@ -800,6 +840,7 @@ watch(
   [
     currentPage,
     viewShared,
+    highlightedOnly,
     sortColumn,
     sortDirection,
     selectedTagIds,

@@ -58,13 +58,24 @@
       </div>
 
       <div class="flex flex-col gap-1">
-        <label for="manual-dive-start" class="text-sm font-medium">Start Date & Time</label>
+        <label for="manual-dive-start" class="text-sm font-medium">
+          Start Date &amp; Time <span class="text-red-500">*</span>
+        </label>
         <input
           id="manual-dive-start"
           v-model="startTimeLocal"
           type="datetime-local"
+          required
+          :max="nowLocal"
           class="p-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
+          :class="showStartError ? 'border-red-500' : ''"
         />
+        <p v-if="showStartError" class="text-xs text-red-600 dark:text-red-400">
+          Set both the date and the time - otherwise the dive is logged as right now.
+        </p>
+        <p v-else class="text-xs text-gray-500 dark:text-gray-400">
+          When the dive started. Fill in both the date and the time.
+        </p>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -151,6 +162,20 @@ const startTimeLocal = ref('')
 const maxDepth = ref<number | null>(null)
 const durationMinutes = ref<number | null>(null)
 
+/** A `datetime-local` reports an empty string unless BOTH the date and the time are filled in, so
+ * a half-completed field silently becomes `startTime: undefined` -> the backend logs the dive as
+ * `now()`. Require it explicitly and surface why. */
+const startTimeMissing = computed(() => startTimeLocal.value.trim().length === 0)
+const startTouched = ref(false)
+const showStartError = computed(() => startTouched.value && startTimeMissing.value)
+
+/** `datetime-local` wants a local `YYYY-MM-DDTHH:mm` string, not an ISO instant. */
+const nowLocal = computed(() => {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
+})
+
 const onSiteSelected = (site: DiveSite) => {
   selectedSite.value = site
 }
@@ -164,6 +189,7 @@ const canSubmit = computed(
   () =>
     !!selectedSite.value &&
     diveIdentifier.value.trim().length > 0 &&
+    !startTimeMissing.value &&
     !!maxDepth.value &&
     maxDepth.value > 0 &&
     !!durationMinutes.value &&
@@ -171,6 +197,10 @@ const canSubmit = computed(
 )
 
 const submit = async () => {
+  if (startTimeMissing.value) {
+    startTouched.value = true
+    return
+  }
   if (!canSubmit.value || !selectedSite.value) return
   submitting.value = true
   try {
@@ -179,7 +209,7 @@ const submit = async () => {
       diveSiteId: selectedSite.value.id,
       maxDepth: maxDepth.value,
       duration: `PT${durationMinutes.value}M`,
-      startTime: startTimeLocal.value ? new Date(startTimeLocal.value).toISOString() : undefined,
+      startTime: new Date(startTimeLocal.value).toISOString(),
     }
     const res = await postWithToken<Dive, typeof body>('/v1/dives/create', body)
     toast.success('Manual dive saved')

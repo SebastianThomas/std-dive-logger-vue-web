@@ -498,6 +498,8 @@ export type Dive = {
   current?: Current | null
   leader: DiveLeader
   teamTerminology?: TeamTerminology | null
+  /** Diver-set "star" - surfaces on the home dashboard + the list's highlight filter. */
+  highlighted: boolean
 }
 
 export type DiveWithoutProfiles = {
@@ -515,6 +517,7 @@ export type DiveWithoutProfiles = {
   namedBuddies: string[]
   summary: DiveSummary
   tags: TagDefinition[]
+  highlighted: boolean
 }
 export type UploadDiveResult = { dives: DiveWithoutProfiles[]; errors: string[] }
 

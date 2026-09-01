@@ -19,6 +19,7 @@ const base = (over: Partial<HomeDashboard> = {}): HomeDashboard => ({
     previous365Days: { diveCount: 0, bottomTime: null },
   } satisfies HomeActivity,
   recentDives: [],
+  highlightedDives: [],
   topBuddies: [],
   records: {},
   ...over,
@@ -94,10 +95,32 @@ describe('pickActivityFraming', () => {
       }),
     )
     expect(f.mode).toBe('OCCASIONAL')
-    expect(f.dives).toBe(12)
-    expect(f.footnote).toContain('12 dives')
-    expect(f.footnote).toContain('all-time')
+    // headlines the rolling year, not the all-time total (that's a headline tile)
+    expect(f.dives).toBe(1)
+    expect(f.comparison).toBeNull()
+    // footnote carries the rate picture only - never repeats total dives / hours
+    expect(f.footnote).toMatch(/diving since \d{4}/)
+    expect(f.footnote).toContain('/yr')
+    expect(f.footnote).not.toMatch(/\d+ dives/)
     expect(f.staleMonths).toBeGreaterThanOrEqual(6)
+  })
+
+  it('footnote never restates the total dive count or bottom time', () => {
+    const f = pickActivityFraming(
+      base({
+        diveCount: 135,
+        totalBottomTime: 'PT114H30M',
+        firstDiveStart: Date.now() - 9 * 365 * DAY,
+        windows: {
+          last30Days: { diveCount: 1, bottomTime: 'PT50M' },
+          last365Days: { diveCount: 16, bottomTime: 'PT12H' },
+          previous365Days: { diveCount: 14, bottomTime: null },
+        },
+      }),
+    )
+    expect(f.footnote).not.toContain('135')
+    expect(f.footnote).not.toContain('114')
+    expect(f.footnote).not.toContain('all-time')
   })
 
   it('does not flag a recent dive as stale', () => {

@@ -56,18 +56,52 @@
         <i :class="comparisonIcon(framing.comparison.direction)" aria-hidden="true"></i>
         {{ framing.comparison.text }}
       </p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        {{ framing.footnote }}
-        <span v-if="home.divesThisYear > 0"> · {{ home.divesThisYear }} in {{ thisYear }}</span>
+      <p v-if="activityFootnote" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        {{ activityFootnote }}
       </p>
       <p v-if="framing.staleMonths != null" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
         It's been {{ framing.staleMonths }} months since your last logged dive.
       </p>
     </section>
 
+    <!-- Highlighted dives -->
+    <section
+      v-if="home.highlightedDives.length"
+      class="rounded-xl bg-white bg-opacity-90 shadow-md p-3 md:p-5"
+      :style="{ color: 'var(--foreground)' }"
+    >
+      <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+        <h2 class="text-base md:text-lg font-semibold">
+          <i class="fa-solid fa-star mr-1 text-amber-500"></i>Highlighted
+        </h2>
+        <RouterLink
+          :to="{ name: 'DiveList', query: { highlighted: '1' } }"
+          class="text-xs text-blue-600 hover:underline"
+        >
+          See all →
+        </RouterLink>
+      </div>
+      <ul class="mt-1 divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+        <li v-for="d in home.highlightedDives" :key="d.id">
+          <RouterLink
+            :to="{ name: 'DiveView', params: { diveId: d.id } }"
+            class="flex items-baseline gap-x-2 py-1.5 hover:text-blue-600"
+          >
+            <span class="font-semibold shrink-0">#{{ d.number }}</span>
+            <span class="truncate">{{ d.identifier || d.siteName || 'Dive' }}</span>
+            <span class="ml-auto shrink-0 text-xs text-gray-500 dark:text-gray-400">
+              {{ shortDate(d.start) }}
+              <span v-if="d.maxDepth != null"> · {{ d.maxDepth.toFixed(0) }} m</span>
+              <span v-if="d.bottomTime"> · {{ formatISoDurationToTime(d.bottomTime) }}</span>
+            </span>
+          </RouterLink>
+        </li>
+      </ul>
+    </section>
+
     <!-- Records -->
     <section v-if="hasRecords" class="rounded-xl bg-white bg-opacity-90 shadow-md p-3 md:p-5" :style="{ color: 'var(--foreground)' }">
-      <h2 class="text-base md:text-lg font-semibold">Personal bests</h2>
+      <h2 class="text-base md:text-lg font-semibold">Records</h2>
       <ul class="mt-1 divide-y divide-gray-100 dark:divide-gray-700 text-sm">
         <li v-if="home.records.deepest">
           <RouterLink
@@ -189,6 +223,16 @@ onMounted(load)
 
 const framing = computed(() => pickActivityFraming(home.value!))
 const thisYear = new Date().getFullYear()
+
+// framing.footnote carries "diving since … · ~N/yr"; append the year-to-date count (also not in
+// the tiles). Both halves are optional, so join defensively.
+const activityFootnote = computed(() => {
+  const parts = [framing.value.footnote]
+  if ((home.value?.divesThisYear ?? 0) > 0) {
+    parts.push(`${home.value!.divesThisYear} so far in ${thisYear}`)
+  }
+  return parts.filter(Boolean).join(' · ')
+})
 
 // Date only (no time-of-day) - keeps the recent-dive rows to a single line on mobile.
 const shortDate = (ms: number | null | undefined) =>

@@ -37,6 +37,17 @@ const payload: HomeDashboard = {
       bottomTime: 'PT52M',
     },
   ],
+  highlightedDives: [
+    {
+      id: 12,
+      number: 40,
+      identifier: 'Thistlegorm',
+      siteName: 'Red Sea',
+      start: Date.now() - 120 * 86_400_000,
+      maxDepth: 30,
+      bottomTime: 'PT48M',
+    },
+  ],
   topBuddies: [
     { name: 'Alex', diveCount: 30 },
     { name: 'Jo', diveCount: 12 },
@@ -73,7 +84,11 @@ describe('HomeDashboard', () => {
     expect(w.text()).toContain('42.3 m')
     expect(w.text()).toContain('Last 12 months') // adaptive framing (STEADY branch)
     expect(w.text()).toContain('+6 vs the year before')
-    expect(w.text()).toContain('12 in ' + new Date().getFullYear())
+    expect(w.text()).toContain('12 so far in ' + new Date().getFullYear())
+    expect(w.text()).toContain('Records')
+    expect(w.text()).not.toContain('Personal bests')
+    expect(w.text()).toContain('Highlighted')
+    expect(w.text()).toContain('Thistlegorm')
     expect(w.text()).toContain('House Reef')
     expect(w.text()).toContain('Alex')
     expect(w.text()).toContain('Log dive #98')
@@ -82,6 +97,11 @@ describe('HomeDashboard', () => {
     const links = w.findAllComponents(RouterLinkStub)
     expect(links.some((l) => JSON.stringify(l.props('to')).includes('"diveId":5'))).toBe(true)
     expect(links.some((l) => JSON.stringify(l.props('to')).includes('"diveId":8'))).toBe(true)
+    expect(links.some((l) => JSON.stringify(l.props('to')).includes('"diveId":12'))).toBe(true)
+    // "See all →" on the Highlighted section links to the filtered list
+    expect(
+      links.some((l) => JSON.stringify(l.props('to')).includes('"highlighted":"1"')),
+    ).toBe(true)
   })
 
   it('shows a retry affordance when the fetch fails', async () => {

@@ -12,20 +12,31 @@ PLATFORM="${PLATFORM:-linux/amd64}"
 
 # Optional version tag passed as first argument
 VERSION="${1:-}"
-# Optional build mode (staging or production) passed as second argument
+# Build mode passed as second argument: "staging" (dev deploy) or "production".
 BUILD_MODE="${2:-production}"
-# CARTO basemap key - read from the environment (CI: the STAGING environment's CARTO_API_KEY
-# secret), never a committed value. Empty = the keyless public CARTO basemap.
+# CARTO basemap key - read from the environment (CI: the matching GitHub
+# environment's CARTO_API_KEY secret), never a committed value. Empty = the
+# keyless public CARTO basemap.
 CARTO_API_KEY="${CARTO_API_KEY:-}"
 
-if [[ -n "$VERSION" ]]; then
-    # Build with both latest and version tags
-    docker build . --platform "$PLATFORM" --build-arg BUILD_MODE="$BUILD_MODE" --build-arg CARTO_API_KEY="$CARTO_API_KEY" -t "$IMAGE:latest" -t "$IMAGE:$VERSION"
-    # Push both tags
-    docker push "$IMAGE:latest"
-    docker push "$IMAGE:$VERSION"
+# Vite bakes the API URLs per mode, so dev and prod need separate images.
+# staging  -> :staging  + :<version>-staging   (deployed to std-dive-logger-dev)
+# production -> :latest  + :<version>            (deployed to std-dive-logger-prod)
+if [[ "$BUILD_MODE" == "staging" ]]; then
+    FLOATING="staging"
+    SUFFIX="-staging"
 else
-    # Build and push only latest
-    docker build . --platform "$PLATFORM" --build-arg BUILD_MODE="$BUILD_MODE" --build-arg CARTO_API_KEY="$CARTO_API_KEY" -t "$IMAGE:latest"
-    docker push "$IMAGE:latest"
+    FLOATING="latest"
+    SUFFIX=""
 fi
+
+TAGS=(-t "$IMAGE:$FLOATING")
+[[ -n "$VERSION" ]] && TAGS+=(-t "$IMAGE:${VERSION}${SUFFIX}")
+
+docker build . --platform "$PLATFORM" \
+    --build-arg BUILD_MODE="$BUILD_MODE" \
+    --build-arg CARTO_API_KEY="$CARTO_API_KEY" \
+    "${TAGS[@]}"
+
+docker push "$IMAGE:$FLOATING"
+[[ -n "$VERSION" ]] && docker push "$IMAGE:${VERSION}${SUFFIX}"

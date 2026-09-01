@@ -1,0 +1,9 @@
+---
+# Placeholder name - the dev/ and prod/ overlays rewrite it via `namespace:`.
+# Shared with the backend repo's manifests (same namespace per env).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: std-dive-logger
+  annotations:
+    scheduler.alpha.kubernetes.io/node-selector: homelab.sthomas.ch/location=strato

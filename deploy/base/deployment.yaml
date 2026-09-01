@@ -1,0 +1,28 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: std-dive-logger-web
+  labels: { app: std-dive-logger-web }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: std-dive-logger-web }
+  template:
+    metadata:
+      labels: { app: std-dive-logger-web }
+    spec:
+      containers:
+        - name: web
+          image: ${WEB_IMAGE}   # dev overlay -> :<tag>-staging, prod -> :<tag>
+          ports:
+            - { containerPort: 80 }
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 10
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 64Mi }

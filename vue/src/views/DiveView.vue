@@ -71,6 +71,21 @@
           </div>
           <!-- ml-auto keeps the buttons right-aligned when they wrap onto their own line. -->
           <div class="flex flex-wrap gap-2 justify-end ml-auto">
+            <button
+              v-if="isMine && !readOnly"
+              type="button"
+              :aria-pressed="dive.highlighted"
+              :title="dive.highlighted ? 'Remove highlight' : 'Highlight this dive'"
+              class="px-3 py-1.5 rounded-lg border"
+              :class="
+                dive.highlighted
+                  ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600'
+                  : 'bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:text-amber-500 hover:border-amber-400'
+              "
+              @click="toggleHighlight"
+            >
+              <i :class="dive.highlighted ? 'fa-solid fa-star' : 'fa-regular fa-star'"></i>
+            </button>
             <RouterLink
               v-if="isMine && !readOnly"
               :to="{ name: 'DiveEdit', params: { diveId: dive.id } }"
@@ -726,7 +741,7 @@ import { googleMapsUrl } from '@/lib/map/googleMapsUrl'
 
 const router = useRouter()
 const route = useRoute()
-const { getWithToken, deleteWithToken } = useApi()
+const { getWithToken, putWithToken, deleteWithToken } = useApi()
 const profileReimportStore = useProfileReimportStore()
 const { requestId: reimportRequestId } = storeToRefs(profileReimportStore)
 const { readOnly } = useReadOnlyMode()
@@ -1082,6 +1097,23 @@ const handleDeleteProfile = async () => {
     deletingProfile.value = false
     showDeleteProfileModal.value = false
     profileIdToDelete.value = null
+  }
+}
+
+const togglingHighlight = ref(false)
+
+const toggleHighlight = async () => {
+  if (!dive.value || togglingHighlight.value) return
+  togglingHighlight.value = true
+  const next = !dive.value.highlighted
+  dive.value.highlighted = next // optimistic
+  try {
+    await putWithToken(`/v1/dives/${dive.value.id}/highlighted`, { highlighted: next })
+  } catch (err) {
+    if (dive.value) dive.value.highlighted = !next // revert
+    toast.error(`Couldn't update highlight: ${extractErrorDetail(err)}`)
+  } finally {
+    togglingHighlight.value = false
   }
 }
 
