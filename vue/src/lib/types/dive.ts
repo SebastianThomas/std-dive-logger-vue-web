@@ -500,6 +500,9 @@ export type Dive = {
   teamTerminology?: TeamTerminology | null
   /** Diver-set "star" - surfaces on the home dashboard + the list's highlight filter. */
   highlighted: boolean
+  /** Manually-logged dive (no computer file) - its only profile is a synthetic placeholder, so
+   * no depth-time graph is shown for it. */
+  manualEntry: boolean
 }
 
 export type DiveWithoutProfiles = {
@@ -518,6 +521,8 @@ export type DiveWithoutProfiles = {
   summary: DiveSummary
   tags: TagDefinition[]
   highlighted: boolean
+  /** Manually-logged dive (no computer file) - the list shows no synthetic-profile preview. */
+  manualEntry: boolean
 }
 export type UploadDiveResult = { dives: DiveWithoutProfiles[]; errors: string[] }
 

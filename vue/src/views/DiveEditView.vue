@@ -16,7 +16,11 @@
         <p class="text-red-600">{{ error }}</p>
       </div>
 
-      <div v-else class="flex-1 overflow-auto space-y-6">
+      <!-- overflow-x-hidden: the form is single-column by design and must never scroll sideways;
+           without it a child's stray sub-pixel width (e.g. a sticky panel's border) produced a
+           few-pixel horizontal scrollbar. Wide children (formulas, tables) scroll inside their
+           own container. -->
+      <div v-else class="flex-1 overflow-y-auto overflow-x-hidden space-y-6">
         <BackfillBanner
           v-if="showBackfillBanner"
           :outstanding="liveOutstanding"
@@ -30,7 +34,7 @@
              be read off it while filling in the cylinder + gas fields below. -->
         <div
           v-if="loadedDive && loadedDive.profiles.length && !isManualDive"
-          class="sticky top-0 z-20 -mx-1 rounded-lg border border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95"
+          class="sticky top-0 z-20 rounded-lg border border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95"
         >
           <button
             type="button"
@@ -208,6 +212,8 @@ interface DiveFormData {
   leaderSelfExplicit?: boolean
   teamTerminology?: TeamTerminology | null
   averageDepth?: number | null
+  /** Dive start (epoch millis) - only editable, and only sent, for a manual dive. */
+  startTime?: number | null
 }
 
 const formData = ref<DiveFormData>({
@@ -282,6 +288,7 @@ const fetchDive = async () => {
       leaderSelfExplicit: dive.leader.type === 'SELF',
       teamTerminology: dive.teamTerminology,
       averageDepth: dive.summary.averageDepth,
+      startTime: dive.summary.start,
     }
     // Smart default: this dive has no explicit terminology override of its own yet - prefill the
     // picker with the user's own most recent explicit choice (on some other dive) rather than
@@ -584,6 +591,17 @@ const handleSubmit = async (markDismissed = false) => {
       dismissedAutoTagIds: [...dismissedAutoTagIds.value],
     }
     await putWithToken(`/v1/dives/${diveId.value}/tags`, tagsBody)
+    // A manual dive's date is re-dated through its own endpoint (it shifts the synthetic profile,
+    // not a plain field on the dive). Only sent when it actually changed.
+    if (
+      isManualDive.value &&
+      formData.value.startTime != null &&
+      formData.value.startTime !== loadedDive.value?.summary.start
+    ) {
+      await putWithToken(`/v1/dives/${diveId.value}/start-time`, {
+        startTime: new Date(formData.value.startTime).toISOString(),
+      })
+    }
     if (markDismissed) {
       // Save first, then take the dive off the backfill list - the backend snapshots whatever's
       // still missing after this save, so a field added to the checklist later resurfaces it.

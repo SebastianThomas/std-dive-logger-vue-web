@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  dateTimeLocalToEpochMs,
   elapsedMinutesSeconds,
   epochFromElapsedMinutesSeconds,
+  epochMsToDateTimeLocal,
   formatISoDurationToMinutes,
   formatISoDurationToTime,
   parseISODuration,
@@ -226,6 +228,32 @@ describe('timeUtils', () => {
       expect(epochFromElapsedMinutesSeconds(1, 90, diveStart)).toBe(
         epochFromElapsedMinutesSeconds(1, 59, diveStart),
       )
+    })
+  })
+
+  describe('epochMsToDateTimeLocal / dateTimeLocalToEpochMs', () => {
+    it('returns an empty string for a null/undefined/NaN value', () => {
+      expect(epochMsToDateTimeLocal(null)).toBe('')
+      expect(epochMsToDateTimeLocal(undefined)).toBe('')
+      expect(epochMsToDateTimeLocal(Number.NaN)).toBe('')
+    })
+
+    it('formats an epoch as a local YYYY-MM-DDTHH:mm string with zero-padding', () => {
+      // Build the expectation from the same local-time parts so the test is timezone-agnostic.
+      const d = new Date(2026, 0, 5, 8, 3)
+      expect(epochMsToDateTimeLocal(d.getTime())).toBe('2026-01-05T08:03')
+    })
+
+    it('round-trips a local datetime string back to the same epoch (minute precision)', () => {
+      const d = new Date(2025, 11, 24, 14, 30)
+      const local = epochMsToDateTimeLocal(d.getTime())
+      expect(dateTimeLocalToEpochMs(local)).toBe(d.getTime())
+    })
+
+    it('returns null for an empty or invalid datetime string', () => {
+      expect(dateTimeLocalToEpochMs('')).toBeNull()
+      expect(dateTimeLocalToEpochMs(null)).toBeNull()
+      expect(dateTimeLocalToEpochMs('not-a-date')).toBeNull()
     })
   })
 })

@@ -872,6 +872,22 @@
         </div>
       </fieldset>
 
+      <!-- Date & time: only editable for a manually-entered dive. A dive with a real computer
+           profile takes its start from the recording (shown read-only elsewhere). -->
+      <fieldset v-if="isManualDive" class="border rounded p-4">
+        <legend class="font-medium mb-3">Date &amp; time</legend>
+        <div>
+          <label for="manual-start" class="block mb-2">When did this dive start?</label>
+          <input
+            id="manual-start"
+            v-model="manualStartLocal"
+            type="datetime-local"
+            :max="nowDateTimeLocal"
+            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+          />
+        </div>
+      </fieldset>
+
       <!-- Average Depth: only editable for a manually-entered dive, which has no real
            depth-time profile to compute one from (its synthetic surface/max-depth/surface
            samples aren't a real dive shape) - genuinely unknown unless entered here. A dive
@@ -1073,7 +1089,12 @@ import {
 } from '@/lib/types/dive'
 import type { User } from '@/lib/types/user'
 import type { DiveBackfillMissingField } from '@/lib/types/dive'
-import { elapsedMinutesSeconds, epochFromElapsedMinutesSeconds } from '@/lib/utils/timeUtils'
+import {
+  elapsedMinutesSeconds,
+  epochFromElapsedMinutesSeconds,
+  epochMsToDateTimeLocal,
+  dateTimeLocalToEpochMs,
+} from '@/lib/utils/timeUtils'
 import {
   findGasMatchWindows,
   primaryProfile,
@@ -1115,6 +1136,9 @@ interface DiveFormData {
   leaderSelfExplicit?: boolean
   teamTerminology?: TeamTerminology | null
   averageDepth?: number | null
+  /** Dive start (epoch millis). Only editable here for a manual dive - a dive with a real
+   * computer profile takes its time from the recording. */
+  startTime?: number | null
 }
 
 const props = defineProps<{
@@ -1722,6 +1746,14 @@ const applyCandidate = (cyl: number, win: number, ms: number) => {
 const isManualDive = computed(
   () => props.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
 )
+
+// Manual dive date/time, edited as a local `datetime-local` value. A real-profile dive's time is
+// taken from the recording, so this field is only shown for a manual entry.
+const manualStartLocal = computed<string>({
+  get: () => epochMsToDateTimeLocal(props.modelValue.startTime ?? props.diveStart),
+  set: (value: string) => updateField('startTime', dateTimeLocalToEpochMs(value)),
+})
+const nowDateTimeLocal = epochMsToDateTimeLocal(Date.now())
 
 // One suggestion list per cylinder index, computed from the primary profile's actual gas-switch
 // history - see cylinderUsageWindows.ts. Only meaningful while Usage Start/End are unset (the

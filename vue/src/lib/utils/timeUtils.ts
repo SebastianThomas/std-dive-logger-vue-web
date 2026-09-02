@@ -153,6 +153,32 @@ export function formatElapsedTime(timeMs: number, startMs: number): string {
 }
 
 /**
+ * Formats an absolute epoch-millis timestamp as the local `YYYY-MM-DDTHH:mm` string an
+ * `<input type="datetime-local">` expects (its value is always local wall-clock, never an offset).
+ * Returns '' for a null/undefined value so the input renders empty. Inverse: {@link
+ * dateTimeLocalToEpochMs}.
+ */
+export function epochMsToDateTimeLocal(epochMs: number | null | undefined): string {
+  if (epochMs == null || Number.isNaN(epochMs)) return ''
+  const d = new Date(epochMs)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  )
+}
+
+/**
+ * Parses a `datetime-local` input value (local wall-clock `YYYY-MM-DDTHH:mm`) back to an absolute
+ * epoch-millis timestamp. Returns null for an empty/invalid value.
+ */
+export function dateTimeLocalToEpochMs(value: string | null | undefined): number | null {
+  if (!value) return null
+  const ms = new Date(value).getTime()
+  return Number.isNaN(ms) ? null : ms
+}
+
+/**
  * Formats a date/timestamp to German locale format with zero-padded day and month.
  * @param date Date object, timestamp number, or ISO string
  * @returns Formatted date string (e.g., "01.01.2002, 14:30") or "Unknown" if invalid

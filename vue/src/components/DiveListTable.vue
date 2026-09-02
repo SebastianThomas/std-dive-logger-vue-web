@@ -88,7 +88,14 @@
             {{ dive.site?.name || 'Unknown' }}
           </td>
           <td class="border border-gray-400 px-1 py-1 w-24 flex justify-center">
-            <DiveSitePreview :dive="dive" @preview-regenerated="handlePreviewRegenerated" />
+            <!-- A manual dive's only profile is a synthetic placeholder - no meaningful preview
+                 graph exists for it, so show nothing rather than a triangle. -->
+            <span v-if="dive.manualEntry" class="text-xs text-gray-400 py-2">Manual</span>
+            <DiveSitePreview
+              v-else
+              :dive="dive"
+              @preview-regenerated="handlePreviewRegenerated"
+            />
           </td>
           <td class="border border-gray-400 px-3 py-2 w-32">
             {{ dive.user.id === myUserId ? 'You' : dive.user?.name || 'Unknown' }}

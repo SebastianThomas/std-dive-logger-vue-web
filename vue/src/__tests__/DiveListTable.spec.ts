@@ -16,6 +16,7 @@ const dive: DiveWithoutProfiles = {
   summary: { start: 0, end: 0, maxDepth: 30, averageDepth: 20, bottomTime: 'PT30M', surfaceIntervalBefore: 'PT0M' },
   tags: [],
   highlighted: false,
+  manualEntry: false,
 }
 
 async function mountTable(extraProps: Record<string, unknown> = {}) {
