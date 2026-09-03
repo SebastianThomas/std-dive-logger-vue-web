@@ -163,3 +163,48 @@ describe('EditDiveForm - Part A / B / C', () => {
     expect(wrapper.text()).toContain('tracked cylinders')
   })
 })
+
+describe('EditDiveForm - dive leader', () => {
+  const leaderSelect = (wrapper: ReturnType<typeof mountForm>) =>
+    wrapper.get('#dive-leader')
+
+  it('offers a buddy added this session (not yet saved) as a leader option by name', async () => {
+    const wrapper = mountForm({ ...baseModel([]), diveBuddies: [{ name: 'Alex', role: null }] })
+    const options = leaderSelect(wrapper)
+      .findAll('option')
+      .map((o) => o.attributes('value'))
+    expect(options).toContain('newnamed:Alex')
+
+    await leaderSelect(wrapper).setValue('newnamed:Alex')
+    const emits = wrapper.emitted('update:modelValue') as Record<string, unknown>[][]
+    expect(emits[emits.length - 1]![0]).toMatchObject({
+      leaderNamedBuddyName: 'Alex',
+      leaderNamedBuddyId: null,
+      leaderSelfExplicit: false,
+    })
+  })
+
+  it('a persisted buddy is offered by id, not duplicated as a newnamed option', () => {
+    const wrapper = mountForm(
+      { ...baseModel([]), diveBuddies: [{ name: 'Sam', role: null }] },
+      { existingNamedBuddies: [{ id: 9, name: 'Sam', role: null }] },
+    )
+    const options = leaderSelect(wrapper)
+      .findAll('option')
+      .map((o) => o.attributes('value'))
+    expect(options).toContain('named:9')
+    expect(options).not.toContain('newnamed:Sam')
+  })
+
+  it('clears a pending-name leader when that buddy is removed', async () => {
+    const wrapper = mountForm({
+      ...baseModel([]),
+      diveBuddies: [{ name: 'Alex', role: null }],
+      leaderNamedBuddyName: 'Alex',
+    })
+    const removeBtn = wrapper.findAll('button').find((b) => b.text() === '×')!
+    await removeBtn.trigger('click')
+    const emits = wrapper.emitted('update:modelValue') as Record<string, unknown>[][]
+    expect(emits[emits.length - 1]![0]).toMatchObject({ leaderNamedBuddyName: null })
+  })
+})

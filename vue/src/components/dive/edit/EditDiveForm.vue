@@ -111,8 +111,9 @@
         />
       </div>
 
-      <!-- Dive leader: only already-saved buddies/linked dives are selectable here - a buddy just
-           typed in this session has no id yet to reference until saved once. -->
+      <!-- Dive leader: any buddy in the list can be picked, including one just typed this session -
+           a not-yet-saved buddy is carried by name and resolved to an id right after save (see
+           DiveEditView.handleSubmit). Linked buddy dives always already exist. -->
       <div>
         <label for="dive-leader" class="block mb-2 font-medium">
           Who Led This Dive?
@@ -138,6 +139,13 @@
             {{ buddy.name }}
           </option>
           <option
+            v-for="name in newLeaderCandidateNames"
+            :key="`newnamed-${name}`"
+            :value="`newnamed:${name}`"
+          >
+            {{ name }}
+          </option>
+          <option
             v-for="linked in existingBuddyDives || []"
             :key="`linked-${linked.diveId}`"
             :value="`linked:${linked.diveId}`"
@@ -145,12 +153,6 @@
             {{ linked.buddy.name }}
           </option>
         </select>
-        <p
-          v-if="(modelValue.diveBuddies || []).some((b) => !isExistingBuddy(b.name))"
-          class="text-xs text-gray-500 dark:text-gray-400 mt-1"
-        >
-          A newly-added buddy can be set as leader after this dive is saved once.
-        </p>
       </div>
 
       <!-- Buddy/team terminology -->
@@ -1132,6 +1134,10 @@ interface DiveFormData {
   gasConsumption?: GasConsumption | null
   configuration?: DiveConfiguration | null
   leaderNamedBuddyId?: number | null
+  /** Leader is a buddy added this session that isn't persisted yet (so has no id) - carried by
+   * name and resolved to an id by DiveEditView right after the dive is saved. Mutually exclusive
+   * with leaderNamedBuddyId. */
+  leaderNamedBuddyName?: string | null
   leaderBuddyDiveId?: number | null
   leaderSelfExplicit?: boolean
   teamTerminology?: TeamTerminology | null
@@ -1344,6 +1350,15 @@ const leaderSelectableNamedBuddies = computed(() => {
   return (props.existingNamedBuddies ?? []).filter((b) => liveNames.has(b.name))
 })
 
+// Buddies added this session that aren't persisted yet - offered as leader options by name
+// (resolved to an id after save). A name already among the persisted buddies above is excluded so
+// it isn't listed twice.
+const newLeaderCandidateNames = computed(() =>
+  (props.modelValue.diveBuddies ?? [])
+    .map((b) => b.name)
+    .filter((name) => !isExistingBuddy(name)),
+)
+
 const removeBuddy = (name: string) => {
   const newBuddies = (props.modelValue.diveBuddies || []).filter((b) => b.name !== name)
   const removedWasLeader =
@@ -1351,10 +1366,12 @@ const removeBuddy = (name: string) => {
     (props.existingNamedBuddies ?? []).some(
       (b) => b.name === name && b.id === props.modelValue.leaderNamedBuddyId,
     )
+  const removedWasPendingLeader = props.modelValue.leaderNamedBuddyName === name
   emit('update:modelValue', {
     ...props.modelValue,
     diveBuddies: newBuddies,
     ...(removedWasLeader ? { leaderNamedBuddyId: null } : {}),
+    ...(removedWasPendingLeader ? { leaderNamedBuddyName: null } : {}),
   })
 }
 
@@ -1376,6 +1393,12 @@ const leaderSelectValue = computed(() => {
   if (props.modelValue.leaderNamedBuddyId != null) {
     return `named:${props.modelValue.leaderNamedBuddyId}`
   }
+  if (
+    props.modelValue.leaderNamedBuddyName != null &&
+    newLeaderCandidateNames.value.includes(props.modelValue.leaderNamedBuddyName)
+  ) {
+    return `newnamed:${props.modelValue.leaderNamedBuddyName}`
+  }
   if (props.modelValue.leaderBuddyDiveId != null) {
     return `linked:${props.modelValue.leaderBuddyDiveId}`
   }
@@ -1387,6 +1410,15 @@ const updateLeader = (value: string) => {
     emit('update:modelValue', {
       ...props.modelValue,
       leaderNamedBuddyId: Number(value.slice('named:'.length)),
+      leaderNamedBuddyName: null,
+      leaderBuddyDiveId: null,
+      leaderSelfExplicit: false,
+    })
+  } else if (value.startsWith('newnamed:')) {
+    emit('update:modelValue', {
+      ...props.modelValue,
+      leaderNamedBuddyId: null,
+      leaderNamedBuddyName: value.slice('newnamed:'.length),
       leaderBuddyDiveId: null,
       leaderSelfExplicit: false,
     })
@@ -1394,6 +1426,7 @@ const updateLeader = (value: string) => {
     emit('update:modelValue', {
       ...props.modelValue,
       leaderNamedBuddyId: null,
+      leaderNamedBuddyName: null,
       leaderBuddyDiveId: Number(value.slice('linked:'.length)),
       leaderSelfExplicit: false,
     })
@@ -1401,6 +1434,7 @@ const updateLeader = (value: string) => {
     emit('update:modelValue', {
       ...props.modelValue,
       leaderNamedBuddyId: null,
+      leaderNamedBuddyName: null,
       leaderBuddyDiveId: null,
       leaderSelfExplicit: true,
     })
@@ -1408,6 +1442,7 @@ const updateLeader = (value: string) => {
     emit('update:modelValue', {
       ...props.modelValue,
       leaderNamedBuddyId: null,
+      leaderNamedBuddyName: null,
       leaderBuddyDiveId: null,
       leaderSelfExplicit: false,
     })

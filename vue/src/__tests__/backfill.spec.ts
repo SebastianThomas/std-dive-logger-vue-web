@@ -60,6 +60,11 @@ describe('missingBackfillFields', () => {
     expect(missingBackfillFields({ leaderBuddyDiveId: 42 })).not.toContain('LEADER')
   })
 
+  it('a leader chosen as a not-yet-saved buddy (by name) counts as set', () => {
+    expect(missingBackfillFields({ leaderNamedBuddyName: 'Alex' })).not.toContain('LEADER')
+    expect(missingBackfillFields({ leaderNamedBuddyName: '' })).toContain('LEADER')
+  })
+
   it('a visibility feeling alone (no distance/description) still counts as present', () => {
     expect(missingBackfillFields({ visibility: { feeling: 'LOW' } })).not.toContain('VISIBILITY')
   })

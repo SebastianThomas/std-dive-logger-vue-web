@@ -208,6 +208,9 @@ interface DiveFormData {
   gasConsumption?: GasConsumption | null
   configuration?: DiveConfiguration | null
   leaderNamedBuddyId?: number | null
+  /** Set when the chosen leader is a buddy added this session (no id yet); resolved to an id
+   * right after the dive is saved. Mutually exclusive with leaderNamedBuddyId. */
+  leaderNamedBuddyName?: string | null
   leaderBuddyDiveId?: number | null
   leaderSelfExplicit?: boolean
   teamTerminology?: TeamTerminology | null
@@ -284,6 +287,7 @@ const fetchDive = async () => {
       gasConsumption: dive.gasConsumption,
       configuration: dive.configuration,
       leaderNamedBuddyId: dive.leader.type === 'NAMED' ? dive.leader.namedBuddyId : null,
+      leaderNamedBuddyName: null,
       leaderBuddyDiveId: dive.leader.type === 'LINKED' ? dive.leader.linkedDiveId : null,
       leaderSelfExplicit: dive.leader.type === 'SELF',
       teamTerminology: dive.teamTerminology,
@@ -582,9 +586,26 @@ const handleSubmit = async (markDismissed = false) => {
   }
 
   try {
-    await putWithToken('/v1/dives', payload, {
+    const saveRes = await putWithToken<Dive>('/v1/dives', payload, {
       headers: { 'Content-Type': 'application/json' },
     })
+    // Leader is a buddy that was only added in this session (no id to send in the payload above).
+    // It's now persisted with a real id - resolve it by name and set it in a follow-up save.
+    const pendingLeaderName = formData.value.leaderNamedBuddyName
+    if (pendingLeaderName && formData.value.leaderNamedBuddyId == null) {
+      const savedLeader = (saveRes.data.namedBuddies ?? []).find(
+        (b) => b.name === pendingLeaderName,
+      )
+      if (savedLeader?.id != null) {
+        await putWithToken(
+          '/v1/dives',
+          { ...payload, leaderNamedBuddyId: savedLeader.id },
+          { headers: { 'Content-Type': 'application/json' } },
+        )
+        formData.value.leaderNamedBuddyId = savedLeader.id
+        formData.value.leaderNamedBuddyName = null
+      }
+    }
     // Update tags: send manual tag IDs and explicitly dismissed auto-tag IDs
     const tagsBody = {
       manualTagIds: selectedTags.value.map((t) => t.id),

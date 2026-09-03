@@ -49,6 +49,9 @@ export type BackfillFieldSource = {
    * RMV / total litres from those, so a manual whole-dive entry isn't a `GAS_CONSUMPTION` gap. */
   hasCylinderGasData?: boolean | null
   leaderNamedBuddyId?: number | null
+  /** Leader chosen as a buddy added this session (not persisted yet) - counts as "set" for the
+   * live hint even though it has no id until the dive is saved. */
+  leaderNamedBuddyName?: string | null
   leaderBuddyDiveId?: number | null
   leaderSelfExplicit?: boolean | null
   /** OC RMV derived from tracked cylinders (`Dive.gasConsumptionComparison.calculatedRmvLiters`
@@ -105,6 +108,7 @@ export function missingBackfillFields(src: BackfillFieldSource): DiveBackfillMis
 
   const leaderUnset =
     src.leaderNamedBuddyId == null &&
+    (src.leaderNamedBuddyName == null || src.leaderNamedBuddyName === '') &&
     src.leaderBuddyDiveId == null &&
     !src.leaderSelfExplicit
   if (leaderUnset) missing.push('LEADER')
