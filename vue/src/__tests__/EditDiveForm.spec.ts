@@ -208,3 +208,30 @@ describe('EditDiveForm - dive leader', () => {
     expect(emits[emits.length - 1]![0]).toMatchObject({ leaderNamedBuddyName: null })
   })
 })
+
+describe('EditDiveForm - date & time', () => {
+  const profile = { id: 1, diveComputer: { customIdentifier: 'Perdix 2' } } as unknown as DiveProfile
+
+  it('shows the date field for a manual dive with the "when did this dive start" label', () => {
+    const wrapper = mountForm(baseModel([]), { manualEntry: true, profiles: [profile] })
+    const input = wrapper.get('#manual-start')
+    expect(input.attributes('type')).toBe('datetime-local')
+    expect(wrapper.text()).toContain('When did this dive start?')
+    expect(wrapper.text()).not.toContain("dive computer's clock was wrong")
+  })
+
+  it('also shows the date field for an imported dive, framed as a wrong-clock correction', () => {
+    const wrapper = mountForm(baseModel([]), { manualEntry: false, profiles: [profile] })
+    expect(wrapper.find('#manual-start').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Recorded start')
+    expect(wrapper.text()).toContain("dive computer's clock was wrong")
+  })
+
+  it('emits the picked start time as epoch millis on modelValue', async () => {
+    const wrapper = mountForm(baseModel([]), { manualEntry: false, profiles: [profile] })
+    await wrapper.get('#manual-start').setValue('2026-03-10T08:15')
+    const emits = wrapper.emitted('update:modelValue') as Record<string, unknown>[][]
+    const startTime = emits[emits.length - 1]![0]!.startTime as number
+    expect(startTime).toBe(new Date(2026, 2, 10, 8, 15).getTime())
+  })
+})

@@ -189,22 +189,65 @@
           </div>
         </form>
       </div>
+
+      <!-- Per-site visibility scatter: each of your dives here plotted by its time of year. -->
+      <div
+        v-if="site"
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mt-4 space-y-3"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Visibility over the year</h2>
+          <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 text-sm">
+            <button
+              type="button"
+              class="px-3 py-1 rounded-l-lg"
+              :class="
+                visRange === 'year'
+                  ? 'bg-blue-600 text-white'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              "
+              @click="setVisRange('year')"
+            >
+              Last 12 months
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1 rounded-r-lg border-l border-gray-300 dark:border-gray-600"
+              :class="
+                visRange === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              "
+              @click="setVisRange('all')"
+            >
+              All time
+            </button>
+          </div>
+        </div>
+        <div v-if="visLoading" class="py-8 text-center text-gray-400">
+          <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        <p v-else-if="visError" class="py-4 text-sm text-red-600">{{ visError }}</p>
+        <SiteVisibilityChart v-else :logs="visLogs" />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { toast } from 'vue-sonner'
+import SiteVisibilityChart from '@/components/dive/SiteVisibilityChart.vue'
 import {
   DIVE_SITE_TYPE_LABELS,
   WATER_TYPE_LABELS,
   WATER_TYPES,
   type DiveSite,
   type DiveSiteType,
+  type SiteVisibilityLog,
   type WaterType,
 } from '@/lib/types/dive'
 
@@ -235,6 +278,34 @@ const form = ref<{
 })
 
 const siteId = () => route.params.siteId as string
+
+// --- Per-site visibility scatter ---
+const visRange = ref<'year' | 'all'>('year')
+const visLogs = ref<SiteVisibilityLog[]>([])
+const visLoading = ref(false)
+const visError = ref<string | null>(null)
+
+const loadVisibility = async () => {
+  visLoading.value = true
+  visError.value = null
+  try {
+    const res = await getWithToken<SiteVisibilityLog[]>(
+      `/v1/dives/sites/${siteId()}/visibility?lastYearOnly=${visRange.value === 'year'}`,
+    )
+    visLogs.value = res.data ?? []
+  } catch (err) {
+    visError.value = `Failed to load visibility history: ${extractErrorDetail(err)}`
+  } finally {
+    visLoading.value = false
+  }
+}
+
+const setVisRange = (range: 'year' | 'all') => {
+  if (visRange.value === range) return
+  visRange.value = range
+}
+
+watch(visRange, loadVisibility)
 
 const load = async () => {
   loading.value = true
@@ -304,5 +375,8 @@ const quickSetWaterType = async (waterType: WaterType) => {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadVisibility()
+})
 </script>

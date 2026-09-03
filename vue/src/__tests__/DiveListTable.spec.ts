@@ -103,18 +103,17 @@ describe('DiveListTable row navigation', () => {
     expect(wrapper.get('tbody tr').classes()).not.toContain('ring-2')
   })
 
-  it('emits toggle-highlight (and not row-click) when the star is clicked', async () => {
+  it('shows no star on a non-highlighted dive (highlighting is done from the dive view)', async () => {
     const wrapper = await mountTable()
-    const star = wrapper.get('button[title="Highlight this dive"]')
+    expect(wrapper.find('.fa-star').exists()).toBe(false)
+  })
+
+  it('shows a filled star for a highlighted dive and un-highlights it on click', async () => {
+    const wrapper = await mountTable({ dives: [{ ...dive, highlighted: true }] })
+    const star = wrapper.get('button[title="Remove highlight"]')
+    expect(star.find('i').classes()).toContain('fa-solid')
     await star.trigger('click')
     expect(wrapper.emitted('toggle-highlight')).toEqual([[42]])
     expect(wrapper.emitted('row-click')).toBeUndefined()
-  })
-
-  it('shows a filled star for an already-highlighted dive', async () => {
-    const wrapper = await mountTable({ dives: [{ ...dive, highlighted: true }] })
-    expect(wrapper.get('button[title="Remove highlight"]').find('i').classes()).toContain(
-      'fa-solid',
-    )
   })
 })

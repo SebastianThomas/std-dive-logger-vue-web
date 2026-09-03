@@ -447,16 +447,15 @@ const columns: {
   { key: 'number', label: '#', serverCol: 'NUMBER', sortable: true, width: 'w-16' },
   {
     key: 'customIdentifier',
-    label: 'Custom Name',
+    label: 'Name',
     serverCol: 'CUSTOM_IDENTIFIER',
     sortable: true,
   },
-  { key: 'summary', label: 'Start Time', serverCol: null, sortable: false, width: 'w-40' },
-  { key: 'summary', label: 'Max Depth', serverCol: null, sortable: false, width: 'w-24' },
-  { key: 'summary', label: 'Bottom Time', serverCol: null, sortable: false, width: 'w-28' },
-  { key: 'site', label: 'Site', serverCol: null, sortable: false },
+  { key: 'summary', label: 'Date', serverCol: null, sortable: false, width: 'w-36' },
+  { key: 'summary', label: 'Depth', serverCol: null, sortable: false, width: 'w-20' },
+  { key: 'summary', label: 'Time', serverCol: null, sortable: false, width: 'w-16' },
+  { key: 'site', label: 'Site', serverCol: null, sortable: false, width: 'w-36' },
   { key: 'site', label: 'Profile', serverCol: null, sortable: false, width: 'w-24' },
-  { key: 'user', label: 'Diver', serverCol: null, sortable: false, width: 'w-32' },
 ]
 
 // Functions

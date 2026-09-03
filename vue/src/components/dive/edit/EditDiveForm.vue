@@ -874,12 +874,14 @@
         </div>
       </fieldset>
 
-      <!-- Date & time: only editable for a manually-entered dive. A dive with a real computer
-           profile takes its start from the recording (shown read-only elsewhere). -->
-      <fieldset v-if="isManualDive" class="border rounded p-4">
+      <!-- Date & time: for a manual entry it's the picked date; for an imported dive it's a
+           correction for a wrong dive-computer clock (shifts the whole profile). -->
+      <fieldset v-if="showDateField" class="border rounded p-4">
         <legend class="font-medium mb-3">Date &amp; time</legend>
         <div>
-          <label for="manual-start" class="block mb-2">When did this dive start?</label>
+          <label for="manual-start" class="block mb-2">
+            {{ isManualDive ? 'When did this dive start?' : 'Recorded start' }}
+          </label>
           <input
             id="manual-start"
             v-model="manualStartLocal"
@@ -887,6 +889,11 @@
             :max="nowDateTimeLocal"
             class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
           />
+          <p v-if="!isManualDive" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Only change this if the dive computer's clock was wrong (e.g. never set, or off by a
+            timezone). It shifts the whole dive — profile, measurements and cylinder windows — by
+            the same amount.
+          </p>
         </div>
       </fieldset>
 
@@ -1162,6 +1169,9 @@ const props = defineProps<{
    * finding when the primary computer actually had this gas selected. Undefined/empty just means
    * no suggestions are offered - never required for the form to otherwise function. */
   profiles?: DiveProfile[]
+  /** Backend `Dive.manualEntry` - whether this is a manually-logged dive (no computer file).
+   * Gates the Date & time / Average Depth fields. Authoritative over the profile-computer name. */
+  manualEntry?: boolean
   /** Backfill gaps still outstanding for this dive (missing, not yet dismissed) - each one gets a
    * pointer next to its field. Empty/undefined means no pointers. */
   backfillOutstanding?: DiveBackfillMissingField[]
@@ -1773,17 +1783,22 @@ const applyCandidate = (cyl: number, win: number, ms: number) => {
   setCylinderUsageWindows(cyl, windows)
 }
 
-// A manually-entered dive's synthetic surface/max-depth/surface profile is on a fixed "Manual
-// Entry" computer (see DiveService#createEmptyDive) - same duck-typed signal DiveView.vue's own
-// isManualDive already uses, no dedicated flag exists. Average Depth is only ever editable here
-// for a manual dive - for a real profile it's always computed server-side and any value sent here
-// would just be silently ignored.
+// A manually-entered dive has only a synthetic surface/max-depth/surface profile (see
+// DiveService#createEmptyDive). The authoritative signal is the backend `manualEntry` flag passed
+// in as a prop (based on the computer manufacturer, which a diver can't rename); the
+// customIdentifier check is a fallback for an older backend. Average Depth is only editable here
+// for a manual dive - for a real profile it's computed server-side.
 const isManualDive = computed(
-  () => props.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
+  () =>
+    props.manualEntry === true ||
+    props.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
 )
 
-// Manual dive date/time, edited as a local `datetime-local` value. A real-profile dive's time is
-// taken from the recording, so this field is only shown for a manual entry.
+// The Date & time field is offered for any dive with a profile: it's the picked date for a manual
+// entry, and a wrong-computer-clock correction (shifts the whole profile) for an imported one.
+const showDateField = computed(() => (props.profiles?.length ?? 0) > 0 || isManualDive.value)
+
+// Dive start, edited as a local `datetime-local` value.
 const manualStartLocal = computed<string>({
   get: () => epochMsToDateTimeLocal(props.modelValue.startTime ?? props.diveStart),
   set: (value: string) => updateField('startTime', dateTimeLocalToEpochMs(value)),

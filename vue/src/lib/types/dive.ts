@@ -133,6 +133,17 @@ export type Visibility = {
   feeling?: VisibilityFeeling | null
 }
 
+/** One dive's visibility reading at a site - `GET /v1/dives/sites/{id}/visibility`. At least one
+ * of `meters` / `feeling` is set. `date` is an epoch-millis timestamp. */
+export type SiteVisibilityLog = {
+  diveId: number
+  diveNumber: number
+  diveIdentifier: string
+  date: number
+  meters?: number | null
+  feeling?: VisibilityFeeling | null
+}
+
 export type WaterType = 'SALT' | 'FRESH' | 'BRACKISH'
 
 export const WATER_TYPES: WaterType[] = ['SALT', 'FRESH', 'BRACKISH']

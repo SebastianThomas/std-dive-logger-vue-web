@@ -825,11 +825,13 @@ const viewDivesByTag = (tagId: number) => {
   router.push({ name: 'DiveList', query: { tagIds: String(tagId) } })
 }
 
-// A manual dive's synthetic profile is attached to a fixed "Manual Entry" dive computer
-// (see DiveService.createEmptyDive on the backend) - no dedicated DB flag exists, this is the
-// same signal the backend itself uses to build the profile, so it's safe to sniff here too.
+// Authoritative signal is the backend `manualEntry` flag (derived from the profile's computer
+// *manufacturer* being "Manual" - which a diver can't rename, unlike the computer's custom name).
+// The customIdentifier check is only a fallback for a backend old enough not to send the flag.
 const isManualDive = computed(
-  () => dive.value?.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
+  () =>
+    dive.value?.manualEntry === true ||
+    dive.value?.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
 )
 
 // Card-level readings (CNS / OTU / GF99) come from the first / last profile that actually *has*

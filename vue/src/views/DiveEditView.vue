@@ -61,6 +61,7 @@
           :existing-buddy-dives="loadedDive?.buddiesDives"
           :dive-start="loadedDive.summary.start"
           :profiles="loadedDive.profiles"
+          :manual-entry="isManualDive"
           :backfill-outstanding="liveOutstanding"
           :backfill-prominent="fromBackfill"
           :calculated-rmv-baseline="calculatedRmvBaseline"
@@ -232,8 +233,12 @@ const loadedDive = ref<Dive | null>(null)
 const EDIT_PROFILE_KEY = 'dive-edit-show-profile'
 const showEditProfile = ref(safeLocalStorage.getItem(EDIT_PROFILE_KEY) !== 'false')
 watch(showEditProfile, (v) => safeLocalStorage.setItem(EDIT_PROFILE_KEY, String(v)))
+// Backend `manualEntry` flag is authoritative (based on the computer *manufacturer*, which a diver
+// can't rename); the customIdentifier check is a fallback for an older backend.
 const isManualDive = computed(
-  () => loadedDive.value?.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
+  () =>
+    loadedDive.value?.manualEntry === true ||
+    loadedDive.value?.profiles?.[0]?.diveComputer?.customIdentifier === 'Manual Entry',
 )
 
 const selectedTags = ref<TagDefinition[]>([])
@@ -612,10 +617,10 @@ const handleSubmit = async (markDismissed = false) => {
       dismissedAutoTagIds: [...dismissedAutoTagIds.value],
     }
     await putWithToken(`/v1/dives/${diveId.value}/tags`, tagsBody)
-    // A manual dive's date is re-dated through its own endpoint (it shifts the synthetic profile,
-    // not a plain field on the dive). Only sent when it actually changed.
+    // Re-dating goes through its own endpoint - it shifts every profile / measurement / cylinder
+    // window, not a plain field. Works for a manual entry (picked date) and an imported dive
+    // (wrong-clock correction). Only sent when the value actually changed.
     if (
-      isManualDive.value &&
       formData.value.startTime != null &&
       formData.value.startTime !== loadedDive.value?.summary.start
     ) {

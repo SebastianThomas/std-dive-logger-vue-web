@@ -1,9 +1,11 @@
 <template>
-  <div class="overflow-auto border rounded-lg">
-    <table class="w-full border-collapse overflow-scroll">
+  <div class="overflow-x-auto border rounded-lg">
+    <!-- table-fixed: column widths come from the header cells, so the Name column takes all the
+         leftover space and every other column stays predictably narrow (content truncates). -->
+    <table class="w-full min-w-[56rem] table-fixed border-collapse text-sm">
       <thead>
         <tr class="bg-blue-200">
-          <th class="border border-gray-400 px-2 py-2 text-left w-12">
+          <th class="border border-gray-400 px-2 py-2 text-left w-10">
             <StyledCheckbox
               :model-value="selectedIds.length === dives.length && dives.length > 0"
               @update:model-value="$emit('toggle-all')"
@@ -11,16 +13,20 @@
           </th>
           <th
             v-for="col in columns"
-            :key="col.key"
+            :key="col.label"
             :class="[
-              'border border-gray-400 px-3 py-2 text-left',
+              'border border-gray-400 px-2 py-2',
               col.width,
+              numericColumns.includes(col.label) ? 'text-right' : 'text-left',
               col.sortable && !searchQuery.trim() ? 'cursor-pointer hover:bg-blue-300' : '',
               !col.sortable || searchQuery.trim() ? 'cursor-default opacity-60' : '',
             ]"
             @click="col.sortable ? $emit('sort', col.serverCol) : null"
           >
-            <div class="flex items-center gap-2">
+            <div
+              class="flex items-center gap-1"
+              :class="{ 'justify-end': numericColumns.includes(col.label) }"
+            >
               {{ col.label }}
               <span
                 v-if="col.sortable && sortColumn === col.serverCol && !searchQuery.trim()"
@@ -30,7 +36,6 @@
               </span>
             </div>
           </th>
-          <th class="border border-gray-400 px-3 py-2 text-left min-w-32">Tags</th>
         </tr>
       </thead>
       <tbody class="bg-white">
@@ -38,7 +43,7 @@
           v-for="dive in dives"
           :key="dive.id"
           :class="[
-            'cursor-pointer transition-colors border-l-4',
+            'h-14 cursor-pointer transition-colors border-l-4',
             selectedIds.includes(dive.id)
               ? 'bg-sky-100 hover:bg-sky-200 dark:bg-sky-900 dark:hover:bg-sky-800 border-l-sky-500 dark:border-l-sky-400'
               : dive.user.id !== myUserId
@@ -48,76 +53,98 @@
           ]"
           @click="handleRowClick($event, dive.id)"
         >
-          <td class="border border-gray-400 px-2 py-2 text-center" @click.stop>
+          <td class="border border-gray-400 px-2 align-middle text-center" @click.stop>
             <StyledCheckbox
               :model-value="selectedIds.includes(dive.id)"
               @update:model-value="$emit('toggle-row', dive.id)"
             />
           </td>
-          <td class="border border-gray-400 px-3 py-2 w-16">
-            {{ dive.number }}
+          <!-- Dive number, right-aligned. A filled star shows (and un-highlights on click) only
+               for an already-highlighted dive - highlighting a dive is done from its view page. -->
+          <td class="border border-gray-400 px-2 align-middle text-right tabular-nums">
+            <div class="flex items-center justify-end gap-1.5">
+              <button
+                v-if="dive.highlighted && dive.user.id === myUserId"
+                type="button"
+                class="text-amber-500 text-xs leading-none"
+                title="Remove highlight"
+                @click.stop="$emit('toggle-highlight', dive.id)"
+              >
+                <i class="fa-solid fa-star"></i>
+              </button>
+              <i
+                v-else-if="dive.highlighted"
+                class="fa-solid fa-star text-amber-500 text-xs leading-none"
+              ></i>
+              {{ dive.number }}
+            </div>
           </td>
-          <td class="border border-gray-400 px-3 py-2 max-w-lg wrap-break-word">
-            <button
-              v-if="dive.user.id === myUserId"
-              type="button"
-              class="mr-1.5 align-middle text-sm"
-              :class="
-                dive.highlighted
-                  ? 'text-amber-500'
-                  : 'text-gray-300 hover:text-amber-400 dark:text-gray-600'
-              "
-              :title="dive.highlighted ? 'Remove highlight' : 'Highlight this dive'"
-              :aria-pressed="dive.highlighted"
-              @click.stop="$emit('toggle-highlight', dive.id)"
-            >
-              <i :class="dive.highlighted ? 'fa-solid fa-star' : 'fa-regular fa-star'"></i>
-            </button>
-            {{ dive.customIdentifier || '-' }}
+          <!-- Name (wide) + tags underneath, compact -->
+          <td class="border border-gray-400 px-3 align-middle">
+            <div class="flex flex-col justify-center gap-0.5 min-w-0">
+              <span class="font-medium truncate" :title="dive.customIdentifier || undefined">
+                {{ dive.customIdentifier || '—' }}
+              </span>
+              <div
+                v-if="(dive.tags ?? []).length"
+                class="flex flex-wrap gap-1 overflow-hidden max-h-[1.15rem]"
+              >
+                <TagBadge
+                  v-for="tag in dive.tags ?? []"
+                  :key="tag.id"
+                  :name="tag.name"
+                  :auto-detected="!!tag.autoDetectRule"
+                  compact
+                />
+              </div>
+            </div>
           </td>
-          <td class="border border-gray-400 px-3 py-2 w-40">
+          <td
+            class="border border-gray-400 px-2 align-middle whitespace-nowrap text-gray-600 dark:text-gray-300"
+          >
             {{ formatDate(dive.summary.start) }}
           </td>
-          <td class="border border-gray-400 px-3 py-2 w-24">
+          <td
+            class="border border-gray-400 px-2 align-middle text-right tabular-nums whitespace-nowrap"
+          >
             {{ dive.summary.maxDepth.toFixed(1) }} m
           </td>
-          <td class="border border-gray-400 px-3 py-2 w-28">
+          <td
+            class="border border-gray-400 px-2 align-middle text-right tabular-nums whitespace-nowrap"
+          >
             {{ formatISoDurationToTime(dive.summary.bottomTime) }}
           </td>
-          <td class="border border-gray-400 px-3 py-2 min-w-48">
-            {{ dive.site?.name || 'Unknown' }}
+          <td class="border border-gray-400 px-2 align-middle">
+            <span class="block truncate" :title="dive.site?.name || 'Unknown'">
+              {{ dive.site?.name || 'Unknown' }}
+            </span>
           </td>
-          <td class="border border-gray-400 px-1 py-1 w-24 flex justify-center">
-            <!-- A manual dive's only profile is a synthetic placeholder - no meaningful preview
-                 graph exists for it, so show nothing rather than a triangle. -->
-            <span v-if="dive.manualEntry" class="text-xs text-gray-400 py-2">Manual</span>
-            <DiveSitePreview
-              v-else
-              :dive="dive"
-              @preview-regenerated="handlePreviewRegenerated"
-            />
-          </td>
-          <td class="border border-gray-400 px-3 py-2 w-32">
-            {{ dive.user.id === myUserId ? 'You' : dive.user?.name || 'Unknown' }}
-          </td>
-          <td class="border border-gray-400 px-3 py-2 min-w-32">
-            <div class="flex flex-wrap gap-1">
-              <TagBadge
-                v-for="tag in dive.tags ?? []"
-                :key="tag.id"
-                :name="tag.name"
-                :auto-detected="!!tag.autoDetectRule"
+          <td class="border border-gray-400 px-1 align-middle">
+            <div class="mx-auto flex max-h-11 max-w-full items-center justify-center overflow-hidden">
+              <!-- A manual dive's only profile is a synthetic placeholder - no meaningful preview
+                   graph exists for it, so show nothing rather than a triangle. -->
+              <span v-if="dive.manualEntry" class="text-xs text-gray-400">Manual</span>
+              <DiveSitePreview
+                v-else
+                :dive="dive"
+                @preview-regenerated="handlePreviewRegenerated"
               />
             </div>
           </td>
         </tr>
         <tr v-if="!dives.length && !isLoading">
-          <td colspan="10" class="border border-gray-400 px-3 py-4 text-center text-gray-500">
+          <td
+            :colspan="columns.length + 1"
+            class="border border-gray-400 px-3 py-4 text-center text-gray-500"
+          >
             {{ status || 'No dives found' }}
           </td>
         </tr>
         <tr v-if="isLoading">
-          <td colspan="10" class="border border-gray-400 px-3 py-4 text-center text-gray-500">
+          <td
+            :colspan="columns.length + 1"
+            class="border border-gray-400 px-3 py-4 text-center text-gray-500"
+          >
             Loading...
           </td>
         </tr>
@@ -136,6 +163,9 @@ import type { SortDirection, SortColumn } from '@/lib/types/sort'
 import { formatISoDurationToTime, formatDate } from '@/lib/utils/timeUtils'
 
 const router = useRouter()
+
+// Right-aligned header + cell labels (numbers read better flush-right).
+const numericColumns = ['#', 'Depth', 'Time']
 
 // Ctrl/cmd+click (or shift+click) anywhere on the row opens the dive in a new tab instead of
 // emitting row-click - no <a> element involved, so the row keeps the app's normal styling (an
