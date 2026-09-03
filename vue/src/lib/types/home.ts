@@ -13,6 +13,12 @@ export interface HomeActivity {
   previous365Days: HomeWindow
 }
 
+/** One calendar month's dive count ("YYYY-MM"), months-with-dives only, ascending. */
+export interface HomeMonthlyCount {
+  month: string
+  count: number
+}
+
 export interface HomeRecentDive {
   id: number
   number: number
@@ -52,6 +58,9 @@ export interface HomeDashboard {
   lastDiveStart?: number | null
   divesThisYear: number
   windows: HomeActivity
+  /** Dives per calendar month, ascending, months-with-dives only. Powers the pause-aware activity
+   * rate (may be absent from an older backend). */
+  divesByMonth?: HomeMonthlyCount[]
   recentDives: HomeRecentDive[]
   /** The user's highlighted ('starred') dives, most recent first (capped server-side). */
   highlightedDives: HomeRecentDive[]

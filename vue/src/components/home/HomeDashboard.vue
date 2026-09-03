@@ -59,8 +59,8 @@
       <p v-if="activityFootnote" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
         {{ activityFootnote }}
       </p>
-      <p v-if="framing.staleMonths != null" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
-        It's been {{ framing.staleMonths }} months since your last logged dive.
+      <p v-if="framing.staleNote != null" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+        It's been {{ framing.staleNote }} since your last logged dive.
       </p>
     </section>
 
