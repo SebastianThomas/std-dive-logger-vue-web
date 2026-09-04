@@ -16,6 +16,9 @@
       </RouterLink>
     </div>
 
+    <!-- Anniversaries + the "time to go diving again" nudge -->
+    <HomeReminders :reminders="home.reminders ?? []" />
+
     <!-- Headline tiles (straight on the dimmed background, like DiveView) -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
       <div
@@ -59,9 +62,14 @@
       <p v-if="activityFootnote" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
         {{ activityFootnote }}
       </p>
-      <p v-if="framing.staleNote != null" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+      <!-- Suppressed while a "dive again" nudge banner is up - it already says this, louder. -->
+      <p
+        v-if="framing.staleNote != null && !hasDiveNudge"
+        class="mt-1 text-xs text-amber-600 dark:text-amber-400"
+      >
         It's been {{ framing.staleNote }} since your last logged dive.
       </p>
+      <HomeActivityExtras :stats="home.activityStats" />
     </section>
 
     <!-- Highlighted dives -->
@@ -201,6 +209,8 @@ import { pickActivityFraming } from '@/lib/home/activityFraming'
 import type { HomeDashboard as HomeDashboardData } from '@/lib/types/home'
 import HomeSkeleton from '@/components/home/HomeSkeleton.vue'
 import HomeQuickLinks from '@/components/home/HomeQuickLinks.vue'
+import HomeActivityExtras from '@/components/home/HomeActivityExtras.vue'
+import HomeReminders from '@/components/home/HomeReminders.vue'
 
 const { getWithToken } = useApi()
 const { readOnly } = useReadOnlyMode()
@@ -223,6 +233,12 @@ onMounted(load)
 
 const framing = computed(() => pickActivityFraming(home.value!))
 const thisYear = new Date().getFullYear()
+
+// The "dive again" nudge is now a server-side reminder (HomeReminders); use its presence to
+// suppress the quieter in-section staleNote so we don't say the same thing twice.
+const hasDiveNudge = computed(() =>
+  (home.value?.reminders ?? []).some((r) => r.kind === 'DIVE_AGAIN_NUDGE'),
+)
 
 // framing.footnote carries "diving since … · ~N/yr"; append the year-to-date count (also not in
 // the tiles). Both halves are optional, so join defensively.

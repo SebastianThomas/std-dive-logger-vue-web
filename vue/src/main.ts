@@ -9,6 +9,8 @@ import './styles/global.css'
 import '@/lib/map/leafletIcon'
 import * as L from 'leaflet'
 
+import { registerServiceWorker } from '@/lib/pwa/registerServiceWorker'
+
 const app = createApp(App)
 
 app.use(createPinia())
@@ -16,3 +18,5 @@ app.use(router)
 app.provide('leaflet', L)
 
 app.mount('#app')
+
+registerServiceWorker()
