@@ -47,6 +47,24 @@
             below. Pick which to keep for each - everything else stays exactly as it was.
           </p>
 
+          <div v-if="preview.conflicts.clockOffset" class="conflict-field">
+            <div class="conflict-label">Start time</div>
+            <p class="hint" style="margin-bottom: 8px">
+              The uploaded file's clock is
+              {{ Math.abs(preview.conflicts.clockOffset.offsetMinutes / 60) }} h off this profile -
+              usually a UTC vs. local-time difference between two exports of the same dive, not a
+              different dive.
+            </p>
+            <label class="conflict-option">
+              <input type="radio" v-model="resolution.startClock" value="EXISTING" />
+              <span>Keep existing: {{ formatDate(preview.conflicts.clockOffset.existingStart) }}</span>
+            </label>
+            <label class="conflict-option">
+              <input type="radio" v-model="resolution.startClock" value="NEW" />
+              <span>Use uploaded: {{ formatDate(preview.conflicts.clockOffset.reimportedStart) }}</span>
+            </label>
+          </div>
+
           <div v-if="preview.conflicts.notes" class="conflict-field">
             <div class="conflict-label">Notes</div>
             <label class="conflict-option">
@@ -173,6 +191,7 @@ const resolution = ref<ReimportResolution>({
   visibility: 'EXISTING',
   namedBuddies: 'UNION',
   gasConsumption: 'EXISTING',
+  startClock: 'EXISTING',
 })
 
 const canReimport = computed(() => selectedFile.value !== null && props.profiles.length > 0)
@@ -208,6 +227,7 @@ watch(
         visibility: 'EXISTING',
         namedBuddies: 'UNION',
         gasConsumption: 'EXISTING',
+        startClock: 'EXISTING',
       }
     }
   },

@@ -171,11 +171,20 @@ export type GasConsumption = {
 
 export type ReimportFieldConflict<T> = { existing: T; reimported: T }
 
+// The reimported file's clock is a whole number of hours off the existing profile (UTC vs. a zone
+// offset) - the diver picks which start time to keep rather than the upload being rejected.
+export type ReimportClockOffset = {
+  existingStart: number
+  reimportedStart: number
+  offsetMinutes: number
+}
+
 export type ReimportConflicts = {
   notes?: ReimportFieldConflict<string>
   visibility?: ReimportFieldConflict<Visibility>
   namedBuddies?: ReimportFieldConflict<string[]>
   gasConsumption?: ReimportFieldConflict<GasConsumption>
+  clockOffset?: ReimportClockOffset
 }
 
 export function reimportHasAnyConflict(conflicts: ReimportConflicts): boolean {
@@ -183,7 +192,8 @@ export function reimportHasAnyConflict(conflicts: ReimportConflicts): boolean {
     conflicts.notes != null ||
     conflicts.visibility != null ||
     conflicts.namedBuddies != null ||
-    conflicts.gasConsumption != null
+    conflicts.gasConsumption != null ||
+    conflicts.clockOffset != null
   )
 }
 
@@ -200,6 +210,8 @@ export type ReimportResolution = {
   visibility?: ReimportChoice | null
   namedBuddies?: ReimportBuddiesChoice | null
   gasConsumption?: ReimportChoice | null
+  // EXISTING keeps the dive's current start time, NEW adopts the uploaded file's clock.
+  startClock?: ReimportChoice | null
 }
 
 export type SuitType =
