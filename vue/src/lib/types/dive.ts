@@ -704,6 +704,18 @@ export type DiveSite = {
   canEdit?: boolean
 }
 
+export type DiveSiteSuggestion = {
+  site: DiveSite
+  score: number
+  reasons: string[]
+  daysSinceLastVisit?: number | null
+  avgVisibilityM?: number | null
+  recentDiverCount30d?: number | null
+  totalDives: number
+  distanceKm?: number | null
+  topPick: boolean
+}
+
 export type BasicDiveInfo = {
   id: number
   number: number

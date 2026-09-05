@@ -22,6 +22,7 @@ const links = [
   { name: 'MapView', label: 'Sites', icon: 'map' },
   { name: 'TripList', label: 'Trips', icon: 'compass' },
   { name: 'Stats', label: 'Statistics', icon: 'chart-line' },
+  { name: 'DiveSiteSuggestions', label: 'Suggest a site', icon: 'wand-magic-sparkles' },
   { name: 'Profile', label: 'Profile', icon: 'user-pen' },
 ] as const
 </script>

@@ -31,6 +31,9 @@
     <router-link :to="{ name: 'MapView' }">
       <MenuItem icon="map" text="Sites" :is-visible="isVisible" />
     </router-link>
+    <router-link :to="{ name: 'DiveSiteSuggestions' }">
+      <MenuItem icon="wand-magic-sparkles" text="Suggest a site" :is-visible="isVisible" />
+    </router-link>
     <router-link :to="{ name: 'TripList' }">
       <MenuItem icon="compass" text="Trip/Course" :is-visible="isVisible" />
     </router-link>
