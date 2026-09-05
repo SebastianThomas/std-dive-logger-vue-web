@@ -3,4 +3,5 @@ kind: Kustomization
 namespace: std-dive-logger-prod
 resources:
   - ../base
-# Hostname is the base one, unpatched: std-dive-logger-web.sthomas.ch
+# Hostnames are the base ones, unpatched: std-dive-logger-web.sthomas.ch and
+# std-dive-logger.sthomas.ch (the bare project host now serves the app).

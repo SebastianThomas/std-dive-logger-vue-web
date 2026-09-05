@@ -19,9 +19,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   const backendHost = (() => {
     try {
-      return new URL(env.VITE_BACKEND_URL || 'https://std-dive-logger.sthomas.ch').host
+      return new URL(env.VITE_BACKEND_URL || 'https://ws.std-dive-logger.sthomas.ch').host
     } catch {
-      return 'std-dive-logger.sthomas.ch'
+      return 'ws.std-dive-logger.sthomas.ch'
     }
   })()
 

@@ -4,8 +4,12 @@ namespace: std-dive-logger-dev
 resources:
   - ../base
 patches:
+  # Positional - keep in step with the base HTTPRoute's own hostname order.
   - target: { kind: HTTPRoute, name: std-dive-logger-web }
     patch: |
       - op: replace
         path: /spec/hostnames/0
         value: std-dive-logger-web-dev.sthomas.ch
+      - op: replace
+        path: /spec/hostnames/1
+        value: std-dive-logger-dev.sthomas.ch

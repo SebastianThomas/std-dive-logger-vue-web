@@ -1,7 +1,12 @@
 ---
-# Base hostname is the PROD one - the dev overlay patches it to
-# std-dive-logger-web-dev.sthomas.ch. Traefik is the public edge (cert-manager
-# gateway certs).
+# Base hostnames are the PROD ones - the dev overlay patches both to the -dev
+# names. Two hostnames on purpose: std-dive-logger-web[-dev] is the original
+# and stays working, std-dive-logger[-dev] is the bare project host, which now
+# serves the app instead of the backend ws (ws. replaced it there - see the
+# backend repo's deploy/README.md). Index order matters: the dev overlay
+# patches /spec/hostnames/0 and /1 positionally.
+# Traefik is the public edge (cert-manager gateway certs); both names are one
+# label deep, so the *.sthomas.ch wildcard covers them.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -12,6 +17,7 @@ spec:
       namespace: kube-system
   hostnames:
     - std-dive-logger-web.sthomas.ch
+    - std-dive-logger.sthomas.ch
   rules:
     - backendRefs:
         - name: std-dive-logger-web
