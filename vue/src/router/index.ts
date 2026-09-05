@@ -186,6 +186,13 @@ const router = createRouter({
       component: () => import('../views/BackfillView.vue'),
       meta: { requiresAuth: true },
     },
+    // Catch-all - must stay last. Deliberately without `requiresAuth`: a mistyped URL should say
+    // "not found" rather than bounce a logged-out visitor to the login page and lose the path.
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'NotFound',
+      component: () => import('../views/NotFoundView.vue'),
+    },
   ],
 })
 

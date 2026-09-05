@@ -55,8 +55,8 @@
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Multiple files supported</p>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Supported formats: UDDF, XML, FIT, JSON (Suunto app export), DL7 (.zxu) - POSB not
-                yet supported
+                Supported formats: UDDF, XML, FIT, JSON (Suunto app export), DL7 (.zxu),
+                Shearwater Cloud database (.db)
               </p>
             </button>
             <input
@@ -64,7 +64,7 @@
               type="file"
               class="hidden"
               multiple
-              accept=".uddf,.xml,.posb,.fit,.json,.zxu"
+              accept=".uddf,.xml,.fit,.json,.zxu,.db"
               @change="onFileInput"
             />
             <ul
@@ -223,13 +223,21 @@
                       time-to-surface at all.
                     </li>
                     <li>
-                      <strong>Shearwater</strong>: the Shearwater Cloud <strong>Source File</strong>
-                      XML export, not UDDF or DL7 (.zxu) - only the Source File carries real
-                      per-sample time-to-surface and next-stop data. The proprietary
-                      <strong>.swlogdata</strong> raw log file isn't supported (no public format
-                      spec).
+                      <strong>Shearwater</strong>: to move a whole logbook at once, upload the
+                      Shearwater Cloud <strong>database</strong> (the app's <strong>.db</strong>
+                      backup file) - every dive in it is staged in one go, with the location,
+                      buddy, notes, visibility, weight and tank pressures you entered in the app.
+                      For a single dive, use the <strong>Source File</strong> XML export rather
+                      than UDDF or DL7 (.zxu) - only the Source File carries real per-sample
+                      time-to-surface and next-stop data.
                     </li>
                     <li><strong>Garmin</strong>: FIT is the only export this project supports.</li>
+                    <li>
+                      <strong>Poseidon</strong> (M28 / SE7EN): the <strong>.posb</strong> log files
+                      the app produces are encrypted, so they can't be read by anything except
+                      Poseidon's own software - not supported, and not something a future version
+                      can fix.
+                    </li>
                   </ul>
                 </li>
               </ul>
@@ -339,12 +347,12 @@ const handleDrop = (e: DragEvent) => {
     const droppedFiles = Array.from(e.dataTransfer.files)
     const validFiles = droppedFiles.filter((file) => {
       const ext = file.name.split('.').pop()?.toLowerCase()
-      const validExts = ['uddf', 'xml', 'posb', 'fit', 'json', 'zxu']
+      const validExts = ['uddf', 'xml', 'fit', 'json', 'zxu', 'db']
       return validExts.includes(ext || '')
     })
     if (validFiles.length < droppedFiles.length) {
       status.value =
-        'Warning: Some files were skipped due to unsupported format. Supported: UDDF, XML, FIT, JSON, DL7 (.zxu), POSB.'
+        'Warning: Some files were skipped due to unsupported format. Supported: UDDF, XML, FIT, JSON, DL7 (.zxu), Shearwater Cloud database (.db).'
     }
     files.value = validFiles
   }
@@ -355,12 +363,12 @@ const onFileInput = (e: Event) => {
   if (target.files) {
     const validFiles = Array.from(target.files).filter((file) => {
       const ext = file.name.split('.').pop()?.toLowerCase()
-      const validExts = ['uddf', 'xml', 'posb', 'fit', 'json', 'zxu']
+      const validExts = ['uddf', 'xml', 'fit', 'json', 'zxu', 'db']
       return validExts.includes(ext || '')
     })
     if (validFiles.length < target.files.length) {
       status.value =
-        'Warning: Some files were skipped due to unsupported format. Supported: UDDF, XML, FIT, JSON, DL7 (.zxu), POSB.'
+        'Warning: Some files were skipped due to unsupported format. Supported: UDDF, XML, FIT, JSON, DL7 (.zxu), Shearwater Cloud database (.db).'
     }
     files.value = validFiles
   }

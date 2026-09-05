@@ -5,7 +5,7 @@
     <div class="flex items-center">
       <router-link :to="{ name: 'Home' }" class="flex items-center">
         <img
-          src="/images/logo_with_name.png"
+          src="/images/logo_with_name.webp"
           alt="Logo"
           class="h-16 w-16 transition-all duration-300"
         />

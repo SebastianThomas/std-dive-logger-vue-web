@@ -546,6 +546,7 @@ export type PendingImportSource =
   | 'XML_SUBSURFACE'
   | 'XML_SHEARWATER'
   | 'DL7_SHEARWATER'
+  | 'DB_SHEARWATER'
 
 /** Cheap, review-only view of a staged (not yet persisted) import - never carries profile data. */
 export type PendingImportSummary = {

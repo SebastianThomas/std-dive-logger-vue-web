@@ -50,13 +50,13 @@ const features: FeatureCardProps[] = [
       'Detailed profile graphs, ascent-rate warnings, deco, gas consumption and per-cylinder RMV — from a single uploaded file.',
   },
   {
-    image: '/images/group.jpg',
+    image: '/images/group.webp',
     title: 'Share your dives',
     description:
       'Per-dive or per-group sharing, separate from trips. Plan a holiday together or just show off a favourite dive.',
   },
   {
-    image: '/images/merge.png',
+    image: '/images/merge.webp',
     title: 'Combine profiles',
     description:
       'Merge several computers’ recordings of the same dive into one clean continuous profile.',

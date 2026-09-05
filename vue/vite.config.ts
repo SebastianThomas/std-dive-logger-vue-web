@@ -55,7 +55,7 @@ export default defineConfig(({ mode }) => {
               includeAssets: [
                 'favicon.ico',
                 'pwa/apple-touch-icon-180x180.png',
-                'images/logo_with_name.png',
+                'images/logo_with_name.webp',
               ],
               manifest: {
                 name: 'Dive Together Log',

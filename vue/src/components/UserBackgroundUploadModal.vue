@@ -80,7 +80,7 @@ const emit = defineEmits<{
 
 const { postWithToken, deleteWithToken } = useApi()
 
-const defaultBackgroundUrl = '/images/Karwela.png'
+const defaultBackgroundUrl = '/images/Karwela.webp'
 
 const selectedFile = ref<File | null>(null)
 const previewUrl = ref<string | null>(null)

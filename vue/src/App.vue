@@ -155,7 +155,7 @@ const showTitle = computed(() => windowWidth.value >= SM_BREAKPOINT)
 const customBackgroundUrl = ref<string | null>(getCachedBackgroundUrl())
 
 const mainBackgroundStyle = computed(() => {
-  const imageUrl = customBackgroundUrl.value || '/images/Karwela.png'
+  const imageUrl = customBackgroundUrl.value || '/images/Karwela.webp'
   return {
     backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6)), url('${imageUrl}')`,
   }

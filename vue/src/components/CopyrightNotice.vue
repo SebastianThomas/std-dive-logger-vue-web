@@ -22,7 +22,9 @@
   display: flex;
   gap: 0;
   align-items: center;
-  pointer-events: auto;
+  /* The badge is a fixed overlay sitting on top of scrollable page content, so it must never
+     swallow taps: only the two credit links are real pointer targets (see the rule below). */
+  pointer-events: none;
   padding: 8px 12px;
   border: 1px solid rgba(229, 231, 235, 0.3);
   border-radius: 8px;
@@ -30,14 +32,21 @@
   backdrop-filter: blur(4px);
 }
 
-/* Hover notice - appears on hover, higher z-index */
+/* Faint at rest, fully opaque while a credit link is hovered.
+   The resting z-index must stay ABOVE App.vue's `.router-content` (z-index: 10), a sibling in the
+   same stacking context: underneath it the router content covered the links, so they could only
+   be reached in whatever corner the page content happened not to cover. Raising it is safe only
+   because the container itself is pointer-events: none - otherwise a fixed, near-full-width badge
+   would block real controls behind it on a narrow screen (it overlapped a button at 320px). */
 .copyright-notice-hover {
-  z-index: 5;
+  z-index: 11;
   opacity: 0.2;
   transition: all 0.3s ease-in-out;
 }
 
-.copyright-notice-hover:hover {
+/* :has(a:hover) is what actually fires - the container takes no pointer events of its own. */
+.copyright-notice-hover:hover,
+.copyright-notice-hover:has(a:hover) {
   z-index: 20;
   opacity: 1;
 }
@@ -45,5 +54,6 @@
 .copyright-notice a {
   color: #c7d2fe;
   text-decoration: underline;
+  pointer-events: auto;
 }
 </style>
