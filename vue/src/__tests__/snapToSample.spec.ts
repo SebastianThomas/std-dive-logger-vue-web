@@ -9,7 +9,7 @@ function measurement(id: number, time: number, depth: number): DiveMeasurementWi
       time,
       temperature: { value: 15, unit: 'CELSIUS' },
       depth,
-      ndl: '',
+      ndl: null,
       deco: [],
     },
   }
@@ -28,7 +28,7 @@ function profile(measurements: DiveMeasurementWithId[]): DiveProfile {
     start: measurements[0]?.measurement.time ?? 0,
     end: measurements[measurements.length - 1]?.measurement.time ?? 0,
     measurements,
-    summary: { start: 0, end: 0, averageDepth: 0, maxDepth: 0, bottomTime: 'PT0S' },
+    summary: { start: 0, end: 0, averageDepth: 0, maxDepth: 0, bottomTime: 0 },
   }
 }
 

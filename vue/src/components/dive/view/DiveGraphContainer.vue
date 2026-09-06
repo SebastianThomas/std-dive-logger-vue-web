@@ -261,6 +261,7 @@
   </div>
 
   <ProfileAlignmentModal
+    :zone-id="zoneId"
     v-if="!minimal"
     :profiles="profiles"
     :dive-id="diveId"
@@ -295,6 +296,7 @@ import type { Dive, DiveProfile } from '@/lib/types/dive'
 import type { AxisUnitGroup, ProfileMetricVisibility } from '@/lib/types/graph'
 
 interface Props {
+  zoneId?: string | null
   profiles: DiveProfile[]
   diveId: number
   fullscreen?: boolean

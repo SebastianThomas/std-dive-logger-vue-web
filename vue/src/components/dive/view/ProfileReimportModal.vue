@@ -22,7 +22,7 @@
             <label for="reimport-profile">Profile to replace</label>
             <select v-model.number="selectedProfileIdx" id="reimport-profile" class="form-select">
               <option v-for="(profile, idx) in profiles" :key="profile.id" :value="idx">
-                Profile {{ idx + 1 }} ({{ formatDate(profile.start) }}, {{ profile.diveComputer?.customIdentifier }})
+                Profile {{ idx + 1 }} ({{ formatDate(profile.start, zoneId) }}, {{ profile.diveComputer?.customIdentifier }})
               </option>
             </select>
           </div>
@@ -57,11 +57,11 @@
             </p>
             <label class="conflict-option">
               <input type="radio" v-model="resolution.startClock" value="EXISTING" />
-              <span>Keep existing: {{ formatDate(preview.conflicts.clockOffset.existingStart) }}</span>
+              <span>Keep existing: {{ formatDate(preview.conflicts.clockOffset.existingStart, zoneId) }}</span>
             </label>
             <label class="conflict-option">
               <input type="radio" v-model="resolution.startClock" value="NEW" />
-              <span>Use uploaded: {{ formatDate(preview.conflicts.clockOffset.reimportedStart) }}</span>
+              <span>Use uploaded: {{ formatDate(preview.conflicts.clockOffset.reimportedStart, zoneId) }}</span>
             </label>
           </div>
 
@@ -138,7 +138,7 @@
           v-else-if="step === 'resolve'"
           class="btn-action"
           @click="handleCommit"
-          :disabled="isLoading"
+          :disabled="isLoading || (!!preview?.conflicts.clockOffset && !resolution.startClock)"
         >
           <span v-if="isLoading">Applying...</span>
           <span v-else>Confirm</span>
@@ -149,6 +149,8 @@
 </template>
 
 <script setup lang="ts">
+import axios from 'axios'
+import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import type {
   Dive,
@@ -163,6 +165,7 @@ import { useApi } from '@/composables/useApi'
 import { formatDate } from '@/lib/utils/timeUtils'
 
 interface Props {
+  zoneId?: string | null
   profiles: DiveProfile[]
   diveId: number
   isOpen: boolean
@@ -191,7 +194,7 @@ const resolution = ref<ReimportResolution>({
   visibility: 'EXISTING',
   namedBuddies: 'UNION',
   gasConsumption: 'EXISTING',
-  startClock: 'EXISTING',
+  startClock: null,
 })
 
 const canReimport = computed(() => selectedFile.value !== null && props.profiles.length > 0)
@@ -227,7 +230,7 @@ watch(
         visibility: 'EXISTING',
         namedBuddies: 'UNION',
         gasConsumption: 'EXISTING',
-        startClock: 'EXISTING',
+        startClock: null,
       }
     }
   },
@@ -258,8 +261,7 @@ const handlePreview = async () => {
       step.value = 'resolve'
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to reimport profile'
-    error.value = message
+    error.value = extractErrorDetail(err)
     console.error('Reimport preview error:', err)
   } finally {
     isLoading.value = false
@@ -284,8 +286,13 @@ const commit = async (profileId: number, pendingImportId: number, body: Reimport
     emit('reimported', response.data)
     close()
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to apply reimport'
-    error.value = message
+    if (axios.isAxiosError(err) && err.response?.status === 400 &&
+        err.response.data?.code === 'REIMPORT_CLOCK_CONFLICT' && preview.value) {
+      preview.value.conflicts.clockOffset = err.response.data.clockOffset
+      resolution.value.startClock = null
+      step.value = 'resolve'
+    }
+    error.value = extractErrorDetail(err)
     console.error('Reimport commit error:', err)
   } finally {
     isLoading.value = false

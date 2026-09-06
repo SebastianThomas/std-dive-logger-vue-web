@@ -228,7 +228,7 @@
           <i class="fas fa-spinner fa-spin"></i>
         </div>
         <p v-else-if="visError" class="py-4 text-sm text-red-600">{{ visError }}</p>
-        <SiteVisibilityChart v-else :logs="visLogs" />
+        <SiteVisibilityChart v-else :logs="visLogs" :zone-id="site?.zoneId" />
       </div>
     </div>
   </div>

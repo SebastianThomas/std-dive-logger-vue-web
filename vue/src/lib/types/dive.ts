@@ -58,7 +58,7 @@ export type DiveMeasurement = {
   time: number
   temperature: Temperature
   depth: number
-  ndl: string
+  ndl?: Duration | null
   deco: Deco[]
   po2?: {
     measured?: number
@@ -88,10 +88,10 @@ export type DiveProfileSummary = {
   end: number
   averageDepth: number
   maxDepth: number
-  surfaceInterval?: string
-  bottomTime: string
-  descentTime?: string
-  ascentTime?: string
+  surfaceInterval?: number
+  bottomTime: number
+  descentTime?: number
+  ascentTime?: number
   avgAscentRate?: number
   startN2?: number
   endN2?: number
@@ -109,7 +109,7 @@ export type DiveProfile = {
   summary: DiveProfileSummary
 }
 
-export type Duration = string
+export type Duration = number
 
 export type DiveSummary = {
   start: number
@@ -297,12 +297,10 @@ export const CYLINDER_MATERIAL_LABELS: Record<CylinderMaterial, string> = {
   STEEL: 'Steel',
 }
 
-/** One stretch of the dive a cylinder was actively breathed. Epoch millis (the serialized
- * `Instant` form), ordered. Either bound `null` = unbounded that side. Mirrors the backend record
- * `std-dive-logger-model/.../model/dive/gear/CylinderUsageWindow.java`. */
+/** Elapsed milliseconds from the dive start; null bounds are open-ended. */
 export type CylinderUsageWindow = {
-  start: number | null
-  end: number | null
+  start: Duration | null
+  end: Duration | null
 }
 
 /** What a cylinder was actually used for - decides how it feeds into gas-consumption
@@ -481,6 +479,7 @@ export type DiveBackfillMissingField =
   | 'NOTES'
 
 export type DiveBackfillStatus = {
+  zoneId?: string | null
   diveId: number
   number: number
   diveIdentifier: string
@@ -703,6 +702,7 @@ export type DiveSiteLink = {
 }
 
 export type DiveSite = {
+  zoneId?: string | null
   id?: number
   name: string
   latitude: number

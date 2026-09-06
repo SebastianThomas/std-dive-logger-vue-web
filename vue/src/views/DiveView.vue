@@ -4,6 +4,7 @@
     :style="{ minHeight: 'calc(100dvh - 80px)' }"
   >
     <DiveGraphContainer
+      :zone-id="dive?.site?.zoneId"
       v-if="graphOpen && dive?.profiles"
       :profiles="dive.profiles"
       :dive-id="diveId"
@@ -122,7 +123,7 @@
         <div class="flex flex-wrap items-center justify-between gap-2">
           <p class="text-gray-500 dark:text-gray-400 text-sm">
             {{ dive.site.name }} ·
-            {{ summary?.start ? formatDate(summary.start) : 'No start date' }}
+            {{ summary?.start ? formatDate(summary.start, dive?.site?.zoneId) : 'No start date' }}
           </p>
           <div v-if="dive.tags?.length" class="flex flex-wrap gap-1">
             <TagBadge
@@ -194,6 +195,7 @@
 
       <!-- Reimport Profile Modal (hidden power-user tool, opened via command palette) -->
       <ProfileReimportModal
+        :zone-id="dive?.site?.zoneId"
         v-if="dive.profiles"
         :profiles="dive.profiles"
         :dive-id="diveId"
@@ -433,6 +435,7 @@
           No profile recorded - this dive was logged manually.
         </div>
         <DiveGraphContainer
+      :zone-id="dive?.site?.zoneId"
           v-else-if="dive.profiles"
           ref="embeddedGraphRef"
           :profiles="dive.profiles"
@@ -454,7 +457,7 @@
           >
             <span
               >{{ profile.diveComputer?.customIdentifier ?? 'Unknown computer' }} ·
-              {{ formatDate(profile.start) }}</span
+              {{ formatDate(profile.start, dive?.site?.zoneId) }}</span
             >
             <button
               type="button"
@@ -702,7 +705,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
-import { formatISoDurationToTime, formatDate, elapsedMinutesSeconds } from '@/lib/utils/timeUtils'
+import { formatDurationToTime, formatDate, durationToMinutesSeconds } from '@/lib/utils/timeUtils'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import DiveSearchAndLink from '@/components/DiveSearchAndLink.vue'
 import DiveGraphContainer from '@/components/dive/view/DiveGraphContainer.vue'
@@ -939,9 +942,8 @@ const showCcrBreakdown = computed(() => {
 
 /** mm:ss-since-dive-start label for a cylinder usage-window bound (epoch millis or null). */
 const usageWindowLabel = (epochMs: number | null | undefined): string => {
-  const start = dive.value?.summary.start
-  if (epochMs == null || start == null) return '?'
-  const parts = elapsedMinutesSeconds(epochMs, start)
+  if (epochMs == null) return '?'
+  const parts = durationToMinutesSeconds(epochMs)
   if (!parts) return '?'
   return `${String(parts.minutes).padStart(2, '0')}:${String(parts.seconds).padStart(2, '0')}`
 }
@@ -1155,8 +1157,8 @@ const handleProfileReimported = (updatedDive: Dive) => {
   toast.success('Profile reimported successfully')
 }
 
-const formatDiveTime = (duration?: string): string => {
-  return formatISoDurationToTime(duration)
+const formatDiveTime = (duration?: number): string => {
+  return formatDurationToTime(duration)
 }
 
 // Keyboard shortcuts for DiveView

@@ -17,14 +17,14 @@ const payload: HomeDashboard = {
   userName: 'Sam',
   diveCount: 97,
   maxDiveNumber: 97,
-  totalBottomTime: 'PT71H',
+  totalBottomTime: 255600000,
   maxDepth: 42.3,
   firstDiveStart: Date.now() - 400 * 86_400_000,
   lastDiveStart: Date.now() - 3 * 86_400_000,
   divesThisYear: 12,
   windows: {
-    last30Days: { diveCount: 2, bottomTime: 'PT1H30M' },
-    last365Days: { diveCount: 20, bottomTime: 'PT15H' },
+    last30Days: { diveCount: 2, bottomTime: 5400000 },
+    last365Days: { diveCount: 20, bottomTime: 54000000 },
     previous365Days: { diveCount: 14, bottomTime: null },
   },
   activityStats: {
@@ -64,7 +64,7 @@ const payload: HomeDashboard = {
       siteName: 'Malapascua',
       start: Date.now() - 3 * 86_400_000,
       maxDepth: 18.2,
-      bottomTime: 'PT52M',
+      bottomTime: 3120000,
     },
   ],
   highlightedDives: [
@@ -75,7 +75,7 @@ const payload: HomeDashboard = {
       siteName: 'Red Sea',
       start: Date.now() - 120 * 86_400_000,
       maxDepth: 30,
-      bottomTime: 'PT48M',
+      bottomTime: 2880000,
     },
   ],
   topBuddies: [
@@ -83,8 +83,8 @@ const payload: HomeDashboard = {
     { name: 'Jo', diveCount: 12 },
   ],
   records: {
-    deepest: { diveId: 8, diveNumber: 60, maxDepth: 42.3, bottomTime: 'PT35M' },
-    longest: { diveId: 9, diveNumber: 71, maxDepth: 12.0, bottomTime: 'PT1H48M' },
+    deepest: { diveId: 8, diveNumber: 60, maxDepth: 42.3, bottomTime: 2100000 },
+    longest: { diveId: 9, diveNumber: 71, maxDepth: 12.0, bottomTime: 6480000 },
   },
 }
 

@@ -45,6 +45,7 @@
             <i class="fa" :class="showEditProfile ? 'fa-chevron-up' : 'fa-chevron-down'" />
           </button>
           <DiveGraphContainer
+      :zone-id="loadedDive?.site?.zoneId"
             v-if="showEditProfile"
             minimal
             :profiles="loadedDive.profiles"

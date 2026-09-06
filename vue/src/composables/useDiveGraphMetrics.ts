@@ -89,7 +89,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
 
     for (const m of profile.measurements) {
       if (m.measurement.temperature?.value !== undefined) counts.temp++
-      if (m.measurement.ndl) counts.ndl++
+      if (m.measurement.ndl != null) counts.ndl++
       if (m.measurement.o2Tox !== undefined) counts.otu++
       if (m.measurement.cns !== undefined) counts.cns++
       // > 0, not just !== undefined - a computer in gauge mode (deco calc disabled) reports n2 as

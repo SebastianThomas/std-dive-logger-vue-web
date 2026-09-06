@@ -85,7 +85,7 @@ describe('EditDiveForm - cylinder usage windows', () => {
         { time: DIVE_START + 3000, gas: { o2: 0.21, he: 0, n2: 0.79 } },
         { time: DIVE_START + 4000, gas: { o2: 0.5, he: 0, n2: 0.5 } },
         { time: DIVE_START + 5000, gas: { o2: 0.5, he: 0, n2: 0.5 } },
-      ].map((m, i) => ({ id: i, measurement: { ...m, temperature: { value: 20, unit: 'CELSIUS' }, depth: 20, ndl: '', deco: [] } })),
+      ].map((m, i) => ({ id: i, measurement: { ...m, temperature: { value: 20, unit: 'CELSIUS' }, depth: 20, ndl: 0, deco: [] } })),
     } as unknown as DiveProfile
 
     const wrapper = mountForm(baseModel([cylinder()]), { profiles: [profile] })
@@ -99,8 +99,8 @@ describe('EditDiveForm - cylinder usage windows', () => {
     const cylinders = latestCylinders(wrapper)
     expect(cylinders).toHaveLength(1)
     expect(cylinders[0]!.usageWindows).toEqual([
-      { start: DIVE_START + 4000, end: DIVE_START + 5000 },
-      { start: DIVE_START + 2000, end: DIVE_START + 2000 },
+      { start: 4000, end: 5000 },
+      { start: 2000, end: 2000 },
     ])
   })
 })
@@ -148,7 +148,7 @@ describe('EditDiveForm - Part A / B / C', () => {
   it('shows the CCR unit section outright when a profile has CC-loop samples', () => {
     const ccProfile = {
       id: 1,
-      measurements: [{ id: 1, measurement: { mode: 'CC', time: DIVE_START, temperature: { value: 20, unit: 'CELSIUS' }, depth: 20, ndl: '', deco: [] } }],
+      measurements: [{ id: 1, measurement: { mode: 'CC', time: DIVE_START, temperature: { value: 20, unit: 'CELSIUS' }, depth: 20, ndl: 0, deco: [] } }],
     } as unknown as DiveProfile
     const wrapper = mountForm(baseModel([cylinder()]), { profiles: [ccProfile] })
     expect(wrapper.text()).toContain('Choose / Create CCR Unit')
@@ -232,6 +232,6 @@ describe('EditDiveForm - date & time', () => {
     await wrapper.get('#manual-start').setValue('2026-03-10T08:15')
     const emits = wrapper.emitted('update:modelValue') as Record<string, unknown>[][]
     const startTime = emits[emits.length - 1]![0]!.startTime as number
-    expect(startTime).toBe(new Date(2026, 2, 10, 8, 15).getTime())
+    expect(startTime).toBe(Date.parse('2026-03-10T08:15:00Z'))
   })
 })

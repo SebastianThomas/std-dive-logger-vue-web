@@ -102,7 +102,7 @@
           <td
             class="border border-gray-400 px-2 align-middle whitespace-nowrap text-gray-600 dark:text-gray-300"
           >
-            {{ formatDate(dive.summary.start) }}
+            {{ formatDate(dive.summary.start, dive.site?.zoneId) }}
           </td>
           <td
             class="border border-gray-400 px-2 align-middle text-right tabular-nums whitespace-nowrap"
@@ -112,7 +112,7 @@
           <td
             class="border border-gray-400 px-2 align-middle text-right tabular-nums whitespace-nowrap"
           >
-            {{ formatISoDurationToTime(dive.summary.bottomTime) }}
+            {{ formatDurationToTime(dive.summary.bottomTime) }}
           </td>
           <td class="border border-gray-400 px-2 align-middle">
             <span class="block truncate" :title="dive.site?.name || 'Unknown'">
@@ -160,7 +160,7 @@ import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 import type { DiveWithoutProfiles } from '@/lib/types/dive'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { SortDirection, SortColumn } from '@/lib/types/sort'
-import { formatISoDurationToTime, formatDate } from '@/lib/utils/timeUtils'
+import { formatDurationToTime, formatDate } from '@/lib/utils/timeUtils'
 
 const router = useRouter()
 

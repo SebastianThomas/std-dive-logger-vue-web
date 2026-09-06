@@ -21,7 +21,7 @@
           <label for="reference-profile">Reference Profile (anchor)</label>
           <select v-model.number="referenceProfileIdx" id="reference-profile" class="form-select">
             <option v-for="(profile, idx) in profiles" :key="profile.id" :value="idx">
-              Profile {{ idx + 1 }} ({{ formatDate(profile.start) }})
+              Profile {{ idx + 1 }} ({{ formatDate(profile.start, zoneId) }})
             </option>
           </select>
         </div>
@@ -31,7 +31,7 @@
           <select v-model.number="targetProfileIdx" id="target-profile" class="form-select">
             <option v-for="(profile, idx) in profiles" :key="profile.id" :value="idx">
               <span v-if="idx === referenceProfileIdx">(reference)</span>
-              <span v-else>Profile {{ idx + 1 }} ({{ formatDate(profile.start) }})</span>
+              <span v-else>Profile {{ idx + 1 }} ({{ formatDate(profile.start, zoneId) }})</span>
             </option>
           </select>
         </div>
@@ -61,7 +61,7 @@
               :model-value="selectedResetProfiles.includes(profile.id)"
               @update:model-value="toggleResetProfile(profile.id)"
             >
-              <span>Profile {{ idx + 1 }} ({{ formatDate(profile.start) }})</span>
+              <span>Profile {{ idx + 1 }} ({{ formatDate(profile.start, zoneId) }})</span>
             </StyledCheckbox>
           </div>
         </div>
@@ -103,6 +103,7 @@ import { formatDate } from '@/lib/utils/timeUtils'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
 
 interface Props {
+  zoneId?: string | null
   profiles: DiveProfile[]
   diveId: number
   isOpen: boolean

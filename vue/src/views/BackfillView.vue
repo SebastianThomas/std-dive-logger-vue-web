@@ -114,7 +114,7 @@
                   <span v-if="next!.diveIdentifier">- {{ next!.diveIdentifier }}</span>
                 </p>
                 <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {{ formatDate(next!.diveStart) }} · {{ next!.siteName }}
+                  {{ formatDate(next!.diveStart, next!.zoneId) }} · {{ next!.siteName }}
                 </p>
                 <div class="flex flex-wrap items-center gap-1.5 mt-2">
                   <span
@@ -198,7 +198,7 @@
                 </div>
                 <div class="shrink-0 flex flex-col items-end gap-1 max-w-[45%]">
                   <span class="text-xs text-gray-400 dark:text-gray-500 truncate max-w-full">
-                    {{ formatDate(status.diveStart) }} · {{ status.siteName }}
+                    {{ formatDate(status.diveStart, status.zoneId) }} · {{ status.siteName }}
                   </span>
                   <button
                     type="button"

@@ -21,7 +21,7 @@ const profile = (
     start,
     end,
     measurements: [],
-    summary: { start, end, averageDepth: 10, maxDepth: 20, bottomTime: 'PT40M', ...summaryOver },
+    summary: { start, end, averageDepth: 10, maxDepth: 20, bottomTime: 2400000, ...summaryOver },
   }) as unknown as DiveProfile
 
 const dive = (start: number, end: number): Pick<Dive, 'summary'> =>

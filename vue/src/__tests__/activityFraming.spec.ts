@@ -97,8 +97,8 @@ describe('pickActivityFraming', () => {
           eraPrecededByPause: true,
         }),
         windows: {
-          last30Days: { diveCount: 5, bottomTime: 'PT5H' },
-          last365Days: { diveCount: 58, bottomTime: 'PT44H' },
+          last30Days: { diveCount: 5, bottomTime: 18000000 },
+          last365Days: { diveCount: 58, bottomTime: 158400000 },
           previous365Days: { diveCount: 52, bottomTime: null },
         },
       }),
@@ -120,8 +120,8 @@ describe('pickActivityFraming', () => {
         lastDiveStart: Date.now() - 2 * DAY,
         activityStats: stats({ recentDivesPerMonth: 3, recentDivesPerYear: 36, eraStartMonth: ym(23) }),
         windows: {
-          last30Days: { diveCount: 10, bottomTime: 'PT8H' }, // a liveaboard week
-          last365Days: { diveCount: 40, bottomTime: 'PT30H' },
+          last30Days: { diveCount: 10, bottomTime: 28800000 }, // a liveaboard week
+          last365Days: { diveCount: 40, bottomTime: 108000000 },
           previous365Days: { diveCount: 36, bottomTime: null },
         },
       }),
@@ -139,8 +139,8 @@ describe('pickActivityFraming', () => {
         firstDiveStart: Date.now() - 40 * 30 * DAY,
         activityStats: stats({ recentDivesPerMonth: 1.5, recentDivesPerYear: 18 }),
         windows: {
-          last30Days: { diveCount: 1, bottomTime: 'PT45M' },
-          last365Days: { diveCount: 18, bottomTime: 'PT13H30M' },
+          last30Days: { diveCount: 1, bottomTime: 2700000 },
+          last365Days: { diveCount: 18, bottomTime: 48600000 },
           previous365Days: { diveCount: 12, bottomTime: null },
         },
       }),
@@ -158,7 +158,7 @@ describe('pickActivityFraming', () => {
         activityStats: stats({ recentDivesPerMonth: 0.5, recentDivesPerYear: 6 }),
         windows: {
           last30Days: { diveCount: 0, bottomTime: null },
-          last365Days: { diveCount: 5, bottomTime: 'PT4H' },
+          last365Days: { diveCount: 5, bottomTime: 14400000 },
           previous365Days: { diveCount: 14, bottomTime: null },
         },
       }),
@@ -170,7 +170,7 @@ describe('pickActivityFraming', () => {
     const f = pickActivityFraming(
       base({
         diveCount: 12,
-        totalBottomTime: 'PT9H',
+        totalBottomTime: 32400000,
         firstDiveStart: Date.now() - 6 * 365 * DAY,
         lastDiveStart: Date.now() - 150 * DAY,
         // dives every ~5 months - the backend doesn't mark this diver overdue
@@ -183,7 +183,7 @@ describe('pickActivityFraming', () => {
         }),
         windows: {
           last30Days: { diveCount: 0, bottomTime: null },
-          last365Days: { diveCount: 2, bottomTime: 'PT1H30M' },
+          last365Days: { diveCount: 2, bottomTime: 5400000 },
           previous365Days: { diveCount: 2, bottomTime: null },
         },
       }),
@@ -210,7 +210,7 @@ describe('pickActivityFraming', () => {
         }),
         windows: {
           last30Days: { diveCount: 0, bottomTime: null },
-          last365Days: { diveCount: 30, bottomTime: 'PT22H' },
+          last365Days: { diveCount: 30, bottomTime: 79200000 },
           previous365Days: { diveCount: 28, bottomTime: null },
         },
       }),
@@ -222,12 +222,12 @@ describe('pickActivityFraming', () => {
     const f = pickActivityFraming(
       base({
         diveCount: 135,
-        totalBottomTime: 'PT114H30M',
+        totalBottomTime: 412200000,
         firstDiveStart: Date.now() - 9 * 365 * DAY,
         activityStats: stats({ recentDivesPerMonth: 1.3, recentDivesPerYear: 16 }),
         windows: {
-          last30Days: { diveCount: 1, bottomTime: 'PT50M' },
-          last365Days: { diveCount: 16, bottomTime: 'PT12H' },
+          last30Days: { diveCount: 1, bottomTime: 3000000 },
+          last365Days: { diveCount: 16, bottomTime: 43200000 },
           previous365Days: { diveCount: 14, bottomTime: null },
         },
       }),
@@ -249,8 +249,8 @@ describe('pickActivityFraming', () => {
           overdue: false,
         }),
         windows: {
-          last30Days: { diveCount: 1, bottomTime: 'PT40M' },
-          last365Days: { diveCount: 5, bottomTime: 'PT4H' },
+          last30Days: { diveCount: 1, bottomTime: 2400000 },
+          last365Days: { diveCount: 5, bottomTime: 14400000 },
           previous365Days: { diveCount: 0, bottomTime: null },
         },
       }),
@@ -265,8 +265,8 @@ describe('pickActivityFraming', () => {
         firstDiveStart: Date.now() - 40 * 30 * DAY,
         activityStats: stats(), // all zeros: user not yet picked up by the analytics sweep
         windows: {
-          last30Days: { diveCount: 1, bottomTime: 'PT45M' },
-          last365Days: { diveCount: 18, bottomTime: 'PT13H' },
+          last30Days: { diveCount: 1, bottomTime: 2700000 },
+          last365Days: { diveCount: 18, bottomTime: 46800000 },
           previous365Days: { diveCount: 12, bottomTime: null },
         },
       }),

@@ -134,7 +134,7 @@ import DiveGraphTooltip, {
 import type { DiveProfile, DiveMeasurementWithId, DiveProfileSegmentWithId } from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
 import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
-import { formatISoDurationToMinutes, formatElapsedTime } from '@/lib/utils/timeUtils'
+import { formatDurationToMinutes, formatElapsedTime } from '@/lib/utils/timeUtils'
 import { generateId } from '@/lib/utils/cryptoUtils'
 import type { AxisUnitGroup, MetricType, ProfileMetricVisibility } from '@/lib/types/graph'
 import { DEFAULT_METRIC_CONFIGS } from '@/lib/types/graph'
@@ -1635,7 +1635,7 @@ function renderTooltipAtTime(
       absoluteTime: formatElapsedTime(m.measurement.time, graphStartTime),
       depth: m.measurement.depth,
       temp: interpolateAt(profilePoints?.temp, tVal) ?? m.measurement.temperature?.value,
-      ndl: formatISoDurationToMinutes(m.measurement.ndl),
+      ndl: formatDurationToMinutes(m.measurement.ndl),
       decoDepth,
       decoSeconds,
       otu: interpolateAt(profilePoints?.otu, tVal),

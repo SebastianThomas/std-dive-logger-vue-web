@@ -1,5 +1,5 @@
 import type { HomeDashboard, HomeWindow } from '@/lib/types/home'
-import { parseISODurationToMinutes } from '@/lib/utils/timeUtils'
+import { durationToMinutes } from '@/lib/utils/timeUtils'
 
 /**
  * The home dashboard's "activity" block is deliberately *not fixed* (per the user): it headlines a
@@ -29,7 +29,7 @@ const DAYS_PER_MONTH = 365.25 / 12
 
 function windowHours(w: HomeWindow): number | null {
   if (w.bottomTime == null) return null
-  return Math.round((parseISODurationToMinutes(w.bottomTime) / 60) * 10) / 10
+  return Math.round((durationToMinutes(w.bottomTime) / 60) * 10) / 10
 }
 
 function monthLabel(ym: string): string {

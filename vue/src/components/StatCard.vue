@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatISoDurationToTime } from '@/lib/utils/timeUtils'
+import { formatDurationToTime } from '@/lib/utils/timeUtils'
 import StatItem from './StatItem.vue'
 import type { UserDiveStats } from '@/lib/types/stats'
 
@@ -63,8 +63,8 @@ interface Props {
 
 defineProps<Props>()
 
-const formatDuration = (duration: string): string => {
-  return formatISoDurationToTime(duration)
+const formatDuration = (duration: number | undefined): string => {
+  return formatDurationToTime(duration)
 }
 
 const formatUnit = (unit: string): string => {

@@ -16,7 +16,7 @@ const sample = (id: number, time: number, gas?: { o2: number; he: number }): Div
     time,
     temperature: { value: 20, unit: 'CELSIUS' },
     depth: 20,
-    ndl: '',
+    ndl: null,
     deco: [],
     gas: gas ? { ...gas, n2: 1 - gas.o2 - gas.he } : undefined,
   },

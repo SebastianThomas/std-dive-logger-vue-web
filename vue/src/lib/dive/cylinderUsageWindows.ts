@@ -89,6 +89,7 @@ export function candidateBoundaryTimes(
   allCylinders: DiveConfigurationCylinder[],
   thisCylinderId: number,
   thisCylinderGas: { o2: number; he: number },
+  diveStartMs = profile?.start ?? 0,
 ): BoundaryCandidate[] {
   const out: BoundaryCandidate[] = []
   const seen = new Set<number>()
@@ -127,8 +128,8 @@ export function candidateBoundaryTimes(
   for (const c of allCylinders) {
     if (c.id === thisCylinderId) continue
     for (const w of c.usageWindows ?? []) {
-      push(w.start, 'other-cylinder')
-      push(w.end, 'other-cylinder')
+      push(w.start == null ? null : diveStartMs + w.start, 'other-cylinder')
+      push(w.end == null ? null : diveStartMs + w.end, 'other-cylinder')
     }
   }
 

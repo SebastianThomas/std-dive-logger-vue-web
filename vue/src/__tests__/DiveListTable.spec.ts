@@ -13,7 +13,7 @@ const dive: DiveWithoutProfiles = {
   site: { name: 'Wreck', latitude: 0, longitude: 0 },
   buddiesDives: [],
   namedBuddies: [],
-  summary: { start: 0, end: 0, maxDepth: 30, averageDepth: 20, bottomTime: 'PT30M', surfaceIntervalBefore: 'PT0M' },
+  summary: { start: 0, end: 0, maxDepth: 30, averageDepth: 20, bottomTime: 1800000, surfaceIntervalBefore: 0 },
   tags: [],
   highlighted: false,
   manualEntry: false,

@@ -197,7 +197,7 @@ import { ref, computed } from 'vue'
 import { CYLINDER_MATERIAL_LABELS, CYLINDER_ROLE_LABELS } from '@/lib/types/dive'
 import type { CylinderContribution, CylinderUsageWindow } from '@/lib/types/dive'
 import type { GasConsumptionComparisonView } from '@/lib/dive/gasConsumption'
-import { elapsedMinutesSeconds } from '@/lib/utils/timeUtils'
+import { durationToMinutesSeconds } from '@/lib/utils/timeUtils'
 import MathFormula, { type MathNode } from '@/components/ui/MathFormula.vue'
 import GasCalcGlossary from '@/components/dive/GasCalcGlossary.vue'
 
@@ -231,11 +231,10 @@ const deltaBar = (c: CylinderContribution): string =>
   c.startBar != null && c.endBar != null ? String(Math.round(c.startBar - c.endBar)) : '—'
 
 const windowsLabel = (windows: CylinderUsageWindow[]): string => {
-  const start = props.diveStartMs
   const pad = (n: number) => String(n).padStart(2, '0')
   const one = (ms: number | null): string => {
-    if (ms == null || start == null) return '?'
-    const t = elapsedMinutesSeconds(ms, start)
+    if (ms == null) return '?'
+    const t = durationToMinutesSeconds(ms)
     return t ? `${pad(t.minutes)}:${pad(t.seconds)}` : '?'
   }
   return windows.map((w) => `${one(w.start)}–${one(w.end)}`).join(', ')

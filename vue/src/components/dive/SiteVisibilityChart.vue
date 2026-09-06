@@ -101,7 +101,7 @@
             stroke-width="1"
           >
             <title>
-              #{{ p.diveNumber }} {{ p.diveIdentifier }} — {{ formatDate(p.date) }}: {{ p.meters }} m{{
+              #{{ p.diveNumber }} {{ p.diveIdentifier }} — {{ formatDate(p.date, zoneId) }}: {{ p.meters }} m{{
                 p.feeling ? ` (${FEELING_LABEL[p.feeling]})` : ''
               }}
             </title>
@@ -139,7 +139,7 @@ import { computed } from 'vue'
 import { formatDate } from '@/lib/utils/timeUtils'
 import type { SiteVisibilityLog, VisibilityFeeling } from '@/lib/types/dive'
 
-const props = defineProps<{ logs: SiteVisibilityLog[] }>()
+const props = defineProps<{ logs: SiteVisibilityLog[]; zoneId?: string | null }>()
 
 const W = 560
 const H = 300

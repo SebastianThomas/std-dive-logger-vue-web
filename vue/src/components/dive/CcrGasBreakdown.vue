@@ -130,7 +130,7 @@
 import { ref, computed } from 'vue'
 import { CYLINDER_MATERIAL_LABELS, CYLINDER_ROLE_LABELS } from '@/lib/types/dive'
 import type { CylinderConsumption, CylinderUsageWindow } from '@/lib/types/dive'
-import { elapsedMinutesSeconds } from '@/lib/utils/timeUtils'
+import { durationToMinutesSeconds } from '@/lib/utils/timeUtils'
 import MathFormula from '@/components/ui/MathFormula.vue'
 import GasCalcGlossary from '@/components/dive/GasCalcGlossary.vue'
 
@@ -153,11 +153,10 @@ const bailoutLitres = computed(() =>
 )
 
 const windowsLabel = (windows: CylinderUsageWindow[]): string => {
-  const start = props.diveStartMs
   const pad = (n: number) => String(n).padStart(2, '0')
   const one = (ms: number | null): string => {
-    if (ms == null || start == null) return '?'
-    const t = elapsedMinutesSeconds(ms, start)
+    if (ms == null) return '?'
+    const t = durationToMinutesSeconds(ms)
     return t ? `${pad(t.minutes)}:${pad(t.seconds)}` : '?'
   }
   return windows.map((w) => `${one(w.start)}–${one(w.end)}`).join(', ')

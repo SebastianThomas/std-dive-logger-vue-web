@@ -98,9 +98,9 @@
             <span class="font-semibold shrink-0">#{{ d.number }}</span>
             <span class="truncate">{{ d.identifier || d.siteName || 'Dive' }}</span>
             <span class="ml-auto shrink-0 text-xs text-gray-500 dark:text-gray-400">
-              {{ shortDate(d.start) }}
+              {{ shortDate(d.start, d.zoneId) }}
               <span v-if="d.maxDepth != null"> · {{ d.maxDepth.toFixed(0) }} m</span>
-              <span v-if="d.bottomTime"> · {{ formatISoDurationToTime(d.bottomTime) }}</span>
+              <span v-if="d.bottomTime"> · {{ formatDurationToTime(d.bottomTime) }}</span>
             </span>
           </RouterLink>
         </li>
@@ -129,7 +129,7 @@
           >
             <span>Longest — #{{ home.records.longest.diveNumber }}</span>
             <span class="font-semibold">
-              {{ formatISoDurationToTime(home.records.longest.bottomTime) }} →
+              {{ formatDurationToTime(home.records.longest.bottomTime) }} →
             </span>
           </RouterLink>
         </li>
@@ -156,9 +156,9 @@
             <span class="font-semibold shrink-0">#{{ d.number }}</span>
             <span class="truncate">{{ d.identifier || d.siteName || 'Dive' }}</span>
             <span class="ml-auto shrink-0 text-xs text-gray-500 dark:text-gray-400">
-              {{ shortDate(d.start) }}
+              {{ shortDate(d.start, d.zoneId) }}
               <span v-if="d.maxDepth != null"> · {{ d.maxDepth.toFixed(0) }} m</span>
-              <span v-if="d.bottomTime"> · {{ formatISoDurationToTime(d.bottomTime) }}</span>
+              <span v-if="d.bottomTime"> · {{ formatDurationToTime(d.bottomTime) }}</span>
             </span>
           </RouterLink>
         </li>
@@ -202,8 +202,8 @@ import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import {
   formatDate,
-  formatISoDurationToTime,
-  parseISODurationToMinutes,
+  formatDurationToTime,
+  durationToMinutes,
 } from '@/lib/utils/timeUtils'
 import { pickActivityFraming } from '@/lib/home/activityFraming'
 import type { HomeDashboard as HomeDashboardData } from '@/lib/types/home'
@@ -251,13 +251,13 @@ const activityFootnote = computed(() => {
 })
 
 // Date only (no time-of-day) - keeps the recent-dive rows to a single line on mobile.
-const shortDate = (ms: number | null | undefined) =>
-  ms == null ? '' : new Date(ms).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
+const shortDate = (ms: number | null | undefined, zoneId?: string | null) =>
+  ms == null ? '' : new Date(ms).toLocaleDateString('de-DE', { timeZone: zoneId ?? 'UTC', day: '2-digit', month: '2-digit', year: '2-digit' })
 
 const totalHours = computed(() =>
   home.value?.totalBottomTime == null
     ? null
-    : Math.round((parseISODurationToMinutes(home.value.totalBottomTime) / 60) * 10) / 10,
+    : Math.round((durationToMinutes(home.value.totalBottomTime) / 60) * 10) / 10,
 )
 
 const lastDiveLabel = computed(() => {

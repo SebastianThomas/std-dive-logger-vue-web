@@ -36,7 +36,7 @@ const completeDive = (): Dive =>
     profiles: [],
     buddiesDives: [],
     namedBuddies: [],
-    summary: { start: 0, end: 2_400_000, maxDepth: 30, averageDepth: 18, bottomTime: 'PT40M', surfaceIntervalBefore: 'PT1H' },
+    summary: { start: 0, end: 2_400_000, maxDepth: 30, averageDepth: 18, bottomTime: 2400000, surfaceIntervalBefore: 3600000 },
     tags: [],
     leader: { type: 'SELF' },
     teamTerminology: 'BUDDY',

@@ -1,6 +1,6 @@
 import type { DiveMeasurementWithId } from '@/lib/types/dive'
 import type { MetricType } from '@/lib/types/graph'
-import { parseISODurationToMinutes } from '@/lib/utils/timeUtils'
+import { durationToMinutes } from '@/lib/utils/timeUtils'
 import type { Line } from 'd3'
 import type { Ref } from 'vue'
 
@@ -43,8 +43,8 @@ export const EXTRACTORS: Record<
   // instant deco cleared - see splitByTimeGap in DiveGraph.vue, which breaks the drawn line across
   // the resulting gap instead of connecting it with a misleading diagonal.
   ndl: (m) =>
-    m.measurement.ndl && !m.measurement.deco?.length
-      ? [m.measurement.time, parseISODurationToMinutes(m.measurement.ndl)]
+    m.measurement.ndl != null && !m.measurement.deco?.length
+      ? [m.measurement.time, durationToMinutes(m.measurement.ndl)]
       : null,
   otu: (m) => (m.measurement.o2Tox !== undefined ? [m.measurement.time, m.measurement.o2Tox] : null),
   cns: (m) => (m.measurement.cns !== undefined ? [m.measurement.time, m.measurement.cns] : null),

@@ -9,7 +9,7 @@ vi.mock('@/composables/useApi', () => ({
 }))
 
 function summaryStartingAt(start: number): DiveSummary {
-  return { start, end: start, maxDepth: 0, averageDepth: 0, bottomTime: 'PT0S', surfaceIntervalBefore: 'PT0S' }
+  return { start, end: start, maxDepth: 0, averageDepth: 0, bottomTime: 0, surfaceIntervalBefore: 0 }
 }
 
 function diveWithId(id: number, start: number): Partial<DiveWithoutProfiles> {

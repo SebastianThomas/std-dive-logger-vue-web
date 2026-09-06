@@ -13,7 +13,7 @@ const cc = (over: Partial<CylinderConsumption> = {}): CylinderConsumption => ({
   ocConsumedLiters: null,
   ocPressureMinutes: null,
   bailoutPressureMinutes: 45,
-  openCircuitWindows: [{ start: START + 55 * 60_000, end: START + 65 * 60_000 }],
+  openCircuitWindows: [{ start: 55 * 60_000, end: 65 * 60_000 }],
   contributions: [
     {
       waterVolumeLiters: 12,
@@ -25,7 +25,7 @@ const cc = (over: Partial<CylinderConsumption> = {}): CylinderConsumption => ({
       usageWindows: [],
       pressureMinutes: 45,
       rmvLiters: 22,
-      effectiveWindows: [{ start: START + 55 * 60_000, end: START + 65 * 60_000 }],
+      effectiveWindows: [{ start: 55 * 60_000, end: 65 * 60_000 }],
       coversWholeDive: true,
     },
     {

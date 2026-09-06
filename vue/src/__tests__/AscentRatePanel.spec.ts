@@ -26,7 +26,7 @@ function buildProfile(depths: number[], stepSeconds = 5, epochOffset = 0, id = 0
       time: epochOffset + i * stepSeconds * 1000,
       temperature: DUMMY_TEMP,
       depth,
-      ndl: '',
+      ndl: null,
       deco: [],
     },
   }))
@@ -47,7 +47,7 @@ function buildProfile(depths: number[], stepSeconds = 5, epochOffset = 0, id = 0
       end: 0,
       averageDepth: 0,
       maxDepth: Math.max(...depths, 0),
-      bottomTime: 'PT0S',
+      bottomTime: 0,
     },
   }
 }

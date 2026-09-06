@@ -759,7 +759,7 @@
                     <label class="block text-xs mb-1">Start (mm:ss since dive start)</label>
                     <div class="flex items-center gap-1">
                       <input
-                        :value="elapsedMinutesSeconds(window.start, diveStart)?.minutes ?? ''"
+                        :value="durationToMinutesSeconds(window.start)?.minutes ?? ''"
                         type="number"
                         min="0"
                         placeholder="mm"
@@ -769,7 +769,7 @@
                       />
                       <span class="text-sm text-gray-500">:</span>
                       <input
-                        :value="elapsedMinutesSeconds(window.start, diveStart)?.seconds ?? ''"
+                        :value="durationToMinutesSeconds(window.start)?.seconds ?? ''"
                         type="number"
                         min="0"
                         max="59"
@@ -785,7 +785,7 @@
                       <label class="block text-xs mb-1">End (mm:ss since dive start)</label>
                       <div class="flex items-center gap-1">
                         <input
-                          :value="elapsedMinutesSeconds(window.end, diveStart)?.minutes ?? ''"
+                          :value="durationToMinutesSeconds(window.end)?.minutes ?? ''"
                           type="number"
                           min="0"
                           placeholder="mm"
@@ -795,7 +795,7 @@
                         />
                         <span class="text-sm text-gray-500">:</span>
                         <input
-                          :value="elapsedMinutesSeconds(window.end, diveStart)?.seconds ?? ''"
+                          :value="durationToMinutesSeconds(window.end)?.seconds ?? ''"
                           type="number"
                           min="0"
                           max="59"
@@ -885,10 +885,13 @@
           <input
             id="manual-start"
             v-model="manualStartLocal"
+              :aria-invalid="!!localTimeError"
             type="datetime-local"
             :max="nowDateTimeLocal"
             class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
           />
+            <p class="text-xs text-gray-500">{{ modelValue.diveSite?.zoneId ? `Site local time (${modelValue.diveSite.zoneId})` : 'UTC (site timezone unavailable)' }}</p>
+            <p v-if="localTimeError" role="alert" class="text-sm text-red-600">{{ localTimeError }}</p>
           <p v-if="!isManualDive" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Only change this if the dive computer's clock was wrong (e.g. never set, or off by a
             timezone). It shifts the whole dive — profile, measurements and cylinder windows — by
@@ -1060,6 +1063,7 @@
 </template>
 
 <script setup lang="ts">
+import { durationToMinutesSeconds, minutesSecondsToDuration, elapsedFromStart } from '@/lib/utils/timeUtils'
 import { ref, computed } from 'vue'
 import DiveSiteMapPicker from '@/components/DiveSiteMapPicker.vue'
 import DiveSiteSearch from '@/components/DiveSiteSearch.vue'
@@ -1100,7 +1104,6 @@ import type { User } from '@/lib/types/user'
 import type { DiveBackfillMissingField } from '@/lib/types/dive'
 import {
   elapsedMinutesSeconds,
-  epochFromElapsedMinutesSeconds,
   epochMsToDateTimeLocal,
   dateTimeLocalToEpochMs,
 } from '@/lib/utils/timeUtils'
@@ -1723,12 +1726,12 @@ const updateCylinderUsageElapsed = (
     // part missing isn't a usable timestamp.
     next = null
   } else {
-    const existing = elapsedMinutesSeconds(window[bound], props.diveStart) ?? {
+    const existing = durationToMinutesSeconds(window[bound]) ?? {
       minutes: 0,
       seconds: 0,
     }
     const parts = { ...existing, [part]: Math.max(0, Number(rawValue)) }
-    next = epochFromElapsedMinutesSeconds(parts.minutes, parts.seconds, props.diveStart)
+    next = minutesSecondsToDuration(parts.minutes, parts.seconds)
   }
   windows[wIndex] = { ...window, [bound]: next }
   setCylinderUsageWindows(index, windows)
@@ -1767,7 +1770,7 @@ const candidateChipClass = (kind: BoundaryCandidate['kind']): string =>
 const candidateChips = computed<BoundaryCandidate[][]>(() => {
   const cylinders = props.modelValue.configuration?.cylinders ?? []
   const profile = primaryProfile(props.profiles)
-  return cylinders.map((c) => candidateBoundaryTimes(profile, cylinders, c.id, c.gas))
+  return cylinders.map((c) => candidateBoundaryTimes(profile, cylinders, c.id, c.gas, props.diveStart))
 })
 
 const applyCandidate = (cyl: number, win: number, ms: number) => {
@@ -1779,7 +1782,7 @@ const applyCandidate = (cyl: number, win: number, ms: number) => {
   const windows = [...current.usageWindows]
   const window = windows[win]
   if (!window) return
-  windows[win] = { ...window, [bound]: ms }
+  windows[win] = { ...window, [bound]: elapsedFromStart(ms, props.diveStart) }
   setCylinderUsageWindows(cyl, windows)
 }
 
@@ -1799,11 +1802,16 @@ const isManualDive = computed(
 const showDateField = computed(() => (props.profiles?.length ?? 0) > 0 || isManualDive.value)
 
 // Dive start, edited as a local `datetime-local` value.
+const localTimeError = ref('')
 const manualStartLocal = computed<string>({
-  get: () => epochMsToDateTimeLocal(props.modelValue.startTime ?? props.diveStart),
-  set: (value: string) => updateField('startTime', dateTimeLocalToEpochMs(value)),
+  get: () => epochMsToDateTimeLocal(props.modelValue.startTime ?? props.diveStart, props.modelValue.diveSite?.zoneId ?? 'UTC'),
+  set: (value: string) => {
+    const instant = dateTimeLocalToEpochMs(value, props.modelValue.diveSite?.zoneId ?? 'UTC')
+    localTimeError.value = instant == null ? 'This local time is invalid or occurs twice during a clock change. Choose an unambiguous time.' : ''
+    if (instant != null) updateField('startTime', instant)
+  },
 })
-const nowDateTimeLocal = epochMsToDateTimeLocal(Date.now())
+const nowDateTimeLocal = computed(() => epochMsToDateTimeLocal(Date.now(), props.modelValue.diveSite?.zoneId ?? 'UTC'))
 
 // One suggestion list per cylinder index, computed from the primary profile's actual gas-switch
 // history - see cylinderUsageWindows.ts. Only meaningful while Usage Start/End are unset (the
@@ -1830,8 +1838,8 @@ const applySuggestedWindow = (index: number) => {
   const suggestions = cylinderSuggestions.value[index] ?? []
   const seen = new Set(current.usageWindows.map((w) => `${w.start}|${w.end}`))
   const additions: CylinderUsageWindow[] = suggestions
+    .map((w) => ({ start: elapsedFromStart(w.start, props.diveStart), end: elapsedFromStart(w.end, props.diveStart) }))
     .filter((w) => !seen.has(`${w.start}|${w.end}`))
-    .map((w) => ({ start: w.start, end: w.end }))
   if (!additions.length) return
   setCylinderUsageWindows(index, [...current.usageWindows, ...additions])
 }

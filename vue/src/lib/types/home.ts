@@ -1,10 +1,10 @@
 // Mirrors the backend `model/dive/home/*` records (GET /v1/home). Convention only - no
 // compile-time contract across the repo boundary. `Instant` serializes as epoch-millis (number),
-// `Duration` as an ISO-8601 string ("PT40M"); both are `@JsonInclude(NON_NULL)`.
+// `Duration` as numeric milliseconds; both are `@JsonInclude(NON_NULL)`.
 
 export interface HomeWindow {
   diveCount: number
-  bottomTime?: string | null
+  bottomTime?: number | null
 }
 
 export interface HomeActivity {
@@ -93,13 +93,14 @@ export interface DiverActivityStats {
 }
 
 export interface HomeRecentDive {
+  zoneId?: string | null
   id: number
   number: number
   identifier?: string | null
   siteName?: string | null
   start?: number | null
   maxDepth?: number | null
-  bottomTime?: string | null
+  bottomTime?: number | null
 }
 
 export interface HomeBuddy {
@@ -113,7 +114,7 @@ export interface HomeRecordDive {
   identifier?: string | null
   diveStart?: number | null
   maxDepth?: number | null
-  bottomTime?: string | null
+  bottomTime?: number | null
 }
 
 export interface HomeRecords {
@@ -125,7 +126,7 @@ export interface HomeDashboard {
   userName: string
   diveCount: number
   maxDiveNumber: number
-  totalBottomTime?: string | null
+  totalBottomTime?: number | null
   maxDepth?: number | null
   firstDiveStart?: number | null
   lastDiveStart?: number | null
