@@ -6,7 +6,7 @@ import { toast } from 'vue-sonner'
 
 /** Returns true and shows a toast when the error indicates the server is unreachable. */
 function handleServerUnreachable(err: unknown): boolean {
-  if (!axios.isAxiosError(err)) return false
+  if (axios.isCancel(err) || !axios.isAxiosError(err)) return false
   const status = err.response?.status
   // No response at all (network error / ECONNREFUSED) or gateway-level errors
   if (!err.response || status === 502 || status === 503 || status === 504) {
@@ -120,7 +120,10 @@ export function useApi() {
       }
 
       // Try refresh
-      const newToken = await getTokenOrRefresh({ force: true })
+      const newToken =
+        authStore.accessToken && authStore.accessToken !== token
+          ? authStore.accessToken
+          : await getTokenOrRefresh({ force: true })
       if (!newToken) throw new Error('Unauthorized: refresh failed')
 
       const retryConfig: AxiosRequestConfig = {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import axios, { type AxiosRequestConfig } from 'axios'
+import axios, { CanceledError, type AxiosRequestConfig } from 'axios'
+import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { useAuthStore } from '@/stores/auth'
 import { refreshAccessToken } from '@/lib/globals/auth/refreshToken'
@@ -22,6 +23,8 @@ vi.mock('axios', async () => {
   return { ...actual, default: mockedDefault }
 })
 
+vi.mock('vue-sonner', () => ({ toast: { error: vi.fn() } }))
+
 const mockedAxios = vi.mocked(axios)
 const mockedRefresh = vi.mocked(refreshAccessToken)
 
@@ -37,6 +40,7 @@ describe('useApi 401 refresh race', () => {
     setActivePinia(createPinia())
     mockedAxios.mockReset()
     mockedRefresh.mockReset()
+    vi.mocked(toast.error).mockClear()
   })
 
   it('only refreshes once when two concurrent requests both hit a 401, and both get the fresh token', async () => {
@@ -80,6 +84,32 @@ describe('useApi 401 refresh race', () => {
 
     expect(authStore.isLoggedIn).toBe(true)
     expect(authStore.accessToken).toBe('fresh-token')
+  })
+
+  it('reuses a refreshed token when another request returns a late 401', async () => {
+    const auth = useAuthStore()
+    auth.login('old')
+    mockedAxios.mockImplementationOnce(async () => {
+      auth.login('already-refreshed')
+      throw makeUnauthorizedError()
+    }).mockResolvedValueOnce({ data: 'ok' })
+
+    await useApi().getWithToken('/v1/home')
+
+    expect(mockedRefresh).not.toHaveBeenCalled()
+    expect(mockedAxios).toHaveBeenLastCalledWith(expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: 'Bearer already-refreshed' }),
+    }))
+  })
+
+  it('does not report canceled requests as server outages', async () => {
+    useAuthStore().login('token')
+    const cancellation = new CanceledError()
+    mockedAxios.mockRejectedValueOnce(cancellation)
+
+    await expect(useApi().getWithToken('/v1/home')).rejects.toBe(cancellation)
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(mockedRefresh).not.toHaveBeenCalled()
   })
 
   it('logs out and rejects both callers when the shared refresh fails', async () => {

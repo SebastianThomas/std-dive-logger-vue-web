@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { resolveAutocompleteUrl } from '@/lib/globals/url/resolveUrl'
 
@@ -62,13 +62,27 @@ const options = ref<Option[]>([])
 const showSuggestions = ref(false)
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null
 
-const handleInputChange = async (event: Event) => {
+let controller: AbortController | null = null
+let blurTimeout: ReturnType<typeof setTimeout> | null = null
+
+function cancelSearch() {
+  if (debounceTimeout) clearTimeout(debounceTimeout)
+  controller?.abort()
+}
+
+onBeforeUnmount(() => {
+  cancelSearch()
+  if (blurTimeout) clearTimeout(blurTimeout)
+})
+
+const handleInputChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   inputValue.value = target.value
 
-  if (debounceTimeout) {
-    clearTimeout(debounceTimeout)
-  }
+  cancelSearch()
+  options.value = []
+  const request = new AbortController()
+  controller = request
 
   if (!inputValue.value.trim()) {
     options.value = []
@@ -81,7 +95,9 @@ const handleInputChange = async (event: Event) => {
         resolveAutocompleteUrl(
           `/v1/autocomplete/${props.suburl}?query=${encodeURIComponent(inputValue.value)}`,
         ),
+        { signal: request.signal },
       )
+      if (request.signal.aborted) return
 
       if (Array.isArray(res.data)) {
         options.value = res.data
@@ -89,6 +105,7 @@ const handleInputChange = async (event: Event) => {
         options.value = res.data.result || []
       }
     } catch (err) {
+      if (request.signal.aborted) return
       console.error('Failed to fetch autocomplete options', err)
       options.value = []
     }
@@ -96,6 +113,7 @@ const handleInputChange = async (event: Event) => {
 }
 
 const selectOption = (option: Option) => {
+  cancelSearch()
   emit('selected', option)
   inputValue.value = option.name
   options.value = []
@@ -103,7 +121,8 @@ const selectOption = (option: Option) => {
 }
 
 const hideSuggestions = () => {
-  setTimeout(() => {
+  if (blurTimeout) clearTimeout(blurTimeout)
+  blurTimeout = setTimeout(() => {
     showSuggestions.value = false
   }, 100)
 }
