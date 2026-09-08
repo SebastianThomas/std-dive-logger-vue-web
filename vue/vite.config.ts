@@ -36,9 +36,9 @@ export default defineConfig(({ mode }) => {
         targets: [
           {
             src: 'node_modules/@fortawesome/fontawesome-free/webfonts/*',
-            dest: 'webfonts'
-          }
-        ]
+            dest: 'webfonts',
+          },
+        ],
       }),
       // Progressive Web App: installable, offline app shell, cached map tiles + API reads.
       // Skipped under Vitest - the SW/manifest machinery is irrelevant to unit tests.
@@ -60,8 +60,7 @@ export default defineConfig(({ mode }) => {
               manifest: {
                 name: 'STD Dive Log',
                 short_name: 'STD Dive Log',
-                description:
-                  'Your scuba dive logbook - profiles, trends, buddies and dive sites.',
+                description: 'Your scuba dive logbook - profiles, trends, buddies and dive sites.',
                 lang: 'en',
                 theme_color: '#0b1220',
                 background_color: '#0b1220',
@@ -118,9 +117,14 @@ export default defineConfig(({ mode }) => {
                       /^https:\/\/([a-d]\.basemaps\.cartocdn\.com|[a-c]\.tile\.openstreetmap\.org)\/.*/i,
                     handler: 'CacheFirst',
                     options: {
-                      cacheName: 'dtl-map-tiles',
-                      expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 30 },
-                      cacheableResponse: { statuses: [0, 200] },
+                      cacheName: 'dtl-map-tiles-v2',
+                      expiration: {
+                        maxEntries: 200,
+                        maxAgeSeconds: 60 * 60 * 24 * 7,
+                        purgeOnQuotaError: true,
+                      },
+                      // Opaque responses consume ~7 MB each in browser quota accounting.
+                      cacheableResponse: { statuses: [200] },
                     },
                   },
                 ],
@@ -133,7 +137,7 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url))
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
     server: {

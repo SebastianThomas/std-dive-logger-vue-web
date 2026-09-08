@@ -1,3 +1,8 @@
+// Retire the old opaque tile cache when the updated worker takes over.
+self.addEventListener('activate', (event) => {
+  event.waitUntil(caches.delete('dtl-map-tiles'))
+})
+
 // Handles incoming web pushes and notification clicks. Payload matches the backend
 // WebPushMessage: { title, body, url, tag }.
 

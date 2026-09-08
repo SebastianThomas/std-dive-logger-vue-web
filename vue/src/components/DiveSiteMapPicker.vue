@@ -8,7 +8,11 @@
       @update:zoom="onZoomUpdate"
       @update:center="onCenterUpdate"
     >
-      <l-tile-layer :url="tiles.url" :attribution="tiles.attribution" />
+      <l-tile-layer
+        :url="tiles.url"
+        :attribution="tiles.attribution"
+        :options="{ crossOrigin: 'anonymous' }"
+      />
       <l-marker v-if="markerCoords" :lat-lng="markerCoords" :icon="defaultIcon" />
     </l-map>
   </div>

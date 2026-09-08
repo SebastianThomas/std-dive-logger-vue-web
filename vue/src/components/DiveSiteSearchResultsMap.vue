@@ -1,7 +1,11 @@
 <template>
   <div class="relative w-full h-full">
     <l-map ref="mapRef" :zoom="initialZoom" :center="initialCenter" :use-global-leaflet="false">
-      <l-tile-layer :url="tiles.url" :attribution="tiles.attribution" />
+      <l-tile-layer
+        :url="tiles.url"
+        :attribution="tiles.attribution"
+        :options="{ crossOrigin: 'anonymous' }"
+      />
       <l-marker
         v-for="site in sites"
         :key="site.id ?? site.name"

@@ -1,14 +1,13 @@
 <template>
   <div class="suggestions-map rounded-xl shadow-md overflow-hidden">
     <l-map ref="mapRef" :zoom="4" :center="initialCenter" :use-global-leaflet="false">
-      <l-tile-layer :url="tiles.url" :attribution="tiles.attribution" />
+      <l-tile-layer
+        :url="tiles.url"
+        :attribution="tiles.attribution"
+        :options="{ crossOrigin: 'anonymous' }"
+      />
 
-      <l-marker
-        v-if="userLatLng"
-        :lat-lng="userLatLng"
-        :icon="userIcon"
-        :z-index-offset="1000"
-      >
+      <l-marker v-if="userLatLng" :lat-lng="userLatLng" :icon="userIcon" :z-index-offset="1000">
         <l-popup>You are here</l-popup>
       </l-marker>
 
@@ -85,10 +84,7 @@ const userIcon = new DivIcon({
 }) as unknown as Icon<IconOptions>
 
 const fit = (attempt = 0) => {
-  const points: [number, number][] = located.value.map((s) => [
-    s.site.latitude,
-    s.site.longitude,
-  ])
+  const points: [number, number][] = located.value.map((s) => [s.site.latitude, s.site.longitude])
   if (userLatLng.value) points.push(userLatLng.value)
   if (points.length < 1) return
   nextTick(() => {

@@ -12,7 +12,11 @@
       @update:center="(c) => onMapUpdate(c, undefined)"
       @click="handleMapClick"
     >
-      <l-tile-layer :url="tiles.url" :attribution="tiles.attribution" />
+      <l-tile-layer
+        :url="tiles.url"
+        :attribution="tiles.attribution"
+        :options="{ crossOrigin: 'anonymous' }"
+      />
       <l-marker-cluster-group
         :max-cluster-radius="80"
         :zoom-to-bounds-on-click="true"
