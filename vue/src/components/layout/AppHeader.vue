@@ -10,7 +10,7 @@
           class="h-16 w-16 transition-all duration-300"
         />
         <h1 v-if="showTitle" class="text-lg sm:text-xl font-bold text-white ml-4">
-          Dive Together Log {{ pageName }}
+          STD Dive Log {{ pageName }}
         </h1>
       </router-link>
     </div>

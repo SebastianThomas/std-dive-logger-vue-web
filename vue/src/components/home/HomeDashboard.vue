@@ -90,20 +90,18 @@
         </RouterLink>
       </div>
       <ul class="mt-1 divide-y divide-gray-100 dark:divide-gray-700 text-sm">
-        <li v-for="d in home.highlightedDives" :key="d.id">
-          <RouterLink
-            :to="{ name: 'DiveView', params: { diveId: d.id } }"
-            class="flex items-baseline gap-x-2 py-1.5 hover:text-blue-600"
-          >
-            <span class="font-semibold shrink-0">#{{ d.number }}</span>
-            <span class="truncate">{{ d.identifier || d.siteName || 'Dive' }}</span>
-            <span class="ml-auto shrink-0 text-xs text-gray-500 dark:text-gray-400">
-              {{ shortDate(d.start, d.zoneId) }}
-              <span v-if="d.maxDepth != null"> · {{ d.maxDepth.toFixed(0) }} m</span>
-              <span v-if="d.bottomTime"> · {{ formatDurationToTime(d.bottomTime) }}</span>
-            </span>
-          </RouterLink>
-        </li>
+        <HomeDiveRow
+          v-for="d in home.highlightedDives"
+          :key="d.id"
+          :dive-id="d.id"
+          :number="d.number"
+          :identifier="d.identifier"
+          :site-name="d.siteName"
+          :start="d.start"
+          :zone-id="d.zoneId"
+          :max-depth="d.maxDepth"
+          :bottom-time="d.bottomTime"
+        />
       </ul>
     </section>
 
@@ -111,28 +109,32 @@
     <section v-if="hasRecords" class="rounded-xl bg-white bg-opacity-90 shadow-md p-3 md:p-5" :style="{ color: 'var(--foreground)' }">
       <h2 class="text-base md:text-lg font-semibold">Records</h2>
       <ul class="mt-1 divide-y divide-gray-100 dark:divide-gray-700 text-sm">
-        <li v-if="home.records.deepest">
-          <RouterLink
-            :to="{ name: 'DiveView', params: { diveId: home.records.deepest.diveId } }"
-            class="flex items-baseline justify-between gap-2 py-1.5 hover:text-blue-600"
-          >
-            <span>Deepest — #{{ home.records.deepest.diveNumber }}</span>
-            <span class="font-semibold">
-              {{ home.records.deepest.maxDepth?.toFixed(1) }} m →
-            </span>
-          </RouterLink>
-        </li>
-        <li v-if="home.records.longest">
-          <RouterLink
-            :to="{ name: 'DiveView', params: { diveId: home.records.longest.diveId } }"
-            class="flex items-baseline justify-between gap-2 py-1.5 hover:text-blue-600"
-          >
-            <span>Longest — #{{ home.records.longest.diveNumber }}</span>
-            <span class="font-semibold">
-              {{ formatDurationToTime(home.records.longest.bottomTime) }} →
-            </span>
-          </RouterLink>
-        </li>
+        <HomeDiveRow
+          v-if="home.records.deepest"
+          :dive-id="home.records.deepest.diveId"
+          :number="home.records.deepest.diveNumber"
+          :identifier="home.records.deepest.identifier"
+          :site-name="home.records.deepest.siteName"
+          :start="home.records.deepest.diveStart"
+          :zone-id="home.records.deepest.zoneId"
+          :max-depth="home.records.deepest.maxDepth"
+          :bottom-time="home.records.deepest.bottomTime"
+          badge="Deepest"
+          emphasize="depth"
+        />
+        <HomeDiveRow
+          v-if="home.records.longest"
+          :dive-id="home.records.longest.diveId"
+          :number="home.records.longest.diveNumber"
+          :identifier="home.records.longest.identifier"
+          :site-name="home.records.longest.siteName"
+          :start="home.records.longest.diveStart"
+          :zone-id="home.records.longest.zoneId"
+          :max-depth="home.records.longest.maxDepth"
+          :bottom-time="home.records.longest.bottomTime"
+          badge="Longest"
+          emphasize="time"
+        />
       </ul>
       <p v-if="milestone" class="mt-1 text-xs text-blue-600 dark:text-blue-400">
         {{ milestone }}
@@ -148,20 +150,18 @@
         </RouterLink>
       </div>
       <ul class="mt-1 divide-y divide-gray-100 dark:divide-gray-700 text-sm">
-        <li v-for="d in home.recentDives" :key="d.id">
-          <RouterLink
-            :to="{ name: 'DiveView', params: { diveId: d.id } }"
-            class="flex items-baseline gap-x-2 py-1.5 hover:text-blue-600"
-          >
-            <span class="font-semibold shrink-0">#{{ d.number }}</span>
-            <span class="truncate">{{ d.identifier || d.siteName || 'Dive' }}</span>
-            <span class="ml-auto shrink-0 text-xs text-gray-500 dark:text-gray-400">
-              {{ shortDate(d.start, d.zoneId) }}
-              <span v-if="d.maxDepth != null"> · {{ d.maxDepth.toFixed(0) }} m</span>
-              <span v-if="d.bottomTime"> · {{ formatDurationToTime(d.bottomTime) }}</span>
-            </span>
-          </RouterLink>
-        </li>
+        <HomeDiveRow
+          v-for="d in home.recentDives"
+          :key="d.id"
+          :dive-id="d.id"
+          :number="d.number"
+          :identifier="d.identifier"
+          :site-name="d.siteName"
+          :start="d.start"
+          :zone-id="d.zoneId"
+          :max-depth="d.maxDepth"
+          :bottom-time="d.bottomTime"
+        />
       </ul>
     </section>
 
@@ -173,6 +173,7 @@
           All buddies →
         </RouterLink>
       </div>
+      <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Weighted towards who you've dived with lately.</p>
       <div class="mt-1.5 flex flex-wrap gap-1.5">
         <span
           v-for="b in home.topBuddies"
@@ -180,7 +181,7 @@
           class="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200"
         >
           <i class="fas fa-user-group mr-1" aria-hidden="true"></i>{{ b.name }}
-          <span class="opacity-60">· {{ b.diveCount }}</span>
+          <span class="opacity-60">· {{ b.diveCount }}{{ buddyRecency(b.lastDivedAt) }}</span>
         </span>
       </div>
     </section>
@@ -200,17 +201,14 @@ import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
-import {
-  formatDate,
-  formatDurationToTime,
-  durationToMinutes,
-} from '@/lib/utils/timeUtils'
+import { formatDate, durationToMinutes } from '@/lib/utils/timeUtils'
 import { pickActivityFraming } from '@/lib/home/activityFraming'
 import type { HomeDashboard as HomeDashboardData } from '@/lib/types/home'
 import HomeSkeleton from '@/components/home/HomeSkeleton.vue'
 import HomeQuickLinks from '@/components/home/HomeQuickLinks.vue'
 import HomeActivityExtras from '@/components/home/HomeActivityExtras.vue'
 import HomeReminders from '@/components/home/HomeReminders.vue'
+import HomeDiveRow from '@/components/home/HomeDiveRow.vue'
 
 const { getWithToken } = useApi()
 const { readOnly } = useReadOnlyMode()
@@ -250,9 +248,15 @@ const activityFootnote = computed(() => {
   return parts.filter(Boolean).join(' · ')
 })
 
-// Date only (no time-of-day) - keeps the recent-dive rows to a single line on mobile.
-const shortDate = (ms: number | null | undefined, zoneId?: string | null) =>
-  ms == null ? '' : new Date(ms).toLocaleDateString('de-DE', { timeZone: zoneId ?? 'UTC', day: '2-digit', month: '2-digit', year: '2-digit' })
+// Small "· 3 mo ago" suffix on a regular-buddy chip, reinforcing the recency-weighted ranking.
+const buddyRecency = (ms: number | null | undefined): string => {
+  if (ms == null) return ''
+  const days = Math.floor((Date.now() - ms) / 86_400_000)
+  if (days <= 31) return ' · this month'
+  const months = Math.round(days / 30.44)
+  if (months < 12) return ` · ${months} mo ago`
+  return ` · ${Math.round(months / 12)} y ago`
+}
 
 const totalHours = computed(() =>
   home.value?.totalBottomTime == null

@@ -26,10 +26,10 @@
       <div class="flex shrink-0 items-center gap-2">
         <RouterLink
           v-if="r.kind === 'DIVE_AGAIN_NUDGE'"
-          :to="{ name: 'MapView' }"
+          :to="{ name: 'DiveSiteSuggestions' }"
           class="rounded-lg bg-amber-600 px-3 py-1 text-sm text-white hover:bg-amber-700"
         >
-          Find your next site →
+          Suggest a site →
         </RouterLink>
         <button
           type="button"

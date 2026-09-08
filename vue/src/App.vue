@@ -104,7 +104,7 @@ useNumberInputGuard()
 
 // Page name shown next to the logo in the header - the route's own name is a bare PascalCase
 // identifier (e.g. "DiveComputerDetail"), not something to show a user directly, so split it into
-// separate words before it's glued onto "Dive Together Log ".
+// separate words before it's glued onto "STD Dive Log ".
 const route = useRoute()
 const pageName = computed(() => {
   const name = route.name?.toString() ?? ''

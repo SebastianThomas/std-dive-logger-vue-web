@@ -29,6 +29,7 @@ const stats = (over: Partial<DiverActivityStats> = {}): DiverActivityStats => ({
   distinctSites: 0,
   newSitesThisYear: 0,
   divesThisYear: 0,
+  divesByThisPointLastYear: 0,
   projectedDivesThisYear: null,
   nextMilestone: null,
   divesToNextMilestone: null,
@@ -147,7 +148,7 @@ describe('pickActivityFraming', () => {
     )
     expect(f.mode).toBe('STEADY')
     expect(f.dives).toBe(18)
-    expect(f.comparison).toEqual({ text: '+6 vs the year before', direction: 'up' })
+    expect(f.comparison).toEqual({ text: '+6 vs the 12 months before', direction: 'up' })
   })
 
   it('STEADY reports a drop as a down delta', () => {
@@ -163,7 +164,7 @@ describe('pickActivityFraming', () => {
         },
       }),
     )
-    expect(f.comparison).toEqual({ text: '-9 vs the year before', direction: 'down' })
+    expect(f.comparison).toEqual({ text: '-9 vs the 12 months before', direction: 'down' })
   })
 
   it('OCCASIONAL for a sparse diver, and a normal-length gap is not flagged as stale', () => {

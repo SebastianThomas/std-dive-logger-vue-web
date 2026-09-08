@@ -87,6 +87,7 @@ export interface DiverActivityStats {
   newSitesThisYear: number
 
   divesThisYear: number
+  divesByThisPointLastYear: number
   projectedDivesThisYear?: number | null
   nextMilestone?: number | null
   divesToNextMilestone?: number | null
@@ -106,13 +107,16 @@ export interface HomeRecentDive {
 export interface HomeBuddy {
   name: string
   diveCount: number
+  lastDivedAt?: number | null
 }
 
 export interface HomeRecordDive {
   diveId: number
   diveNumber: number
   identifier?: string | null
+  siteName?: string | null
   diveStart?: number | null
+  zoneId?: string | null
   maxDepth?: number | null
   bottomTime?: number | null
 }

@@ -12,7 +12,7 @@ import { toast } from 'vue-sonner'
 export function registerServiceWorker(): void {
   const updateSW = registerSW({
     onNeedRefresh() {
-      toast('A new version of Dive Together Log is ready.', {
+      toast('A new version of STD Dive Log is ready.', {
         duration: Number.POSITIVE_INFINITY,
         action: {
           label: 'Reload',

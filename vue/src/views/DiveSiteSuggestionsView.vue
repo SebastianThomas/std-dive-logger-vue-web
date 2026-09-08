@@ -60,6 +60,7 @@
       </p>
 
       <template v-else>
+        <SuggestionsMap :suggestions="suggestions" :user-location="userLocation" />
         <ul class="space-y-3">
           <li v-for="s in topPicks" :key="s.site.id" class="top-pick-card rounded-xl shadow-md p-5">
             <span class="top-pick-badge">
@@ -91,6 +92,7 @@ import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import LoadingProgress from '@/components/ui/LoadingProgress.vue'
 import SuggestionCard from '@/components/dive/SuggestionCard.vue'
+import SuggestionsMap from '@/components/dive/SuggestionsMap.vue'
 import type { DiveSiteSuggestion } from '@/lib/types/dive'
 
 const { getWithToken } = useApi()
@@ -99,6 +101,7 @@ const suggestions = ref<DiveSiteSuggestion[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const locationDenied = ref(false)
+const userLocation = ref<{ lat: number; lon: number } | null>(null)
 
 const DISTANCE_OPTIONS = [
   { label: 'Nearby', km: 20 },
@@ -138,6 +141,9 @@ const load = async () => {
   try {
     const position = await getLocation()
     locationDenied.value = position === null
+    userLocation.value = position
+      ? { lat: position.coords.latitude, lon: position.coords.longitude }
+      : null
     const params: Record<string, number> = { limit: 12 }
     if (position) {
       params.lat = position.coords.latitude

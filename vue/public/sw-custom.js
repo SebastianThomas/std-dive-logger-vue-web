@@ -6,9 +6,9 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {}
   } catch {
-    data = { title: 'Dive Together Log', body: event.data ? event.data.text() : '' }
+    data = { title: 'STD Dive Log', body: event.data ? event.data.text() : '' }
   }
-  const title = data.title || 'Dive Together Log'
+  const title = data.title || 'STD Dive Log'
   const options = {
     body: data.body || '',
     icon: '/pwa/pwa-192x192.png',

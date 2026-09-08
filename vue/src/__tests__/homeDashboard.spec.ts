@@ -51,6 +51,7 @@ const payload: HomeDashboard = {
     distinctSites: 14,
     newSitesThisYear: 2,
     divesThisYear: 12,
+    divesByThisPointLastYear: 9,
     projectedDivesThisYear: 24,
     nextMilestone: 100,
     divesToNextMilestone: 3,
@@ -128,7 +129,7 @@ describe('HomeDashboard', () => {
     expect(w.text()).toContain('97')
     expect(w.text()).toContain('42.3 m')
     expect(w.text()).toContain('Last 12 months') // adaptive framing (STEADY branch)
-    expect(w.text()).toContain('+6 vs the year before')
+    expect(w.text()).toContain('+6 vs the 12 months before')
     expect(w.text()).toContain('12 so far in ' + new Date().getFullYear())
     expect(w.text()).toContain('Records')
     expect(w.text()).not.toContain('Personal bests')
@@ -154,8 +155,9 @@ describe('HomeDashboard', () => {
 
     expect(w.text()).toContain('3-month streak')
     expect(w.text()).toContain('Mostly dives in July')
-    expect(w.text()).toContain('Going deeper (~24 m avg)')
+    expect(w.text()).toContain('Going deeper (avg max ~24 m)')
     expect(w.text()).toContain('2 new sites this year')
+    expect(w.text()).toContain('+3 vs this point last year')
     expect(w.text()).toContain('On track for ~24 this year')
     expect(w.text()).toContain('3 to dive #100')
   })

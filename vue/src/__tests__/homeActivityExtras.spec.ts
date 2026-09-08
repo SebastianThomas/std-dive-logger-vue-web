@@ -27,6 +27,7 @@ const stats = (over: Partial<DiverActivityStats> = {}): DiverActivityStats => ({
   distinctSites: 0,
   newSitesThisYear: 0,
   divesThisYear: 0,
+  divesByThisPointLastYear: 0,
   projectedDivesThisYear: null,
   nextMilestone: null,
   divesToNextMilestone: null,
@@ -63,9 +64,17 @@ describe('HomeActivityExtras', () => {
     ).toContain('Mostly dives in August')
   })
 
-  it('shows a shallower-lately trend without a depth number', () => {
-    const w = mount(HomeActivityExtras, { props: { stats: stats({ depthTrend: 'SHALLOWER' }) } })
-    expect(w.text()).toContain('Shallower lately')
+  it('labels the depth trend as an average max depth', () => {
+    expect(
+      mount(HomeActivityExtras, {
+        props: { stats: stats({ depthTrend: 'DEEPER', recentAvgMaxDepth: 24 }) },
+      }).text(),
+    ).toContain('Going deeper (avg max ~24 m)')
+    expect(
+      mount(HomeActivityExtras, {
+        props: { stats: stats({ depthTrend: 'SHALLOWER', recentAvgMaxDepth: 12 }) },
+      }).text(),
+    ).toContain('Shallower lately (avg max ~12 m)')
   })
 
   it('singularises the new-site chip', () => {

@@ -58,8 +58,8 @@ export default defineConfig(({ mode }) => {
                 'images/logo_with_name.webp',
               ],
               manifest: {
-                name: 'Dive Together Log',
-                short_name: 'DiveLog',
+                name: 'STD Dive Log',
+                short_name: 'STD Dive Log',
                 description:
                   'Your scuba dive logbook - profiles, trends, buddies and dive sites.',
                 lang: 'en',

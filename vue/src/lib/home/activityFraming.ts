@@ -104,9 +104,9 @@ export function pickActivityFraming(home: HomeDashboard): ActivityFraming {
     const delta = w365.diveCount - wPrev.diveCount
     const comparison =
       delta === 0
-        ? { text: 'same as the year before', direction: 'flat' as const }
+        ? { text: 'same as the 12 months before', direction: 'flat' as const }
         : {
-            text: `${delta > 0 ? '+' : ''}${delta} vs the year before`,
+            text: `${delta > 0 ? '+' : ''}${delta} vs the 12 months before`,
             direction: delta > 0 ? ('up' as const) : ('down' as const),
           }
     return {

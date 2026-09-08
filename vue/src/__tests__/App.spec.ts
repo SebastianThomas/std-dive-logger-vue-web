@@ -43,7 +43,7 @@ describe('App', () => {
       },
     })
     expect(wrapper.get('header').get('div').get('a').get('h1').text()).toContain(
-      'Dive Together Log',
+      'STD Dive Log',
     )
   })
 })

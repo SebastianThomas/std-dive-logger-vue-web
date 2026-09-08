@@ -20,7 +20,7 @@ let wrapper: VueWrapper | null = null
 
 const mountView = async () => {
   wrapper = mount(DiveSiteSuggestionsView, {
-    global: { stubs: { RouterLink: RouterLinkStub } },
+    global: { stubs: { RouterLink: RouterLinkStub, SuggestionsMap: true } },
   })
   await flushPromises()
   return wrapper
@@ -42,7 +42,7 @@ describe('DiveSiteSuggestionsView', () => {
       }),
     )
     wrapper = mount(DiveSiteSuggestionsView, {
-      global: { stubs: { RouterLink: RouterLinkStub } },
+      global: { stubs: { RouterLink: RouterLinkStub, SuggestionsMap: true } },
     })
     await flushPromises()
 

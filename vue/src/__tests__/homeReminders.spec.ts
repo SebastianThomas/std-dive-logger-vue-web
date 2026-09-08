@@ -57,10 +57,12 @@ describe('HomeReminders', () => {
     expect(links.some((l) => JSON.stringify(l.props('to')).includes('"diveId":42'))).toBe(true)
   })
 
-  it('gives the dive-again nudge a "find your next site" link', () => {
+  it('points the dive-again nudge at the site suggestions page', () => {
     const w = mountIt([nudge])
     const links = w.findAllComponents(RouterLinkStub)
-    expect(links.some((l) => JSON.stringify(l.props('to')).includes('MapView'))).toBe(true)
+    expect(
+      links.some((l) => JSON.stringify(l.props('to')).includes('DiveSiteSuggestions')),
+    ).toBe(true)
   })
 
   it('dismisses a reminder through the API and hides it immediately', async () => {

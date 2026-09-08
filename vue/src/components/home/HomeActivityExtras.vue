@@ -48,12 +48,16 @@ const chips = computed<Chip[]>(() => {
 
   if (s.depthTrend === 'DEEPER' && s.recentAvgMaxDepth != null) {
     out.push({
-      text: `Going deeper (~${s.recentAvgMaxDepth.toFixed(0)} m avg)`,
+      text: `Going deeper (avg max ~${s.recentAvgMaxDepth.toFixed(0)} m)`,
       tone: 'blue',
       icon: 'fa-solid fa-arrow-down',
     })
-  } else if (s.depthTrend === 'SHALLOWER') {
-    out.push({ text: 'Shallower lately', tone: 'neutral', icon: 'fa-solid fa-arrow-up' })
+  } else if (s.depthTrend === 'SHALLOWER' && s.recentAvgMaxDepth != null) {
+    out.push({
+      text: `Shallower lately (avg max ~${s.recentAvgMaxDepth.toFixed(0)} m)`,
+      tone: 'neutral',
+      icon: 'fa-solid fa-arrow-up',
+    })
   }
 
   if (s.newSitesThisYear >= 1) {
@@ -62,6 +66,18 @@ const chips = computed<Chip[]>(() => {
       tone: 'green',
       icon: 'fa-solid fa-map-pin',
     })
+  }
+
+  // Like-for-like: this year's count so far vs the same point last year (respects seasonality).
+  if (s.divesThisYear >= 1 && s.divesByThisPointLastYear >= 1) {
+    const delta = s.divesThisYear - s.divesByThisPointLastYear
+    if (delta !== 0) {
+      out.push({
+        text: `${delta > 0 ? '+' : ''}${delta} vs this point last year`,
+        tone: delta > 0 ? 'green' : 'neutral',
+        icon: delta > 0 ? 'fa-solid fa-arrow-trend-up' : 'fa-solid fa-arrow-trend-down',
+      })
+    }
   }
 
   if (s.projectedDivesThisYear != null && s.projectedDivesThisYear >= 1) {
