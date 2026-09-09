@@ -1,6 +1,6 @@
-// Retire the old opaque tile cache when the updated worker takes over.
+// Retire oversized tiles and the API cache that was shared across accounts.
 self.addEventListener('activate', (event) => {
-  event.waitUntil(caches.delete('dtl-map-tiles'))
+  event.waitUntil(Promise.all(['dtl-map-tiles', 'dtl-api'].map((name) => caches.delete(name))))
 })
 
 // Handles incoming web pushes and notification clicks. Payload matches the backend

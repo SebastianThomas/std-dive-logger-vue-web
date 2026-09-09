@@ -22,13 +22,8 @@ export const useAuthStore = defineStore('auth', () => {
   })
   const initialCheckDone = ref(false)
 
-  // Shared in-flight token refresh promise. When several requests need a
-  // fresh token at the same time, only the first one should actually trigger
-  // a refresh (refresh tokens are typically single-use/rotated); every other
-  // concurrent caller awaits this same promise instead of triggering its own
-  // redundant refresh. Kept as a plain (non-reactive) variable since it lives
-  // only for the lifetime of one refresh call and doesn't need to drive the UI.
   let refreshPromise: Promise<string | null> | null = null
+  const sessionVersion = ref(0)
 
   const isLoggedIn = computed(() => authState.value.loggedIn)
   const accessToken = computed(() =>
@@ -38,6 +33,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isInitialCheckDone = computed(() => initialCheckDone.value)
 
   function login(token: string) {
+    sessionVersion.value++
+    refreshPromise = null
     authState.value = {
       loggedIn: true,
       accessToken: token,
@@ -47,6 +44,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    sessionVersion.value++
+    refreshPromise = null
     authState.value = {
       loggedIn: false,
       refreshing: false,
@@ -54,18 +53,30 @@ export const useAuthStore = defineStore('auth', () => {
     initialCheckDone.value = true
   }
 
-  function setRefreshing() {
+  function refreshToken(): Promise<string | null> {
+    if (refreshPromise) return refreshPromise
+    const version = sessionVersion.value
     authState.value = { ...authState.value, refreshing: true }
-  }
-
-  /** Returns the currently in-flight refresh promise, if any. */
-  function getRefreshPromise(): Promise<string | null> | null {
-    return refreshPromise
-  }
-
-  /** Registers (or clears, when passed null) the shared in-flight refresh promise. */
-  function setRefreshPromise(promise: Promise<string | null> | null) {
-    refreshPromise = promise
+    const pending = Promise.resolve().then(async () => {
+      try {
+        const token = await refreshAccessToken()
+        if (version !== sessionVersion.value) return null
+        if (token) {
+          authState.value = { loggedIn: true, accessToken: token, refreshing: false }
+        } else {
+          logout()
+        }
+        return token
+      } finally {
+        if (version === sessionVersion.value) {
+          authState.value = { ...authState.value, refreshing: false }
+          initialCheckDone.value = true
+        }
+        if (refreshPromise === pending) refreshPromise = null
+      }
+    })
+    refreshPromise = pending
+    return pending
   }
 
   function waitForInitialCheck(): Promise<void> {
@@ -81,20 +92,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function tryInitialLogin() {
-    // Try to login initially by refreshing token (no artificial delay)
-    authState.value = { ...authState.value, refreshing: true }
     try {
-      const token = await refreshAccessToken()
-      if (token) {
-        authState.value = { loggedIn: true, accessToken: token, refreshing: false }
-      } else {
-        authState.value = { loggedIn: false, refreshing: false }
-      }
+      await refreshToken()
     } catch (err) {
-      authState.value = { loggedIn: false, refreshing: false }
       console.error('Initial token refresh failed', err)
-    } finally {
-      initialCheckDone.value = true
     }
   }
 
@@ -106,9 +107,8 @@ export const useAuthStore = defineStore('auth', () => {
     isInitialCheckDone,
     login,
     logout,
-    setRefreshing,
-    getRefreshPromise,
-    setRefreshPromise,
+    sessionVersion,
+    refreshToken,
     waitForInitialCheck,
     tryInitialLogin,
   }

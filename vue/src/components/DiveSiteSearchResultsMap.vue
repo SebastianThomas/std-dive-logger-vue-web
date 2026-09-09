@@ -1,6 +1,6 @@
 <template>
   <div class="relative w-full h-full">
-    <l-map ref="mapRef" :zoom="initialZoom" :center="initialCenter" :use-global-leaflet="false">
+    <l-map ref="mapRef" :zoom="initialZoom" :center="initialCenter" :use-global-leaflet="false" @ready="fitToSites">
       <l-tile-layer
         :url="tiles.url"
         :attribution="tiles.attribution"
@@ -32,7 +32,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
-import { latLngBounds } from 'leaflet'
 import { useThemeStore } from '@/stores/theme'
 import { defaultIcon } from '@/lib/map/leafletIcon'
 import { mapTileLayer } from '@/lib/globals/mapTiles'
@@ -62,7 +61,7 @@ const tiles = computed(() => mapTileLayer(themeStore.theme))
 
 const fitToSites = () => {
   if (props.sites.length < 2) return
-  const bounds = latLngBounds(props.sites.map((s) => [s.latitude, s.longitude] as [number, number]))
+  const bounds = props.sites.map((s) => [s.latitude, s.longitude] as [number, number])
   nextTick(() => {
     mapRef.value?.leafletObject?.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 })
   })

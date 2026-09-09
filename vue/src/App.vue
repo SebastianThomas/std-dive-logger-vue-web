@@ -169,12 +169,13 @@ const handleLogout = async () => {
   const url = resolveUrl('/api/auth/logout')
 
   try {
-    await axios.post(url, undefined, { withCredentials: true })
+    await axios.post(url, undefined, { withCredentials: true, timeout: 10000 })
   } catch (err) {
     console.error('Network error during logout:', err)
   }
 
   authStore.logout()
+  loggingOut = false
   router.push({ name: 'Home' })
 }
 

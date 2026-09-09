@@ -196,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
@@ -216,15 +216,22 @@ const { readOnly } = useReadOnlyMode()
 const home = ref<HomeDashboardData | null>(null)
 const loading = ref(true)
 
+let homeRequest: AbortController | null = null
+onBeforeUnmount(() => homeRequest?.abort())
 const load = async () => {
+  homeRequest?.abort()
+  const request = new AbortController()
+  homeRequest = request
   loading.value = true
   try {
-    home.value = (await getWithToken<HomeDashboardData>('/v1/home')).data
+    const response = await getWithToken<HomeDashboardData>('/v1/home', { signal: request.signal })
+    if (!request.signal.aborted) home.value = response.data
   } catch (err) {
+    if (request.signal.aborted) return
     home.value = null
     toast.error(`Couldn't load your home dashboard: ${extractErrorDetail(err)}`)
   } finally {
-    loading.value = false
+    if (!request.signal.aborted) loading.value = false
   }
 }
 onMounted(load)

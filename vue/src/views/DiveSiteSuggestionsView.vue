@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import LoadingProgress from '@/components/ui/LoadingProgress.vue'
@@ -134,12 +134,18 @@ const getLocation = (): Promise<GeolocationPosition | null> => {
   })
 }
 
+let request: AbortController | null = null
+onBeforeUnmount(() => request?.abort())
 const load = async () => {
+  request?.abort()
+  const current = new AbortController()
+  request = current
   loading.value = true
   error.value = null
 
   try {
     const position = await getLocation()
+    if (current.signal.aborted) return
     locationDenied.value = position === null
     userLocation.value = position
       ? { lat: position.coords.latitude, lon: position.coords.longitude }
@@ -152,12 +158,14 @@ const load = async () => {
     }
     const res = await getWithToken<DiveSiteSuggestion[]>('/v1/dives/sites/suggestions', {
       params,
+      signal: current.signal,
     })
-    suggestions.value = res.data ?? []
+    if (!current.signal.aborted) suggestions.value = res.data ?? []
   } catch (err) {
+    if (current.signal.aborted) return
     error.value = `Failed to load suggestions: ${extractErrorDetail(err)}`
   } finally {
-    loading.value = false
+    if (!current.signal.aborted) loading.value = false
   }
 }
 

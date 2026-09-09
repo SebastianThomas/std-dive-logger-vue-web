@@ -493,9 +493,13 @@ const fetchUserId = async () => {
 // narrower one), so a stale response must never be allowed to clobber state for what's currently
 // being requested.
 let fetchRequestId = 0
+let diveRequest: AbortController | null = null
 
 const fetchDives = async () => {
   const requestId = ++fetchRequestId
+  diveRequest?.abort()
+  const request = new AbortController()
+  diveRequest = request
   isLoading.value = true
   status.value = ''
   try {
@@ -540,11 +544,11 @@ const fetchDives = async () => {
       url = `/v1/dives?page=${currentPage.value - 1}&includeReader=${viewShared.value}&sortCol=${sortColumn.value}&sortDirection=${sortDirection.value}`
     }
 
-    const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(url)
+    const res = await getWithToken<PagedResult<DiveWithoutProfiles>>(url, { signal: request.signal })
 
     // A newer fetchDives() call has since started (e.g. the user kept typing/changed a filter) -
     // discard this response rather than overwriting state with stale results.
-    if (requestId !== fetchRequestId) {
+    if (request.signal.aborted || requestId !== fetchRequestId) {
       return
     }
 
@@ -557,7 +561,7 @@ const fetchDives = async () => {
       status.value = searchQuery.value ? 'No dives match your search.' : 'No dives found.'
     }
   } catch (e) {
-    if (requestId !== fetchRequestId) {
+    if (request.signal.aborted || requestId !== fetchRequestId) {
       return
     }
     console.error(e)
@@ -798,6 +802,7 @@ const updateUrlQuery = () => {
       page: currentPage.value > 1 ? String(currentPage.value) : undefined,
       search: searchQuery.value || undefined,
       shared: viewShared.value ? 'true' : undefined,
+      computerId: computerId.value ? String(computerId.value) : undefined,
       sortCol: sortColumn.value !== 'NUMBER' ? sortColumn.value : undefined,
       sortDir: sortDirection.value !== 'DESCENDING' ? sortDirection.value : undefined,
       tagIds,
@@ -863,17 +868,15 @@ watch(
 // undebounced fetchDives() call per keystroke. currentPage is reset to 1 for a new search; if it
 // was already 1, that reset is a no-op that wouldn't otherwise trigger the watch above, so fetch
 // explicitly in that case.
-watch(
-  searchQuery,
-  debounce(() => {
+const debouncedSearch = debounce(() => {
     if (currentPage.value !== 1) {
       currentPage.value = 1
       return
     }
     updateUrlQuery()
     fetchDives()
-  }, 300),
-)
+  }, 300)
+watch(searchQuery, debouncedSearch)
 
 // Initial load
 onMounted(() => {
@@ -885,6 +888,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  debouncedSearch.cancel()
+  diveRequest?.abort()
   window.removeEventListener('keydown', handleDiveListKeydown)
 })
 </script>

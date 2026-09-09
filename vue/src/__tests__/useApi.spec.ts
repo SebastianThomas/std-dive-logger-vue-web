@@ -90,16 +90,49 @@ describe('useApi 401 refresh race', () => {
     const auth = useAuthStore()
     auth.login('old')
     mockedAxios.mockImplementationOnce(async () => {
-      auth.login('already-refreshed')
+      mockedRefresh.mockResolvedValueOnce('already-refreshed')
+      await auth.refreshToken()
       throw makeUnauthorizedError()
     }).mockResolvedValueOnce({ data: 'ok' })
 
     await useApi().getWithToken('/v1/home')
 
-    expect(mockedRefresh).not.toHaveBeenCalled()
+    expect(mockedRefresh).toHaveBeenCalledTimes(1)
     expect(mockedAxios).toHaveBeenLastCalledWith(expect.objectContaining({
       headers: expect.objectContaining({ Authorization: 'Bearer already-refreshed' }),
     }))
+  })
+
+  it('never retries an old request under a newly logged-in account', async () => {
+    const auth = useAuthStore()
+    auth.login('account-a')
+    mockedAxios.mockImplementationOnce(async () => {
+      auth.login('account-b')
+      throw makeUnauthorizedError()
+    })
+    await expect(useApi().postWithToken('/v1/dives', {})).rejects.toBeInstanceOf(CanceledError)
+    expect(mockedAxios).toHaveBeenCalledTimes(1)
+    expect(auth.accessToken).toBe('account-b')
+  })
+
+  it('discards successful responses from a previous login session', async () => {
+    const auth = useAuthStore()
+    auth.login('account-a')
+    mockedAxios.mockImplementationOnce(async () => {
+      auth.login('account-b')
+      return { data: 'private account-a data' }
+    })
+    await expect(useApi().getWithToken('/v1/home')).rejects.toBeInstanceOf(CanceledError)
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('does not start a refresh for an already canceled request', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    await expect(useApi().getWithToken('/v1/home', { signal: controller.signal }))
+      .rejects.toBeInstanceOf(CanceledError)
+    expect(mockedRefresh).not.toHaveBeenCalled()
+    expect(mockedAxios).not.toHaveBeenCalled()
   })
 
   it('does not report canceled requests as server outages', async () => {

@@ -1,30 +1,14 @@
 import { fileURLToPath, URL } from 'node:url'
 
 import vue from '@vitejs/plugin-vue'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import mkcert from 'vite-plugin-mkcert'
 import { VitePWA } from 'vite-plugin-pwa'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
-const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
-  // The backend lives on its own origin, baked per build mode (.env.production / .env.staging).
-  // Resolve its host so the service worker can serve the last-known dashboard / dive list /
-  // dive view when the network is flaky - which, for a dive log, is often exactly when you want
-  // to look something up (on a boat, in a dive centre with bad wifi). Auth endpoints are never
-  // cached (see runtimeCaching below).
-  const env = loadEnv(mode, process.cwd(), 'VITE_')
-  const backendHost = (() => {
-    try {
-      return new URL(env.VITE_BACKEND_URL || 'https://ws.std-dive-logger.sthomas.ch').host
-    } catch {
-      return 'ws.std-dive-logger.sthomas.ch'
-    }
-  })()
-
+export default defineConfig(() => {
   return {
     plugins: [
       vue(),
@@ -40,7 +24,7 @@ export default defineConfig(({ mode }) => {
           },
         ],
       }),
-      // Progressive Web App: installable, offline app shell, cached map tiles + API reads.
+      // Progressive Web App: installable, offline app shell and cached map tiles.
       // Skipped under Vitest - the SW/manifest machinery is irrelevant to unit tests.
       ...(process.env.VITEST
         ? []
@@ -54,6 +38,7 @@ export default defineConfig(({ mode }) => {
               // (The multi-MB marketing photos stay out - see workbox.globIgnores.)
               includeAssets: [
                 'favicon.ico',
+                'leaflet/diver-trim.svg',
                 'pwa/apple-touch-icon-180x180.png',
                 'images/logo_with_name.webp',
               ],
@@ -96,21 +81,6 @@ export default defineConfig(({ mode }) => {
                 navigateFallbackDenylist: [/^\/api\//, /^\/v1\//],
                 cleanupOutdatedCaches: true,
                 runtimeCaching: [
-                  {
-                    // Backend GET reads (dashboard, dive list/view, sites...) - never the auth
-                    // endpoints. NetworkFirst: fresh when online, last-known when not.
-                    urlPattern: new RegExp(
-                      `^https://${escapeRe(backendHost)}/(?!api/auth)(v1|api)/.*`,
-                    ),
-                    method: 'GET',
-                    handler: 'NetworkFirst',
-                    options: {
-                      cacheName: 'dtl-api',
-                      networkTimeoutSeconds: 4,
-                      expiration: { maxEntries: 64, maxAgeSeconds: 60 * 60 * 24 },
-                      cacheableResponse: { statuses: [200] },
-                    },
-                  },
                   {
                     // Raster map tiles - CARTO (dark) and OpenStreetMap (light).
                     urlPattern:

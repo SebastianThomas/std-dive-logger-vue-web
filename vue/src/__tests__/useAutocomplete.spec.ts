@@ -92,3 +92,31 @@ describe('useAutocomplete', () => {
     expect(e.stopPropagation).not.toHaveBeenCalled()
   })
 })
+
+it.each(['reset', 'clear'] as const)('ignores a pending result after %s', async action => {
+  let finish!: (rows: string[]) => void
+  const ac = useAutocomplete({cacheKey:'race', fetch:() => new Promise<string[]>(resolve => { finish = resolve })})
+  ac.query.value = 'old'
+  const pending = ac.triggerNow()
+  if (action === 'reset') ac.reset()
+  else ac.onInput('')
+  finish(['stale'])
+  await pending
+  expect(ac.results.value).toEqual([])
+  expect(ac.loading.value).toBe(false)
+})
+
+it('does not let an in-flight request replace a cached result', async () => {
+  let finish!: (rows: string[]) => void
+  const fetch = vi.fn().mockResolvedValueOnce(['cached']).mockImplementationOnce(() => new Promise<string[]>(resolve => { finish = resolve }))
+  const ac = useAutocomplete<string>({ cacheKey: 'cache-race', fetch })
+  ac.query.value = 'cached'
+  await ac.triggerNow()
+  ac.query.value = 'slow'
+  const pending = ac.triggerNow()
+  ac.query.value = 'cached'
+  await ac.triggerNow()
+  finish(['stale'])
+  await pending
+  expect(ac.results.value).toEqual(['cached'])
+})

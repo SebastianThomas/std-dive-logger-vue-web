@@ -1,4 +1,5 @@
 import { Icon, DivIcon, type IconOptions } from 'leaflet'
+import './siteMarkers.css'
 
 const DIVER_ICON_URL = '/leaflet/diver-trim.svg'
 const PLAIN_ICON_SIZE: [number, number] = [40, 25]

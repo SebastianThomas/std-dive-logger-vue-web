@@ -150,9 +150,9 @@ const iconCreateFunction = computed(() => (cluster: { getChildCount: () => numbe
 
 const onMapUpdate = (center?: { lat: number; lng: number }, zoom?: number) => {
   setMapView({
-    lat: center?.lat || mapView.value.lat,
-    lon: center?.lng || mapView.value.lon,
-    zoom: zoom || mapView.value.zoom,
+    lat: center?.lat ?? mapView.value.lat,
+    lon: center?.lng ?? mapView.value.lon,
+    zoom: zoom ?? mapView.value.zoom,
   })
 }
 
@@ -233,47 +233,4 @@ onMounted(async () => {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
-:deep(.leaflet-div-icon.site-marker) {
-  background: transparent;
-  border: none;
-}
-
-:deep(.site-marker-halo) {
-  position: relative;
-  width: 56px;
-  height: 44px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-:deep(.site-marker-diver) {
-  width: 46px;
-  height: 28px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
-}
-
-:deep(.site-marker-badge) {
-  position: absolute;
-  left: 54%;
-  top: 4%;
-  transform: translate(-30%, -55%);
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #2563eb;
-  color: #fff;
-  border: 2px solid #fff;
-  font-size: 10.5px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-}
 </style>

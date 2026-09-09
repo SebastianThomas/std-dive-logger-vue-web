@@ -4,8 +4,10 @@ export default function debounce<Args, R, F extends (...args: Args[]) => R>(
 ) {
   let timeout: ReturnType<typeof setTimeout>
 
-  return (...args: Parameters<F>) => {
+  const debounced = (...args: Parameters<F>) => {
     clearTimeout(timeout)
     timeout = setTimeout(() => func(...args), delay)
   }
+  debounced.cancel = () => clearTimeout(timeout)
+  return debounced
 }
