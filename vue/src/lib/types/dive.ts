@@ -729,6 +729,29 @@ export type DiveSiteSuggestion = {
   topPick: boolean
 }
 
+export type DiveSiteStatsPeriod = {
+  start: number
+  diveCount: number
+  distinctDivers: number
+  averageMaxDepth?: number | null
+  deepestMaxDepth?: number | null
+}
+
+export type DiveSiteStats = {
+  computedAt?: number | null
+  totalDives: number
+  distinctDivers: number
+  recentDives30d: number
+  recentDistinctDivers30d: number
+  averageVisibilityMeters?: number | null
+  visibilitySampleSize: number
+  averageMaxDepth?: number | null
+  shallowestMaxDepth?: number | null
+  deepestMaxDepth?: number | null
+  highlightedDives: number
+  monthlyActivity: DiveSiteStatsPeriod[]
+}
+
 export type BasicDiveInfo = {
   id: number
   number: number

@@ -55,7 +55,7 @@
             <span class="font-medium">Type:</span> {{ DIVE_SITE_TYPE_LABELS[site.type] }}
           </p>
           <p v-if="site.countryRegion" class="text-sm">
-            <span class="font-medium">Region:</span> {{ site.countryRegion }}
+            <span class="font-medium">Location:</span> {{ site.countryRegion }}
           </p>
           <p v-if="site.maxDepth != null" class="text-sm">
             <span class="font-medium">Max depth:</span> {{ site.maxDepth }} m
@@ -112,15 +112,9 @@
               </option>
             </select>
           </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Region / Country</label>
-            <input
-              v-model="form.countryRegion"
-              type="text"
-              class="w-full rounded border px-2 py-1.5 dark:bg-gray-700"
-              maxlength="128"
-            />
-          </div>
+          <p class="text-xs text-gray-500">
+            Country and region are derived automatically from the site's coordinates.
+          </p>
           <div>
             <label class="block text-sm font-medium mb-1">Max depth (m)</label>
             <input
@@ -190,13 +184,68 @@
         </form>
       </div>
 
+      <div
+        v-if="site"
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 sm:p-6 mt-4 space-y-4"
+      >
+        <div>
+          <h2 class="text-lg font-semibold">Community activity</h2>
+          <p class="text-xs text-gray-500">Anonymous aggregates across every logged dive here.</p>
+        </div>
+        <div v-if="statsLoading" class="py-8 text-center text-gray-400">
+          <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        <p v-else-if="statsError" class="py-4 text-sm text-red-600">{{ statsError }}</p>
+        <template v-else-if="stats">
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-700/60 p-3">
+              <p class="text-xs text-gray-500 dark:text-gray-300">Logged dives</p>
+              <p class="text-xl font-semibold tabular-nums">{{ stats.totalDives }}</p>
+              <p v-if="stats.highlightedDives" class="text-[11px] text-gray-500">
+                {{ stats.highlightedDives }} highlighted
+              </p>
+            </div>
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-700/60 p-3">
+              <p class="text-xs text-gray-500 dark:text-gray-300">Divers</p>
+              <p class="text-xl font-semibold tabular-nums">{{ stats.distinctDivers }}</p>
+            </div>
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-700/60 p-3">
+              <p class="text-xs text-gray-500 dark:text-gray-300">Last 30 days</p>
+              <p class="text-xl font-semibold tabular-nums">{{ stats.recentDives30d }}</p>
+              <p v-if="stats.recentDistinctDivers30d" class="text-[11px] text-gray-500">
+                {{ stats.recentDistinctDivers30d }} divers
+              </p>
+            </div>
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-700/60 p-3">
+              <p class="text-xs text-gray-500 dark:text-gray-300">Avg max depth</p>
+              <p class="text-xl font-semibold tabular-nums">{{ metres(stats.averageMaxDepth) }}</p>
+            </div>
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-700/60 p-3">
+              <p class="text-xs text-gray-500 dark:text-gray-300">Deepest logged</p>
+              <p class="text-xl font-semibold tabular-nums">{{ metres(stats.deepestMaxDepth) }}</p>
+            </div>
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-700/60 p-3">
+              <p class="text-xs text-gray-500 dark:text-gray-300">Avg visibility</p>
+              <p class="text-xl font-semibold tabular-nums">{{ metres(stats.averageVisibilityMeters) }}</p>
+              <p v-if="stats.visibilitySampleSize" class="text-[11px] text-gray-500">
+                {{ stats.visibilitySampleSize }} readings
+              </p>
+            </div>
+          </div>
+          <SiteActivityChart :periods="stats.monthlyActivity" />
+        </template>
+      </div>
+
       <!-- Per-site visibility scatter: each of your dives here plotted by its time of year. -->
       <div
         v-if="site"
         class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mt-4 space-y-3"
       >
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-lg font-semibold">Visibility over the year</h2>
+          <div>
+            <h2 class="text-lg font-semibold">Your visibility logs</h2>
+            <p class="text-xs text-gray-500">Your own readings, arranged by time of year.</p>
+          </div>
           <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 text-sm">
             <button
               type="button"
@@ -241,11 +290,13 @@ import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { toast } from 'vue-sonner'
 import SiteVisibilityChart from '@/components/dive/SiteVisibilityChart.vue'
+import SiteActivityChart from '@/components/dive/SiteActivityChart.vue'
 import {
   DIVE_SITE_TYPE_LABELS,
   WATER_TYPE_LABELS,
   WATER_TYPES,
   type DiveSite,
+  type DiveSiteStats,
   type DiveSiteType,
   type SiteVisibilityLog,
   type WaterType,
@@ -264,14 +315,12 @@ const savingWaterType = ref(false)
 const form = ref<{
   type: DiveSiteType | null
   waterType: WaterType | null
-  countryRegion: string
   maxDepth: number | null
   description: string
   links: { url: string; label: string }[]
 }>({
   type: null,
   waterType: null,
-  countryRegion: '',
   maxDepth: null,
   description: '',
   links: [],
@@ -284,6 +333,25 @@ const visRange = ref<'year' | 'all'>('year')
 const visLogs = ref<SiteVisibilityLog[]>([])
 const visLoading = ref(false)
 const visError = ref<string | null>(null)
+const stats = ref<DiveSiteStats | null>(null)
+const statsLoading = ref(false)
+const statsError = ref<string | null>(null)
+
+const metres = (value: number | null | undefined) =>
+  value == null ? '—' : `${value.toFixed(1)} m`
+
+const loadStats = async () => {
+  statsLoading.value = true
+  statsError.value = null
+  try {
+    const res = await getWithToken<DiveSiteStats>(`/v1/dives/sites/${siteId()}/stats`)
+    stats.value = res.data
+  } catch (err) {
+    statsError.value = `Failed to load community activity: ${extractErrorDetail(err)}`
+  } finally {
+    statsLoading.value = false
+  }
+}
 
 const loadVisibility = async () => {
   visLoading.value = true
@@ -325,7 +393,6 @@ const startEditing = () => {
   form.value = {
     type: site.value.type ?? null,
     waterType: site.value.waterType ?? null,
-    countryRegion: site.value.countryRegion ?? '',
     maxDepth: site.value.maxDepth ?? null,
     description: site.value.description ?? '',
     links: (site.value.links ?? []).map((l) => ({ url: l.url, label: l.label ?? '' })),
@@ -342,7 +409,6 @@ const save = async () => {
   try {
     const res = await putWithToken<DiveSite>(`/v1/dives/sites/${siteId()}`, {
       description: form.value.description || null,
-      countryRegion: form.value.countryRegion || null,
       maxDepth: form.value.maxDepth,
       type: form.value.type,
       waterType: form.value.waterType,
@@ -377,6 +443,7 @@ const quickSetWaterType = async (waterType: WaterType) => {
 
 onMounted(() => {
   load()
+  loadStats()
   loadVisibility()
 })
 </script>
