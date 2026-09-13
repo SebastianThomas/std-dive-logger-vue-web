@@ -962,8 +962,8 @@
           </div>
         </div>
         <!-- >15% consistency warning + "show the working" (cylinder Δbar → litres → RMV) so a
-             mistyped cylinder pressure is easy to tell apart from a bad entered RMV. Cylinder-side
-             figures are from the last save; the per-cylinder table and entered figures are live. -->
+             mistyped cylinder pressure is easy to tell apart from a bad entered RMV. Everything is
+             live: cylinder-side figures come from DiveEditView's preview of the edited cylinders. -->
         <GasConsumptionBreakdown
           v-if="liveGasView.mismatch || liveGasView.contributions.length"
           :view="liveGasView"
@@ -1845,7 +1845,7 @@ const applySuggestedWindow = (index: number) => {
 }
 
 // Live consistency view for the gas fieldset - entered RMV/total vs the cylinder-derived figures
-// (from the last save) and vs the implied-from-total value. Drives the amber warning + the
+// (previewed for the edited cylinders by DiveEditView) and vs the implied-from-total value. Drives the amber warning + the
 // expandable per-cylinder "show the working" breakdown.
 // A CCR dive shows the bailout / injected-gas breakdown instead of the whole-dive comparison.
 const ccrGasView = computed<CylinderConsumption | null>(() => {

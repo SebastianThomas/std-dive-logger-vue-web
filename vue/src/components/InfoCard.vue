@@ -7,11 +7,7 @@
       :style="{ color: 'var(--foreground)', opacity: 0.8 }"
     >
       {{ title }}
-      <i
-        v-if="warning"
-        class="fa fa-triangle-exclamation text-amber-500 text-[0.6rem]"
-        :title="warning"
-      />
+      <WarningHint v-if="warning" :text="warning" icon-class="text-[0.7rem]" />
     </p>
     <div
       v-if="value !== undefined"
@@ -27,10 +23,12 @@
 </template>
 
 <script setup lang="ts">
+import WarningHint from '@/components/ui/WarningHint.vue'
+
 interface Props {
   title: string
   value?: string | number
-  /** When set, a small amber ⚠ with this text as its tooltip appears next to the title. */
+  /** When set, a small amber ⚠ next to the title explains this text on hover, focus and tap. */
   warning?: string | null
 }
 

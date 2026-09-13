@@ -31,6 +31,7 @@
                 v-model:show-segments="showSegments"
                 v-model:show-grid="showGrid"
                 v-model:show-ndl="showNdl"
+                v-model:show-tts="showTts"
                 v-model:show-otu="showOtu"
                 v-model:show-cns="showCns"
                 v-model:show-gf="showGf"
@@ -46,6 +47,7 @@
                 :per-profile-availability="perProfileAvailability"
                 :disable-temp="!combinedMetricsAvailability.hasTemp"
                 :disable-ndl="!combinedMetricsAvailability.hasNdl"
+                :disable-tts="!combinedMetricsAvailability.hasTts"
                 :disable-otu="!combinedMetricsAvailability.hasOtu"
                 :disable-cns="!combinedMetricsAvailability.hasCns"
                 :disable-gf="!combinedMetricsAvailability.hasGf"
@@ -87,6 +89,7 @@
             :show-segments="showSegments"
             :show-grid="showGrid"
             :show-ndl="showNdl"
+            :show-tts="showTts"
             :show-otu="showOtu"
             :show-cns="showCns"
             :show-gf="showGf"
@@ -106,6 +109,7 @@
             @trim-profile-changed="startTrimmingProfile"
             :has-temp="combinedMetricsAvailability.hasTemp"
             :has-ndl="combinedMetricsAvailability.hasNdl"
+            :has-tts="combinedMetricsAvailability.hasTts"
             :has-otu="combinedMetricsAvailability.hasOtu"
             :has-cns="combinedMetricsAvailability.hasCns"
             :has-gf="combinedMetricsAvailability.hasGf"
@@ -172,6 +176,7 @@
       v-model:show-segments="showSegments"
       v-model:show-grid="showGrid"
       v-model:show-ndl="showNdl"
+      v-model:show-tts="showTts"
       v-model:show-otu="showOtu"
       v-model:show-cns="showCns"
       v-model:show-gf="showGf"
@@ -187,6 +192,7 @@
       :per-profile-availability="perProfileAvailability"
       :disable-temp="!combinedMetricsAvailability.hasTemp"
       :disable-ndl="!combinedMetricsAvailability.hasNdl"
+      :disable-tts="!combinedMetricsAvailability.hasTts"
       :disable-otu="!combinedMetricsAvailability.hasOtu"
       :disable-cns="!combinedMetricsAvailability.hasCns"
       :disable-gf="!combinedMetricsAvailability.hasGf"
@@ -211,6 +217,7 @@
         :show-segments="showSegments"
         :show-grid="showGrid"
         :show-ndl="showNdl"
+        :show-tts="showTts"
         :show-otu="showOtu"
         :show-cns="showCns"
         :show-gf="showGf"
@@ -230,6 +237,7 @@
         :extra-profile-metrics="extraProfileMetrics"
         :has-temp="combinedMetricsAvailability.hasTemp"
         :has-ndl="combinedMetricsAvailability.hasNdl"
+        :has-tts="combinedMetricsAvailability.hasTts"
         :has-otu="combinedMetricsAvailability.hasOtu"
         :has-cns="combinedMetricsAvailability.hasCns"
         :has-gf="combinedMetricsAvailability.hasGf"
@@ -333,6 +341,7 @@ const {
   showSegments,
   showGrid,
   showNdl,
+  showTts,
   showOtu,
   showCns,
   showGf,
@@ -442,6 +451,7 @@ watch(
   (availability) => {
     if (!availability.hasTemp) showTemp.value = false
     if (!availability.hasNdl) showNdl.value = false
+    if (!availability.hasTts) showTts.value = false
     if (!availability.hasOtu) showOtu.value = false
     if (!availability.hasCns) showCns.value = false
     if (!availability.hasGf) showGf.value = false
@@ -463,6 +473,7 @@ watch(
 const dataDrivenShowRefs: Record<DataDrivenMetric, typeof showTemp> = {
   temp: showTemp,
   ndl: showNdl,
+  tts: showTts,
   gf: showGf,
   cns: showCns,
   otu: showOtu,

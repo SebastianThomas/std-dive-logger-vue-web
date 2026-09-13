@@ -12,6 +12,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
   const showSegments = ref(false)
   const showGrid = ref(true)
   const showNdl = ref(false)
+  const showTts = ref(false)
   const showOtu = ref(false)
   const showCns = ref(false)
   const showGf = ref(false)
@@ -39,6 +40,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
         showSegments?: boolean
         showGrid?: boolean
         showNdl?: boolean
+        showTts?: boolean
         showOtu?: boolean
         showCns?: boolean
         showGf?: boolean
@@ -59,6 +61,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       if (typeof parsed.showSegments === 'boolean') showSegments.value = parsed.showSegments
       if (typeof parsed.showGrid === 'boolean') showGrid.value = parsed.showGrid
       if (typeof parsed.showNdl === 'boolean') showNdl.value = parsed.showNdl
+      if (typeof parsed.showTts === 'boolean') showTts.value = parsed.showTts
       if (typeof parsed.showOtu === 'boolean') showOtu.value = parsed.showOtu
       if (typeof parsed.showCns === 'boolean') showCns.value = parsed.showCns
       if (typeof parsed.showGf === 'boolean') showGf.value = parsed.showGf
@@ -85,6 +88,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       showSegments: showSegments.value,
       showGrid: showGrid.value,
       showNdl: showNdl.value,
+      showTts: showTts.value,
       showOtu: showOtu.value,
       showCns: showCns.value,
       showGf: showGf.value,
@@ -106,6 +110,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
       showSegments,
       showGrid,
       showNdl,
+      showTts,
       showOtu,
       showCns,
       showGf,
@@ -124,6 +129,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
     showSegments,
     showGrid,
     showNdl,
+    showTts,
     showOtu,
     showCns,
     showGf,

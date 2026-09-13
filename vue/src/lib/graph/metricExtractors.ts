@@ -46,6 +46,12 @@ export const EXTRACTORS: Record<
     m.measurement.ndl != null && !m.measurement.deco?.length
       ? [m.measurement.time, durationToMinutes(m.measurement.ndl)]
       : null,
+  // The device's own time-to-surface estimate (Suunto, Shearwater native XML, UDDF's derived
+  // estimate), in minutes on the shared NDL/TTS axis.
+  tts: (m) =>
+    m.measurement.timeToSurface != null
+      ? [m.measurement.time, durationToMinutes(m.measurement.timeToSurface)]
+      : null,
   otu: (m) => (m.measurement.o2Tox !== undefined ? [m.measurement.time, m.measurement.o2Tox] : null),
   cns: (m) => (m.measurement.cns !== undefined ? [m.measurement.time, m.measurement.cns] : null),
   gf: (m) => (m.measurement.n2 !== undefined ? [m.measurement.time, m.measurement.n2] : null),
@@ -83,6 +89,7 @@ export function createMetricConfigs(
   props: {
     showTemp?: boolean
     showNdl?: boolean
+    showTts?: boolean
     showOtu?: boolean
     showCns?: boolean
     showGf?: boolean
@@ -97,6 +104,7 @@ export function createMetricConfigs(
   lineRefs: {
     temp: Ref<Line<[number, number]> | null>
     ndl: Ref<Line<[number, number]> | null>
+    tts: Ref<Line<[number, number]> | null>
     otu: Ref<Line<[number, number]> | null>
     cns: Ref<Line<[number, number]> | null>
     gf: Ref<Line<[number, number]> | null>
@@ -115,6 +123,12 @@ export function createMetricConfigs(
       extractor: EXTRACTORS.ndl,
       lineRef: lineRefs.ndl,
       showProp: props.showNdl ?? false,
+      width: 1.2,
+    },
+    tts: {
+      extractor: EXTRACTORS.tts,
+      lineRef: lineRefs.tts,
+      showProp: props.showTts ?? false,
       width: 1.2,
     },
     otu: {
@@ -186,6 +200,7 @@ export function createMetricConfigs(
 export const METRICS_TO_RENDER: Array<Exclude<MetricType, 'depth'>> = [
   'temp',
   'ndl',
+  'tts',
   'otu',
   'cns',
   'gf',

@@ -257,6 +257,7 @@ const props = defineProps<{
   showSegments: boolean
   showGrid: boolean
   showNdl: boolean
+  showTts: boolean
   showOtu: boolean
   showCns: boolean
   showGf: boolean
@@ -270,6 +271,7 @@ const props = defineProps<{
   showDecoZone: boolean
   disableTemp?: boolean
   disableNdl?: boolean
+  disableTts?: boolean
   disableOtu?: boolean
   disableCns?: boolean
   disableGf?: boolean
@@ -293,6 +295,7 @@ const emit = defineEmits<{
   'update:showSegments': [value: boolean]
   'update:showGrid': [value: boolean]
   'update:showNdl': [value: boolean]
+  'update:showTts': [value: boolean]
   'update:showOtu': [value: boolean]
   'update:showCns': [value: boolean]
   'update:showGf': [value: boolean]
@@ -321,6 +324,9 @@ function emitToggle(key: ToggleKey, value: boolean): void {
       break
     case 'ndl':
       emit('update:showNdl', value)
+      break
+    case 'tts':
+      emit('update:showTts', value)
       break
     case 'otu':
       emit('update:showOtu', value)
@@ -362,6 +368,7 @@ function emitToggle(key: ToggleKey, value: boolean): void {
 const METRIC_ORDER: ToggleKey[] = [
   'temp',
   'ndl',
+  'tts',
   'gf',
   'cns',
   'otu',
@@ -381,6 +388,7 @@ const METRIC_DEFS: { key: ToggleKey; label: string }[] = METRIC_ORDER.map((key) 
 const AVAILABILITY_KEY: Record<ToggleKey, keyof ProfileMetricAvailability> = {
   temp: 'hasTemp',
   ndl: 'hasNdl',
+  tts: 'hasTts',
   gf: 'hasGf',
   cns: 'hasCns',
   otu: 'hasOtu',
@@ -408,6 +416,11 @@ const primaryRuntimeByKey = computed<Record<ToggleKey, PrimaryRuntime>>(() => ({
     modelValue: props.showNdl,
     disabled: !!props.disableNdl,
     title: props.disableNdl ? 'No NDL data' : '',
+  },
+  tts: {
+    modelValue: props.showTts,
+    disabled: !!props.disableTts,
+    title: props.disableTts ? 'No TTS data' : '',
   },
   gf: {
     modelValue: props.showGf,

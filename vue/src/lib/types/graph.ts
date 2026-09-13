@@ -2,6 +2,7 @@ export type MetricType =
   | 'depth'
   | 'temp'
   | 'ndl'
+  | 'tts'
   | 'otu'
   | 'cns'
   | 'gf'
@@ -83,6 +84,8 @@ export const DEFAULT_METRIC_CONFIGS: Record<MetricType, MetricConfig> = {
   temp: { show: true, color: '#3b82f6' },
   cns: { show: false, color: '#84cc16' },
   ndl: { show: false, color: '#7c3aed' },
+  // Time to surface: deco-driven like NDL/GF99, so it stays in their red-violet family.
+  tts: { show: false, color: '#db2777' },
   // More saturated/red than ndl's violet - GF99 is the number that actually drives the ceiling,
   // so it reads as more important than NDL while staying in the same red-violet family.
   gf: { show: false, color: '#e11d48' },
@@ -105,6 +108,7 @@ export const metricDisplayNames: Record<MetricType, string> = {
   temp: 'Temperature',
   cns: 'CNS',
   ndl: 'NDL',
+  tts: 'TTS',
   gf: 'GF99',
   otu: 'OTUs',
   po2Measured: 'PO2 measured',
@@ -142,7 +146,7 @@ export type AxisUnitGroupConfig = {
 export const AXIS_UNIT_GROUPS: Record<AxisUnitGroup, AxisUnitGroupConfig> = {
   depth: { label: 'Depth (m)', metrics: ['depth'] },
   temp: { label: 'Temperature (°C)', metrics: ['temp'] },
-  ndl: { label: 'NDL (min)', metrics: ['ndl'] },
+  ndl: { label: 'NDL / TTS (min)', metrics: ['ndl', 'tts'] },
   gf: { label: 'GF99 (%)', metrics: ['gf'] },
   o2Exposure: { label: 'O2 Exposure (CNS / OTU)', metrics: ['cns', 'otu'] },
   po2: { label: 'PO2 (bar)', metrics: ['po2Measured', 'po2Calculated', 'po2Setpoint'] },

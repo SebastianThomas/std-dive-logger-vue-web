@@ -94,7 +94,7 @@
       />
       <ul class="space-y-1 max-h-40 overflow-auto">
         <li
-          v-for="d in myDives"
+          v-for="d in listedDives"
           :key="d.id"
           class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded text-sm"
         >
@@ -112,7 +112,7 @@
             {{ linkToExistingDiveId === d.id ? 'Selected' : 'Select' }}
           </button>
         </li>
-        <li v-if="myDives.length === 0" class="text-xs text-gray-400">No dives found</li>
+        <li v-if="listedDives.length === 0" class="text-xs text-gray-400">No dives found</li>
       </ul>
     </div>
 
@@ -230,7 +230,12 @@ import type {
   PendingImportSummary,
 } from '@/lib/types/dive'
 
-const props = defineProps<{ summary: PendingImportSummary }>()
+const props = defineProps<{
+  summary: PendingImportSummary
+  /** Set when the upload was started from a dive's "Add another profile" link: every staged file
+   * is meant as an additional profile of that dive, so it's preselected as the attach target. */
+  attachToDiveId?: number
+}>()
 const emit = defineEmits<{
   committed: [pendingImportId: number, dive: DiveWithoutProfiles]
   discarded: [id: number]
@@ -255,6 +260,13 @@ const siteResolved = computed(() => !!chosenSite.value || !!props.summary.siteNa
 const diveSearchTerm = ref('')
 const myDives = ref<DiveWithoutProfiles[]>([])
 const linkToExistingDiveId = ref<number | null>(null)
+// The "Add another profile" target stays listed (and selectable) whatever the search shows.
+const pinnedDive = ref<DiveWithoutProfiles | null>(null)
+const listedDives = computed(() =>
+  pinnedDive.value
+    ? [pinnedDive.value, ...myDives.value.filter((d) => d.id !== pinnedDive.value!.id)]
+    : myDives.value,
+)
 
 // Preview/trim - fetched on demand (see previewPending on the backend: not sent at stage time to
 // avoid round-tripping full measurement data for staged imports nobody ends up reviewing).
@@ -361,7 +373,24 @@ fetchMyDives()
 // actively misleading. Preselect "attach to existing dive" (still overridable) instead.
 const autoAttachNote = ref<string | null>(null)
 
+const preselectAttachTarget = async (diveId: number) => {
+  mode.value = 'existing'
+  try {
+    const res = await getWithToken<DiveWithoutProfiles>(`/v1/dives/${diveId}`)
+    pinnedDive.value = res.data
+    autoAttachNote.value = `Adding this file as another profile of dive #${res.data.number}.`
+    selectExistingDive(res.data)
+  } catch (err) {
+    console.error('Failed to load the dive to attach to', err)
+    toast.error(`Failed to load dive to attach to: ${extractErrorDetail(err)}`)
+  }
+}
+
 const checkForAutoAttach = async () => {
+  if (props.attachToDiveId !== undefined) {
+    await preselectAttachTarget(props.attachToDiveId)
+    return
+  }
   const guess = props.summary.diveNumberGuess
   if (guess === undefined) return
   try {

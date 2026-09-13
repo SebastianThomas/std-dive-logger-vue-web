@@ -419,10 +419,18 @@
               v-if="isMine && !readOnly && dive.profiles?.length"
               @click="showReimportModal = true"
               class="whitespace-nowrap text-blue-600 hover:underline"
-              title="Re-parse this dive's file (or a richer export in another format) and refresh a profile's depth / deco / TTS data in place - keeps your notes, buddies, cylinders, alignment."
+              title="Merge this dive's file (or a richer export in another format) into a profile - keeps every sample and value of both, plus your notes, buddies, cylinders and alignment."
             >
               <i class="fa-solid fa-arrows-rotate mr-1"></i>Refine with a file
             </button>
+            <RouterLink
+              v-if="isMine && !readOnly"
+              :to="{ path: '/dives/create', query: { attachTo: String(diveId) } }"
+              class="whitespace-nowrap text-blue-600 hover:underline"
+              title="Upload another dive computer's file of this dive and add it as an additional profile - the existing profiles stay untouched."
+            >
+              <i class="fa-solid fa-plus mr-1"></i>Add another profile
+            </RouterLink>
             <button @click="graphOpen = true" class="whitespace-nowrap text-blue-600 hover:underline">
               Expand
             </button>

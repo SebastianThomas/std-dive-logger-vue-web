@@ -69,7 +69,7 @@
           :calculated-total-liters-baseline="calculatedTotalLitersBaseline"
           :oc-pressure-minutes-baseline="ocPressureMinutesBaseline"
           :saved-contributions="savedContributions"
-          :saved-cylinder-consumption="loadedDive.cylinderConsumption"
+          :saved-cylinder-consumption="currentCylinderConsumption"
           :avg-depth-meters="loadedDive.summary.averageDepth"
           :duration-minutes="loadedDiveDurationMinutes"
           @dismiss-backfill-field="dismissBackfillField"
@@ -142,6 +142,7 @@ import EditDiveForm from '@/components/dive/edit/EditDiveForm.vue'
 import BackfillBanner from '@/components/dive/BackfillBanner.vue'
 import DiveGraphContainer from '@/components/dive/view/DiveGraphContainer.vue'
 import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
+import debounce from '@/lib/utils/debounce'
 import type {
   Dive,
   DiveSite,
@@ -154,6 +155,8 @@ import type {
   TeamTerminology,
   DiveBackfillStatus,
   DiveBackfillMissingField,
+  CylinderConsumption,
+  DiveConfigurationCylinder,
 } from '@/lib/types/dive'
 import type { EditableNamedBuddy } from '@/components/dive/edit/EditDiveForm.vue'
 import type { User } from '@/lib/types/user'
@@ -438,35 +441,66 @@ const invalidCylinders = computed(
     ).length,
 )
 
+// Cylinder figures for the form's *current* cylinders (see DiveController#
+// previewCylinderConsumption on the backend), so the gas breakdown follows unsaved cylinder edits
+// with the same calculator the saved figures come from. `undefined` until the first preview
+// returns - the saved figures below are the fallback until then (and if a preview fails).
+const liveCylinderConsumption = ref<CylinderConsumption | null | undefined>(undefined)
+const refreshCylinderPreview = debounce(async () => {
+  const cylinders: DiveConfigurationCylinder[] = formData.value.configuration?.cylinders ?? []
+  if (!loadedDive.value) return
+  try {
+    const res = await postWithToken<CylinderConsumption, DiveConfigurationCylinder[]>(
+      `/v1/dives/${diveId.value}/cylinder-consumption/preview`,
+      cylinders,
+    )
+    liveCylinderConsumption.value = res.data
+  } catch (err) {
+    console.error('Failed to preview the cylinder consumption', err)
+  }
+}, 400)
+watch(() => formData.value.configuration?.cylinders, refreshCylinderPreview, { deep: true })
+const hasLivePreview = computed(() => liveCylinderConsumption.value !== undefined)
+// The cylinder-consumption record the form's breakdowns read - live once previewed, else saved.
+const currentCylinderConsumption = computed<CylinderConsumption | null>(() =>
+  hasLivePreview.value
+    ? (liveCylinderConsumption.value ?? null)
+    : (loadedDive.value?.cylinderConsumption ?? null),
+)
+
 /** OC RMV / total litres / pressure-minutes from the loaded dive's tracked cylinders - the
  * baseline the manually-entered gas figures are checked against for the >15% mismatch (the live
  * edit-form warning + the GAS_CONSUMPTION_MISMATCH backfill chip). From the backend's own
  * comparison record when present, else the raw cylinder-consumption figures. */
-const calculatedRmvBaseline = computed<number | null>(
-  () =>
-    loadedDive.value?.gasConsumptionComparison?.calculatedRmvLiters ??
-    loadedDive.value?.cylinderConsumption?.ocRmvLiters ??
-    null,
+const calculatedRmvBaseline = computed<number | null>(() =>
+  hasLivePreview.value
+    ? (liveCylinderConsumption.value?.ocRmvLiters ?? null)
+    : (loadedDive.value?.gasConsumptionComparison?.calculatedRmvLiters ??
+      loadedDive.value?.cylinderConsumption?.ocRmvLiters ??
+      null),
 )
-const calculatedTotalLitersBaseline = computed<number | null>(
-  () =>
-    loadedDive.value?.gasConsumptionComparison?.calculatedTotalLiters ??
-    loadedDive.value?.cylinderConsumption?.ocConsumedLiters ??
-    null,
+const calculatedTotalLitersBaseline = computed<number | null>(() =>
+  hasLivePreview.value
+    ? (liveCylinderConsumption.value?.ocConsumedLiters ?? null)
+    : (loadedDive.value?.gasConsumptionComparison?.calculatedTotalLiters ??
+      loadedDive.value?.cylinderConsumption?.ocConsumedLiters ??
+      null),
 )
-const ocPressureMinutesBaseline = computed<number | null>(
-  () =>
-    loadedDive.value?.gasConsumptionComparison?.ocPressureMinutes ??
-    loadedDive.value?.cylinderConsumption?.ocPressureMinutes ??
-    null,
+const ocPressureMinutesBaseline = computed<number | null>(() =>
+  hasLivePreview.value
+    ? (liveCylinderConsumption.value?.ocPressureMinutes ?? null)
+    : (loadedDive.value?.gasConsumptionComparison?.ocPressureMinutes ??
+      loadedDive.value?.cylinderConsumption?.ocPressureMinutes ??
+      null),
 )
 // Per-cylinder figures from the last save - `cylinderConsumption` carries them even for a CCR dive
 // (where `gasConsumptionComparison` is null). Positional-matched to the form's cylinders.
-const savedContributions = computed(
-  () =>
-    loadedDive.value?.gasConsumptionComparison?.contributions ??
-    loadedDive.value?.cylinderConsumption?.contributions ??
-    null,
+const savedContributions = computed(() =>
+  hasLivePreview.value
+    ? (liveCylinderConsumption.value?.contributions ?? null)
+    : (loadedDive.value?.gasConsumptionComparison?.contributions ??
+      loadedDive.value?.cylinderConsumption?.contributions ??
+      null),
 )
 const loadedDiveDurationMinutes = computed<number | null>(() => {
   // The backend uses bottom time for the implied-RMV maths; prefer its figure so the live warning

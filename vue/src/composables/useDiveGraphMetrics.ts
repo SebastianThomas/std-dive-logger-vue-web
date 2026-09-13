@@ -7,6 +7,7 @@ import { type Ref } from 'vue'
 export type ProfileMetricAvailability = {
   hasTemp: boolean
   hasNdl: boolean
+  hasTts: boolean
   hasOtu: boolean
   hasCns: boolean
   hasGf: boolean
@@ -26,6 +27,7 @@ export type ProfileMetricAvailability = {
 export type ProfileMetricCounts = {
   temp: number
   ndl: number
+  tts: number
   otu: number
   cns: number
   gf: number
@@ -46,6 +48,7 @@ export type ProfileMetricCounts = {
 const EMPTY_COUNTS: ProfileMetricCounts = {
   temp: 0,
   ndl: 0,
+  tts: 0,
   otu: 0,
   cns: 0,
   gf: 0,
@@ -67,6 +70,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
     showSegments,
     showGrid,
     showNdl,
+    showTts,
     showOtu,
     showCns,
     showGf,
@@ -90,6 +94,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
     for (const m of profile.measurements) {
       if (m.measurement.temperature?.value !== undefined) counts.temp++
       if (m.measurement.ndl != null) counts.ndl++
+      if (m.measurement.timeToSurface != null) counts.tts++
       if (m.measurement.o2Tox !== undefined) counts.otu++
       if (m.measurement.cns !== undefined) counts.cns++
       // > 0, not just !== undefined - a computer in gauge mode (deco calc disabled) reports n2 as
@@ -129,6 +134,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
     return {
       hasTemp: c.temp > 0,
       hasNdl: c.ndl > 0,
+      hasTts: c.tts > 0,
       hasOtu: c.otu > 0,
       hasCns: c.cns > 0,
       hasGf: c.gf > 0,
@@ -155,6 +161,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
     return {
       hasTemp: availabilities.some((a) => a.hasTemp),
       hasNdl: availabilities.some((a) => a.hasNdl),
+      hasTts: availabilities.some((a) => a.hasTts),
       hasOtu: availabilities.some((a) => a.hasOtu),
       hasCns: availabilities.some((a) => a.hasCns),
       hasGf: availabilities.some((a) => a.hasGf),
@@ -174,6 +181,7 @@ export const useDiveGraphMetrics = (profiles: Ref<DiveProfile[]>) => {
     showSegments,
     showGrid,
     showNdl,
+    showTts,
     showOtu,
     showCns,
     showGf,

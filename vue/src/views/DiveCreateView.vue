@@ -1,7 +1,20 @@
 <template>
   <div class="min-h-full flex justify-center items-start pt-10 px-4 md:px-8">
     <div class="w-full max-w-3xl bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-      <h1 class="text-2xl font-bold mb-4">Upload Dive Files</h1>
+      <h1 class="text-2xl font-bold mb-4">
+        {{ attachToDiveId ? 'Add another profile' : 'Upload Dive Files' }}
+      </h1>
+      <p
+        v-if="attachToDiveId"
+        class="mb-4 text-sm text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded p-3"
+      >
+        <i class="fas fa-link mr-1"></i>
+        Upload another dive computer's file of this dive - it is added as an additional profile,
+        the existing profiles stay untouched.
+        <RouterLink :to="`/dives/view/${attachToDiveId}`" class="underline whitespace-nowrap"
+          >Back to the dive</RouterLink
+        >
+      </p>
 
       <div v-if="stagedImports.length === 0">
         <div class="flex gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
@@ -285,6 +298,7 @@
           v-for="summary in stagedImports"
           :key="summary.id"
           :summary="summary"
+          :attach-to-dive-id="attachToDiveId ?? undefined"
           @committed="onCommitted"
           @discarded="onDiscarded"
         />
@@ -295,6 +309,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useNavigation } from '@/composables/useNavigation'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
@@ -323,6 +338,13 @@ import {
 import axios from 'axios'
 
 const { safeBack, router } = useNavigation()
+const route = useRoute()
+
+// Set by a dive's "Add another profile" link (DiveView) - see PendingImportRow's prop of the same name.
+const attachToDiveId = computed(() => {
+  const id = Number(route.query.attachTo)
+  return Number.isInteger(id) && id > 0 ? id : null
+})
 const { postWithToken } = useApi()
 const { readOnly } = useReadOnlyMode()
 

@@ -11,15 +11,17 @@
           <p class="hint">
             Re-parses a file for a dive you already logged - the same export, or a richer one in
             another format (e.g. Shearwater native XML or Suunto JSON instead of the FIT) - and
-            replaces only this profile's raw measurements (depth, deco stops, gas, TTS, ...).
+            merges it into this profile: every sample and value either file has is kept (depth,
+            deco stops, gas, TTS, CNS, ...), so the order you import the two files in doesn't
+            matter.
             Everything else on the dive is left untouched, unless the new file brings genuinely
             new info (notes, gas consumption, ...) that conflicts with what's there - you'll be
             asked which to keep. The upload is checked against the existing profile first; an
-            unrelated dive is rejected rather than silently replacing the wrong one.
+            unrelated dive is rejected rather than silently merged into the wrong one.
           </p>
 
           <div class="form-group">
-            <label for="reimport-profile">Profile to replace</label>
+            <label for="reimport-profile">Profile to refine</label>
             <select v-model.number="selectedProfileIdx" id="reimport-profile" class="form-select">
               <option v-for="(profile, idx) in profiles" :key="profile.id" :value="idx">
                 Profile {{ idx + 1 }} ({{ formatDate(profile.start, zoneId) }}, {{ profile.diveComputer?.customIdentifier }})

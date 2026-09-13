@@ -5,6 +5,7 @@ import type { ProfileMetricCounts } from '@/composables/useDiveGraphMetrics'
 const EMPTY: ProfileMetricCounts = {
   temp: 0,
   ndl: 0,
+  tts: 0,
   otu: 0,
   cns: 0,
   gf: 0,

@@ -161,6 +161,7 @@ import {
   type TimeMapper,
 } from '@/lib/graph/timeGaps'
 import { detectModeTransitions, hasBothModes } from '@/lib/graph/modeTransitions'
+import { detectGasSwitches } from '@/lib/graph/gasSwitches'
 import { extendPo2CalculatedToBoundary } from '@/lib/graph/po2CalculatedExtension'
 import { synthesizePo2Calculated } from '@/lib/graph/po2Synthesis'
 import { interpolateAt, stepAfterValueAt, valueAtForMetric } from '@/lib/graph/valueInterpolation'
@@ -178,6 +179,7 @@ type Props = {
   showSegments?: boolean
   showGrid?: boolean
   showNdl?: boolean
+  showTts?: boolean
   showOtu?: boolean
   showCns?: boolean
   showGf?: boolean
@@ -198,6 +200,7 @@ type Props = {
   rightAxisMetric?: AxisUnitGroup
   hasTemp?: boolean
   hasNdl?: boolean
+  hasTts?: boolean
   hasOtu?: boolean
   hasCns?: boolean
   hasGf?: boolean
@@ -310,6 +313,7 @@ const depthScaleBase = ref<ScaleLinear<number, number> | null>(null)
 const depthLine = ref<Line<[number, number]> | null>(null)
 const tempLine = ref<Line<[number, number]> | null>(null)
 const ndlLine = ref<Line<[number, number]> | null>(null)
+const ttsLine = ref<Line<[number, number]> | null>(null)
 const otuLine = ref<Line<[number, number]> | null>(null)
 const cnsLine = ref<Line<[number, number]> | null>(null)
 const gfLine = ref<Line<[number, number]> | null>(null)
@@ -342,6 +346,7 @@ const timeGaps = ref<ReturnType<typeof detectTimeGaps>>([])
 const dataTimeRange = ref<[number, number]>([0, 0])
 const gapBreaksLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const modeTransitionsLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
+const gasSwitchesLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 const zoomBehavior = ref<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 const isZoomed = ref(false)
 const currentZoomLevel = ref(1)
@@ -539,6 +544,7 @@ function setupScales() {
 
   tempLine.value = makeMetricLine(tempScale.value)
   ndlLine.value = makeMetricLine(ndlScale.value)
+  ttsLine.value = makeMetricLine(ndlScale.value)
   otuLine.value = makeMetricLine(o2ExposureScale.value)
   cnsLine.value = makeMetricLine(o2ExposureScale.value)
   gfLine.value = makeMetricLine(gfScale.value)
@@ -612,6 +618,7 @@ watch(
     props.showSegments,
     props.showGrid,
     props.showNdl,
+    props.showTts,
     props.showOtu,
     props.showCns,
     props.showGf,
@@ -706,6 +713,7 @@ function initSvg() {
   g.append('g').attr('class', 'lines-depth').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-temp').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-ndl').attr('clip-path', clipPathUrl)
+  g.append('g').attr('class', 'lines-tts').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-otu').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-cns').attr('clip-path', clipPathUrl)
   g.append('g').attr('class', 'lines-gf').attr('clip-path', clipPathUrl)
@@ -730,6 +738,9 @@ function initSvg() {
     .append('g')
     .attr('class', 'mode-transitions')
     .attr('clip-path', clipPathUrl)
+
+  // Gas-switch markers, drawn the same way - see renderGasSwitches().
+  gasSwitchesLayer.value = g.append('g').attr('class', 'gas-switches').attr('clip-path', clipPathUrl)
 
   // Trim-mode shaded cut regions + drag handles - above everything else so the handles are
   // always grabbable regardless of what's drawn underneath.
@@ -1072,6 +1083,7 @@ function renderAll() {
   renderPo2OverageBand()
   renderGapBreaks()
   renderModeTransitions()
+  renderGasSwitches()
   renderTrimOverlay()
 }
 
@@ -1142,6 +1154,50 @@ function renderModeTransitions() {
     .attr('font-weight', 600)
     .attr('fill', (t) => (t.mode === 'OC' ? '#f97316' : '#0ea5e9'))
     .text((t) => (t.mode === 'OC' ? 'BO' : 'CC'))
+}
+
+// A dashed tick + the new mix's name ("EAN50", "TX 18/45", ...) wherever a visible profile switched
+// breathing gas. No-op (clears any stale ones) on a single-gas dive. Labels sit below the BO/CC
+// ones, so a bailout that is also a gas switch stays readable.
+const GAS_SWITCH_COLOR = '#a855f7'
+
+function renderGasSwitches() {
+  if (!gasSwitchesLayer.value) return
+  gasSwitchesLayer.value.selectAll('*').remove()
+  if (!timeScale.value) return
+
+  const switches = props.profiles
+    .filter((_, idx) => visibleMask.value[idx])
+    .flatMap((profile) => detectGasSwitches(profile))
+  if (!switches.length) return
+
+  const groups = gasSwitchesLayer.value
+    .selectAll('g')
+    .data(switches)
+    .enter()
+    .append('g')
+    .attr(
+      'transform',
+      (s) => `translate(${timeScale.value!(timeMapper.value.toVirtual(s.time))}, 0)`,
+    )
+    .style('pointer-events', 'none')
+
+  groups
+    .append('line')
+    .attr('y1', 0)
+    .attr('y2', innerHeight.value)
+    .attr('stroke', GAS_SWITCH_COLOR)
+    .attr('stroke-width', 1.5)
+    .attr('stroke-dasharray', '4,3')
+
+  groups
+    .append('text')
+    .attr('y', 26)
+    .attr('x', 3)
+    .attr('font-size', 10)
+    .attr('font-weight', 600)
+    .attr('fill', GAS_SWITCH_COLOR)
+    .text((s) => s.label)
 }
 
 // Shaded regions for whatever's currently outside the trim selection, plus two draggable handles
@@ -1469,6 +1525,7 @@ function buildMetricConfigs(): MetricConfigMap {
   return createMetricConfigs(props, {
     temp: tempLine,
     ndl: ndlLine,
+    tts: ttsLine,
     otu: otuLine,
     cns: cnsLine,
     gf: gfLine,
@@ -1530,6 +1587,7 @@ function metricScaleFor(metric: Exclude<MetricType, 'depth'>): ScaleLinear<numbe
     case 'temp':
       return tempScale.value
     case 'ndl':
+    case 'tts':
       return ndlScale.value
     case 'otu':
     case 'cns':
@@ -1636,6 +1694,7 @@ function renderTooltipAtTime(
       depth: m.measurement.depth,
       temp: interpolateAt(profilePoints?.temp, tVal) ?? m.measurement.temperature?.value,
       ndl: formatDurationToMinutes(m.measurement.ndl),
+      tts: formatDurationToMinutes(m.measurement.timeToSurface),
       decoDepth,
       decoSeconds,
       otu: interpolateAt(profilePoints?.otu, tVal),

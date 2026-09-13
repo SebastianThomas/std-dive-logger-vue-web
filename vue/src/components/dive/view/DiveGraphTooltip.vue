@@ -53,6 +53,9 @@
           <div v-if="data.metricAvailability.hasNdl" :class="rowClass('ndl')">
             NDL: {{ profile.ndl !== undefined ? profile.ndl : '-' }}
           </div>
+          <div v-if="data.metricAvailability.hasTts" :class="rowClass('tts')">
+            TTS: {{ profile.tts !== undefined ? profile.tts : '-' }}
+          </div>
           <div v-if="data.metricAvailability.hasDeco && formatDeco(profile)" class="text-red-500">
             Deco: {{ formatDeco(profile) }}
           </div>
@@ -101,6 +104,9 @@
       </div>
       <div v-if="data.metricAvailability.hasNdl" :class="rowClass('ndl')">
         NDL: {{ currentProfile.ndl !== undefined ? currentProfile.ndl : '-' }}
+      </div>
+      <div v-if="data.metricAvailability.hasTts" :class="rowClass('tts')">
+        TTS: {{ currentProfile.tts !== undefined ? currentProfile.tts : '-' }}
       </div>
       <div
         v-if="data.metricAvailability.hasDeco && formatDeco(currentProfile)"
@@ -181,6 +187,7 @@ export type TooltipProfileData = {
   depth: number
   temp?: number
   ndl?: string
+  tts?: string
   decoDepth?: number
   decoSeconds?: number
   otu?: number
@@ -199,6 +206,7 @@ export type TooltipProfileData = {
 export type MetricAvailability = {
   hasTemp: boolean
   hasNdl: boolean
+  hasTts: boolean
   hasDeco: boolean
   hasOtu: boolean
   hasCns: boolean
