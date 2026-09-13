@@ -1,4 +1,4 @@
-import type { Dive, DiveProfile, DiveProfileSummary } from '@/lib/types/dive'
+import type { Dive, DiveComputer, DiveProfile, DiveProfileSummary } from '@/lib/types/dive'
 import { formatElapsedTime } from '@/lib/utils/timeUtils'
 
 /**
@@ -83,4 +83,36 @@ export function coverageNote<T>(coverage: MetricCoverage<T>): string | null {
     `Profile data covers ${formatElapsedTime(coverage.coveredMs, 0)} of the ` +
     `${formatElapsedTime(coverage.diveMs, 0)} dive — this figure may be incomplete.`
   )
+}
+
+export type ComputerMaxTts = {
+  /** Stable per-computer key (computer id, else serial, else profile id). */
+  key: string
+  computer?: DiveComputer
+  maxTts: number
+}
+
+/**
+ * The highest time-to-surface each dive computer reported: one entry per computer - the maximum
+ * over all of that computer's profiles - highest first. A dive recorded by several computers gets
+ * one entry per computer, so their devices' estimates can be compared side by side.
+ */
+export function maxTtsByComputer(profiles: DiveProfile[]): ComputerMaxTts[] {
+  const byComputer = new Map<string, ComputerMaxTts>()
+  for (const profile of profiles) {
+    let max: number | undefined
+    for (const { measurement } of profile.measurements ?? []) {
+      const tts = measurement.timeToSurface
+      if (tts != null && (max === undefined || tts > max)) max = tts
+    }
+    if (max === undefined) continue
+    const key = String(
+      profile.diveComputer?.id ?? profile.diveComputer?.serialNumber ?? `profile-${profile.id}`,
+    )
+    const existing = byComputer.get(key)
+    if (!existing || max > existing.maxTts) {
+      byComputer.set(key, { key, computer: profile.diveComputer, maxTts: max })
+    }
+  }
+  return [...byComputer.values()].sort((a, b) => b.maxTts - a.maxTts)
 }

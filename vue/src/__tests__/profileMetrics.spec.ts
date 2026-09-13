@@ -5,6 +5,7 @@ import {
   metricCoverage,
   coverageNote,
   COVERAGE_WARN_RATIO,
+  maxTtsByComputer,
 } from '@/lib/dive/profileMetrics'
 import type { Dive, DiveProfile, DiveProfileSummary } from '@/lib/types/dive'
 
@@ -71,5 +72,38 @@ describe('metricCoverage', () => {
     expect(c.startValue).toBe(0)
     expect(c.endValue).toBe(40)
     expect(c.incomplete).toBe(false) // together they span the whole dive
+  })
+})
+
+describe('maxTtsByComputer', () => {
+  const withTts = (id: number, computerId: number, name: string, tts: (number | undefined)[]) =>
+    ({
+      id,
+      diveComputer: { id: computerId, customIdentifier: name },
+      measurements: tts.map((t, i) => ({ id: i, measurement: { time: i, timeToSurface: t } })),
+    }) as unknown as DiveProfile
+
+  it('gives each computer its own highest reading, highest first', () => {
+    const entries = maxTtsByComputer([
+      withTts(1, 10, 'Perdix', [60_000, 600_000, 120_000]),
+      withTts(2, 20, 'EON Core', [60_000, 720_000]),
+    ])
+    expect(entries.map((e) => [e.computer?.customIdentifier, e.maxTts])).toEqual([
+      ['EON Core', 720_000],
+      ['Perdix', 600_000],
+    ])
+  })
+
+  it('keeps only the highest of one computer\'s several profiles', () => {
+    const entries = maxTtsByComputer([
+      withTts(1, 10, 'Perdix', [300_000]),
+      withTts(2, 10, 'Perdix', [900_000]),
+    ])
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.maxTts).toBe(900_000)
+  })
+
+  it('skips computers that never reported TTS', () => {
+    expect(maxTtsByComputer([withTts(1, 10, 'Old', [undefined, undefined])])).toEqual([])
   })
 })

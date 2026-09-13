@@ -100,6 +100,35 @@ export type DiveProfileSummary = {
   endCNS?: number
 }
 
+/** Per-compartment inert-gas loading, compartment 1 first, in the device's own units. */
+export type TissueLoading = {
+  nitrogen: number[]
+  helium: number[]
+}
+
+/**
+ * How the dive computer computed a profile's deco / CNS / OTU figures (backend DecoSettings) -
+ * whatever the source file said. `details` keeps every other raw setting, keyed by the source's
+ * own name.
+ */
+export type DecoSettings = {
+  algorithm?: string | null
+  implementation?: string | null
+  gfLow?: number | null
+  gfHigh?: number | null
+  conservatism?: string | null
+  surfacePressureMbar?: number | null
+  waterDensity?: number | null
+  startCns?: number | null
+  endCns?: number | null
+  startOtu?: number | null
+  endOtu?: number | null
+  startTissues?: TissueLoading | null
+  endTissues?: TissueLoading | null
+  firmware?: string | null
+  details: Record<string, string>
+}
+
 export type DiveProfile = {
   id: number
   diveComputer: DiveComputer
@@ -107,6 +136,7 @@ export type DiveProfile = {
   end: number
   measurements: DiveMeasurementWithId[]
   summary: DiveProfileSummary
+  decoSettings?: DecoSettings | null
 }
 
 export type Duration = number

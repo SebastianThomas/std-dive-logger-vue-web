@@ -254,6 +254,7 @@
               otuCoverage?.endValue != null ||
               showGf99Start ||
               profilesWithSurfacingGf.length ||
+              maxTtsEntries.length > 0 ||
               summary?.maxTimeToSurface !== undefined
             "
           >
@@ -306,10 +307,22 @@
                  profile - present whenever the source format carries it (Suunto JSON, Shearwater
                  native XML, Subsurface XML/UDDF's derived estimate), not just for a genuine
                  mandatory-stop dive (see AGENTS.md's Ceiling-vs-TTS distinction). -->
+            <!-- One row per computer when several recorded the dive (each its own highest
+                 reading, see maxTtsByComputer), so the devices' estimates can be compared. -->
+            <InfoCard v-if="maxTtsEntries.length > 1" title="Max TTS">
+              <div
+                v-for="entry in maxTtsEntries"
+                :key="entry.key"
+                class="flex items-center justify-between gap-3"
+              >
+                <span>{{ entry.computer?.customIdentifier ?? 'Unknown computer' }}</span>
+                <span class="font-semibold">{{ formatDiveTime(entry.maxTts) }}</span>
+              </div>
+            </InfoCard>
             <InfoCard
-              v-if="summary?.maxTimeToSurface !== undefined"
+              v-else-if="maxTtsEntries.length === 1 || summary?.maxTimeToSurface !== undefined"
               title="Max TTS"
-              :value="formatDiveTime(summary.maxTimeToSurface)"
+              :value="formatDiveTime(maxTtsEntries[0]?.maxTts ?? summary!.maxTimeToSurface!)"
             />
           </InfoCardRow>
 
@@ -336,14 +349,23 @@
               </ul>
             </InfoCard>
             <InfoCard title="Dive Computers">
-              <RouterLink
-                class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
-                v-for="computer in uniqueComputers"
-                :key="computer.id"
-                :to="{ name: 'DiveComputerDetail', params: { computerId: computer.id } }"
-              >
-                {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
-              </RouterLink>
+              <div v-for="computer in uniqueComputers" :key="computer.id" class="text-center">
+                <RouterLink
+                  class="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-center block w-full"
+                  :to="{ name: 'DiveComputerDetail', params: { computerId: computer.id } }"
+                >
+                  {{ computer.customIdentifier }} ({{ computer.manufacturer.name }})
+                </RouterLink>
+                <!-- How this computer calculated deco (algorithm, GF, conservatism); the rest of
+                     what it reported (firmware, surface pressure, its own CNS/OTU) on hover. -->
+                <div
+                  v-if="formatDecoSettings(decoSettingsByComputer.get(computer.id))"
+                  class="text-[0.65rem] text-gray-500 dark:text-gray-400"
+                  :title="decoSettingsDetails(decoSettingsByComputer.get(computer.id)).join('\n')"
+                >
+                  {{ formatDecoSettings(decoSettingsByComputer.get(computer.id)) }}
+                </div>
+              </div>
             </InfoCard>
             <InfoCard :title="buddyTerminologyPlural">
               <p
@@ -715,6 +737,7 @@ import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { formatDurationToTime, formatDate, durationToMinutesSeconds } from '@/lib/utils/timeUtils'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
+import { formatDecoSettings, decoSettingsDetails } from '@/lib/dive/decoSettings'
 import DiveSearchAndLink from '@/components/DiveSearchAndLink.vue'
 import DiveGraphContainer from '@/components/dive/view/DiveGraphContainer.vue'
 import GasDisplay from '@/components/dive/view/GasDisplay.vue'
@@ -726,7 +749,11 @@ import ProfileReimportModal from '@/components/dive/view/ProfileReimportModal.vu
 import DivePhotoGallery from '@/components/dive/DivePhotoGallery.vue'
 import GasConsumptionBreakdown from '@/components/dive/GasConsumptionBreakdown.vue'
 import CcrGasBreakdown from '@/components/dive/CcrGasBreakdown.vue'
-import type { Dive, DiveComputer } from '@/lib/types/dive'
+import type {
+  Dive,
+  DiveComputer,
+  DecoSettings,
+} from '@/lib/types/dive'
 import {
   BASE_CONFIGURATION_LABELS,
   SUIT_TYPE_LABELS,
@@ -740,7 +767,7 @@ import { gasConsumptionComparison } from '@/lib/dive/gasConsumption'
 import type { DiveTrip } from '@/lib/types/trip'
 import { useTeamTerminology } from '@/composables/useTeamTerminology'
 import { computeGasList, isGaugeModeProfile, type GasListEntry } from '@/lib/dive/gasRoles'
-import { metricCoverage, coverageNote } from '@/lib/dive/profileMetrics'
+import { metricCoverage, coverageNote, maxTtsByComputer } from '@/lib/dive/profileMetrics'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { User } from '@/lib/types/user'
@@ -955,6 +982,21 @@ const usageWindowLabel = (epochMs: number | null | undefined): string => {
   if (!parts) return '?'
   return `${String(parts.minutes).padStart(2, '0')}:${String(parts.seconds).padStart(2, '0')}`
 }
+
+// Highest TTS per computer - see maxTtsByComputer.
+const maxTtsEntries = computed(() => maxTtsByComputer(profileList.value))
+
+// Each computer's deco settings - the first of its profiles that says how it calculated.
+const decoSettingsByComputer = computed(() => {
+  const byComputer = new Map<number, DecoSettings>()
+  for (const profile of profileList.value) {
+    const id = profile.diveComputer?.id
+    if (id != null && profile.decoSettings && !byComputer.has(id)) {
+      byComputer.set(id, profile.decoSettings)
+    }
+  }
+  return byComputer
+})
 
 const uniqueComputers = computed(() => {
   const profiles = dive.value?.profiles ?? []
