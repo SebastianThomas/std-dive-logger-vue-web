@@ -247,10 +247,13 @@ const isGasHovered = computed(
 
 // A stop is only "active" once its depth/time are actually set — deco.length > 0 with a
 // zero-depth entry means the diver has cleared their last stop, not that one is pending.
+// The stop's duration only where the device logs one - a bare ceiling (Suunto, Divesoft) has none,
+// and its time-to-surface is TTS (shown in its own row), not stop time.
 const formatDeco = (profile: TooltipProfileData): string | null => {
   if (profile.decoDepth === undefined || profile.decoDepth <= 0) return null
-  const minutes = Math.round((profile.decoSeconds ?? 0) / 60)
-  return `${profile.decoDepth.toFixed(0)} m / ${minutes} min`
+  const depth = `${profile.decoDepth.toFixed(0)} m`
+  const seconds = profile.decoSeconds ?? 0
+  return seconds > 0 ? `${depth} / ${Math.round(seconds / 60)} min` : depth
 }
 
 const selectedProfile = computed(() => props.selectedProfiles?.[0] ?? 0)

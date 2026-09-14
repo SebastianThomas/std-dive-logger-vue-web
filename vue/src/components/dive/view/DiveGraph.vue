@@ -161,7 +161,7 @@ import {
   type TimeMapper,
 } from '@/lib/graph/timeGaps'
 import { detectModeTransitions, hasBothModes } from '@/lib/graph/modeTransitions'
-import { detectGasSwitches } from '@/lib/graph/gasSwitches'
+import { assignLabelRows, detectGasSwitches, groupGasSwitches } from '@/lib/graph/gasSwitches'
 import { extendPo2CalculatedToBoundary } from '@/lib/graph/po2CalculatedExtension'
 import { synthesizePo2Calculated } from '@/lib/graph/po2Synthesis'
 import { interpolateAt, stepAfterValueAt, valueAtForMetric } from '@/lib/graph/valueInterpolation'
@@ -1156,9 +1156,11 @@ function renderModeTransitions() {
     .text((t) => (t.mode === 'OC' ? 'BO' : 'CC'))
 }
 
-// A dashed tick + the new mix's name ("EAN50", "TX 18/45", ...) wherever a visible profile switched
-// breathing gas. No-op (clears any stale ones) on a single-gas dive. Labels sit below the BO/CC
-// ones, so a bailout that is also a gas switch stays readable.
+// A dashed tick wherever a visible profile switched breathing gas, plus the new mix's name ("EAN50",
+// "TX 18/45", ...). Several computers switching to the same gas within a minute share one label
+// (see groupGasSwitches); labels that would still overlap at this zoom move down a row (see
+// assignLabelRows). No-op (clears any stale ones) on a single-gas dive. Labels sit below the
+// BO/CC ones, so a bailout that is also a gas switch stays readable.
 const GAS_SWITCH_COLOR = '#a855f7'
 
 function renderGasSwitches() {
@@ -1171,34 +1173,45 @@ function renderGasSwitches() {
     .flatMap((profile) => detectGasSwitches(profile))
   if (!switches.length) return
 
-  const groups = gasSwitchesLayer.value
-    .selectAll('g')
+  const xOf = (time: number) => timeScale.value!(timeMapper.value.toVirtual(time))
+
+  gasSwitchesLayer.value
+    .selectAll('line')
     .data(switches)
     .enter()
-    .append('g')
-    .attr(
-      'transform',
-      (s) => `translate(${timeScale.value!(timeMapper.value.toVirtual(s.time))}, 0)`,
-    )
-    .style('pointer-events', 'none')
-
-  groups
     .append('line')
+    .attr('x1', (s) => xOf(s.time))
+    .attr('x2', (s) => xOf(s.time))
     .attr('y1', 0)
     .attr('y2', innerHeight.value)
     .attr('stroke', GAS_SWITCH_COLOR)
     .attr('stroke-width', 1.5)
     .attr('stroke-dasharray', '4,3')
+    .style('pointer-events', 'none')
 
-  groups
+  // One label per group, at its first line; placed after measuring, so overlapping ones can move
+  // down a row.
+  const groups = groupGasSwitches(switches)
+  const labels = gasSwitchesLayer.value
+    .selectAll('text')
+    .data(groups)
+    .enter()
     .append('text')
-    .attr('y', 26)
-    .attr('x', 3)
+    .attr('x', (g) => xOf(g.times[0]!) + 3)
     .attr('font-size', 10)
     .attr('font-weight', 600)
     .attr('fill', GAS_SWITCH_COLOR)
-    .text((s) => s.label)
+    .style('pointer-events', 'none')
+    .text((g) => g.label)
+  const widths = labels.nodes().map((node, i) => {
+    const measured = typeof node.getComputedTextLength === 'function' ? node.getComputedTextLength() : 0
+    return measured > 0 ? measured : groups[i]!.label.length * 6.5
+  })
+  const rows = assignLabelRows(groups.map((g, i) => ({ x: xOf(g.times[0]!) + 3, width: widths[i]! })))
+  labels.attr('y', (_, i) => 26 + rows[i]! * GAS_SWITCH_ROW_HEIGHT)
 }
+
+const GAS_SWITCH_ROW_HEIGHT = 12
 
 // Shaded regions for whatever's currently outside the trim selection, plus two draggable handles
 // at its start/end. No-op (clears any stale ones) when not in trim mode. Only ever tears down and
