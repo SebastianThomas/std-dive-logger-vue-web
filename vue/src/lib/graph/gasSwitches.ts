@@ -39,3 +39,49 @@ export function detectGasSwitches(profile: DiveProfile): GasSwitch[] {
   }
   return switches
 }
+
+/** Switches to the same gas this close together are one switch, logged by several computers. */
+export const SAME_SWITCH_WINDOW_MS = 60_000
+
+export type GasSwitchGroup = { label: string; times: number[] }
+
+/**
+ * Groups switches (of any number of profiles) so that same-gas switches within {@link
+ * SAME_SWITCH_WINDOW_MS} of each other share one label - several computers recording the same
+ * switch a few seconds apart (each is switched by hand) are one event to the diver. Every switch
+ * keeps its own time, so each computer still gets its own line. Groups are in time order.
+ */
+export function groupGasSwitches(
+  switches: GasSwitch[],
+  windowMs: number = SAME_SWITCH_WINDOW_MS,
+): GasSwitchGroup[] {
+  const groups: GasSwitchGroup[] = []
+  for (const s of [...switches].sort((a, b) => a.time - b.time)) {
+    const group = groups.find(
+      (g) => g.label === s.label && s.time - g.times[g.times.length - 1]! <= windowMs,
+    )
+    if (group) group.times.push(s.time)
+    else groups.push({ label: s.label, times: [s.time] })
+  }
+  return groups
+}
+
+/**
+ * A row per label so no two labels overlap: each goes to the first row whose previous label ends
+ * (plus `gapPx`) before this one starts. Rows are returned in the input's order.
+ */
+export function assignLabelRows(labels: { x: number; width: number }[], gapPx = 4): number[] {
+  const rows = new Array<number>(labels.length).fill(0)
+  const rowEnds: number[] = []
+  const byX = labels.map((label, index) => ({ ...label, index })).sort((a, b) => a.x - b.x)
+  for (const label of byX) {
+    let row = rowEnds.findIndex((end) => end + gapPx <= label.x)
+    if (row === -1) {
+      row = rowEnds.length
+      rowEnds.push(0)
+    }
+    rowEnds[row] = label.x + label.width
+    rows[label.index] = row
+  }
+  return rows
+}

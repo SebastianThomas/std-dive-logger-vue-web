@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { detectGasSwitches, gasLabel } from '@/lib/graph/gasSwitches'
+import {
+  assignLabelRows,
+  detectGasSwitches,
+  gasLabel,
+  groupGasSwitches,
+} from '@/lib/graph/gasSwitches'
 import type { DiveProfile, DiveMeasurementWithId } from '@/lib/types/dive'
 
 const measurementAt = (time: number, gas?: { o2: number; he?: number }): DiveMeasurementWithId =>
@@ -61,5 +66,50 @@ describe('gasLabel', () => {
     expect(gasLabel(0.32, 0)).toBe('EAN32')
     expect(gasLabel(1, 0)).toBe('O2')
     expect(gasLabel(0.18, 0.45)).toBe('TX 18/45')
+  })
+})
+
+describe('groupGasSwitches', () => {
+  const sw = (time: number, label: string) => ({ time, o2: 0, he: 0, label })
+
+  it('gives two computers switching to the same gas seconds apart one label', () => {
+    expect(groupGasSwitches([sw(1_000, 'EAN50'), sw(9_000, 'EAN50')])).toEqual([
+      { label: 'EAN50', times: [1_000, 9_000] },
+    ])
+  })
+
+  it('keeps different gases, and the same gas far apart, as separate labels', () => {
+    expect(
+      groupGasSwitches([sw(1_000, 'EAN50'), sw(5_000, 'O2'), sw(600_000, 'EAN50')]).map(
+        (g) => g.label,
+      ),
+    ).toEqual(['EAN50', 'O2', 'EAN50'])
+  })
+
+  it('groups regardless of the order the profiles were listed in', () => {
+    expect(groupGasSwitches([sw(9_000, 'EAN50'), sw(1_000, 'EAN50')])).toEqual([
+      { label: 'EAN50', times: [1_000, 9_000] },
+    ])
+  })
+})
+
+describe('assignLabelRows', () => {
+  it('keeps labels that fit side by side on the first row', () => {
+    expect(
+      assignLabelRows([
+        { x: 0, width: 30 },
+        { x: 40, width: 30 },
+      ]),
+    ).toEqual([0, 0])
+  })
+
+  it('moves an overlapping label down a row, and reuses a row once it is free', () => {
+    expect(
+      assignLabelRows([
+        { x: 100, width: 30 },
+        { x: 0, width: 30 },
+        { x: 10, width: 30 },
+      ]),
+    ).toEqual([0, 0, 1])
   })
 })
