@@ -501,6 +501,16 @@
         </InfoCard>
       </InfoCardRow>
 
+      <!-- Stored source files (accounts that keep their uploads): download them, or refine a
+           profile from one without uploading it again. -->
+      <DiveSourceFiles
+        v-if="isMine && !readOnly && dive.profiles"
+        ref="sourceFilesRef"
+        :dive-id="diveId"
+        :profiles="dive.profiles"
+        :zone-id="dive?.site?.zoneId"
+      />
+
       <DeletionConfirmation
         v-model="showDeleteProfileModal"
         title="Delete profile"
@@ -746,6 +756,7 @@ import InfoCardRow from '@/components/InfoCardRow.vue'
 import SharePopover from '@/components/share/SharePopover.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import ProfileReimportModal from '@/components/dive/view/ProfileReimportModal.vue'
+import DiveSourceFiles from '@/components/dive/view/DiveSourceFiles.vue'
 import DivePhotoGallery from '@/components/dive/DivePhotoGallery.vue'
 import GasConsumptionBreakdown from '@/components/dive/GasConsumptionBreakdown.vue'
 import CcrGasBreakdown from '@/components/dive/CcrGasBreakdown.vue'
@@ -1036,6 +1047,7 @@ const profilesWithTrimSuggestion = computed(() => {
 // matching what the "Trim profile" button inside DiveGraphContainer itself does.
 const embeddedGraphCardRef = ref<HTMLElement | null>(null)
 const embeddedGraphRef = ref<InstanceType<typeof DiveGraphContainer> | null>(null)
+const sourceFilesRef = ref<InstanceType<typeof DiveSourceFiles> | null>(null)
 
 const reviewTrimSuggestion = () => {
   const suggested = profilesWithTrimSuggestion.value[0]
@@ -1204,6 +1216,7 @@ const handleProfileTrimmed = (updatedDive: Dive) => {
 
 const handleProfileReimported = (updatedDive: Dive) => {
   dive.value = updatedDive
+  void sourceFilesRef.value?.refresh()
   toast.success('Profile reimported successfully')
 }
 

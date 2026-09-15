@@ -29,7 +29,34 @@
             </select>
           </div>
 
-          <div class="form-group">
+          <div v-if="storedFiles.length" class="form-group">
+            <span class="form-label">File</span>
+            <div class="source-choice">
+              <label class="conflict-option">
+                <input type="radio" v-model="source" value="stored" />
+                <span>Use a stored file</span>
+              </label>
+              <label class="conflict-option">
+                <input type="radio" v-model="source" value="upload" />
+                <span>Upload a file</span>
+              </label>
+            </div>
+          </div>
+
+          <div v-if="source === 'stored' && storedFiles.length" class="form-group">
+            <label for="reimport-stored-file">Stored file</label>
+            <select
+              v-model.number="selectedStoredFileId"
+              id="reimport-stored-file"
+              class="form-select"
+            >
+              <option v-for="entry in storedFiles" :key="entry.file.id" :value="entry.file.id">
+                {{ fileDisplayName(entry.file) }} ({{ IMPORT_SOURCE_LABELS[entry.file.source] }})
+              </option>
+            </select>
+          </div>
+
+          <div v-else class="form-group">
             <label for="reimport-file">Original dive computer file</label>
             <input
               id="reimport-file"
@@ -165,6 +192,8 @@ import type {
 import { reimportHasAnyConflict } from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
 import { formatDate } from '@/lib/utils/timeUtils'
+import type { DiveSourceFile } from '@/lib/types/importFiles'
+import { IMPORT_SOURCE_LABELS, fileDisplayName } from '@/lib/dive/importFiles'
 
 interface Props {
   zoneId?: string | null
@@ -180,7 +209,7 @@ const emit = defineEmits<{
   reimported: [updatedDive: Dive]
 }>()
 
-const { postWithToken } = useApi()
+const { getWithToken, postWithToken } = useApi()
 
 const step = ref<'select' | 'resolve'>('select')
 const selectedProfileIdx = ref(0)
@@ -199,7 +228,43 @@ const resolution = ref<ReimportResolution>({
   startClock: null,
 })
 
-const canReimport = computed(() => selectedFile.value !== null && props.profiles.length > 0)
+// The dive's own stored files can refine it without uploading one again.
+const storedFiles = ref<DiveSourceFile[]>([])
+const source = ref<'upload' | 'stored'>('upload')
+const selectedStoredFileId = ref<number | null>(null)
+
+const canReimport = computed(
+  () =>
+    props.profiles.length > 0 &&
+    (source.value === 'stored' ? selectedStoredFileId.value !== null : selectedFile.value !== null),
+)
+
+const loadStoredFiles = async () => {
+  try {
+    storedFiles.value =
+      (await getWithToken<DiveSourceFile[]>(`/v1/import-files/dives/${props.diveId}`)).data ?? []
+  } catch {
+    storedFiles.value = []
+  }
+  const profileId = props.profiles[selectedProfileIdx.value]?.id
+  const linked = storedFiles.value.find(
+    (f) => profileId !== undefined && f.profileIds.includes(profileId),
+  )
+  selectedStoredFileId.value = (linked ?? storedFiles.value[0])?.file.id ?? null
+  source.value = storedFiles.value.length ? 'stored' : 'upload'
+}
+
+const requestPreview = (profileId: number) => {
+  const base = `/v1/dives/${props.diveId}/profiles/${profileId}`
+  if (source.value === 'stored' && selectedStoredFileId.value !== null) {
+    return postWithToken<ReimportPreviewResult>(
+      `${base}/reimport-stored/${selectedStoredFileId.value}`,
+    )
+  }
+  const formData = new FormData()
+  if (selectedFile.value) formData.append('file', selectedFile.value)
+  return postWithToken<ReimportPreviewResult, FormData>(`${base}/reimport`, formData, {}, null)
+}
 
 const handleFileChange = (event: Event) => {
   const input = event.target as HTMLInputElement
@@ -227,6 +292,8 @@ watch(
       selectedProfileIdx.value = 0
       selectedFile.value = null
       preview.value = null
+      source.value = 'upload'
+      void loadStoredFiles()
       resolution.value = {
         notes: 'EXISTING',
         visibility: 'EXISTING',
@@ -240,21 +307,13 @@ watch(
 
 const handlePreview = async () => {
   const profile = props.profiles[selectedProfileIdx.value]
-  if (!profile || !selectedFile.value) return
+  if (!profile || !canReimport.value) return
 
   error.value = ''
   isLoading.value = true
 
   try {
-    const formData = new FormData()
-    formData.append('file', selectedFile.value)
-
-    const response = await postWithToken<ReimportPreviewResult, FormData>(
-      `/v1/dives/${props.diveId}/profiles/${profile.id}/reimport`,
-      formData,
-      {},
-      null,
-    )
+    const response = await requestPreview(profile.id)
     preview.value = response.data
 
     if (!reimportHasAnyConflict(response.data.conflicts)) {
@@ -457,6 +516,18 @@ onBeforeUnmount(() => {
 [data-theme='dark'] .form-select:hover,
 [data-theme='dark'] .form-file:hover {
   border-color: rgba(107, 114, 128, 0.8);
+}
+
+.form-label {
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.source-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
 }
 
 .conflict-field {

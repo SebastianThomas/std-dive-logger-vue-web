@@ -15,6 +15,8 @@
 
         <ProfileNotifications v-if="!readOnly" />
 
+        <ProfileImportFiles v-if="!readOnly" />
+
         <!-- Danger Zone -->
         <section v-if="!readOnly" class="border-t pt-6 space-y-4">
           <h2 class="text-lg font-medium text-red-600">Permanently Delete Account</h2>
@@ -67,6 +69,7 @@ import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { type User } from '@/lib/types/user'
 import ProfileTabs from '@/components/ProfileTabs.vue'
 import ProfileNotifications from '@/components/ProfileNotifications.vue'
+import ProfileImportFiles from '@/components/ProfileImportFiles.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import UserIconUploadModal from '@/components/UserIconUploadModal.vue'
 import UserBackgroundUploadModal from '@/components/UserBackgroundUploadModal.vue'

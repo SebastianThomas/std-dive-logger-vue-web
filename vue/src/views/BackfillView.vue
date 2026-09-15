@@ -16,6 +16,9 @@
         drops off the list.
       </p>
 
+      <!-- Real data changes from re-reading stored files - ahead of the backfill items. -->
+      <ReprocessConflictList />
+
       <!-- Loading -->
       <div v-if="isLoading" class="text-gray-500">Loading…</div>
 
@@ -263,6 +266,7 @@ import { ref, computed, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import ReprocessConflictList from '@/components/dive/ReprocessConflictList.vue'
 import { formatDate } from '@/lib/utils/timeUtils'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import {
