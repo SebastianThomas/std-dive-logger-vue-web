@@ -59,6 +59,9 @@ export type BackfillFieldSource = {
   calculatedRmvLiters?: number | null
   /** Σ litres the tracked OC cylinders gave up (`cylinderConsumption.ocConsumedLiters`). */
   calculatedTotalLiters?: number | null
+  /** False when the cylinders only cover part of the dive (e.g. a deco stage alone) - their RMV
+   * then isn't comparable to a whole-dive entry. Absent = true. */
+  cylindersCoverWholeDive?: boolean | null
   avgDepthMeters?: number | null
   durationMinutes?: number | null
 }
@@ -72,8 +75,9 @@ export type BackfillFieldSource = {
 export function gasConsumptionMismatch(src: BackfillFieldSource): boolean {
   const gas = src.gasConsumption
   if (!gas) return false
-  const calcRmv = src.calculatedRmvLiters ?? null
-  const calcTotal = src.calculatedTotalLiters ?? null
+  const whole = src.cylindersCoverWholeDive !== false
+  const calcRmv = whole ? (src.calculatedRmvLiters ?? null) : null
+  const calcTotal = whole ? (src.calculatedTotalLiters ?? null) : null
   const enteredRmv = gas.rmvLiters && gas.rmvLiters > 0 ? gas.rmvLiters : null
   const enteredTotal = gas.totalLiters && gas.totalLiters > 0 ? gas.totalLiters : null
   const implied = impliedRmvFromTotal(gas.totalLiters, src.avgDepthMeters, src.durationMinutes)

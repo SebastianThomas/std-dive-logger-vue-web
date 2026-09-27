@@ -47,13 +47,15 @@ export const DEFAULT_TIMELINE_METRIC_CONFIGS: Record<TimelineMetric, TimelineMet
 }
 
 /** Dimension the currently-selected metric(s) can be split into one line per category by. */
-export type StatsBreakdownDimension = 'SUIT' | 'BASE_CONFIGURATION' | 'CCR_UNIT'
+export type StatsBreakdownDimension = 'SUIT' | 'BASE_CONFIGURATION' | 'CCR_UNIT' | 'WATER_TYPE'
 
 export const BREAKDOWN_DIMENSIONS: { value: StatsBreakdownDimension | null; label: string }[] = [
   { value: null, label: 'None' },
   { value: 'SUIT', label: 'Suit' },
   { value: 'BASE_CONFIGURATION', label: 'Base Setup' },
   { value: 'CCR_UNIT', label: 'CCR Unit' },
+  // The dive's own override, else its site's water type.
+  { value: 'WATER_TYPE', label: 'Water Type' },
 ]
 
 export const timelineMetricUnits: Record<TimelineMetric, string | null> = {

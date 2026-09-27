@@ -36,7 +36,12 @@
       gridTemplateColumns: `${sidebarWidth}px calc(100vw - ${sidebarWidth}px)`,
     }"
   >
-    <AppHeader :show-title="showTitle" :page-name="pageName" @logout="handleLogout" />
+    <AppHeader
+      :show-title="showTitle"
+      :page-name="pageName"
+      @logout="handleLogout"
+      @open-command-palette="showCommandPalette = true"
+    />
 
     <AppSidebar
       :is-visible="isVisible"
@@ -72,6 +77,7 @@ import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
 import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
 import { useVimFieldNavigation } from '@/composables/useVimFieldNavigation'
 import { useNumberInputGuard } from '@/composables/useNumberInputGuard'
+import { useVimPageScroll } from '@/composables/useVimPageScroll'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
 import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
 import type { User } from '@/lib/types/user'
@@ -101,6 +107,7 @@ const { updatedId: backgroundUpdatedId } = storeToRefs(backgroundUploadStore)
 const { showCommandPalette, showHelpMenu, leaderPending, lastActionLabel } = useGlobalShortcuts()
 const { runtime: vimRuntime } = useVimFieldNavigation()
 useNumberInputGuard()
+useVimPageScroll()
 
 // Page name shown next to the logo in the header - the route's own name is a bare PascalCase
 // identifier (e.g. "DiveComputerDetail"), not something to show a user directly, so split it into
@@ -280,9 +287,13 @@ onUnmounted(() => {
   background-attachment: fixed;
 }
 
+/* Above the header's z-20 (AppHeader.vue) - a page's own fixed-position modals/backdrops (e.g.
+   DiveSiteMapPicker) are descendants of this element, so a z-index below the header's traps them
+   under it: the header would visibly cover a tall centered modal's top edge instead of the modal
+   dimming/covering the header like every other overlay in the app. */
 .router-content {
   position: relative;
-  z-index: 10;
+  z-index: 21;
 }
 </style>
 

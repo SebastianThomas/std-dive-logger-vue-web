@@ -84,6 +84,10 @@
             >
               Vim mode (in text fields)
             </h4>
+            <div class="flex justify-between gap-3 mb-2">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Scroll the page (no field focused)</span>
+              <kbd class="kbd-small whitespace-nowrap">j / k</kbd>
+            </div>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
               In a focused field: <kbd class="kbd-small">Esc</kbd> for normal mode, then:
             </p>

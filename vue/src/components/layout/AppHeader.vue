@@ -18,6 +18,14 @@
       <button
         v-if="authStore.isLoggedIn"
         class="theme-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300"
+        @click="emit('openCommandPalette')"
+        title="Search & commands"
+      >
+        <i class="fas fa-magnifying-glass text-lg sm:text-xl"></i>
+      </button>
+      <button
+        v-if="authStore.isLoggedIn"
+        class="theme-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300"
         :class="{ 'read-only-active': readOnly }"
         @click="toggleReadOnly()"
         :title="readOnly ? 'Read-only mode: ON (click to disable)' : 'Read-only mode: OFF (click to enable)'"
@@ -85,6 +93,7 @@ const themeLabel = computed(() => {
 
 const emit = defineEmits<{
   logout: []
+  openCommandPalette: []
 }>()
 
 const handleLogout = () => {

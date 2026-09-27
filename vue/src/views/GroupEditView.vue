@@ -132,6 +132,7 @@ import { useApi } from '@/composables/useApi'
 import { useNavigation } from '@/composables/useNavigation'
 import { toast } from 'vue-sonner'
 import RoleMenu from '@/components/share/RoleMenu.vue'
+import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import type {
   GroupRequest,
   GroupWithMembers,

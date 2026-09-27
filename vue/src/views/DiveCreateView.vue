@@ -261,13 +261,20 @@
         <!-- Manual dive entry: deliberately secondary, not a third tab beside Upload/Divesoft -
              no real profile is ever produced from this, so it must never be the default path. -->
         <div class="mt-4">
-          <ManualDiveEntryForm v-if="!readOnly" @created="onManualDiveCreated" />
+          <ManualDiveEntryForm
+            v-if="!readOnly && !attachToDiveId"
+            @created="onManualDiveCreated"
+          />
         </div>
       </div>
 
       <!-- Review step: nothing has been persisted yet, review and confirm each staged dive -->
       <div v-else class="flex flex-col gap-4">
-        <p class="text-sm text-gray-600 dark:text-gray-300">
+        <p v-if="attachToDiveId" class="text-sm text-gray-600 dark:text-gray-300">
+          Nothing has been saved yet - check each file below is a recording of this dive, then
+          commit it to add it as another profile.
+        </p>
+        <p v-else class="text-sm text-gray-600 dark:text-gray-300">
           Nothing has been saved yet - review each dive below, adjust the site or attach it to an
           existing dive if needed, then commit it.
         </p>
@@ -277,7 +284,7 @@
 
         <!-- Fast path: skip reviewing each dive individually when the guesses are good enough. -->
         <div
-          v-if="quickImportEligible.length > 0"
+          v-if="quickImportEligible.length > 0 && !attachToDiveId"
           class="flex items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-700 p-3"
         >
           <p class="text-sm text-emerald-900 dark:text-emerald-100">
@@ -604,6 +611,7 @@ const onManualDiveCreated = (dive: Dive) => {
   router.push({ name: 'DiveView', params: { diveId: dive.id } })
 }
 
+// Not offered when adding a profile to a dive: it commits each file as a new dive of its own.
 // "Good enough" fast path: commits every staged import that already has everything it needs
 // (a resolvable site guess - the one thing that's actually required) using just its own
 // best-guess values, with zero per-row interaction. Anything without a usable guess is left

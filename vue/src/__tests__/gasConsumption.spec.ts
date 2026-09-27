@@ -149,6 +149,25 @@ describe('buildLiveComparisonView (edit form)', () => {
     expect(view.reason).toBe('rmv-vs-cylinders')
   })
 
+  it('shows a partly-tracked RMV but never checks it or its partial total against the entry', () => {
+    // Only the deco stage is tracked: its RMV is real, but it is not the whole dive's RMV.
+    const view = buildLiveComparisonView({
+      enteredRmvLiters: 22,
+      enteredTotalLiters: 2400,
+      cylinders: [cyl()],
+      calculatedRmvLiters: 12,
+      calculatedTotalLiters: 350,
+      cylindersCoverWholeDive: false,
+      ocPressureMinutes: 20,
+      avgDepthMeters: 15,
+      durationMinutes: 45,
+    })
+    expect(view.effectiveRmvLiters).toBe(12)
+    expect(view.effectiveTotalLiters).toBe(2400)
+    expect(view.effectiveTotalSource).toBe('entered')
+    expect(view.mismatch).toBe(false)
+  })
+
   it('a cuft cylinder contributes a realistic litre figure, not a ~200x one', () => {
     const view = buildLiveComparisonView({
       enteredRmvLiters: null,

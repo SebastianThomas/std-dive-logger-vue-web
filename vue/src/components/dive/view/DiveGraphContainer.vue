@@ -208,7 +208,7 @@
       v-model:left-axis-metric="leftAxisMetric"
       v-model:right-axis-metric="rightAxisMetric"
     />
-    <div class="relative" :class="minimal ? 'h-72 md:h-96' : 'h-100 md:h-125'">
+    <div class="relative" :class="minimal ? 'h-56 sm:h-72 md:h-96' : 'h-64 sm:h-80 md:h-100 lg:h-125'">
       <DiveGraph
         :profiles="profiles"
         :visible-profiles="visibleProfiles"
@@ -291,14 +291,17 @@ import ProfileSelector from '@/components/dive/view/ProfileSelector.vue'
 import AscentRatePanel from '@/components/dive/view/AscentRatePanel.vue'
 import FullscreenGraphControls from '@/components/dive/view/FullscreenGraphControls.vue'
 import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
+import { useDiveGraphStore } from '@/stores/diveGraph'
 import { useApi } from '@/composables/useApi'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { useProfileTrimming } from '@/composables/useProfileTrimming'
 import {
+  applyMetricPreferences,
   computeSensibleMetricDefaults,
-  DATA_DRIVEN_METRICS,
-  type DataDrivenMetric,
+  metricAvailable,
+  REMEMBERED_METRICS,
   type Po2Selection,
+  type RememberedMetric,
 } from '@/lib/graph/metricDefaults'
 import type { Dive, DiveProfile } from '@/lib/types/dive'
 import type { AxisUnitGroup, ProfileMetricVisibility } from '@/lib/types/graph'
@@ -320,9 +323,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const visibleProfiles = ref<boolean[]>([])
 const selectedProfiles = ref<number[]>([0])
-// Per-profile metric overrides for every profile except the first - session-local (not persisted
-// like the global show* store), so it resets to "just the primary profile, like before" each time
-// a dive is opened rather than carrying a backup computer's extra metrics into unrelated dives.
+// Per-profile metric overrides for every profile except the first - set per dive from the data
+// and the diver's remembered secondary-profile choices (see applySensibleMetricDefaults).
 const extraProfileMetrics = ref<ProfileMetricVisibility>({})
 const isClosing = ref(false)
 const historyEntryAdded = ref(false)
@@ -357,6 +359,7 @@ const {
   getProfileMetricAvailability,
   getProfileMetricCounts,
 } = useDiveGraphMetrics(profilesRef)
+const graphStore = useDiveGraphStore()
 
 const leftAxisMetric = ref<AxisUnitGroup>('depth')
 const rightAxisMetric = ref<AxisUnitGroup>('temp')
@@ -467,10 +470,9 @@ watch(
   { deep: true },
 )
 
-// The primary row's show* ref for each of computeSensibleMetricDefaults' DATA_DRIVEN_METRICS,
-// keyed the same way its returned `show` record is, so the result can be applied with a simple
-// loop below instead of one assignment per metric.
-const dataDrivenShowRefs: Record<DataDrivenMetric, typeof showTemp> = {
+// The primary row's show* ref per remembered metric, so defaults + the diver's remembered choices
+// can be applied (and user toggles recorded) with one loop instead of one line per metric.
+const primaryShowRefs: Record<RememberedMetric, typeof showTemp> = {
   temp: showTemp,
   ndl: showNdl,
   tts: showTts,
@@ -479,36 +481,74 @@ const dataDrivenShowRefs: Record<DataDrivenMetric, typeof showTemp> = {
   otu: showOtu,
   rmv: showRmv,
   deco: showDecoZone,
+  po2Measured: showPo2Measured,
+  po2Calculated: showPo2Calculated,
+  po2Setpoint: showPo2Setpoint,
+  gasO2: showGasO2,
+  gasN2: showGasN2,
+  gasHe: showGasHe,
 }
 
-// Picks a sensible default once per dive - see computeSensibleMetricDefaults' own doc comment for
-// the reasoning (primary-profile-has-data gates the primary row; a richer secondary profile gets
-// opted in directly). Gas O2/N2/He are handled separately here, not by that function - always off
-// by default regardless of data, per the always-off policy for that whole metric family (see
-// stores/diveGraph.ts for why they're also excluded from persistence entirely).
+// Per dive: data-driven defaults (see computeSensibleMetricDefaults - primary-profile-has-data
+// gates the primary row, a richer secondary profile gets opted in, gas fractions and setpoint start
+// off), overridden by whatever the diver last chose where this dive has the data for it (see
+// applyMetricPreferences). Toggles made while applying aren't recorded as the diver's choice.
+let applyingDefaults = false
 const applySensibleMetricDefaults = () => {
   const defaults = computeSensibleMetricDefaults(
     props.profiles.map((_, idx) => getProfileMetricCounts(idx)),
   )
-  for (const metric of DATA_DRIVEN_METRICS) {
-    dataDrivenShowRefs[metric].value = defaults.show[metric]
+  const applied = applyMetricPreferences(
+    defaults,
+    graphStore.metricPreferences,
+    props.profiles.map((_, idx) => {
+      const availability = getProfileMetricAvailability(idx)
+      return (metric: RememberedMetric) => metricAvailable(availability, metric)
+    }),
+  )
+  applyingDefaults = true
+  try {
+    for (const metric of REMEMBERED_METRICS) {
+      primaryShowRefs[metric].value = applied.show[metric]
+    }
+    extraProfileMetrics.value = applied.extraProfileMetrics
+    lastExtraProfileMetrics = JSON.parse(JSON.stringify(applied.extraProfileMetrics))
+    po2Selection.value = defaults.po2Selection
+  } finally {
+    applyingDefaults = false
   }
-  extraProfileMetrics.value = defaults.extraProfileMetrics
-  po2Selection.value = defaults.po2Selection
-
-  showGasO2.value = false
-  showGasN2.value = false
-  showGasHe.value = false
-  // The primary row's PO2 checkboxes only ever draw profile 0's own line - only turn one on by
-  // default when profile 0 itself is the dive's single selected best PO2 source (see
-  // selectBestPo2Source). Setpoint stays off by default either way - still toggleable by hand
-  // when available, just never assumed to be what the user wants to see first.
-  showPo2Measured.value =
-    defaults.po2Selection?.profileIdx === 0 && defaults.po2Selection.metric === 'po2Measured'
-  showPo2Calculated.value =
-    defaults.po2Selection?.profileIdx === 0 && defaults.po2Selection.metric === 'po2Calculated'
-  showPo2Setpoint.value = false
 }
+
+// Remember the diver's own toggles - synchronous, so the applyingDefaults guard sees them.
+for (const metric of REMEMBERED_METRICS) {
+  watch(
+    primaryShowRefs[metric],
+    (shown) => {
+      if (!applyingDefaults) graphStore.rememberMetric('primary', metric, shown)
+    },
+    { flush: 'sync' },
+  )
+}
+let lastExtraProfileMetrics: ProfileMetricVisibility = {}
+watch(
+  extraProfileMetrics,
+  (current) => {
+    const previous = lastExtraProfileMetrics
+    lastExtraProfileMetrics = JSON.parse(JSON.stringify(current))
+    if (applyingDefaults) return
+    const indices = new Set([...Object.keys(previous), ...Object.keys(current)].map(Number))
+    for (const idx of indices) {
+      if (idx === 0) continue
+      for (const metric of REMEMBERED_METRICS) {
+        if (metric === 'deco') continue
+        const was = previous[idx]?.[metric] ?? false
+        const now = current[idx]?.[metric] ?? false
+        if (was !== now) graphStore.rememberMetric('secondary', metric, now)
+      }
+    }
+  },
+  { deep: true, flush: 'sync' },
+)
 
 // Keyed on diveId, not the profiles array reference - a trim/merge/align on the *same* dive
 // replaces that array too, and re-running this there would blow away extra-profile choices the

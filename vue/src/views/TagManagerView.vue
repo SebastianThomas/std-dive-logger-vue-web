@@ -24,7 +24,7 @@
         <li
           v-for="tag in myTags"
           :key="tag.id"
-          class="flex items-center justify-between py-2 gap-3"
+          class="flex flex-wrap items-center justify-between py-2 gap-3"
         >
           <div class="flex items-center gap-2 min-w-0">
             <span

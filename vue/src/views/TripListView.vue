@@ -6,7 +6,7 @@
           <h1 class="text-2xl font-bold">Dive Trips & Courses</h1>
         </div>
 
-        <form class="flex gap-2 mb-4" @submit.prevent="create">
+        <form class="flex flex-wrap gap-2 mb-4" @submit.prevent="create">
           <input
             v-model="newName"
             type="text"

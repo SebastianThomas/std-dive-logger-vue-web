@@ -130,7 +130,6 @@
 import { ref, computed } from 'vue'
 import { CYLINDER_MATERIAL_LABELS, CYLINDER_ROLE_LABELS } from '@/lib/types/dive'
 import type { CylinderConsumption, CylinderUsageWindow } from '@/lib/types/dive'
-import { durationToMinutesSeconds } from '@/lib/utils/timeUtils'
 import MathFormula from '@/components/ui/MathFormula.vue'
 import GasCalcGlossary from '@/components/dive/GasCalcGlossary.vue'
 
@@ -154,10 +153,13 @@ const bailoutLitres = computed(() =>
 
 const windowsLabel = (windows: CylinderUsageWindow[]): string => {
   const pad = (n: number) => String(n).padStart(2, '0')
+  // Rounds to whole seconds itself (rather than padding durationToMinutesSeconds' own fractional
+  // seconds, which it deliberately keeps for EditDiveForm's round-tripping number inputs) so a
+  // read-only mm:ss label never shows floating-point noise.
   const one = (ms: number | null): string => {
     if (ms == null) return '?'
-    const t = durationToMinutesSeconds(ms)
-    return t ? `${pad(t.minutes)}:${pad(t.seconds)}` : '?'
+    const totalSeconds = Math.round(ms / 1000)
+    return `${pad(Math.trunc(totalSeconds / 60))}:${pad(totalSeconds % 60)}`
   }
   return windows.map((w) => `${one(w.start)}–${one(w.end)}`).join(', ')
 }

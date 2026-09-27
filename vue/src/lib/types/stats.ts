@@ -32,6 +32,8 @@ export type UserDiveStatsByTag = UserDiveStatsBy<TagDefinition>
 
 export type UserDiveStatsBySite = UserDiveStatsBy<DiveSite>
 export type UserDiveStatsBySiteType = UserDiveStatsBy<string>
+/** Key is a `WaterType`, or `UNSPECIFIED` when neither the dive nor its site has one. */
+export type UserDiveStatsByWaterType = UserDiveStatsBy<string>
 
 export type BuddyRoleCount = { role: BuddyRole; count: number }
 

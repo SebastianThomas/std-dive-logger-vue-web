@@ -6,8 +6,9 @@ import {
   coverageNote,
   COVERAGE_WARN_RATIO,
   maxTtsByComputer,
+  withDeviceReportedOxygenLoad,
 } from '@/lib/dive/profileMetrics'
-import type { Dive, DiveProfile, DiveProfileSummary } from '@/lib/types/dive'
+import type { DecoSettings, Dive, DiveProfile, DiveProfileSummary } from '@/lib/types/dive'
 
 const HOUR = 3_600_000
 
@@ -105,5 +106,25 @@ describe('maxTtsByComputer', () => {
 
   it('skips computers that never reported TTS', () => {
     expect(maxTtsByComputer([withTts(1, 10, 'Old', [undefined, undefined])])).toEqual([])
+  })
+})
+
+describe('withDeviceReportedOxygenLoad', () => {
+  // Suunto's JSON: CNS 0 -> 6.9 %, OTU 0 -> 17.8, only in the dive header.
+  const suunto = { startCns: 0, endCns: 6.9, startOtu: 0, endOtu: 17.8 } as DecoSettings
+
+  it('fills CNS and OTU from the computer report when the samples have none', () => {
+    const p = withDeviceReportedOxygenLoad({ ...profile(0, HOUR), decoSettings: suunto })
+    expect(p.summary).toMatchObject({ startCNS: 0, endCNS: 6.9, o2Toxicity: 17.8 })
+  })
+
+  it('keeps sample-derived values and never swaps CNS for OTU', () => {
+    const p = withDeviceReportedOxygenLoad({
+      ...profile(0, HOUR, { endCNS: 5 }),
+      decoSettings: { endOtu: 17.8 } as DecoSettings,
+    })
+    expect(p.summary.endCNS).toBe(5)
+    expect(p.summary.startCNS).toBeUndefined()
+    expect(p.summary.o2Toxicity).toBe(17.8)
   })
 })

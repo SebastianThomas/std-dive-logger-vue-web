@@ -1,9 +1,22 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
+import type { MetricPreferences, RememberedMetric } from '@/lib/graph/metricDefaults'
 
 const GRAPH_CONFIG_KEY = 'diveGraphConfig'
-const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
+/** The diver's own metric toggles (see MetricPreferences) - kept without expiry. */
+const METRIC_PREFS_KEY = 'diveGraphMetricPrefs'
+
+const loadMetricPreferences = (): MetricPreferences => {
+  try {
+    const parsed = JSON.parse(safeLocalStorage.getItem(METRIC_PREFS_KEY) ?? 'null') as
+      | Partial<MetricPreferences>
+      | null
+    return { primary: { ...parsed?.primary }, secondary: { ...parsed?.secondary } }
+  } catch {
+    return { primary: {}, secondary: {} }
+  }
+}
 
 export const useDiveGraphStore = defineStore('diveGraph', () => {
   const configLoaded = ref(false)
@@ -50,11 +63,6 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
         showRmv?: boolean
         showDecoZone?: boolean
         timestamp?: number
-      }
-
-      if (parsed.timestamp && Date.now() - parsed.timestamp > ONE_WEEK_MS) {
-        safeLocalStorage.removeItem(GRAPH_CONFIG_KEY)
-        return
       }
 
       if (typeof parsed.showTemp === 'boolean') showTemp.value = parsed.showTemp
@@ -104,6 +112,21 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
 
   load()
 
+  // Which metrics the diver last chose to see, applied to each dive where it has the data (see
+  // applyMetricPreferences). The show* refs above get overwritten per dive with those + defaults.
+  const metricPreferences = ref<MetricPreferences>(loadMetricPreferences())
+  const rememberMetric = (
+    scope: keyof MetricPreferences,
+    metric: RememberedMetric,
+    shown: boolean,
+  ) => {
+    metricPreferences.value = {
+      ...metricPreferences.value,
+      [scope]: { ...metricPreferences.value[scope], [metric]: shown },
+    }
+    safeLocalStorage.setItem(METRIC_PREFS_KEY, JSON.stringify(metricPreferences.value))
+  }
+
   watch(
     [
       showTemp,
@@ -141,5 +164,7 @@ export const useDiveGraphStore = defineStore('diveGraph', () => {
     showGasN2,
     showGasHe,
     showDecoZone,
+    metricPreferences,
+    rememberMetric,
   }
 })

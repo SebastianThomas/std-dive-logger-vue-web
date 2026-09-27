@@ -32,7 +32,7 @@
       <!-- Location -->
       <div>
         <label for="site-name" class="block mb-2 font-medium">Location</label>
-        <div class="flex gap-2 items-start">
+        <div class="flex flex-wrap gap-2 items-start">
           <div class="flex-1">
             <DiveSiteSearch
               :initial-value="modelValue.diveSite?.name ?? ''"
@@ -1028,7 +1028,7 @@
       <div
         class="w-[90vw] h-[90vh] bg-white dark:bg-gray-800 rounded-xl shadow-lg relative overflow-hidden p-4"
       >
-        <div class="flex justify-between items-center mb-2">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
           <div v-if="selectedCoords" class="text-sm">
             <strong>Selected:</strong> {{ selectedCoords.lat.toFixed(5) }},
             {{ selectedCoords.lon.toFixed(5) }}
@@ -1185,6 +1185,9 @@ const props = defineProps<{
    * figures are checked against for the >15% consistency warning + backfill mismatch chip. */
   calculatedRmvBaseline?: number | null
   calculatedTotalLitersBaseline?: number | null
+  /** The tracked cylinders cover only part of the dive (see buildLiveComparisonView). Phrased so
+   * an absent prop - which Vue casts to `false` for a boolean - means the usual whole-dive case. */
+  cylindersCoverPartialDiveBaseline?: boolean
   ocPressureMinutesBaseline?: number | null
   /** Per-cylinder figures from the last save, positional-matched to the form's cylinders - live
    * per-cylinder RMV / effective windows in the breakdown come from here (they need the profile). */
@@ -1216,6 +1219,7 @@ const backfillPointAt = computed<Set<DiveBackfillMissingField>>(() => {
       ),
       calculatedRmvLiters: props.calculatedRmvBaseline ?? null,
       calculatedTotalLiters: props.calculatedTotalLitersBaseline ?? null,
+      cylindersCoverWholeDive: !props.cylindersCoverPartialDiveBaseline,
       avgDepthMeters: props.avgDepthMeters ?? null,
       durationMinutes: props.durationMinutes ?? null,
     }),
@@ -1867,6 +1871,7 @@ const liveGasView = computed(() =>
     savedContributions: props.savedContributions,
     calculatedRmvLiters: props.calculatedRmvBaseline,
     calculatedTotalLiters: props.calculatedTotalLitersBaseline,
+    cylindersCoverWholeDive: !props.cylindersCoverPartialDiveBaseline,
     ocPressureMinutes: props.ocPressureMinutesBaseline,
     avgDepthMeters: props.avgDepthMeters,
     durationMinutes: props.durationMinutes,

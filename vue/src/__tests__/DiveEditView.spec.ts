@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import DiveEditView from '@/views/DiveEditView.vue'
@@ -10,7 +10,11 @@ const putWithToken = vi.fn()
 const postWithToken = vi.fn()
 
 vi.mock('@/composables/useApi', () => ({ useApi: () => ({ getWithToken, putWithToken, postWithToken }) }))
-vi.mock('@/composables/useNavigation', () => ({ useNavigation: () => ({ safeBack: vi.fn() }) }))
+const { safeBack } = vi.hoisted(() => ({ safeBack: vi.fn() }))
+vi.mock('@/composables/useNavigation', () => ({ useNavigation: () => ({ safeBack }) }))
+// Each test's window keydown listener must not outlive it.
+enableAutoUnmount(afterEach)
+
 vi.mock('vue-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 const completeDive = (): Dive =>
@@ -93,6 +97,7 @@ beforeEach(() => {
   getWithToken.mockReset()
   putWithToken.mockReset()
   postWithToken.mockReset()
+  safeBack.mockReset()
 })
 
 describe('DiveEditView - "Save & dismiss (no more info)"', () => {
@@ -134,5 +139,45 @@ describe('DiveEditView - read-only reference profile', () => {
     const graph = wrapper.findComponent({ name: 'DiveGraphContainer' })
     expect(graph.exists()).toBe(true)
     expect(graph.props('minimal')).toBe(true)
+  })
+})
+
+describe('DiveEditView - Esc closes the editor', () => {
+  const esc = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+
+  it('closes straight away when nothing changed', async () => {
+    const wrapper = await mountView(completeDive(), status({}))
+    esc()
+    await flushPromises()
+    expect(safeBack).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('asks before discarding unsaved changes', async () => {
+    const wrapper = await mountView(completeDive(), status({}))
+    ;(wrapper.vm as unknown as { formData: { notes: string } }).formData.notes = 'edited'
+    await flushPromises()
+    esc()
+    await flushPromises()
+    expect(safeBack).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Discard changes?')
+
+    const discard = wrapper.findAll('button').find((b) => b.text() === 'Discard changes')!
+    await discard.trigger('click')
+    expect(safeBack).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('only leaves a focused field on the first Esc', async () => {
+    const wrapper = await mountView(completeDive(), status({}))
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+    expect(document.activeElement).not.toBe(input)
+    expect(safeBack).not.toHaveBeenCalled()
+    input.remove()
+    wrapper.unmount()
   })
 })

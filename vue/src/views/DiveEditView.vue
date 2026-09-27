@@ -5,7 +5,13 @@
     >
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold">Edit Dive #{{ formData.diveNumber }}</h1>
-        <button @click="safeBack" class="text-xl font-bold hover:text-gray-600">✕</button>
+        <button
+          @click="requestClose"
+          class="text-xl font-bold hover:text-gray-600"
+          title="Close (Esc)"
+        >
+          ✕
+        </button>
       </div>
 
       <div v-if="loading" class="flex-1 flex items-center justify-center">
@@ -67,6 +73,7 @@
           :backfill-prominent="fromBackfill"
           :calculated-rmv-baseline="calculatedRmvBaseline"
           :calculated-total-liters-baseline="calculatedTotalLitersBaseline"
+          :cylinders-cover-partial-dive-baseline="!cylindersCoverWholeDiveBaseline"
           :oc-pressure-minutes-baseline="ocPressureMinutesBaseline"
           :saved-contributions="savedContributions"
           :saved-cylinder-consumption="currentCylinderConsumption"
@@ -103,7 +110,7 @@
 
       <div class="mt-6 pt-4 border-t flex flex-wrap justify-end gap-3">
         <button
-          @click="safeBack"
+          @click="requestClose"
           class="px-6 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600"
         >
           Cancel
@@ -126,16 +133,25 @@
         </button>
       </div>
     </div>
+    <DeletionConfirmation
+      v-model="showDiscardConfirm"
+      title="Discard changes?"
+      message="You have unsaved changes to this dive. Close the editor and discard them?"
+      confirm-text="Discard changes"
+      @confirm="discardAndClose"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useNavigation } from '@/composables/useNavigation'
+import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
+import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import EditDiveForm from '@/components/dive/edit/EditDiveForm.vue'
@@ -338,7 +354,36 @@ const fetchDive = async () => {
   } finally {
     loading.value = false
   }
+  // After the form has rendered, so values it normalises on mount don't count as edits.
+  await nextTick()
+  savedSnapshot.value = error.value ? null : editSnapshot()
 }
+
+// Unsaved-changes guard for closing the editor (✕, Cancel, Esc).
+const savedSnapshot = ref<string | null>(null)
+const editSnapshot = () =>
+  JSON.stringify({
+    form: formData.value,
+    tags: selectedTags.value.map((t) => t.id),
+    dismissedAutoTags: [...dismissedAutoTagIds.value].sort(),
+  })
+const isDirty = computed(() => savedSnapshot.value != null && editSnapshot() !== savedSnapshot.value)
+const showDiscardConfirm = ref(false)
+const requestClose = () => {
+  if (isDirty.value) {
+    showDiscardConfirm.value = true
+  } else {
+    safeBack()
+  }
+}
+const discardAndClose = () => {
+  showDiscardConfirm.value = false
+  savedSnapshot.value = null
+  safeBack()
+}
+
+/** A modal / picker is open over the form - its own Esc handling wins. */
+const overlayOpen = () => document.querySelector('.fixed.inset-0') != null
 
 const siteHasChanged = (original: DiveSite | null, edited: DiveSite | null): boolean => {
   if (!original && !edited) return false
@@ -486,6 +531,13 @@ const calculatedTotalLitersBaseline = computed<number | null>(() =>
       loadedDive.value?.cylinderConsumption?.ocConsumedLiters ??
       null),
 )
+// Absent (an older backend) counts as complete, the behaviour before the flag existed.
+const cylindersCoverWholeDiveBaseline = computed<boolean>(
+  () =>
+    (hasLivePreview.value
+      ? liveCylinderConsumption.value?.ocConsumedLitersComplete
+      : loadedDive.value?.cylinderConsumption?.ocConsumedLitersComplete) !== false,
+)
 const ocPressureMinutesBaseline = computed<number | null>(() =>
   hasLivePreview.value
     ? (liveCylinderConsumption.value?.ocPressureMinutes ?? null)
@@ -522,6 +574,7 @@ const liveMissing = computed<DiveBackfillMissingField[]>(() =>
     ),
     calculatedRmvLiters: calculatedRmvBaseline.value,
     calculatedTotalLiters: calculatedTotalLitersBaseline.value,
+    cylindersCoverWholeDive: cylindersCoverWholeDiveBaseline.value,
     avgDepthMeters: loadedDive.value?.summary.averageDepth ?? null,
     durationMinutes: loadedDiveDurationMinutes.value,
   }),
@@ -684,6 +737,26 @@ const handleSubmit = async (markDismissed = false) => {
 }
 
 const handleKeyDown = (event: KeyboardEvent) => {
+  // Esc: the first one leaves a focused field (vim mode's normal-mode Esc already blurs it), the
+  // next closes the editor - asking first when something changed.
+  if (
+    event.key === 'Escape' &&
+    !event.defaultPrevented &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey
+  ) {
+    const target = event.target
+    if (isTypingTarget(target) || target instanceof HTMLSelectElement) {
+      const field = target as HTMLElement
+      if (!field.hasAttribute('data-ac-open')) field.blur()
+      return
+    }
+    if (overlayOpen()) return
+    event.preventDefault()
+    requestClose()
+    return
+  }
   if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
     event.preventDefault()
     if (!submitting.value) {

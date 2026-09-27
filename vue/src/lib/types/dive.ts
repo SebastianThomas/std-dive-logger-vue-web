@@ -379,6 +379,10 @@ export type CylinderConsumption = {
   /** Sum of consumed litres over OC-role cylinders. Maps to `CylinderConsumptionResult
    * .ocConsumedLiters` on the backend. */
   ocConsumedLiters?: number | null
+  /** `ocConsumedLiters` is the whole dive's OC gas: every OC cylinder has usable pressures + size
+   * and together they span the dive. False = a partial total (RMV over the tracked stretches is
+   * still shown; a total is not). Maps to `CylinderConsumptionResult.ocConsumedLitersComplete`. */
+  ocConsumedLitersComplete?: boolean
   /** Depth-weighted pressure-minutes denominator behind `ocRmvLiters`. Maps to
    * `CylinderConsumptionResult.ocPressureMinutes`. */
   ocPressureMinutes?: number | null

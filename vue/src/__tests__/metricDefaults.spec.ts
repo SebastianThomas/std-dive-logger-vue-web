@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { computeSensibleMetricDefaults, selectBestPo2Source } from '@/lib/graph/metricDefaults'
+import {
+  applyMetricPreferences,
+  computeSensibleMetricDefaults,
+  selectBestPo2Source,
+  type MetricPreferences,
+  type RememberedMetric,
+} from '@/lib/graph/metricDefaults'
 import type { ProfileMetricCounts } from '@/composables/useDiveGraphMetrics'
 
 const EMPTY: ProfileMetricCounts = {
@@ -138,5 +144,67 @@ describe('selectBestPo2Source', () => {
     const result = selectBestPo2Source([counts({ po2Calculated: 30 }), counts({ po2Calculated: 5 })])
 
     expect(result).toEqual({ profileIdx: 0, metric: 'po2Calculated' })
+  })
+})
+
+describe('applyMetricPreferences', () => {
+  // What each profile has data for (index 0 = primary).
+  const has =
+    (...metrics: RememberedMetric[]) =>
+    (metric: RememberedMetric) =>
+      metrics.includes(metric)
+  const none: MetricPreferences = { primary: {}, secondary: {} }
+
+  it('keeps the data-driven defaults for metrics the diver never touched', () => {
+    const defaults = computeSensibleMetricDefaults([counts({ temp: 5, tts: 5 })])
+    const applied = applyMetricPreferences(defaults, none, [has('temp', 'tts')])
+    expect(applied.show.temp).toBe(true)
+    expect(applied.show.tts).toBe(true)
+    expect(applied.show.gasO2).toBe(false)
+  })
+
+  it("brings back the diver's choices, but only where this dive has the data", () => {
+    const defaults = computeSensibleMetricDefaults([counts({ temp: 5, tts: 5 })])
+    const prefs: MetricPreferences = {
+      primary: { tts: false, gasO2: true, cns: true },
+      secondary: {},
+    }
+    const applied = applyMetricPreferences(defaults, prefs, [has('temp', 'tts', 'gasO2')])
+    expect(applied.show.tts).toBe(false) // turned off by the diver, despite data
+    expect(applied.show.gasO2).toBe(true) // turned on by the diver, data present
+    expect(applied.show.cns).toBe(false) // wanted, but this dive has no CNS
+  })
+
+  it('opts secondary profiles into a remembered metric when they have its data', () => {
+    const defaults = computeSensibleMetricDefaults([
+      counts({ temp: 5 }),
+      counts({ temp: 5, ndl: 5 }),
+      counts({ temp: 5 }),
+    ])
+    const prefs: MetricPreferences = { primary: {}, secondary: { temp: true, ndl: false } }
+    const applied = applyMetricPreferences(defaults, prefs, [
+      has('temp'),
+      has('temp', 'ndl'),
+      has('temp'),
+    ])
+    // ndl's richer-secondary default is overridden by the remembered "off".
+    expect(applied.extraProfileMetrics).toEqual({ 1: { temp: true }, 2: { temp: true } })
+  })
+
+  it('shows a remembered PO2 line only on the dive\'s selected PO2 source', () => {
+    const defaults = computeSensibleMetricDefaults([
+      counts({ po2Calculated: 10 }),
+      counts({ po2Measured: 10 }),
+    ])
+    const prefs: MetricPreferences = {
+      primary: { po2Calculated: true },
+      secondary: { po2Measured: true },
+    }
+    const applied = applyMetricPreferences(defaults, prefs, [
+      has('po2Calculated'),
+      has('po2Measured'),
+    ])
+    expect(applied.show.po2Calculated).toBe(false) // measured on profile 2 is the source
+    expect(applied.extraProfileMetrics[1]).toEqual({ po2Measured: true })
   })
 })

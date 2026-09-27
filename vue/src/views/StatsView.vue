@@ -88,6 +88,24 @@
           <button
             :class="[
               'p-4 rounded-lg border-2 transition-all',
+              selectedStat === 'water-type'
+                ? 'border-cyan-600 bg-cyan-50 dark:bg-cyan-900/20'
+                : 'border-gray-300 dark:border-gray-600 hover:border-cyan-400',
+            ]"
+            @click="selectStat('water-type')"
+          >
+            <div class="flex items-center gap-3">
+              <i class="fas fa-droplet text-2xl text-cyan-600"></i>
+              <div class="text-left">
+                <h3 class="font-semibold">By Water Type</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Salt, fresh, brackish</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            :class="[
+              'p-4 rounded-lg border-2 transition-all',
               selectedStat === 'buddy'
                 ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-orange-400',
@@ -219,6 +237,26 @@
           </h2>
           <StatCard :stats="item.stats" />
         </div>
+      </div>
+
+      <!-- Water Type Stats -->
+      <div v-else-if="selectedStat === 'water-type'" class="space-y-6">
+        <div
+          v-for="item in waterTypeStats"
+          :key="item.key"
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+        >
+          <h2 class="text-xl font-bold mb-4">
+            <i class="fas fa-droplet mr-2 text-cyan-600"></i>{{ waterTypeLabel(item.key) }}
+          </h2>
+          <StatCard :stats="item.stats" />
+        </div>
+        <p
+          v-if="waterTypeStats.some((i) => i.key === 'UNSPECIFIED')"
+          class="text-sm text-gray-600 dark:text-gray-400"
+        >
+          "Not specified" dives are at sites without a water type - set it on the dive site's page.
+        </p>
       </div>
 
       <!-- Buddy Stats -->
@@ -405,6 +443,7 @@ import type {
   UserDiveStatsByYear,
   UserDiveStatsBySite,
   UserDiveStatsBySiteType,
+  UserDiveStatsByWaterType,
   UserDiveStatsByBuddy,
   UserDiveStatsByBaseConfiguration,
   UserDiveStatsByTag,
@@ -415,13 +454,24 @@ import {
   type BaseConfiguration,
   DIVE_SITE_TYPE_LABELS,
   type DiveSiteType,
+  WATER_TYPE_LABELS,
+  type WaterType,
 } from '@/lib/types/dive'
 
 const router = useRouter()
 const route = useRoute()
 const { getWithToken } = useApi()
 
-type StatType = 'overall' | 'year' | 'site' | 'site-type' | 'buddy' | 'buddy-roles' | 'base' | 'tag'
+type StatType =
+  | 'overall'
+  | 'year'
+  | 'site'
+  | 'site-type'
+  | 'water-type'
+  | 'buddy'
+  | 'buddy-roles'
+  | 'base'
+  | 'tag'
 
 // Fixed order, matching the tab row in the template - also what 'n'/'p' step through below.
 const STAT_TYPES: StatType[] = [
@@ -429,6 +479,7 @@ const STAT_TYPES: StatType[] = [
   'year',
   'site',
   'site-type',
+  'water-type',
   'buddy',
   'buddy-roles',
   'base',
@@ -445,6 +496,7 @@ const cache = ref<{
   year: UserDiveStatsByYear | null
   site: UserDiveStatsBySite[] | null
   'site-type': UserDiveStatsBySiteType[] | null
+  'water-type': UserDiveStatsByWaterType[] | null
   buddy: UserDiveStatsByBuddy[] | null
   'buddy-roles': BuddyRoleStats | null
   base: UserDiveStatsByBaseConfiguration[] | null
@@ -454,6 +506,7 @@ const cache = ref<{
   year: null,
   site: null,
   'site-type': null,
+  'water-type': null,
   buddy: null,
   'buddy-roles': null,
   base: null,
@@ -464,6 +517,7 @@ const overallStats = computed(() => cache.value.overall)
 const yearStats = computed(() => cache.value.year || [])
 const siteStats = computed(() => cache.value.site || [])
 const siteTypeStats = computed(() => cache.value['site-type'] || [])
+const waterTypeStats = computed(() => cache.value['water-type'] || [])
 const buddyStats = computed(() => cache.value.buddy || [])
 const buddyRoleStats = computed(() => cache.value['buddy-roles'])
 const baseStats = computed(() => cache.value.base || [])
@@ -508,6 +562,8 @@ const toggleTagFilter = async (tagId: number) => {
 const baseConfigLabel = (key: BaseConfiguration | null) =>
   key ? BASE_CONFIGURATION_LABELS[key] : 'Not specified'
 const siteTypeLabel = (key: string) => DIVE_SITE_TYPE_LABELS[key as DiveSiteType] ?? key
+const waterTypeLabel = (key: string) =>
+  key === 'UNSPECIFIED' ? 'Not specified' : (WATER_TYPE_LABELS[key as WaterType] ?? key)
 
 const selectStat = async (stat: StatType) => {
   // Ignore if clicking the same stat that's already selected
@@ -540,6 +596,8 @@ const loadStat = async (stat: StatType) => {
       url += '/dive-site'
     } else if (stat === 'site-type') {
       url += '/site-type'
+    } else if (stat === 'water-type') {
+      url += '/water-type'
     } else if (stat === 'buddy') {
       url += '/buddy'
     } else if (stat === 'buddy-roles') {
@@ -569,6 +627,8 @@ const loadStat = async (stat: StatType) => {
       cache.value.site = response.data as UserDiveStatsBySite[]
     } else if (stat === 'site-type') {
       cache.value['site-type'] = response.data as UserDiveStatsBySiteType[]
+    } else if (stat === 'water-type') {
+      cache.value['water-type'] = response.data as UserDiveStatsByWaterType[]
     } else if (stat === 'buddy') {
       cache.value.buddy = response.data as UserDiveStatsByBuddy[]
     } else if (stat === 'buddy-roles') {

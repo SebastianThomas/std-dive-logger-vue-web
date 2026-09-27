@@ -35,13 +35,13 @@
     />
     <StatItem
       label="Max Temperature"
-      :value="`${stats.maxTemp.value}° ${formatUnit(stats.maxTemp.unit)}`"
+      :value="`${stats.maxTemp.value.toFixed(1)}° ${formatUnit(stats.maxTemp.unit)}`"
       icon="thermometer-half"
       v-if="stats.maxTemp"
     />
     <StatItem
       label="Min Temperature"
-      :value="`${stats.minTemp.value}° ${formatUnit(stats.minTemp.unit)}`"
+      :value="`${stats.minTemp.value.toFixed(1)}° ${formatUnit(stats.minTemp.unit)}`"
       icon="snowflake"
       v-if="stats.minTemp"
     />

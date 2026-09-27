@@ -21,15 +21,6 @@
       </button>
     </div>
 
-    <div class="flex flex-col gap-2">
-      <label class="text-sm font-medium dark:text-gray-300">Dive name</label>
-      <input
-        v-model="identifier"
-        type="text"
-        class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
-      />
-    </div>
-
     <div class="flex gap-2 text-sm">
       <button
         type="button"
@@ -61,7 +52,18 @@
       <i class="fas fa-link mr-1"></i>{{ autoAttachNote }}
     </p>
 
+    <!-- Name and site describe a new dive only - attaching adds a profile to a dive that
+         already has both, and the commit ignores them there. -->
     <div v-if="mode === 'new'" class="flex flex-col gap-2">
+      <label :for="`pending-${summary.id}-name`" class="text-sm font-medium dark:text-gray-300"
+        >Dive name</label
+      >
+      <input
+        :id="`pending-${summary.id}-name`"
+        v-model="identifier"
+        type="text"
+        class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+      />
       <label class="text-sm font-medium dark:text-gray-300">Dive site</label>
       <div class="flex items-center gap-2">
         <span

@@ -5,7 +5,10 @@ export type ParsedDuration = DurationParts | { invalid: true; input: unknown }
 export function parseDuration(duration?: number | string | null): ParsedDuration {
   if (duration == null || duration === '') return { hours: 0, minutes: 0, seconds: 0 }
   if (typeof duration !== 'number' || !Number.isFinite(duration)) return { invalid: true, input: duration }
-  const total = duration / 1000
+  // Round to the nearest whole second first - the API can send durations with fractional
+  // milliseconds (e.g. relative-interval-derived values), and splitting those directly leaks
+  // floating-point noise (5.000000000000053) into the seconds component instead of a clean 5.
+  const total = Math.round(duration / 1000)
   return { hours: Math.trunc(total / 3600), minutes: Math.trunc(total / 60) % 60, seconds: total % 60 }
 }
 
@@ -23,6 +26,16 @@ export function formatDurationToMinutes(duration?: number | string | null): stri
   if (duration == null || duration === '') return '-'
   const parts = parseDuration(duration)
   return 'invalid' in parts ? '-' : `${parts.hours * 60 + parts.minutes} min`
+}
+
+/**
+ * Whole minutes rounded *up*, as dive computers show a time-to-surface: 17 min 20 s of ascent is
+ * "18 min" on the device (truncating would under-state it).
+ */
+export function formatDurationToMinutesRoundedUp(duration?: number | null): string {
+  if (duration == null || !Number.isFinite(duration)) return '-'
+  // Sub-millisecond float noise from interval-derived values must not add a whole minute.
+  return `${Math.ceil(Math.round(duration) / 60000)} min`
 }
 
 export function durationToMinutes(duration?: number | string | null): number {
@@ -160,7 +173,11 @@ export function formatDate(date: Date | number | string | undefined | null, time
   }
 }
 
-/** API durations are elapsed milliseconds, including negative offsets. */
+/** API durations are elapsed milliseconds, including negative offsets. Deliberately keeps a
+ * fractional seconds component (not rounded) - EditDiveForm's usage-window minute/second inputs
+ * round-trip through this and {@link minutesSecondsToDuration}, and rounding here would silently
+ * truncate sub-second precision from an imported profile the moment the *other* field is edited.
+ * A read-only mm:ss label should round `seconds` itself at the point of display instead. */
 export function durationToMinutesSeconds(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return null
   const seconds = value / 1000

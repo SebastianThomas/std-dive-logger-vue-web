@@ -31,66 +31,27 @@
       </div>
     </div>
 
-    <!-- Show selected profile data or all profiles -->
+    <!-- Several profiles side by side: one grid row per metric across all columns, so the same
+         reading sits at the same height in every column (a stop only one computer has, or a
+         wrapped value, can't shift the rows below it). -->
     <div
       v-if="selectedProfilesData.length > 1"
-      class="grid gap-3"
-      :style="{ gridTemplateColumns: `repeat(${Math.min(selectedProfilesData.length, 3)}, 1fr)` }"
+      class="grid gap-x-3"
+      :style="{ gridTemplateColumns: `repeat(${selectedProfilesData.length}, auto)` }"
     >
-      <div
-        v-for="(profile, idx) in selectedProfilesData"
-        :key="idx"
-        :class="[idx > 0 ? 'border-l pl-2 border-gray-300 dark:border-gray-600' : '']"
-      >
-        <div class="font-semibold text-xs mb-1">Profile {{ profile.profileNum }}</div>
-        <div class="profile-data">
-          <div :class="rowClass('depth')">
-            Depth: {{ profile.depth != null ? profile.depth.toFixed(1) : '-' }} m
-          </div>
-          <div v-if="data.metricAvailability.hasTemp" :class="rowClass('temp')">
-            Temp: {{ profile.temp !== undefined ? profile.temp.toFixed(1) : '-' }} °C
-          </div>
-          <div v-if="data.metricAvailability.hasNdl" :class="rowClass('ndl')">
-            NDL: {{ profile.ndl !== undefined ? profile.ndl : '-' }}
-          </div>
-          <div v-if="data.metricAvailability.hasTts" :class="rowClass('tts')">
-            TTS: {{ profile.tts !== undefined ? profile.tts : '-' }}
-          </div>
-          <div v-if="data.metricAvailability.hasDeco && formatDeco(profile)" class="text-red-500">
-            Deco: {{ formatDeco(profile) }}
-          </div>
-          <div v-if="data.metricAvailability.hasOtu" :class="rowClass('otu')">
-            OTU: {{ profile.otu !== undefined ? profile.otu.toFixed(0) : '-' }}
-          </div>
-          <div v-if="data.metricAvailability.hasCns" :class="rowClass('cns')">
-            CNS: {{ profile.cns !== undefined ? profile.cns.toFixed(0) : '-' }}%
-          </div>
-          <div v-if="data.metricAvailability.hasGf" :class="rowClass('gf')">
-            GF: {{ profile.gf !== undefined ? profile.gf.toFixed(0) : '-' }}%
-          </div>
-          <div v-if="data.metricAvailability.hasRmv" :class="rowClass('rmv')">
-            RMV: {{ profile.rmv != null ? profile.rmv.toFixed(0) : '-' }} L/m
-          </div>
-          <div v-if="data.metricAvailability.hasPo2Measured" :class="rowClass('po2Measured')">
-            PO2(m): {{ profile.po2Measured != null ? profile.po2Measured.toFixed(2) : '-' }}
-          </div>
-          <div v-if="data.metricAvailability.hasPo2Calculated" :class="rowClass('po2Calculated')">
-            PO2(c): {{ profile.po2Calculated != null ? profile.po2Calculated.toFixed(2) : '-' }}
-          </div>
-          <div v-if="data.metricAvailability.hasPo2Setpoint" :class="rowClass('po2Setpoint')">
-            PO2(s): {{ profile.po2Setpoint != null ? profile.po2Setpoint.toFixed(2) : '-' }}
-          </div>
-          <div
-            v-if="data.metricAvailability.hasGasO2 || data.metricAvailability.hasGasHe"
-            :class="isGasHovered ? 'font-bold' : ''"
-          >
-            <div v-if="profile.gasO2 !== undefined && profile.gasHe !== undefined">
-              Gas: {{ profile.gasO2.toFixed(0) }}/{{ profile.gasHe.toFixed(0) }}
-            </div>
-            <div v-else>Gas: -</div>
-          </div>
+      <template v-for="row in multiRows" :key="row.key">
+        <div
+          v-for="(cell, idx) in row.cells"
+          :key="idx"
+          :class="[
+            row.cls,
+            cell.cls,
+            idx > 0 ? 'border-l pl-2 border-gray-300 dark:border-gray-600' : '',
+          ]"
+        >
+          {{ cell.text }}
         </div>
-      </div>
+      </template>
     </div>
 
     <!-- Show selected profile data (original view) -->
@@ -112,7 +73,7 @@
         v-if="data.metricAvailability.hasDeco && formatDeco(currentProfile)"
         class="text-red-500"
       >
-        Deco stop: {{ formatDeco(currentProfile) }}
+        Stop: {{ formatDeco(currentProfile) }}
       </div>
       <div v-if="data.metricAvailability.hasOtu" :class="rowClass('otu')">
         OTUs: {{ currentProfile.otu !== undefined ? currentProfile.otu.toFixed(0) : '-' }}
@@ -255,6 +216,76 @@ const formatDeco = (profile: TooltipProfileData): string | null => {
   const seconds = profile.decoSeconds ?? 0
   return seconds > 0 ? `${depth} / ${Math.round(seconds / 60)} min` : depth
 }
+
+type Cell = { text: string; cls?: string }
+type Row = { key: string; cls: string; cells: Cell[] }
+
+const fixed = (value: number | null | undefined, digits: number): string =>
+  value != null ? value.toFixed(digits) : '-'
+
+/** The side-by-side view's rows; a metric row is present for every column or for none. */
+const multiRows = computed<Row[]>(() => {
+  const availability = props.data?.metricAvailability
+  const profiles = selectedProfilesData.value
+  if (!availability) return []
+  const rows: Row[] = []
+  const add = (
+    key: string,
+    show: boolean,
+    cls: string,
+    text: (p: TooltipProfileData) => string,
+  ) => {
+    if (show) rows.push({ key, cls, cells: profiles.map((p) => ({ text: text(p) })) })
+  }
+  add('header', true, 'font-semibold mb-1', (p) => `Profile ${p.profileNum}`)
+  add('depth', true, rowClass('depth'), (p) => `Depth: ${fixed(p.depth, 1)} m`)
+  add('temp', availability.hasTemp, rowClass('temp'), (p) => `Temp: ${fixed(p.temp, 1)} °C`)
+  add('ndl', availability.hasNdl, rowClass('ndl'), (p) => `NDL: ${p.ndl ?? '-'}`)
+  add('tts', availability.hasTts, rowClass('tts'), (p) => `TTS: ${p.tts ?? '-'}`)
+  // The current ("next") mandatory stop - shown for every column once any of them has one.
+  const stops = profiles.map(formatDeco)
+  if (availability.hasDeco && stops.some((stop) => stop != null)) {
+    rows.push({
+      key: 'stop',
+      cls: '',
+      cells: stops.map((stop) =>
+        stop != null ? { text: `Stop: ${stop}`, cls: 'text-red-500' } : { text: 'Stop: -' },
+      ),
+    })
+  }
+  add('otu', availability.hasOtu, rowClass('otu'), (p) => `OTU: ${fixed(p.otu, 0)}`)
+  add('cns', availability.hasCns, rowClass('cns'), (p) => `CNS: ${fixed(p.cns, 0)}%`)
+  add('gf', availability.hasGf, rowClass('gf'), (p) => `GF: ${fixed(p.gf, 0)}%`)
+  add('rmv', availability.hasRmv, rowClass('rmv'), (p) => `RMV: ${fixed(p.rmv, 0)} L/m`)
+  add(
+    'po2Measured',
+    availability.hasPo2Measured,
+    rowClass('po2Measured'),
+    (p) => `PO2(m): ${fixed(p.po2Measured, 2)}`,
+  )
+  add(
+    'po2Calculated',
+    availability.hasPo2Calculated,
+    rowClass('po2Calculated'),
+    (p) => `PO2(c): ${fixed(p.po2Calculated, 2)}`,
+  )
+  add(
+    'po2Setpoint',
+    availability.hasPo2Setpoint,
+    rowClass('po2Setpoint'),
+    (p) => `PO2(s): ${fixed(p.po2Setpoint, 2)}`,
+  )
+  add(
+    'gas',
+    availability.hasGasO2 || availability.hasGasHe,
+    isGasHovered.value ? 'font-bold' : '',
+    (p) =>
+      p.gasO2 !== undefined && p.gasHe !== undefined
+        ? `Gas: ${p.gasO2.toFixed(0)}/${p.gasHe.toFixed(0)}`
+        : 'Gas: -',
+  )
+  return rows
+})
 
 const selectedProfile = computed(() => props.selectedProfiles?.[0] ?? 0)
 const currentProfile = computed(() => {

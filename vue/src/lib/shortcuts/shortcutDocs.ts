@@ -45,6 +45,10 @@ export const pageShortcuts = {
     { label: 'Next/Previous Stat Tab', key: 'N/P' },
     { label: 'Jump to Tab 1-6', key: '1-6' },
   ],
+  DiveEdit: [
+    { label: 'Save', key: 'Ctrl/Cmd+Enter' },
+    { label: 'Leave field, then close (asks if unsaved)', key: 'Esc' },
+  ],
   StatsTimeline: [
     { label: 'Next/Previous Metric', key: 'N/P' },
     { label: 'Jump to Metric 1-9, 0', key: '1-9, 0' },
@@ -59,6 +63,7 @@ export const pageLabels: Record<KnownShortcutPage, string> = {
   DiveList: 'Dive List',
   Stats: 'Statistics',
   StatsTimeline: 'Trends',
+  DiveEdit: 'Edit Dive',
 }
 
 export const isKnownShortcutPage = (name: string): name is KnownShortcutPage =>

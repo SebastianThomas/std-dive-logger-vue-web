@@ -5,6 +5,7 @@ import {
   epochFromElapsedMinutesSeconds,
   epochMsToDateTimeLocal,
   formatDurationToMinutes,
+  formatDurationToMinutesRoundedUp,
   formatDurationToTime,
   parseDuration,
 } from '../lib/utils/timeUtils'
@@ -74,6 +75,21 @@ describe('timeUtils', () => {
         input: 'invalid',
       })
     })
+
+    it('rounds fractional-millisecond durations to whole seconds instead of leaking float noise', () => {
+      // The API can send durations with fractional milliseconds (relative-interval-derived
+      // values) - e.g. 5000.000000000053ms is "5 seconds", not a seconds field with 15 decimals.
+      expect(parseDuration(5000.000000000053)).toEqual({
+        hours: 0,
+        minutes: 0,
+        seconds: 5,
+      })
+      expect(parseDuration(65499.7)).toEqual({
+        hours: 0,
+        minutes: 1,
+        seconds: 5,
+      })
+    })
   })
 
   describe('formatDurationToTime', () => {
@@ -134,6 +150,17 @@ describe('timeUtils', () => {
 
     it('should pad single digits correctly', () => {
       expect(formatDurationToTime(6303000)).toBe('01:45:03')
+    })
+  })
+
+  describe('formatDurationToMinutesRoundedUp', () => {
+    it('rounds a time-to-surface up to whole minutes like the dive computer does', () => {
+      // Suunto logs TTS to the second: 17:20 shows as 18 min underwater.
+      expect(formatDurationToMinutesRoundedUp((17 * 60 + 20) * 1000)).toBe('18 min')
+      expect(formatDurationToMinutesRoundedUp(18 * 60 * 1000)).toBe('18 min')
+      expect(formatDurationToMinutesRoundedUp(18 * 60 * 1000 + 0.0000001)).toBe('18 min')
+      expect(formatDurationToMinutesRoundedUp(0)).toBe('0 min')
+      expect(formatDurationToMinutesRoundedUp(null)).toBe('-')
     })
   })
 

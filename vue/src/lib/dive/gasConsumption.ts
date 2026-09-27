@@ -178,6 +178,9 @@ export function buildLiveComparisonView(input: {
   savedContributions?: CylinderContribution[] | null
   calculatedRmvLiters: number | null | undefined
   calculatedTotalLiters: number | null | undefined
+  /** False when the cylinders cover only part of the dive: their RMV is shown, but neither it nor
+   * a (partial) total is checked against the whole-dive entry. Absent = true. */
+  cylindersCoverWholeDive?: boolean | null
   ocPressureMinutes: number | null | undefined
   avgDepthMeters: number | null | undefined
   durationMinutes: number | null | undefined
@@ -189,9 +192,10 @@ export function buildLiveComparisonView(input: {
   const implied = impliedRmvFromTotal(enteredTotal, input.avgDepthMeters, input.durationMinutes)
   const insertedRmv = enteredRmv ?? implied
   const calcRmv = input.calculatedRmvLiters ?? null
-  const calcTotal = input.calculatedTotalLiters ?? null
+  const whole = input.cylindersCoverWholeDive !== false
+  const calcTotal = whole ? (input.calculatedTotalLiters ?? null) : null
 
-  const rmvVsCylinders = differsBeyondTolerance(insertedRmv, calcRmv)
+  const rmvVsCylinders = whole && differsBeyondTolerance(insertedRmv, calcRmv)
   const totalVsCylinders = differsBeyondTolerance(enteredTotal, calcTotal)
   const rmvVsTotal = differsBeyondTolerance(enteredRmv, implied)
   const mismatch = rmvVsCylinders || totalVsCylinders || rmvVsTotal

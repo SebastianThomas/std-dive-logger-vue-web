@@ -436,7 +436,7 @@
           <h2 class="font-semibold text-sm" :style="{ color: 'var(--foreground)' }">
             Dive Profile
           </h2>
-          <div v-if="!isManualDive" class="flex items-center gap-4 text-sm">
+          <div v-if="!isManualDive" class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <button
               v-if="isMine && !readOnly && dive.profiles?.length"
               @click="showReimportModal = true"
@@ -612,6 +612,16 @@
           >
             {{ gasSourceNote(rmvDisplay.source) }}
           </div>
+          <div
+            v-if="
+              rmvDisplay.source === 'cylinders' &&
+              dive.cylinderConsumption?.ocConsumedLitersComplete === false
+            "
+            class="text-[11px] text-gray-400 dark:text-gray-500 text-center"
+            title="Over the stretches of the dive with a tracked cylinder only"
+          >
+            tracked part only
+          </div>
         </InfoCard>
         <InfoCard
           v-if="dive.cylinderConsumption?.bailoutRmvLiters != null"
@@ -636,11 +646,19 @@
             {{ totalGasDisplay.toFixed(1) }} l
           </div>
           <div
-            v-if="gasSourceNote(gasCmp.effectiveTotalSource)"
+            v-if="gasSourceNote(totalGas?.source ?? null)"
             class="text-[11px] text-gray-400 dark:text-gray-500 text-center"
           >
-            {{ gasSourceNote(gasCmp.effectiveTotalSource) }}
+            {{ gasSourceNote(totalGas?.source ?? null) }}
           </div>
+        </InfoCard>
+        <!-- Cylinders track only part of the dive: their RMV is meaningful, a total isn't. -->
+        <InfoCard
+          v-else-if="partialCylinderLiters != null"
+          title="Total Gas"
+          :warning="`Only ${partialCylinderLiters.toFixed(0)} l is tracked - not every stretch of the dive has a cylinder with start/end pressure and size, so there is no whole-dive total.`"
+        >
+          <div class="text-sm text-center text-gray-500 dark:text-gray-400">incomplete</div>
         </InfoCard>
       </InfoCardRow>
 
@@ -677,6 +695,12 @@
             :key="idx"
             class="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-1.5"
           >
+            <!-- #n: what the per-window RMV lines below refer to. -->
+            <span
+              v-if="dive.configuration.cylinders.length > 1"
+              class="text-gray-400 dark:text-gray-500 tabular-nums"
+              >#{{ idx + 1 }}</span
+            >
             <span class="font-semibold">
               {{ cylinder.size.value }} {{ cylinder.size.unit === 'LITER' ? 'l' : 'cf' }}
             </span>
@@ -717,6 +741,10 @@
             </template>
           </div>
         </div>
+        <ConsumptionPhaseList
+          v-if="dive.cylinderConsumption?.contributions?.length"
+          :contributions="dive.cylinderConsumption.contributions"
+        />
       </div>
 
       <!-- Notes Panel -->
@@ -745,7 +773,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
-import { formatDurationToTime, formatDate, durationToMinutesSeconds } from '@/lib/utils/timeUtils'
+import { formatDurationToTime, formatDate } from '@/lib/utils/timeUtils'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import { formatDecoSettings, decoSettingsDetails } from '@/lib/dive/decoSettings'
 import DiveSearchAndLink from '@/components/DiveSearchAndLink.vue'
@@ -760,6 +788,7 @@ import DiveSourceFiles from '@/components/dive/view/DiveSourceFiles.vue'
 import DivePhotoGallery from '@/components/dive/DivePhotoGallery.vue'
 import GasConsumptionBreakdown from '@/components/dive/GasConsumptionBreakdown.vue'
 import CcrGasBreakdown from '@/components/dive/CcrGasBreakdown.vue'
+import ConsumptionPhaseList from '@/components/dive/ConsumptionPhaseList.vue'
 import type {
   Dive,
   DiveComputer,
@@ -778,7 +807,12 @@ import { gasConsumptionComparison } from '@/lib/dive/gasConsumption'
 import type { DiveTrip } from '@/lib/types/trip'
 import { useTeamTerminology } from '@/composables/useTeamTerminology'
 import { computeGasList, isGaugeModeProfile, type GasListEntry } from '@/lib/dive/gasRoles'
-import { metricCoverage, coverageNote, maxTtsByComputer } from '@/lib/dive/profileMetrics'
+import {
+  metricCoverage,
+  coverageNote,
+  maxTtsByComputer,
+  withDeviceReportedOxygenLoad,
+} from '@/lib/dive/profileMetrics'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import TagBadge from '@/components/dive/TagBadge.vue'
 import type { User } from '@/lib/types/user'
@@ -890,10 +924,12 @@ const isManualDive = computed(
 // GF99 is resolved against non-gauge profiles only.
 const profileList = computed(() => dive.value?.profiles ?? [])
 const nonGaugeProfiles = computed(() => profileList.value.filter((p) => !isGaugeModeProfile(p)))
+// CNS / OTU fall back to each computer's own dive-level report (Suunto logs them only there).
+const oxygenLoadProfiles = computed(() => profileList.value.map(withDeviceReportedOxygenLoad))
 const cnsCoverage = computed(() =>
   dive.value
     ? metricCoverage(
-        profileList.value,
+        oxygenLoadProfiles.value,
         (s) => s.startCNS,
         (s) => s.endCNS,
         dive.value,
@@ -903,7 +939,7 @@ const cnsCoverage = computed(() =>
 const otuCoverage = computed(() =>
   dive.value
     ? metricCoverage(
-        profileList.value,
+        oxygenLoadProfiles.value,
         (s) => s.o2Toxicity,
         (s) => s.o2Toxicity,
         dive.value,
@@ -954,9 +990,28 @@ const rmvDisplay = computed<{ value: number; source: 'cylinders' | 'entered' | n
   return { value, source }
 })
 
-const totalGasDisplay = computed<number | null>(
-  () => gasCmp.value.effectiveTotalLiters ?? dive.value?.gasConsumption?.totalLiters ?? null,
-)
+/** Total gas + where it came from: the cylinders' total only when it covers the whole dive
+ * (`ocConsumedLitersComplete`), else an entered one. A partial cylinder total is never passed off
+ * as the dive's - `partialCylinderLiters` flags it instead. */
+const totalGas = computed<{ value: number; source: 'cylinders' | 'entered' } | null>(() => {
+  const cmp = gasCmp.value
+  if (cmp.effectiveTotalLiters != null && cmp.effectiveTotalSource != null) {
+    return { value: cmp.effectiveTotalLiters, source: cmp.effectiveTotalSource }
+  }
+  const cc = dive.value?.cylinderConsumption
+  if (cc?.ocConsumedLitersComplete && cc.ocConsumedLiters != null) {
+    return { value: cc.ocConsumedLiters, source: 'cylinders' }
+  }
+  const entered = dive.value?.gasConsumption?.totalLiters
+  return entered != null && entered > 0 ? { value: entered, source: 'entered' } : null
+})
+const totalGasDisplay = computed<number | null>(() => totalGas.value?.value ?? null)
+const partialCylinderLiters = computed<number | null>(() => {
+  const cc = dive.value?.cylinderConsumption
+  return totalGas.value == null && cc?.ocConsumedLitersComplete === false
+    ? (cc.ocConsumedLiters ?? null)
+    : null
+})
 
 const gasSourceNote = (source: 'cylinders' | 'entered' | null): string =>
   source === 'cylinders' ? '· from cylinders' : source === 'entered' ? '· entered' : ''
@@ -986,12 +1041,15 @@ const showCcrBreakdown = computed(() => {
   )
 })
 
-/** mm:ss-since-dive-start label for a cylinder usage-window bound (epoch millis or null). */
+/** mm:ss-since-dive-start label for a cylinder usage-window bound (epoch millis or null).
+ * Rounds to whole seconds itself (rather than padding durationToMinutesSeconds' own fractional
+ * seconds, which it deliberately keeps for EditDiveForm's round-tripping number inputs) so a
+ * read-only mm:ss label never shows floating-point noise. */
 const usageWindowLabel = (epochMs: number | null | undefined): string => {
   if (epochMs == null) return '?'
-  const parts = durationToMinutesSeconds(epochMs)
-  if (!parts) return '?'
-  return `${String(parts.minutes).padStart(2, '0')}:${String(parts.seconds).padStart(2, '0')}`
+  const totalSeconds = Math.round(epochMs / 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(Math.trunc(totalSeconds / 60))}:${pad(totalSeconds % 60)}`
 }
 
 // Highest TTS per computer - see maxTtsByComputer.

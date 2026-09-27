@@ -36,6 +36,26 @@ export function lastApplicable<T>(profiles: DiveProfile[], select: Selector<T>):
   )
 }
 
+/**
+ * The profile with CNS / OTU filled in from its computer's own dive-level report
+ * (`decoSettings.start/endCns`, `endOtu`) where the samples carry none - e.g. Suunto's JSON, which
+ * logs both only in its header. Sample-derived values win; CNS and OTU stay separate.
+ */
+export function withDeviceReportedOxygenLoad(profile: DiveProfile): DiveProfile {
+  const device = profile.decoSettings
+  if (!device) return profile
+  const summary = profile.summary
+  return {
+    ...profile,
+    summary: {
+      ...summary,
+      startCNS: summary.startCNS ?? device.startCns ?? undefined,
+      endCNS: summary.endCNS ?? device.endCns ?? undefined,
+      o2Toxicity: summary.o2Toxicity ?? device.endOtu ?? undefined,
+    },
+  }
+}
+
 export type MetricCoverage<T> = {
   /** Reading from the first applicable profile. */
   startValue: T | null
