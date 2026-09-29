@@ -55,7 +55,9 @@
       class="transition-all duration-300 overflow-y-auto overflow-x-hidden min-h-full min-w-0 grid-main bg-gray-100 dark:bg-gray-900 relative"
       :style="mainBackgroundStyle"
     >
-      <router-view class="router-content" />
+      <OfflineBanner v-if="authStore.isOffline" />
+      <!-- Keyed on reconnection: an offline session's page remounts and refetches by itself. -->
+      <router-view :key="authStore.reconnectedAt" class="router-content" />
       <CopyrightNotice v-if="!customBackgroundUrl" />
     </main>
   </div>
@@ -68,9 +70,8 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { Toaster } from 'vue-sonner'
-import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
-import { useThemeStore } from '@/stores/theme'
+import { useOfflineStore } from '@/stores/offline'
 import { useNavigation } from '@/composables/useNavigation'
 import { useApi } from '@/composables/useApi'
 import { useBackgroundUploadStore } from '@/stores/backgroundUpload'
@@ -78,12 +79,14 @@ import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
 import { useVimFieldNavigation } from '@/composables/useVimFieldNavigation'
 import { useNumberInputGuard } from '@/composables/useNumberInputGuard'
 import { useVimPageScroll } from '@/composables/useVimPageScroll'
-import { resolveUrl } from '@/lib/globals/url/resolveUrl'
+import { logoutOnServer } from '@/lib/globals/auth/refreshToken'
+import { usePushNotifications } from '@/composables/usePushNotifications'
 import { safeLocalStorage } from '@/lib/utils/safeLocalStorage'
 import type { User } from '@/lib/types/user'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppSidebar from './components/layout/AppSidebar.vue'
 import CopyrightNotice from './components/CopyrightNotice.vue'
+import OfflineBanner from './components/OfflineBanner.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import HelpMenu from './components/HelpMenu.vue'
 import VimFieldIndicator from './components/vim/VimFieldIndicator.vue'
@@ -99,7 +102,8 @@ const BACKGROUND_STORAGE_KEY = 'custom-background-url'
 
 // Auth store
 const authStore = useAuthStore()
-const themeStore = useThemeStore()
+const offlineStore = useOfflineStore()
+const push = usePushNotifications()
 const { router } = useNavigation()
 const { getWithToken } = useApi()
 const backgroundUploadStore = useBackgroundUploadStore()
@@ -170,16 +174,21 @@ const mainBackgroundStyle = computed(() => {
 
 // Methods
 let loggingOut = false
+// Set while the user logs out themselves: they go Home, not to the login page.
+let explicitLogout = false
 const handleLogout = async () => {
   if (loggingOut) return
   loggingOut = true
-  const url = resolveUrl('/api/auth/logout')
+  explicitLogout = true
 
-  try {
-    await axios.post(url, undefined, { withCredentials: true, timeout: 10000 })
-  } catch (err) {
-    console.error('Network error during logout:', err)
+  // Stop this device receiving the account's pushes first (needs the still-valid token).
+  if (authStore.isLoggedIn && !authStore.isOffline) {
+    await Promise.race([push.disable(), new Promise((resolve) => setTimeout(resolve, 3000))])
+  } else {
+    await push.unsubscribeLocally()
   }
+  // Offline: the httpOnly refresh cookie can only be dropped by the server - finish it later.
+  if (!(await logoutOnServer())) authStore.markPendingLogout()
 
   authStore.logout()
   loggingOut = false
@@ -204,9 +213,9 @@ watch(windowWidth, (newWidth) => {
 })
 
 watch(
-  [isVisible, () => authStore.isLoggedIn],
+  [isVisible, () => authStore.hasSession],
   () => {
-    if (authStore.isLoggedIn) {
+    if (authStore.hasSession) {
       sidebarWidth.value = isVisible.value ? expandedWidth : collapsedWidth
     } else {
       sidebarWidth.value = 0
@@ -216,51 +225,64 @@ watch(
 )
 
 // Reconciles the (possibly stale, cache-seeded) background against the server's current
-// value. Only an authoritative response updates it — a transient network error just leaves
-// whatever's already showing in place rather than blanking it out.
-const fetchCustomBackground = async () => {
+// value, and records who this device's offline copy belongs to. Only an authoritative response
+// updates either — a transient network error just leaves what's already showing in place.
+const fetchCurrentUser = async () => {
   try {
     const res = await getWithToken<User>('/v1/users/')
     const fresh = res.data.customBackgroundUrl ?? null
     customBackgroundUrl.value = fresh
     saveCachedBackgroundUrl(fresh)
+    await offlineStore.rememberOwner(res.data)
   } catch {
     // Keep the cached/default value that's already displayed.
   }
 }
 
-// Refetch whenever login state changes, and whenever the user uploads/resets their
-// background image from the (hidden) Profile settings modal in a different component.
+// Once per online session (login, startup, reconnect): the current user + this device's push
+// subscription (healed if rotated or revoked).
 watch(
-  () => [authStore.isLoggedIn, authStore.isInitialCheckDone] as const,
-  ([isLoggedIn, initialCheckDone]) => {
-    if (isLoggedIn) {
-      fetchCustomBackground()
-    } else if (initialCheckDone) {
-      // Confirmed logged out (as opposed to "auth check still pending", which is also
-      // isLoggedIn === false momentarily at boot) — clear the cache so a previous
-      // account's background photo can't leak into the next session on this device.
+  () => authStore.status,
+  (status, previous) => {
+    if (status === 'authenticated') {
+      if (previous !== 'authenticated') {
+        fetchCurrentUser()
+        void push.resync()
+      }
+    } else if (status === 'anonymous') {
+      // Confirmed logged out (the server said so, or the user did) — not "still checking" or
+      // "offline". Clear what could leak into the next session on this device.
       customBackgroundUrl.value = null
       saveCachedBackgroundUrl(null)
+      void push.unsubscribeLocally()
+      if (!explicitLogout && route.matched.some((r) => r.meta?.requiresAuth)) {
+        router.replace({ name: 'AuthLogin', query: { from: route.fullPath } })
+      }
+      explicitLogout = false
     }
   },
   { immediate: true },
 )
-watch(backgroundUpdatedId, fetchCustomBackground)
+watch(backgroundUpdatedId, fetchCurrentUser)
+
+// The service worker stored a pushed logbook snapshot (public/sw-custom.js).
+const onServiceWorkerMessage = (event: MessageEvent) => {
+  if (event.data?.type === 'dtl-sync') void offlineStore.reloadSync()
+}
 
 // Lifecycle hooks
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  navigator.serviceWorker?.addEventListener('message', onServiceWorkerMessage)
 
-  // Initialize theme
-  themeStore.initializeTheme()
-
+  // (The theme is applied in main.ts, before anything renders.)
   // Initial auth check and token refresh
   authStore.tryInitialLogin()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  navigator.serviceWorker?.removeEventListener('message', onServiceWorkerMessage)
 })
 </script>
 

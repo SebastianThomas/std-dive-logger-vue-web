@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { ref } from 'vue'
 import { mount, flushPromises, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import type { DiverReminder, HomeDashboard } from '@/lib/types/home'
@@ -12,6 +13,9 @@ vi.mock('@/composables/useReadOnlyMode', () => ({
 vi.mock('vue-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }))
 
 import DashboardComponent from '@/components/home/HomeDashboard.vue'
+import { toast } from 'vue-sonner'
+import { OfflineError } from '@/lib/offline/offlineError'
+import { useOfflineStore } from '@/stores/offline'
 
 const payload: HomeDashboard = {
   userName: 'Sam',
@@ -113,6 +117,11 @@ const mountDashboard = async () => {
   return wrapper
 }
 
+beforeEach(() => {
+  setActivePinia(createPinia())
+  vi.mocked(toast.error).mockClear()
+})
+
 afterEach(() => {
   wrapper?.unmount()
   wrapper = null
@@ -213,5 +222,47 @@ describe('HomeDashboard', () => {
     const w = await mountDashboard()
     expect(w.text()).toContain('Retry')
     expect(w.text()).toContain("Couldn't load your dashboard")
+  })
+
+  it('renders the offline copy at once and keeps it quietly while offline', async () => {
+    const offline = useOfflineStore()
+    offline.owner = { userId: 7, name: 'Sam', lastOnlineAt: Date.now() }
+    offline.home = { userId: 7, savedAt: Date.now() - 60_000, data: payload }
+    getWithToken.mockRejectedValue(new OfflineError())
+
+    const w = await mountDashboard()
+
+    expect(w.text()).toContain('Welcome back, Sam')
+    expect(w.find('[data-test="cached-chip"]').text()).toContain('Offline · as of')
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('overlays a pushed snapshot onto the offline copy', async () => {
+    const offline = useOfflineStore()
+    offline.owner = { userId: 7, name: 'Sam', lastOnlineAt: Date.now() }
+    offline.home = { userId: 7, savedAt: 1_000, data: payload }
+    offline.sync = {
+      userId: 7,
+      savedAt: 2_000,
+      data: { ...payload, diveCount: 98, maxDiveNumber: 98 },
+    }
+    getWithToken.mockRejectedValue(new OfflineError())
+
+    const w = await mountDashboard()
+
+    expect(w.text()).toContain('Log dive #99')
+  })
+
+  it('replaces the offline copy with live data and saves it', async () => {
+    const offline = useOfflineStore()
+    await offline.rememberOwner({ id: 7, name: 'Sam' })
+    offline.home = { userId: 7, savedAt: 1_000, data: { ...payload, userName: 'Old' } }
+    getWithToken.mockResolvedValue({ data: payload })
+
+    const w = await mountDashboard()
+
+    expect(w.text()).toContain('Welcome back, Sam')
+    expect(w.find('[data-test="cached-chip"]').exists()).toBe(false)
+    expect(offline.home?.data.userName).toBe('Sam')
   })
 })

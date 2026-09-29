@@ -146,3 +146,31 @@ export interface HomeDashboard {
   topBuddies: HomeBuddy[]
   records: HomeRecords
 }
+
+/** Mirrors the backend `LogbookSnapshot`: the dashboard headline a logbook-sync push carries. */
+export type LogbookSnapshot = Pick<
+  HomeDashboard,
+  | 'diveCount'
+  | 'maxDiveNumber'
+  | 'totalBottomTime'
+  | 'maxDepth'
+  | 'firstDiveStart'
+  | 'lastDiveStart'
+  | 'divesThisYear'
+  | 'windows'
+  | 'recentDives'
+>
+
+/** Mirrors the backend `LogbookSyncPush` (received by `public/sw-custom.js`). */
+export interface LogbookSyncPush {
+  type: 'LOGBOOK_SYNC'
+  version: number
+  userId: number
+  generatedAt: number
+  showNotification: boolean
+  title: string
+  body: string
+  url: string
+  tag: string
+  snapshot: LogbookSnapshot
+}

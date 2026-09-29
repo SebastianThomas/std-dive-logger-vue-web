@@ -1,6 +1,6 @@
 <template>
   <aside
-    v-if="authStore.isLoggedIn"
+    v-if="authStore.hasSession"
     class="sidebar-bg flex flex-col transition-all duration-300 grid-sidebar"
     :style="{ width: `${sidebarWidth}px` }"
   >

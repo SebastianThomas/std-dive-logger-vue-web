@@ -15,6 +15,8 @@
 
         <ProfileNotifications v-if="!readOnly" />
 
+        <ProfileSecurity v-if="!readOnly" />
+
         <ProfileImportFiles v-if="!readOnly" />
 
         <!-- Danger Zone -->
@@ -69,6 +71,7 @@ import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { type User } from '@/lib/types/user'
 import ProfileTabs from '@/components/ProfileTabs.vue'
 import ProfileNotifications from '@/components/ProfileNotifications.vue'
+import ProfileSecurity from '@/components/ProfileSecurity.vue'
 import ProfileImportFiles from '@/components/ProfileImportFiles.vue'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import UserIconUploadModal from '@/components/UserIconUploadModal.vue'

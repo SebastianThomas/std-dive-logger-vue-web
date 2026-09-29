@@ -185,6 +185,10 @@
         <p class="text-gray-600 dark:text-gray-400">Loading statistics...</p>
       </div>
 
+      <OfflinePlaceholder
+        v-else-if="offlineUnavailable"
+        title="Statistics aren't available offline"
+      />
       <div
         v-else-if="error"
         class="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-xl p-6"
@@ -438,6 +442,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import StatCard from '@/components/StatCard.vue'
 import BuddyRoleCountList from '@/components/stats/BuddyRoleCountList.vue'
+import OfflinePlaceholder from '@/components/ui/OfflinePlaceholder.vue'
+import { isOfflineError } from '@/lib/offline/offlineError'
 import type {
   UserDiveStats,
   UserDiveStatsByYear,
@@ -489,6 +495,7 @@ const STAT_TYPES: StatType[] = [
 const selectedStat = ref<StatType>('overall')
 const loading = ref(false)
 const error = ref<string | null>(null)
+const offlineUnavailable = ref(false)
 
 // Cache for each stat type
 const cache = ref<{
@@ -587,6 +594,7 @@ const selectStat = async (stat: StatType) => {
 const loadStat = async (stat: StatType) => {
   loading.value = true
   error.value = null
+  offlineUnavailable.value = false
 
   try {
     let url = '/v1/stats'
@@ -639,7 +647,8 @@ const loadStat = async (stat: StatType) => {
       cache.value.tag = response.data as UserDiveStatsByTag[]
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load statistics'
+    if (isOfflineError(err)) offlineUnavailable.value = true
+    else error.value = err instanceof Error ? err.message : 'Failed to load statistics'
   } finally {
     loading.value = false
   }

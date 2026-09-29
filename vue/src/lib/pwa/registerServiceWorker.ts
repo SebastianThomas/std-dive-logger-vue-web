@@ -23,7 +23,7 @@ export function registerServiceWorker(): void {
       })
     },
     onOfflineReady() {
-      toast.success('App and map cache ready. Dive data requires a connection.')
+      toast.success('Ready offline - your dashboard and latest dives stay readable.')
     },
   })
 }

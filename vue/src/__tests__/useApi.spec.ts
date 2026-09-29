@@ -5,6 +5,7 @@ import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { useAuthStore } from '@/stores/auth'
 import { refreshAccessToken } from '@/lib/globals/auth/refreshToken'
+import { OfflineError } from '@/lib/offline/offlineError'
 
 // Replace the real refresh call with a controllable mock so we can assert
 // exactly how many times it's invoked and simulate real-world latency.
@@ -52,7 +53,7 @@ describe('useApi 401 refresh race', () => {
     // synchronously.
     mockedRefresh.mockImplementation(async () => {
       await new Promise((resolve) => setTimeout(resolve, 10))
-      return 'fresh-token'
+      return { kind: 'ok' as const, token: 'fresh-token' }
     })
 
     // useApi.ts always calls axios(config) with a single config object (never the axios(url,
@@ -90,7 +91,7 @@ describe('useApi 401 refresh race', () => {
     const auth = useAuthStore()
     auth.login('old')
     mockedAxios.mockImplementationOnce(async () => {
-      mockedRefresh.mockResolvedValueOnce('already-refreshed')
+      mockedRefresh.mockResolvedValueOnce({ kind: 'ok', token: 'already-refreshed' })
       await auth.refreshToken()
       throw makeUnauthorizedError()
     }).mockResolvedValueOnce({ data: 'ok' })
@@ -151,7 +152,7 @@ describe('useApi 401 refresh race', () => {
 
     mockedRefresh.mockImplementation(async () => {
       await new Promise((resolve) => setTimeout(resolve, 10))
-      return null
+      return { kind: 'unauthorized' as const }
     })
 
     mockedAxios.mockImplementation(async () => {
@@ -169,5 +170,41 @@ describe('useApi 401 refresh race', () => {
     expect(results[1].status).toBe('rejected')
     expect(mockedRefresh).toHaveBeenCalledTimes(1)
     expect(authStore.isLoggedIn).toBe(false)
+  })
+})
+
+describe('useApi offline', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    mockedAxios.mockReset()
+    mockedRefresh.mockReset()
+    vi.mocked(toast.error).mockClear()
+  })
+
+  const networkError = () =>
+    Object.assign(new Error('Network Error'), { isAxiosError: true, response: undefined })
+
+  it('turns an outage mid-session into offline mode, not a toast or a logout', async () => {
+    const auth = useAuthStore()
+    auth.login('live')
+    mockedAxios.mockRejectedValueOnce(networkError())
+
+    await expect(useApi().getWithToken('/v1/home')).rejects.toBeInstanceOf(OfflineError)
+
+    expect(auth.status).toBe('offline')
+    expect(auth.accessToken).toBe('live')
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('an unreachable refresh is offline, never "please log in again"', async () => {
+    const auth = useAuthStore()
+    auth.login('expired')
+    mockedAxios.mockRejectedValueOnce(makeUnauthorizedError())
+    mockedRefresh.mockResolvedValueOnce({ kind: 'unreachable' })
+
+    await expect(useApi().getWithToken('/v1/home')).rejects.toBeInstanceOf(OfflineError)
+
+    expect(auth.status).toBe('offline')
+    expect(auth.hasSession).toBe(true)
   })
 })

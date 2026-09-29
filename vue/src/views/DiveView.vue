@@ -762,6 +762,11 @@
     </div>
 
     <div v-else-if="loading" class="text-center py-20">Loading...</div>
+    <OfflinePlaceholder
+      v-else-if="offlineUnavailable"
+      class="my-10"
+      title="This dive isn't available offline"
+    />
     <div v-else-if="error" class="text-center py-20 text-red-500">Error: {{ error }}</div>
     <div v-else class="text-center py-20">No dive found</div>
   </div>
@@ -773,6 +778,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
+import { isOfflineError } from '@/lib/offline/offlineError'
+import OfflinePlaceholder from '@/components/ui/OfflinePlaceholder.vue'
 import { formatDurationToTime, formatDate } from '@/lib/utils/timeUtils'
 import DiveSiteMap from '@/components/DiveSiteMap.vue'
 import { formatDecoSettings, decoSettingsDetails } from '@/lib/dive/decoSettings'
@@ -840,6 +847,7 @@ const diveTripTerminology = ref<TeamTerminology | null>(null)
 const { plural: buddyTerminologyPlural } = useTeamTerminology(dive, diveTripTerminology)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const offlineUnavailable = ref(false)
 const graphOpen = ref(false)
 const showDeleteModal = ref(false)
 const showLinkModal = ref(false)
@@ -1135,6 +1143,10 @@ const fetchDive = async () => {
     fetchDiveTrips(requestedDiveId)
   } catch (err) {
     if (requestId !== fetchDiveRequestId) return
+    if (isOfflineError(err)) {
+      offlineUnavailable.value = true
+      return
+    }
     error.value = `Failed to fetch dive: ${extractErrorDetail(err)}`
   } finally {
     if (requestId === fetchDiveRequestId) loading.value = false

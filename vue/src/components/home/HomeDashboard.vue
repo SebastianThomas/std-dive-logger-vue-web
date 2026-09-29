@@ -7,6 +7,15 @@
       <h1 class="text-xl md:text-2xl font-bold text-white">
         Welcome back, {{ home.userName }}
       </h1>
+      <span v-if="cachedAt" class="text-xs text-white/80" data-test="cached-chip">
+        <template v-if="updating && !isOffline">
+          <i class="fa-solid fa-rotate-right fa-spin mr-1" aria-hidden="true"></i>Updating…
+        </template>
+        <template v-else>
+          <i class="fa-solid fa-plug-circle-xmark mr-1" aria-hidden="true"></i>Offline · as of
+          {{ cachedAt }}
+        </template>
+      </span>
       <RouterLink
         v-if="!readOnly"
         :to="{ name: 'DiveCreate' }"
@@ -196,11 +205,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
+import { isOfflineError } from '@/lib/offline/offlineError'
+import { formatSavedAt } from '@/lib/offline/formatSavedAt'
+import { useAuthStore } from '@/stores/auth'
+import { useOfflineStore } from '@/stores/offline'
 import { formatDate, durationToMinutes } from '@/lib/utils/timeUtils'
 import { pickActivityFraming } from '@/lib/home/activityFraming'
 import type { HomeDashboard as HomeDashboardData } from '@/lib/types/home'
@@ -213,8 +227,18 @@ import HomeDiveRow from '@/components/home/HomeDiveRow.vue'
 const { getWithToken } = useApi()
 const { readOnly } = useReadOnlyMode()
 
-const home = ref<HomeDashboardData | null>(null)
-const loading = ref(true)
+const offline = useOfflineStore()
+const { isOffline, isLoggedIn } = storeToRefs(useAuthStore())
+
+// Stale-while-revalidate: this device's offline copy (plus any pushed snapshot) renders at once,
+// the live dashboard replaces it when it arrives - or never, offline.
+const home = ref<HomeDashboardData | null>(offline.mergedHome?.data ?? null)
+const showingCached = ref(home.value != null)
+const loading = ref(home.value == null)
+const updating = ref(false)
+const cachedAt = computed(() =>
+  showingCached.value ? formatSavedAt(offline.mergedHome?.savedAt) : '',
+)
 
 let homeRequest: AbortController | null = null
 onBeforeUnmount(() => homeRequest?.abort())
@@ -222,19 +246,49 @@ const load = async () => {
   homeRequest?.abort()
   const request = new AbortController()
   homeRequest = request
-  loading.value = true
+  if (home.value == null) loading.value = true
+  updating.value = true
   try {
     const response = await getWithToken<HomeDashboardData>('/v1/home', { signal: request.signal })
-    if (!request.signal.aborted) home.value = response.data
+    if (request.signal.aborted) return
+    home.value = response.data
+    showingCached.value = false
+    void offline.saveHome(response.data)
   } catch (err) {
     if (request.signal.aborted) return
-    home.value = null
+    // Offline: keep whatever is cached, the banner already says why.
+    if (isOfflineError(err)) {
+      if (home.value == null && offline.mergedHome) {
+        home.value = offline.mergedHome.data
+        showingCached.value = true
+      }
+      return
+    }
+    if (!showingCached.value) home.value = null
     toast.error(`Couldn't load your home dashboard: ${extractErrorDetail(err)}`)
   } finally {
-    if (!request.signal.aborted) loading.value = false
+    if (!request.signal.aborted) {
+      loading.value = false
+      updating.value = false
+    }
   }
 }
 onMounted(load)
+
+// A pushed snapshot landed (see stores/offline.ts): online, fetch the full dashboard; offline,
+// the merged copy updates in place.
+watch(
+  () => offline.syncTick,
+  () => {
+    if (isLoggedIn.value && !isOffline.value) void load()
+  },
+)
+watch(
+  () => offline.mergedHome,
+  (merged) => {
+    if (showingCached.value && merged) home.value = merged.data
+  },
+)
 
 const framing = computed(() => pickActivityFraming(home.value!))
 const thisYear = new Date().getFullYear()

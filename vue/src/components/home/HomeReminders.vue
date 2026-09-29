@@ -82,8 +82,8 @@ const dismiss = async (r: DiverReminder) => {
 </script>
 
 <style>
-/* Themed by [data-theme] rather than the `dark:` variant, which tracks prefers-color-scheme
-   here, not the app's manual toggle (see src/styles/global.css). */
+/* Custom colours, themed by [data-theme] - the same rule the `dark:` variant follows (see
+   src/styles/global.css). */
 .dtl-reminder--amber {
   border-color: #fcd34d;
   background: #fffbeb;

@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useOfflineStore } from '@/stores/offline'
 
 const mountHome = async () => {
   const router = createRouter({
@@ -23,6 +24,7 @@ const mountHome = async () => {
         HomeSkeleton: { template: '<div class="stub-skeleton" />' },
         HomeMarketing: { template: '<div class="stub-marketing" />' },
         HomeDashboard: { template: '<div class="stub-dashboard" />' },
+        HomeOfflineNotice: { template: '<div class="stub-offline" />' },
       },
     },
   })
@@ -53,5 +55,30 @@ describe('HomeView auth branching', () => {
     const w = await mountHome()
     expect(w.find('.stub-marketing').exists()).toBe(true)
     expect(w.find('.stub-dashboard').exists()).toBe(false)
+  })
+
+  it('shows the dashboard from the cached account while the check is still running', async () => {
+    setActivePinia(createPinia())
+    useOfflineStore().owner = { userId: 7, name: 'Sam', lastOnlineAt: Date.now() }
+    const w = await mountHome()
+    expect(w.find('.stub-dashboard').exists()).toBe(true)
+    expect(w.find('.stub-skeleton').exists()).toBe(false)
+  })
+
+  it('keeps the dashboard when offline with a cached account', async () => {
+    setActivePinia(createPinia())
+    useOfflineStore().owner = { userId: 7, name: 'Sam', lastOnlineAt: Date.now() }
+    useAuthStore().markUnreachable()
+    const w = await mountHome()
+    expect(w.find('.stub-dashboard').exists()).toBe(true)
+    expect(w.find('.stub-marketing').exists()).toBe(false)
+  })
+
+  it('says "offline", not "logged out", without a cached account', async () => {
+    setActivePinia(createPinia())
+    useAuthStore().markUnreachable()
+    const w = await mountHome()
+    expect(w.find('.stub-offline').exists()).toBe(true)
+    expect(w.find('.stub-marketing').exists()).toBe(false)
   })
 })

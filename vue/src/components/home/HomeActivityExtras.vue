@@ -93,8 +93,8 @@ const chips = computed<Chip[]>(() => {
 </script>
 
 <style>
-/* Themed by [data-theme] rather than the `dark:` variant, which tracks prefers-color-scheme
-   here, not the app's manual toggle (see src/styles/global.css). */
+/* Custom colours, themed by [data-theme] - the same rule the `dark:` variant follows (see
+   src/styles/global.css). */
 .hae-chip {
   display: inline-flex;
   align-items: center;

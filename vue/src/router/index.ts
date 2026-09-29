@@ -201,13 +201,16 @@ router.beforeEach(async (to) => {
   const requiresAuth = to.matched.some((r) => r.meta?.requiresAuth)
 
   if (requiresAuth) {
-    if (!auth.isInitialCheckDone) {
+    // A device with a cached account enters optimistically (offline or still checking); a
+    // rejected session is sent to login by App.vue once the server has answered.
+    if (!auth.isInitialCheckDone && !auth.hasSession) {
       await auth.waitForInitialCheck()
     }
 
-    if (!auth.isLoggedIn) {
-      return { name: 'AuthLogin', query: { from: to.fullPath } }
-    }
+    if (auth.hasSession) return
+    // Offline with no cached account: we can't know - never claim "logged out".
+    if (auth.isOffline) return { name: 'Home' }
+    return { name: 'AuthLogin', query: { from: to.fullPath } }
   }
 })
 

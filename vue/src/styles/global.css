@@ -2,6 +2,11 @@
 @import 'leaflet/dist/leaflet.css';
 @import '@fortawesome/fontawesome-free/css/all.min.css';
 
+/* `dark:` follows the app's theme toggle (data-theme on <html>, see stores/theme.ts), not the OS.
+   No prefers-color-scheme fallback: main.ts sets data-theme before the app renders anything, and
+   the fallback would add ~27 KB to the precached CSS. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 /* Safety net: nothing on any page should ever be able to push the viewport wider than the
    screen - a single oversized descendant (e.g. a chart before it's measured its container)
    should scroll within its own box, not force the whole page to scroll horizontally. */

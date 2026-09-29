@@ -16,7 +16,7 @@
     </div>
     <div class="flex items-center space-x-2 sm:space-x-3">
       <button
-        v-if="authStore.isLoggedIn"
+        v-if="authStore.hasSession"
         class="theme-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300"
         @click="emit('openCommandPalette')"
         title="Search & commands"
@@ -24,13 +24,13 @@
         <i class="fas fa-magnifying-glass text-lg sm:text-xl"></i>
       </button>
       <button
-        v-if="authStore.isLoggedIn"
+        v-if="authStore.hasSession"
         class="theme-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300"
-        :class="{ 'read-only-active': readOnly }"
+        :class="{ 'read-only-active': manualReadOnly }"
         @click="toggleReadOnly()"
-        :title="readOnly ? 'Read-only mode: ON (click to disable)' : 'Read-only mode: OFF (click to enable)'"
+        :title="manualReadOnly ? 'Read-only mode: ON (click to disable)' : 'Read-only mode: OFF (click to enable)'"
       >
-        <i :class="readOnly ? 'fas fa-lock' : 'fas fa-lock-open'" class="text-lg sm:text-xl"></i>
+        <i :class="manualReadOnly ? 'fas fa-lock' : 'fas fa-lock-open'" class="text-lg sm:text-xl"></i>
       </button>
       <button
         class="theme-button w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300"
@@ -40,7 +40,7 @@
         <i :class="themeIcon" class="text-lg sm:text-xl"></i>
       </button>
       <button
-        v-if="authStore.isLoggedIn"
+        v-if="authStore.hasSession"
         class="bg-red-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-red-600 transition-colors"
         @click="handleLogout"
       >
@@ -81,7 +81,7 @@ const { pageName, showTitle } = defineProps<Props>()
 
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
-const { readOnly, toggleReadOnly } = useReadOnlyMode()
+const { manualReadOnly, toggleReadOnly } = useReadOnlyMode()
 
 const themeIcon = computed(() => {
   return themeStore.theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun'

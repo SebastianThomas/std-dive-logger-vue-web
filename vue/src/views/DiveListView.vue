@@ -209,6 +209,10 @@
         </button>
       </div>
 
+      <p v-if="cachedNote" class="text-xs text-gray-500" data-test="dive-list-cached-note">
+        <i class="fa-solid fa-plug-circle-xmark mr-1" aria-hidden="true"></i>{{ cachedNote }}
+      </p>
+
       <!-- Mobile Pagination (top) -->
       <PageSelector
         class="sm:hidden"
@@ -265,6 +269,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '../composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
+import { isOfflineError } from '@/lib/offline/offlineError'
+import { formatSavedAt } from '@/lib/offline/formatSavedAt'
+import { useOfflineStore, type CachedDivePage } from '@/stores/offline'
 import BulkActionsModal from '@/components/dive/BulkActionsModal.vue'
 import DiveListTable from '@/components/DiveListTable.vue'
 import PageSelector from '@/components/PageSelector.vue'
@@ -495,6 +502,42 @@ const fetchUserId = async () => {
 let fetchRequestId = 0
 let diveRequest: AbortController | null = null
 
+// Only the plain first page (own dives, newest first, no filters) is kept offline - one small
+// payload, the one a diver looks at on a boat.
+const offlineStore = useOfflineStore()
+const cachedNote = ref('')
+const isDefaultView = computed(
+  () =>
+    currentPage.value === 1 &&
+    !viewShared.value &&
+    !searchQuery.value.trim() &&
+    !hasDateTimeFilter.value &&
+    !highlightedOnly.value &&
+    !computerId.value &&
+    !suitId.value &&
+    !ccrUnitId.value &&
+    !diveSiteId.value &&
+    !baseConfiguration.value &&
+    selectedTagIds.value.size === 0 &&
+    sortColumn.value === 'NUMBER' &&
+    sortDirection.value === 'DESCENDING',
+)
+
+const applyPage = (page: CachedDivePage) => {
+  dives.value = page.result ?? []
+  totalPages.value = page.totalPages ?? 0
+  totalElements.value = page.totalElements ?? dives.value.length
+  pageSize.value = page.pageSize ?? 20
+}
+
+const showCachedPage = (): boolean => {
+  const cached = offlineStore.divesPage
+  if (!isDefaultView.value || !cached) return false
+  applyPage(cached.data)
+  cachedNote.value = `Offline · your latest dives as of ${formatSavedAt(cached.savedAt)}`
+  return true
+}
+
 const fetchDives = async () => {
   const requestId = ++fetchRequestId
   diveRequest?.abort()
@@ -502,6 +545,7 @@ const fetchDives = async () => {
   diveRequest = request
   isLoading.value = true
   status.value = ''
+  cachedNote.value = ''
   try {
     let url = ''
     if (hasDateTimeFilter.value || highlightedOnly.value) {
@@ -552,16 +596,21 @@ const fetchDives = async () => {
       return
     }
 
-    dives.value = res.data.result ?? []
-    totalPages.value = res.data.totalPages ?? 0
-    totalElements.value = res.data.totalElements ?? dives.value.length
-    pageSize.value = res.data.pageSize ?? 20
+    applyPage(res.data)
+    if (isDefaultView.value) void offlineStore.saveDivesPage(res.data)
 
     if (!dives.value.length) {
       status.value = searchQuery.value ? 'No dives match your search.' : 'No dives found.'
     }
   } catch (e) {
     if (request.signal.aborted || requestId !== fetchRequestId) {
+      return
+    }
+    if (isOfflineError(e)) {
+      if (!showCachedPage()) {
+        dives.value = []
+        status.value = "This view isn't available offline - it loads by itself when you're back online."
+      }
       return
     }
     console.error(e)

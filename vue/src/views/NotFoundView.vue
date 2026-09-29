@@ -43,10 +43,8 @@ const route = useRoute()
 const attemptedPath = computed(() => route.fullPath)
 </script>
 
-<!-- No Tailwind `dark:` utilities on purpose: that variant follows prefers-color-scheme, not this
-     app's manual theme toggle, so it renders the wrong theme whenever the two disagree. Every
-     colour class above is one global.css already remaps under [data-theme='dark'] (bg-white,
+<!-- Every colour class above is one global.css already remaps under [data-theme='dark'] (bg-white,
      bg-gray-100, text-gray-600, text-gray-800, border-gray-300, hover:bg-gray-100), so both
-     themes follow the toggle. The h1 and the secondary button need an explicit text-gray-800 for
-     the same reason: an uncoloured element inherits a colour pinned light further up the tree,
-     and only listed utilities get remapped. -->
+     themes follow the toggle without `dark:` utilities (which follow data-theme too since
+     2026-09-28). The h1 and the secondary button need an explicit text-gray-800: an uncoloured
+     element inherits a colour pinned light further up the tree. -->

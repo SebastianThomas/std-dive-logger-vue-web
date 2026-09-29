@@ -1,18 +1,32 @@
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
+import { OfflineError } from '@/lib/offline/offlineError'
 import { useAuthStore } from '@/stores/auth'
 import axios, { AxiosError, AxiosHeaders, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { toast } from 'vue-sonner'
 
-/** Returns true and shows a toast when the error indicates the server is unreachable. */
-function handleServerUnreachable(err: unknown): boolean {
+/** No response at all (network error / timeout) or a gateway-level error. */
+function isUnreachable(err: unknown): boolean {
   if (axios.isCancel(err) || !axios.isAxiosError(err)) return false
   const status = err.response?.status
-  // No response at all (network error / ECONNREFUSED) or gateway-level errors
-  if (!err.response || status === 502 || status === 503 || status === 504) {
-    toast.error('The server is not reachable. Please try again later.')
-    return true
+  return !err.response || status === 502 || status === 503 || status === 504
+}
+
+/**
+ * Converts "server unreachable" into the app's offline mode while a session exists (a banner, not
+ * a toast per request - see OfflineBanner.vue); without one it's the old toast. Returns the error
+ * to throw, or null when the error isn't an outage.
+ */
+function handleServerUnreachable(
+  err: unknown,
+  authStore: ReturnType<typeof useAuthStore>,
+): Error | null {
+  if (!isUnreachable(err)) return null
+  if (authStore.hasSession) {
+    authStore.markUnreachable()
+    return new OfflineError()
   }
-  return false
+  toast.error('The server is not reachable. Please try again later.')
+  return err as Error
 }
 
 export type BodyType = object | string | number
@@ -46,6 +60,7 @@ export function useApi() {
     }
     const token = await authStore.refreshToken()
     if (token) return token
+    if (authStore.isOffline) throw new OfflineError()
     throw new Error('Could not refresh, please log in again.')
   }
 
@@ -86,7 +101,8 @@ export function useApi() {
       if (!axios.isAxiosError(err)) {
         throw err
       }
-      if (handleServerUnreachable(err)) throw err
+      const outage = handleServerUnreachable(err, authStore)
+      if (outage) throw outage
       const status = err.response?.status
       if (!status || status !== 401) {
         throw err
@@ -117,7 +133,8 @@ export function useApi() {
         if (!(err instanceof AxiosError)) {
           throw err
         }
-        if (handleServerUnreachable(err)) throw err
+        const retryOutage = handleServerUnreachable(err, authStore)
+        if (retryOutage) throw retryOutage
         if (err.response?.status === 401) {
           throw new Error('Unauthorized')
         }
