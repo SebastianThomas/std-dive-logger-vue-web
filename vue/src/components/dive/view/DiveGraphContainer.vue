@@ -303,7 +303,7 @@ import {
   type Po2Selection,
   type RememberedMetric,
 } from '@/lib/graph/metricDefaults'
-import type { Dive, DiveProfile } from '@/lib/types/dive'
+import type { Dive, DiveProfile, TimeRange, TrimSelection } from '@/lib/types/dive'
 import type { AxisUnitGroup, ProfileMetricVisibility } from '@/lib/types/graph'
 
 interface Props {
@@ -585,14 +585,18 @@ const startTrimming = () => {
   if (profile) startTrimmingProfile(profile.id)
 }
 
-const confirmTrimming = async (range: { profileId: number; start: number; end: number }) => {
+const confirmTrimming = async (range: { profileId: number } & TrimSelection) => {
   if (trimBusy.value) return
   trimBusy.value = true
   try {
-    const res = await postWithToken<Dive, { trimStart: number; trimEnd: number }>(
-      `/v1/dives/${props.diveId}/profiles/${range.profileId}/trim`,
-      { trimStart: range.start, trimEnd: range.end },
-    )
+    const res = await postWithToken<
+      Dive,
+      { trimStart: number; trimEnd: number; cuts: TimeRange[] }
+    >(`/v1/dives/${props.diveId}/profiles/${range.profileId}/trim`, {
+      trimStart: range.start,
+      trimEnd: range.end,
+      cuts: range.cuts,
+    })
     toast.success('Profile trimmed')
     emit('profile-trimmed', res.data)
   } catch (err) {

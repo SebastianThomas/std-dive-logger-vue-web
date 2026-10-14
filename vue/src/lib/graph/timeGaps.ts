@@ -1,3 +1,4 @@
+import { mergeRanges } from '@/lib/graph/profileCuts'
 import type { DiveProfile } from '@/lib/types/dive'
 
 export type TimeGap = { start: number; end: number }
@@ -36,6 +37,20 @@ export function detectTimeGaps(profiles: DiveProfile[]): TimeGap[] {
     }
   }
 
+  // Sections cut out of a profile: always a break, unless another profile has data inside.
+  for (const profile of profiles) {
+    for (const gap of profile.gaps ?? []) {
+      const covered = profiles.some(
+        (other) =>
+          other !== profile &&
+          other.measurements.some((m) => m.measurement.time > gap.start && m.measurement.time < gap.end),
+      )
+      if (!covered && !gaps.some((g) => g.start === gap.start && g.end === gap.end)) {
+        gaps.push({ start: gap.start, end: gap.end })
+      }
+    }
+  }
+
   // Gaps between profiles, checked against whichever of the two profiles is shorter.
   const ranges = profiles
     .map((p) => {
@@ -58,7 +73,7 @@ export function detectTimeGaps(profiles: DiveProfile[]): TimeGap[] {
     }
   }
 
-  return gaps.sort((a, b) => a.start - b.start)
+  return mergeRanges(gaps)
 }
 
 /** The complementary "has data" ranges between/around the gaps, for per-segment tick generation. */

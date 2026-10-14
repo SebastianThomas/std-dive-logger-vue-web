@@ -129,6 +129,9 @@ export type DecoSettings = {
   details: Record<string, string>
 }
 
+/** A span in epoch ms: a section to cut, or the gap a cut left (no samples, not dive time). */
+export type TimeRange = { start: number; end: number }
+
 export type DiveProfile = {
   id: number
   diveComputer: DiveComputer
@@ -137,7 +140,12 @@ export type DiveProfile = {
   measurements: DiveMeasurementWithId[]
   summary: DiveProfileSummary
   decoSettings?: DecoSettings | null
+  /** Sections cut out of the profile, ascending - absent on staged imports and older payloads. */
+  gaps?: TimeRange[]
 }
+
+/** What the trim UI keeps: [start, end] minus the cuts. */
+export type TrimSelection = { start: number; end: number; cuts: TimeRange[] }
 
 export type Duration = number
 
@@ -624,7 +632,12 @@ export type StageImportResult = { staged: PendingImportSummary[]; errors: string
  * with the site fields - when set, the parsed profile is attached to that existing dive instead
  * of creating a new one.
  */
-export type ProfileTrim = { profileIndex: number; trimStart?: number; trimEnd?: number }
+export type ProfileTrim = {
+  profileIndex: number
+  trimStart?: number
+  trimEnd?: number
+  cuts?: TimeRange[]
+}
 
 export type PendingImportCommitRequest = {
   diveNumber?: number

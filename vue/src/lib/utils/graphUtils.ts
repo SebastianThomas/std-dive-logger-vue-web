@@ -20,9 +20,30 @@ export function generateTimeAxisTicks(
   timeRangeMs: [number, number],
   startTimeMs: number,
   graphWidth: number,
+  // A fixed spacing, e.g. one shared by every segment of an axis with breaks.
+  intervalMsOverride?: number,
 ): number[] {
-  const timeDuration = timeRangeMs[1] - timeRangeMs[0]
-  const timeDurationSeconds = timeDuration / 1000
+  const intervalMs =
+    intervalMsOverride ?? chooseTimeTickInterval(timeRangeMs[1] - timeRangeMs[0], graphWidth)
+  // Generate tick values starting from a clean interval boundary
+  const tickValues: number[] = []
+  // Align ticks to the dive start time, not to epoch 0
+  const offsetFromDiveStart = timeRangeMs[0] - startTimeMs
+  let firstTickOffset = Math.floor(offsetFromDiveStart / intervalMs) * intervalMs
+  if (firstTickOffset < offsetFromDiveStart) {
+    firstTickOffset += intervalMs
+  }
+  const firstTickTime = startTimeMs + firstTickOffset
+  for (let t = firstTickTime; t <= timeRangeMs[1]; t += intervalMs) {
+    tickValues.push(t)
+  }
+
+  return tickValues
+}
+
+/** The tick spacing (ms) giving a `graphWidth`-wide axis spanning `durationMs` 4-10 labels. */
+export function chooseTimeTickInterval(durationMs: number, graphWidth: number): number {
+  const timeDurationSeconds = durationMs / 1000
 
   // Target 4-10 labels; bias towards 6-7 labels for best readability
   const targetLabelCount = Math.max(4, Math.min(10, Math.ceil(graphWidth / 100)))
@@ -41,22 +62,7 @@ export function generateTimeAxisTicks(
       bestDiff = diff
     }
   }
-
-  // Generate tick values starting from a clean interval boundary
-  const tickValues: number[] = []
-  const intervalMs = bestInterval * 1000
-  // Align ticks to the dive start time, not to epoch 0
-  const offsetFromDiveStart = timeRangeMs[0] - startTimeMs
-  let firstTickOffset = Math.floor(offsetFromDiveStart / intervalMs) * intervalMs
-  if (firstTickOffset < offsetFromDiveStart) {
-    firstTickOffset += intervalMs
-  }
-  const firstTickTime = startTimeMs + firstTickOffset
-  for (let t = firstTickTime; t <= timeRangeMs[1]; t += intervalMs) {
-    tickValues.push(t)
-  }
-
-  return tickValues
+  return bestInterval * 1000
 }
 
 /**

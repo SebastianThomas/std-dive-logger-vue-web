@@ -170,6 +170,7 @@
             :profiles="previewProfiles"
             :dive-id="0"
             :trim-profile-id="trimProfileId"
+            :trim-initial="trimProfileId !== null ? (profileTrims.get(trimProfileId) ?? null) : null"
             @trim-confirmed="confirmTrimmingProfile"
             @trim-cancelled="cancelTrimmingProfile"
             @trim-profile-changed="startTrimmingProfile"
@@ -230,6 +231,7 @@ import type {
   PagedResult,
   PendingImportCommitRequest,
   PendingImportSummary,
+  TrimSelection,
 } from '@/lib/types/dive'
 
 const props = defineProps<{
@@ -281,7 +283,7 @@ const {
   startTrimming: startTrimmingProfile,
   cancelTrimming: cancelTrimmingProfile,
 } = useProfileTrimming()
-const profileTrims = ref<Map<number, { start: number; end: number }>>(new Map())
+const profileTrims = ref<Map<number, TrimSelection>>(new Map())
 
 const togglePreview = async () => {
   if (previewProfiles.value) {
@@ -302,8 +304,8 @@ const togglePreview = async () => {
   }
 }
 
-const confirmTrimmingProfile = (range: { profileId: number; start: number; end: number }) => {
-  profileTrims.value.set(range.profileId, { start: range.start, end: range.end })
+const confirmTrimmingProfile = ({ profileId, ...selection }: { profileId: number } & TrimSelection) => {
+  profileTrims.value.set(profileId, selection)
   trimProfileId.value = null
 }
 
@@ -426,6 +428,7 @@ const commit = async () => {
             profileIndex,
             trimStart: range.start,
             trimEnd: range.end,
+            cuts: range.cuts,
           }))
         : undefined
     const overrides: PendingImportCommitRequest =

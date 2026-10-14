@@ -29,7 +29,24 @@
       v-if="trimRange"
       class="absolute top-2 left-2 z-20 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-3 text-xs w-56 border border-gray-300 dark:border-gray-600"
     >
-      <div class="font-semibold mb-2 flex items-center gap-1.5 flex-wrap">
+      <div
+        class="font-semibold flex items-center gap-1.5 flex-wrap"
+        :class="{ 'mb-2': !trimPanelCollapsed }"
+      >
+        <!-- Collapsed, the panel leaves most of a small chart (and every handle) free to drag. -->
+        <button
+          type="button"
+          class="w-6 h-6 -m-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+          :aria-expanded="!trimPanelCollapsed"
+          :aria-label="trimPanelCollapsed ? 'Show trim details' : 'Hide trim details'"
+          :title="trimPanelCollapsed ? 'Show trim details' : 'Hide trim details'"
+          @click="trimPanelCollapsed = !trimPanelCollapsed"
+        >
+          <i
+            class="fa-solid text-[10px]"
+            :class="trimPanelCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"
+          ></i>
+        </button>
         <span>Trimming profile {{ trimProfileIndex + 1 }}</span>
         <span v-if="props.profiles.length > 1" class="flex items-center gap-1 ml-auto">
           <button
@@ -52,7 +69,15 @@
           </button>
         </span>
       </div>
-      <template v-if="trimStats">
+      <p v-if="trimPanelCollapsed" class="mt-1 opacity-70 tabular-nums">
+        <template v-if="trimStats">
+          {{ Math.round(trimStats.bottomTimeSeconds / 60) }} min kept<template v-if="trimCuts.length">
+            · {{ trimCuts.length }} cut{{ trimCuts.length > 1 ? 's' : '' }}</template
+          >
+        </template>
+        <template v-else>No data in this range</template>
+      </p>
+      <template v-else-if="trimStats">
         <div class="flex justify-between">
           <span class="opacity-70">Max depth</span>
           <span>{{ trimStats.maxDepth.toFixed(1) }} m</span>
@@ -73,7 +98,35 @@
       <p v-else class="text-red-600 dark:text-red-400 my-1">
         This range has no data - drag the handles apart.
       </p>
-      <div class="flex justify-end gap-2 mt-3">
+      <ul v-if="trimCuts.length && !trimPanelCollapsed" class="mt-2 space-y-0.5">
+        <li v-for="(cut, i) in trimCuts" :key="i" class="flex items-center gap-1.5">
+          <span class="inline-block w-2 h-2 rounded-sm bg-amber-500 shrink-0"></span>
+          <span class="tabular-nums">
+            Cut {{ i + 1 }}: {{ formatElapsedTime(cut.start, graphStart) }}–{{
+              formatElapsedTime(cut.end, graphStart)
+            }}
+          </span>
+          <button
+            type="button"
+            class="ml-auto w-6 h-6 -my-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            :title="`Remove cut ${i + 1}`"
+            :aria-label="`Remove cut ${i + 1}`"
+            @click="removeCut(i)"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </li>
+      </ul>
+      <button
+        v-if="!trimPanelCollapsed"
+        type="button"
+        class="mt-2 text-sky-700 hover:text-sky-800 dark:text-sky-400 dark:hover:text-sky-300"
+        title="Remove a section from inside the profile, e.g. a surface interval"
+        @click="addCut"
+      >
+        <i class="fa-solid fa-scissors mr-1"></i>Cut a section
+      </button>
+      <div class="flex justify-end gap-2" :class="trimPanelCollapsed ? 'mt-2' : 'mt-3'">
         <button
           type="button"
           class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -131,7 +184,13 @@ import DiveGraphTooltip, {
   type TooltipData,
   type TooltipProfileData,
 } from '@/components/dive/view/DiveGraphTooltip.vue'
-import type { DiveProfile, DiveMeasurementWithId, DiveProfileSegmentWithId } from '@/lib/types/dive'
+import type {
+  DiveProfile,
+  DiveMeasurementWithId,
+  DiveProfileSegmentWithId,
+  TimeRange,
+  TrimSelection,
+} from '@/lib/types/dive'
 import { useApi } from '@/composables/useApi'
 import { useDiveGraphMetrics } from '@/composables/useDiveGraphMetrics'
 import {
@@ -145,6 +204,7 @@ import { DEFAULT_METRIC_CONFIGS } from '@/lib/types/graph'
 import { toKebabCase } from '@/lib/utils/stringUtils'
 import { getSegmentColor, findSegmentTypeAtIndex } from '@/lib/utils/diveSegmentUtils'
 import {
+  chooseTimeTickInterval,
   generateTimeAxisTicks,
   formatAxisGroupTick,
   generateTemperatureTicks,
@@ -173,6 +233,7 @@ import { LruCache } from '@/lib/utils/lruCache'
 import { detectTrimSuggestion } from '@/lib/graph/trimSuggestion'
 import { computeRangeStats } from '@/lib/graph/rangeStats'
 import { nearestSampleTime } from '@/lib/graph/snapToSample'
+import { suggestCut, withGapBreaks } from '@/lib/graph/profileCuts'
 import { splitByTimeGap, medianSampleIntervalMs } from '@/lib/graph/lineSegments'
 
 type Props = {
@@ -225,6 +286,8 @@ type Props = {
   trimProfileId?: number | null
   /** The trim request is in flight — disables the Trim button and shows a spinner. */
   trimBusy?: boolean
+  /** Where trim mode starts instead of the suggestion, e.g. a staged import's earlier trim. */
+  trimInitial?: TrimSelection | null
 }
 
 const props = defineProps<Props>()
@@ -236,7 +299,7 @@ const emit = defineEmits<{
   hoverTimeChange: [value: number | null]
   /** The user confirmed a trim - parent is responsible for calling the API and clearing
    * trimProfileId once it resolves. */
-  trimConfirmed: [{ profileId: number; start: number; end: number }]
+  trimConfirmed: [{ profileId: number } & TrimSelection]
   /** The user cancelled - parent should clear trimProfileId. */
   trimCancelled: []
   /** The user picked a different profile to trim from within the trim panel itself - parent
@@ -358,6 +421,12 @@ const { getWithToken } = useApi()
 
 // Trim mode - null while not trimming. Real (not virtual) times, always start <= end.
 const trimRange = ref<{ start: number; end: number } | null>(null)
+// Sections to cut from inside the kept range (see lib/graph/profileCuts.ts).
+const trimCuts = ref<TimeRange[]>([])
+const trimPanelCollapsed = ref(false)
+const graphStart = computed(() =>
+  props.profiles.length ? Math.min(...props.profiles.map((p) => p.start)) : 0,
+)
 const trimOverlayLayer = ref<Selection<SVGGElement, unknown, null, undefined> | null>(null)
 
 const trimProfileIndex = computed(() =>
@@ -370,7 +439,12 @@ const trimProfile = computed<DiveProfile | null>(() => {
 const trimProfileTotalCount = computed(() => trimProfile.value?.measurements.length ?? 0)
 const trimStats = computed(() =>
   trimProfile.value && trimRange.value
-    ? computeRangeStats(trimProfile.value, trimRange.value.start, trimRange.value.end)
+    ? computeRangeStats(
+        trimProfile.value,
+        trimRange.value.start,
+        trimRange.value.end,
+        trimCuts.value,
+      )
     : null,
 )
 
@@ -382,14 +456,23 @@ watch(
   (id) => {
     if (id == null || !trimProfile.value) {
       trimRange.value = null
+      trimCuts.value = []
       renderTrimOverlay()
       return
     }
     const profile = trimProfile.value
-    const suggestion = detectTrimSuggestion(profile)
-    trimRange.value = {
-      start: suggestion.suggestedStart ?? profile.start,
-      end: suggestion.suggestedEnd ?? profile.end,
+    trimPanelCollapsed.value = false
+    if (props.trimInitial) {
+      trimRange.value = { start: props.trimInitial.start, end: props.trimInitial.end }
+      trimCuts.value = props.trimInitial.cuts.map((c) => ({ ...c }))
+    } else {
+      // Only the ends by default; cuts are added on request.
+      const suggestion = detectTrimSuggestion(profile)
+      trimRange.value = {
+        start: suggestion.suggestedStart ?? profile.start,
+        end: suggestion.suggestedEnd ?? profile.end,
+      }
+      trimCuts.value = []
     }
     renderTrimOverlay()
   },
@@ -405,7 +488,25 @@ function confirmTrim() {
     profileId: props.trimProfileId,
     start: trimRange.value.start,
     end: trimRange.value.end,
+    cuts: trimCuts.value.map((c) => ({ ...c })),
   })
+}
+
+function addCut() {
+  const profile = trimProfile.value
+  const range = trimRange.value
+  if (!profile || !range) return
+  const cut = suggestCut(profile, range.start, range.end)
+  trimCuts.value.push({
+    start: Math.max(cut.start, range.start),
+    end: Math.min(cut.end, range.end),
+  })
+  renderTrimOverlay()
+}
+
+function removeCut(index: number) {
+  trimCuts.value.splice(index, 1)
+  renderTrimOverlay()
 }
 
 const leftAxisMetric = computed({
@@ -502,6 +603,8 @@ function setupScales() {
   po2ExceedsSafeLimit.value = po2Max > 1.6
 
   depthLine.value = line()
+    // Breaks at the NaN a cut gap gets (withGapBreaks).
+    .defined((d: [number, number]) => Number.isFinite(d[1]))
     .x((d: [number, number]) => (timeScale.value ? timeScale.value(toVirtual(d[0])) : 0))
     .y((d: [number, number]) => (depthScale.value ? depthScale.value(d[1]) : 0))
 
@@ -927,17 +1030,7 @@ function renderAll() {
   const { toVirtual, toReal } = timeMapper.value
   const tickValues = !timeGaps.value.length
     ? generateTimeAxisTicks(timeRange, diveStart, innerWidth.value)
-    : getActiveSegments(timeGaps.value, dataTimeRange.value[0], dataTimeRange.value[1]).flatMap(
-        (segment) => {
-          const segStart = Math.max(segment.start, toReal(timeRange[0]))
-          const segEnd = Math.min(segment.end, toReal(timeRange[1]))
-          if (segEnd <= segStart || !timeScale.value) return []
-          const pixelWidth = timeScale.value(toVirtual(segEnd)) - timeScale.value(toVirtual(segStart))
-          if (pixelWidth <= 0) return []
-          return generateTimeAxisTicks([segStart, segEnd], diveStart, pixelWidth)
-        },
-      )
-
+    : segmentedTimeTicks(timeRange, diveStart)
   axes.x.value?.call(
     axisBottom(timeScale.value)
       .tickValues(tickValues.map(toVirtual))
@@ -1012,9 +1105,12 @@ function renderAll() {
   depthLinesGroup.selectAll('path').remove()
   props.profiles.forEach((profile, idx) => {
     if (!visibleMask.value[idx]) return
-    const depthPts: [number, number][] = profile.measurements
-      .map((m): [number, number] => [m.measurement.time, m.measurement.depth])
-      .filter(([t, d]) => Number.isFinite(t) && Number.isFinite(d))
+    const depthPts = withGapBreaks(
+      profile.measurements
+        .map((m): [number, number] => [m.measurement.time, m.measurement.depth])
+        .filter(([t, d]) => Number.isFinite(t) && Number.isFinite(d)),
+      profile.gaps,
+    )
     depthLinesGroup
       .append('path')
       .datum(depthPts)
@@ -1089,6 +1185,40 @@ function renderAll() {
   renderModeTransitions()
   renderGasSwitches()
   renderTrimOverlay()
+}
+
+// Ticks for an axis with breaks: one spacing for the time actually drawn (as if it had none),
+// laid out per segment, minus any label crowding its neighbour across a break.
+const MIN_TICK_SPACING_PX = 36
+function segmentedTimeTicks(timeRange: [number, number], diveStart: number): number[] {
+  const { toVirtual, toReal } = timeMapper.value
+  const scale = timeScale.value
+  if (!scale) return []
+  const segments = getActiveSegments(
+    timeGaps.value,
+    dataTimeRange.value[0],
+    dataTimeRange.value[1],
+  ).flatMap((segment) => {
+    const start = Math.max(segment.start, toReal(timeRange[0]))
+    const end = Math.min(segment.end, toReal(timeRange[1]))
+    return end > start ? [{ start, end }] : []
+  })
+  const interval = chooseTimeTickInterval(
+    segments.reduce((sum, s) => sum + (s.end - s.start), 0),
+    innerWidth.value,
+  )
+  const ticks: number[] = []
+  let lastX = -Infinity
+  for (const segment of segments) {
+    for (const t of generateTimeAxisTicks([segment.start, segment.end], diveStart, 0, interval)) {
+      const x = scale(toVirtual(t))
+      if (x - lastX >= MIN_TICK_SPACING_PX) {
+        ticks.push(t)
+        lastX = x
+      }
+    }
+  }
+  return ticks
 }
 
 // A dashed vertical line at each compressed gap, spanning the full plot height, marking a jump
@@ -1217,10 +1347,17 @@ function renderGasSwitches() {
 
 const GAS_SWITCH_ROW_HEIGHT = 12
 
-// Shaded regions for whatever's currently outside the trim selection, plus two draggable handles
-// at its start/end. No-op (clears any stale ones) when not in trim mode. Only ever tears down and
-// rebuilds the DOM - call updateTrimOverlayPositions() instead for a per-tick reposition (see its
-// own doc comment for why the distinction matters).
+// A trim handle: one of the kept range's two edges (cut null), or an edge of cut number `cut`.
+type TrimHandleKey = { cut: number | null; side: 'start' | 'end' }
+const trimHandleClass = (k: TrimHandleKey): string =>
+  k.cut === null ? `trim-handle-${k.side}` : `trim-cut-${k.cut}-${k.side}`
+const TRIM_HANDLE_GRAB_WIDTH = 16
+const TRIM_MIN_GAP_MS = 1000
+
+// Shaded regions for whatever's currently outside the trim selection or inside a cut, plus a
+// draggable handle at each of their edges. No-op (clears any stale ones) when not in trim mode.
+// Only ever tears down and rebuilds the DOM - call updateTrimOverlayPositions() instead for a
+// per-tick reposition (see its own doc comment for why the distinction matters).
 function renderTrimOverlay() {
   if (!trimOverlayLayer.value) return
   trimOverlayLayer.value.selectAll('*').remove()
@@ -1247,22 +1384,32 @@ function renderTrimOverlay() {
     .attr('fill-opacity', 0.35)
     .style('pointer-events', 'none')
 
+  trimCuts.value.forEach((_, i) => {
+    trimOverlayLayer
+      .value!.append('rect')
+      .attr('class', `trim-cut-shade-${i}`)
+      .attr('y', 0)
+      .attr('height', h)
+      .attr('fill', '#f59e0b')
+      .attr('fill-opacity', 0.3)
+      .style('pointer-events', 'none')
+  })
+
   // A visible thin line plus a wider, invisible grab area (easier to hit than the line itself,
   // especially on touch) - both move together since they're in the same handle group.
-  const makeHandle = (key: 'start' | 'end') => {
-    const group = trimOverlayLayer.value!.append('g').attr('class', `trim-handle-${key}`)
+  const makeHandle = (key: TrimHandleKey) => {
+    const group = trimOverlayLayer.value!.append('g').attr('class', trimHandleClass(key))
     group
       .append('line')
       .attr('y1', 0)
       .attr('y2', h)
-      .attr('stroke', '#0ea5e9')
+      .attr('stroke', key.cut === null ? '#0ea5e9' : '#f59e0b')
       .attr('stroke-width', 2)
       .style('pointer-events', 'none')
-    const GRAB_WIDTH = 16
     group
       .append('rect')
       .attr('y', 0)
-      .attr('width', GRAB_WIDTH)
+      .attr('width', TRIM_HANDLE_GRAB_WIDTH)
       .attr('height', h)
       .attr('fill', 'transparent')
       .style('cursor', 'ew-resize')
@@ -1272,23 +1419,30 @@ function renderTrimOverlay() {
           // for the same gesture.
           .on('start', (event: { sourceEvent?: Event }) => event.sourceEvent?.stopPropagation())
           .on('drag', (event: { x: number }) => {
-            if (!trimRange.value || !timeScale.value) return
+            const range = trimRange.value
+            if (!range || !timeScale.value) return
             const { toReal } = timeMapper.value
             const tVal = toReal(timeScale.value.invert(event.x))
-            const clamped = Math.min(Math.max(tVal, profile.start), profile.end)
-            const snapped = nearestSampleTime(profile, clamped)
-            const MIN_GAP_MS = 1000
-            if (key === 'start') {
-              trimRange.value.start = Math.min(snapped, trimRange.value.end - MIN_GAP_MS)
+            // A cut stays inside the kept range.
+            const [lo, hi] = key.cut === null ? [profile.start, profile.end] : [range.start, range.end]
+            const snapped = nearestSampleTime(profile, Math.min(Math.max(tVal, lo), hi))
+            const target = key.cut === null ? range : trimCuts.value[key.cut]
+            if (!target) return
+            if (key.side === 'start') {
+              target.start = Math.min(snapped, target.end - TRIM_MIN_GAP_MS)
             } else {
-              trimRange.value.end = Math.max(snapped, trimRange.value.start + MIN_GAP_MS)
+              target.end = Math.max(snapped, target.start + TRIM_MIN_GAP_MS)
             }
             updateTrimOverlayPositions()
           }),
       )
   }
-  makeHandle('start')
-  makeHandle('end')
+  makeHandle({ cut: null, side: 'start' })
+  makeHandle({ cut: null, side: 'end' })
+  trimCuts.value.forEach((_, i) => {
+    makeHandle({ cut: i, side: 'start' })
+    makeHandle({ cut: i, side: 'end' })
+  })
 
   updateTrimOverlayPositions()
 }
@@ -1334,15 +1488,23 @@ function updateTrimOverlayPositions() {
     trimOverlayLayer.value.select<SVGRectElement>('rect.trim-shade-tail'),
   )
 
-  const positionHandle = (key: 'start' | 'end') => {
-    const handleX = x(range[key])
-    const group = trimOverlayLayer.value!.select(`g.trim-handle-${key}`)
+  const positionHandle = (key: TrimHandleKey, t: number) => {
+    const handleX = x(t)
+    const group = trimOverlayLayer.value!.select(`g.${trimHandleClass(key)}`)
     group.select('line').attr('x1', handleX).attr('x2', handleX)
-    const GRAB_WIDTH = 16
-    group.select('rect').attr('x', handleX - GRAB_WIDTH / 2)
+    group.select('rect').attr('x', handleX - TRIM_HANDLE_GRAB_WIDTH / 2)
   }
-  positionHandle('start')
-  positionHandle('end')
+  positionHandle({ cut: null, side: 'start' }, range.start)
+  positionHandle({ cut: null, side: 'end' }, range.end)
+  trimCuts.value.forEach((cut, i) => {
+    positionShade(
+      cut.start,
+      cut.end,
+      trimOverlayLayer.value!.select<SVGRectElement>(`rect.trim-cut-shade-${i}`),
+    )
+    positionHandle({ cut: i, side: 'start' }, cut.start)
+    positionHandle({ cut: i, side: 'end' }, cut.end)
+  })
 }
 
 // Recolors the axis tick sitting exactly at the 1.6 bar guideline (added via

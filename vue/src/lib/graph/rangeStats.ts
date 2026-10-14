@@ -1,10 +1,12 @@
-import type { DiveProfile } from '@/lib/types/dive'
+import type { DiveProfile, TimeRange } from '@/lib/types/dive'
+import { isKept, totalDuration, trimGaps } from '@/lib/graph/profileCuts'
 
 export type RangeStats = {
   maxDepth: number
   averageDepth: number
   /** Elapsed time between the first and last measurement actually inside the range, in seconds -
-   * not `end - start` themselves, since the range's own bounds rarely land exactly on a sample. */
+   * not `end - start` themselves, since the range's own bounds rarely land exactly on a sample -
+   * minus the gaps cuts leave (see profileCuts). */
   bottomTimeSeconds: number
   measurementCount: number
 }
@@ -20,6 +22,7 @@ export function computeRangeStats(
   profile: DiveProfile,
   startTime: number,
   endTime: number,
+  cuts: TimeRange[] = [],
 ): RangeStats | null {
   let maxDepth = -Infinity
   let depthSum = 0
@@ -28,7 +31,7 @@ export function computeRangeStats(
   let lastTime: number | null = null
 
   for (const { measurement } of profile.measurements) {
-    if (measurement.time < startTime || measurement.time > endTime) continue
+    if (!isKept(measurement.time, startTime, endTime, cuts)) continue
     count++
     depthSum += measurement.depth
     if (measurement.depth > maxDepth) maxDepth = measurement.depth
@@ -41,7 +44,8 @@ export function computeRangeStats(
   return {
     maxDepth,
     averageDepth: depthSum / count,
-    bottomTimeSeconds: (lastTime - firstTime) / 1000,
+    bottomTimeSeconds:
+      (lastTime - firstTime - totalDuration(trimGaps(profile, startTime, endTime, cuts))) / 1000,
     measurementCount: count,
   }
 }
