@@ -159,6 +159,7 @@ div {
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onBeforeUnmount, nextTick, toRef } from 'vue'
 import {
+  pointer,
   select,
   line,
   area,
@@ -207,6 +208,7 @@ import {
   chooseTimeTickInterval,
   generateTimeAxisTicks,
   formatAxisGroupTick,
+  AXIS_UNIT_CAPTIONS,
   generateTemperatureTicks,
   generatePo2AxisTicks,
   calculateTemperatureExtent,
@@ -325,8 +327,14 @@ const tooltipRef = ref<InstanceType<typeof DiveGraphTooltip> | null>(null)
 const width = ref(600)
 const height = ref(300)
 // Right margin needs to fit the widest axis-group tick label ("1.80 bar"-style PO2 values,
-// ~46px at default axis font size) without clipping against the SVG's edge.
-const margin = { top: 10, right: 50, bottom: 24, left: 40 }
+// ~46px at default axis font size) without clipping against the SVG's edge. A narrow (phone
+// portrait) chart drops the unit from its tick labels and captions it once above each axis
+// instead, for ~26px more plot width - set in updateSize().
+const COMPACT_AXES_BELOW_PX = 480
+const WIDE_MARGIN = { top: 10, right: 50, bottom: 24, left: 40 }
+const COMPACT_MARGIN = { top: 16, right: 34, bottom: 22, left: 30 }
+const compactAxes = ref(false)
+const margin = { ...WIDE_MARGIN }
 const innerWidth = computed(() => Math.max(10, width.value - margin.left - margin.right))
 const innerHeight = computed(() => Math.max(10, height.value - margin.top - margin.bottom))
 
@@ -523,11 +531,17 @@ let ro: ResizeObserver | null = null
 
 function updateSize() {
   if (!container.value) return
-  const rect = container.value.getBoundingClientRect()
+  // Layout size, not getBoundingClientRect(): the fullscreen view may be CSS-rotated, which
+  // swaps the bounding box's width and height.
+  const rect = { width: container.value.clientWidth, height: container.value.clientHeight }
   // Floor is just a guard against a degenerate 0-width SVG, not a design minimum — forcing the
   // SVG wider than its actual container (as a higher floor like 300 would on narrow phones)
   // causes the whole page to overflow horizontally.
-  width.value = Math.max(200, Math.floor(rect.width))
+  const w = Math.max(200, Math.floor(rect.width))
+  // Margins first: innerWidth/innerHeight only recompute when width/height change.
+  compactAxes.value = w < COMPACT_AXES_BELOW_PX
+  Object.assign(margin, compactAxes.value ? COMPACT_MARGIN : WIDE_MARGIN)
+  width.value = w
   height.value = Math.max(150, Math.floor(rect.height))
 }
 
@@ -667,6 +681,7 @@ function setupScales() {
 let resizeDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(async () => {
+  document.addEventListener('touchstart', onDocumentTouchStart, { passive: true })
   updateSize()
   initSvg()
   setupScales()
@@ -692,6 +707,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  document.removeEventListener('touchstart', onDocumentTouchStart)
   if (ro && container.value) ro.unobserve(container.value)
   if (zoomHintTimer) clearTimeout(zoomHintTimer)
   if (resizeDebounceTimer) clearTimeout(resizeDebounceTimer)
@@ -815,6 +831,21 @@ function initSvg() {
     .append('g')
     .attr('transform', `translate(0,${innerHeight.value})`)
     .attr('class', 'x-axis')
+  // Compact axes only (see COMPACT_MARGIN): each axis's unit, once, above its top tick.
+  g.append('text')
+    .attr('class', 'axis-unit-left')
+    .attr('x', -4)
+    .attr('y', -6)
+    .attr('text-anchor', 'end')
+  g.append('text')
+    .attr('class', 'axis-unit-right')
+    .attr('x', innerWidth.value + 4)
+    .attr('y', -6)
+    .attr('text-anchor', 'start')
+  g.selectAll('.axis-unit-left, .axis-unit-right')
+    .attr('font-size', 9)
+    .attr('fill', 'currentColor')
+    .attr('opacity', 0.75)
 
   // Lines layer - will contain multiple paths per profile
   g.append('g').attr('class', 'lines-depth').attr('clip-path', clipPathUrl)
@@ -880,9 +911,11 @@ function initSvg() {
     .attr('height', innerHeight.value)
     .attr('fill', 'transparent')
     .on('mousemove', onMouseMoveD3)
-    .on('touchmove', onMouseMoveD3)
     .on('mouseleave', onMouseLeave)
-    .on('touchend', onMouseLeave)
+    // Touch: a tap or sideways drag shows the readout (it stays after the finger lifts - see
+    // onDocumentTouchStart), a vertical drag is left to scroll the page.
+    .on('touchstart', onTouchStartD3)
+    .on('touchmove', onTouchMoveD3)
 
   // Zoom & pan on the SVG (X-axis only, requires Ctrl on desktop, or 2-finger pinch on touch)
   let touchDistance = 0
@@ -910,9 +943,10 @@ function initSvg() {
         }
         return true
       }
-      // Allow touch zoom (will be handled by touchstart/touchmove)
+      // Touch: only a pinch (or a pan once zoomed in) - a single finger on an unzoomed chart
+      // must still scroll the page, which d3-zoom's own touchmove handling would block.
       if (event.type.startsWith('touch')) {
-        return true
+        return (event as TouchEvent).touches.length >= 2 || isZoomed.value
       }
       // Block double-click zoom and allow regular pan
       return !event.button && event.type !== 'dblclick'
@@ -983,15 +1017,12 @@ function initSvg() {
           const scale = currentDistance / touchDistance
           const newZoomLevel = Math.max(1, Math.min(20, lastZoomLevel * scale))
 
-          // Get center point between two fingers for zoom origin
-          const centerX = (touch1.clientX + touch2.clientX) / 2
-          // const centerY = (touch1.clientY + touch2.clientY) / 2
-
-          // Apply zoom transformation
-          const rect = container.value?.getBoundingClientRect()
-          if (rect && svgSel.value) {
-            const x = centerX - rect.left - margin.left
-            // const y = centerY - rect.top - margin.top
+          // Zoom origin: the point between the two fingers, in chart coordinates.
+          const [x] = pointerInG({
+            clientX: (touch1.clientX + touch2.clientX) / 2,
+            clientY: (touch1.clientY + touch2.clientY) / 2,
+          })
+          if (svgSel.value) {
 
             svgSel.value.call(
               zoomBehavior.value.transform,
@@ -1050,7 +1081,7 @@ function renderAll() {
   const rightScale = getScaleForAxisGroup(rightAxisMetric.value, scales)
   if (leftScale) {
     const leftAxis = axisLeft(leftScale).tickFormat((d): string =>
-      formatAxisGroupTick(leftAxisMetric.value, Number(d)),
+      formatAxisGroupTick(leftAxisMetric.value, Number(d), compactAxes.value),
     )
     // Temperature uses dynamic tick steps to keep label count reasonable
     if (leftAxisMetric.value === 'temp') {
@@ -1066,7 +1097,7 @@ function renderAll() {
   }
   if (rightScale) {
     const rightAxis = axisRight(rightScale).tickFormat((d): string =>
-      formatAxisGroupTick(rightAxisMetric.value, Number(d)),
+      formatAxisGroupTick(rightAxisMetric.value, Number(d), compactAxes.value),
     )
     // Temperature uses dynamic tick steps to keep label count reasonable
     if (rightAxisMetric.value === 'temp') {
@@ -1079,6 +1110,12 @@ function renderAll() {
     axes.yAux.value?.call(rightAxis)
     if (rightAxisMetric.value === 'po2') highlightPo2AxisTick(axes.yAux.value)
   }
+  gSel.value
+    .select('.axis-unit-left')
+    .text(compactAxes.value && leftScale ? AXIS_UNIT_CAPTIONS[leftAxisMetric.value] : '')
+  gSel.value
+    .select('.axis-unit-right')
+    .text(compactAxes.value && rightScale ? AXIS_UNIT_CAPTIONS[rightAxisMetric.value] : '')
   // Gridlines (optional)
   if (props.showGrid ?? true) {
     grid.x.value?.call(
@@ -1116,7 +1153,9 @@ function renderAll() {
       .datum(depthPts)
       .attr('d', depthLine.value?.(depthPts) ?? '')
       .attr('fill', 'none')
-      .attr('stroke', '#ffffff')
+      // The theme's text colour, not white: on the light theme's white card a white depth line
+      // was invisible.
+      .attr('stroke', 'var(--foreground, #ffffff)')
       .attr('stroke-width', 2)
       .attr('opacity', 0.8)
   })
@@ -1815,7 +1854,8 @@ let isLocalHover = false
 // on where a real cursor happens to be.
 function renderTooltipAtTime(
   tVal: number,
-  screenPos: { clientX: number; clientY: number } | null,
+  /** Pointer position in the container's own (unrotated) coordinates. */
+  screenPos: { x: number; y: number; touch?: boolean } | null,
   hoverY: number | null = null,
 ): void {
   if (!timeScale.value || !depthScale.value || !gSel.value) return
@@ -1996,13 +2036,12 @@ function renderTooltipAtTime(
     const containerEl = container.value
     if (!containerEl) return
 
-    const rect = containerEl.getBoundingClientRect()
     let mouseX: number
     let mouseY: number
 
     if (screenPos) {
-      mouseX = screenPos.clientX - rect.left
-      mouseY = screenPos.clientY - rect.top
+      mouseX = screenPos.x
+      mouseY = screenPos.y
     } else {
       // Externally driven (no real cursor) — anchor near the crosshair instead.
       mouseX = cx
@@ -2019,20 +2058,24 @@ function renderTooltipAtTime(
     const containerWidth = containerEl.offsetWidth
     const containerHeight = containerEl.offsetHeight
 
+    // A finger covers far more than a cursor: keep the readout clear of it.
+    const gap = screenPos?.touch ? 28 : 8
+
     // Try to position to the right of the mouse first
-    let xPos = mouseX + 8
+    let xPos = mouseX + gap
 
     // If tooltip would overflow on the right, move it to the left of the mouse cursor
     if (xPos + tooltipWidth > containerWidth) {
-      xPos = mouseX - tooltipWidth - 8
+      xPos = mouseX - tooltipWidth - gap
       // If it would go off the left edge, position at the far right
       if (xPos < 0) {
         xPos = Math.max(0, containerWidth - tooltipWidth)
       }
     }
 
-    // Position Y slightly above the mouse
-    const yPos = Math.min(containerHeight - tooltipHeight, Math.max(0, mouseY - 40))
+    // Slightly above the mouse; for a touch, above the finger entirely when there's room.
+    const above = screenPos?.touch ? mouseY - tooltipHeight - gap : mouseY - 40
+    const yPos = Math.min(containerHeight - tooltipHeight, Math.max(0, above))
 
     tooltipLeft.value = xPos
     tooltipTop.value = yPos
@@ -2050,40 +2093,67 @@ function onMouseMoveD3(event: MouseEvent | TouchEvent) {
   isLocalHover = true
   const tVal = timeMapper.value.toReal(timeScale.value.invert(mx))
 
-  let clientX: number
-  let clientY: number
-  if (event instanceof TouchEvent) {
-    const touch = event.touches[0] || event.changedTouches[0]
-    if (!touch) return
-    clientX = touch.clientX
-    clientY = touch.clientY
-  } else {
-    clientX = event.clientX
-    clientY = event.clientY
-  }
-
-  renderTooltipAtTime(tVal, { clientX, clientY }, my)
+  renderTooltipAtTime(
+    tVal,
+    { x: mx + margin.left, y: my + margin.top, touch: isTouchEvent(event) },
+    my,
+  )
   emit('hoverTimeChange', tVal)
 }
 
-function pointerInG(event: MouseEvent | TouchEvent): [number, number] {
-  const rect = container.value!.getBoundingClientRect()
-  let clientX: number
-  let clientY: number
+// `TouchEvent` itself is undefined in browsers without touch support (desktop Firefox), so no
+// `instanceof` here.
+function isTouchEvent(event: MouseEvent | TouchEvent): event is TouchEvent {
+  return 'touches' in event
+}
 
-  if (event instanceof TouchEvent) {
-    const touch = event.touches[0] || event.changedTouches[0]
-    if (!touch) return [0, 0]
-    clientX = touch.clientX
-    clientY = touch.clientY
-  } else {
-    clientX = event.clientX
-    clientY = event.clientY
+// A touch that starts on the chart: shows the readout right away; once it turns out to be a
+// mostly-vertical drag it's a page scroll instead, and the readout is dropped for that touch.
+let touchStartPoint: { x: number; y: number } | null = null
+let touchIsScroll = false
+
+function onTouchStartD3(event: TouchEvent) {
+  const touch = event.touches[0]
+  if (event.touches.length !== 1 || !touch) return
+  const [x, y] = pointerInG(touch)
+  touchStartPoint = { x, y }
+  touchIsScroll = false
+  onMouseMoveD3(event)
+}
+
+function onTouchMoveD3(event: TouchEvent) {
+  const touch = event.touches[0]
+  if (event.touches.length !== 1 || !touch || touchIsScroll) return
+  if (touchStartPoint) {
+    const [x, y] = pointerInG(touch)
+    const dx = Math.abs(x - touchStartPoint.x)
+    const dy = Math.abs(y - touchStartPoint.y)
+    if (dy > 10 && dy > dx) {
+      touchIsScroll = true
+      onMouseLeave()
+      return
+    }
   }
+  onMouseMoveD3(event)
+}
 
-  const x = clientX - rect.left - margin.left
-  const y = clientY - rect.top - margin.top
-  return [x, y]
+// The touch readout outlives the finger (there's no hover to end it) - a touch anywhere else
+// clears it.
+function onDocumentTouchStart(event: TouchEvent) {
+  if (!tooltip.value || !container.value) return
+  if (event.target instanceof Node && container.value.contains(event.target)) return
+  onMouseLeave()
+}
+
+// In the plot group's own coordinates. d3's pointer() goes through the SVG's screen matrix, so
+// this stays right when the fullscreen view is CSS-rotated (clientX - rect.left would not).
+function pointerInG(
+  event: MouseEvent | TouchEvent | Touch | { clientX: number; clientY: number },
+): [number, number] {
+  const point = 'touches' in event ? (event.touches[0] ?? event.changedTouches[0]) : event
+  const node = gSel.value?.node()
+  if (!point || !node) return [0, 0]
+  return pointer(point, node)
 }
 
 function onMouseLeave() {

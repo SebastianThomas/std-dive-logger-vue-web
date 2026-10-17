@@ -6,7 +6,7 @@
       <!-- Header -->
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div class="flex items-center gap-3 flex-wrap">
-          <h1 class="text-2xl font-bold">Dive List</h1>
+          <h1 class="text-xl md:text-2xl font-bold">Dive List</h1>
           <span
             v-if="!isLoading && totalElements > 0"
             class="px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm border border-gray-200 dark:border-gray-600"
@@ -37,9 +37,10 @@
         </div>
       </div>
 
-      <!-- Search Bar -->
-      <div class="flex gap-4 items-center">
-        <div class="flex-1">
+      <!-- Search Bar: wraps on a phone, where the two buttons used to squeeze the search box down to
+           an empty square. -->
+      <div class="flex flex-wrap gap-2 sm:gap-4 items-center">
+        <div class="flex-1 basis-full sm:basis-0 min-w-0">
           <input
             ref="searchInputRef"
             v-model="searchQuery"
@@ -66,7 +67,7 @@
         <button
           @click="toggleSharedDives"
           :class="[
-            'px-4 py-2 rounded-md border text-sm font-medium transition',
+            'px-4 py-2 rounded-md border text-sm font-medium transition whitespace-nowrap',
             viewShared
               ? 'bg-sky-600 text-white border-sky-600'
               : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700',
@@ -219,6 +220,7 @@
         :current-page="currentPage"
         :total-pages="totalPages"
         :page-size="pageSize"
+        :total-elements="isLoading ? undefined : totalElements"
         @update:page="goToPage"
       />
 
@@ -247,6 +249,7 @@
         :current-page="currentPage"
         :total-pages="totalPages"
         :page-size="pageSize"
+        :total-elements="isLoading ? undefined : totalElements"
         @update:page="goToPage"
       />
     </div>

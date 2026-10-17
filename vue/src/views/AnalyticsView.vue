@@ -1,12 +1,11 @@
 <template>
   <div
-    class="flex justify-center items-start pt-20 px-6 md:mx-10"
-    :style="{ minHeight: 'calc(100dvh - 80px)' }"
+    class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-20 md:px-6 md:mx-10"
   >
-    <main class="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-4xl w-full">
-      <h1 class="text-2xl font-bold mb-6">Analytics</h1>
+    <main class="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 max-w-4xl w-full">
+      <h1 class="text-xl md:text-2xl font-bold mb-4 md:mb-6">Analytics</h1>
 
-      <div class="space-y-6">
+      <div class="space-y-4 md:space-y-6">
         <section>
           <h2 class="text-lg font-semibold mb-4">Select Analytics View</h2>
           <p class="text-gray-600 dark:text-gray-400 mb-4">
@@ -34,7 +33,7 @@
                 class="block"
               >
                 <div
-                  class="p-6 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  class="p-4 md:p-6 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <h3 class="text-lg font-semibold mb-2">Depth Analytics</h3>
                   <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -44,7 +43,7 @@
               </router-link>
               <div
                 v-else
-                class="p-6 border border-gray-300 dark:border-gray-600 rounded-lg opacity-50 cursor-not-allowed"
+                class="p-4 md:p-6 border border-gray-300 dark:border-gray-600 rounded-lg opacity-50 cursor-not-allowed"
               >
                 <h3 class="text-lg font-semibold mb-2">Depth Analytics</h3>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -58,7 +57,7 @@
                 class="block"
               >
                 <div
-                  class="p-6 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  class="p-4 md:p-6 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <h3 class="text-lg font-semibold mb-2">Segments Analytics</h3>
                   <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -68,7 +67,7 @@
               </router-link>
               <div
                 v-else
-                class="p-6 border border-gray-300 dark:border-gray-600 rounded-lg opacity-50 cursor-not-allowed"
+                class="p-4 md:p-6 border border-gray-300 dark:border-gray-600 rounded-lg opacity-50 cursor-not-allowed"
               >
                 <h3 class="text-lg font-semibold mb-2">Segments Analytics</h3>
                 <p class="text-sm text-gray-600 dark:text-gray-400">

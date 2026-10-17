@@ -1,7 +1,6 @@
 <template>
   <div
-    class="dive-view-shell flex justify-center items-start pt-20 px-6 md:mx-10"
-    :style="{ minHeight: 'calc(100dvh - 80px)' }"
+    class="dive-view-shell min-h-full flex justify-center items-start pt-3 px-2 sm:px-4 md:pt-20 md:px-6 md:mx-10"
   >
     <DiveGraphContainer
       :zone-id="dive?.site?.zoneId"
@@ -61,7 +60,7 @@
       >
         <div class="flex flex-wrap justify-between items-start mb-2 gap-x-4 gap-y-2">
           <div class="flex items-center gap-2 flex-wrap">
-            <h1 class="text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
+            <h1 class="text-xl md:text-2xl font-bold">#{{ dive.number }} : {{ dive.customIdentifier }}</h1>
             <span
               v-if="isManualDive"
               class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
@@ -165,7 +164,7 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       >
         <div
-          class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-[90%] max-w-lg max-h-[80vh] overflow-auto"
+          class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 md:p-6 w-[90%] max-w-lg max-h-[80vh] overflow-auto"
         >
           <h2 class="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Link a Dive</h2>
           <DiveSearchAndLink
@@ -778,6 +777,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
+import { withRawMeasurements } from '@/lib/dive/rawMeasurements'
 import { isOfflineError } from '@/lib/offline/offlineError'
 import OfflinePlaceholder from '@/components/ui/OfflinePlaceholder.vue'
 import { formatDurationToTime, formatDate } from '@/lib/utils/timeUtils'
@@ -1139,7 +1139,7 @@ const fetchDive = async () => {
     loading.value = true
     const res = await getWithToken<Dive>(`/v1/dives/${requestedDiveId}`)
     if (requestId !== fetchDiveRequestId) return
-    dive.value = res.data
+    dive.value = withRawMeasurements(res.data)
     fetchDiveTrips(requestedDiveId)
   } catch (err) {
     if (requestId !== fetchDiveRequestId) return
@@ -1224,7 +1224,7 @@ const handleDeleteProfile = async () => {
     const res = await deleteWithToken<Dive>(
       `/v1/dives/${dive.value.id}/profiles/${profileIdToDelete.value}`,
     )
-    dive.value = res.data
+    dive.value = withRawMeasurements(res.data)
     toast.success('Profile deleted')
   } catch (err) {
     console.error('Delete profile failed', err)
@@ -1275,17 +1275,17 @@ const onDiveLinked = () => {
 
 const handleProfilesAligned = (updatedDive: Dive) => {
   // Replace the current dive with the updated one from the alignment response
-  dive.value = updatedDive
+  dive.value = withRawMeasurements(updatedDive)
   toast.success('Profiles aligned successfully')
 }
 
 const handleProfileTrimmed = (updatedDive: Dive) => {
   // DiveGraphContainer already toasts success/failure for the trim itself - just refresh state.
-  dive.value = updatedDive
+  dive.value = withRawMeasurements(updatedDive)
 }
 
 const handleProfileReimported = (updatedDive: Dive) => {
-  dive.value = updatedDive
+  dive.value = withRawMeasurements(updatedDive)
   void sourceFilesRef.value?.refresh()
   toast.success('Profile reimported successfully')
 }

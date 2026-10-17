@@ -129,10 +129,12 @@ export function epochMsToDateTimeLocal(epochMs: number | null | undefined, timeZ
 }
 
 /**
- * Parses a `datetime-local` input value (local wall-clock `YYYY-MM-DDTHH:mm`) back to an absolute
- * epoch-millis timestamp. Returns null for an empty/invalid value.
+ * Parses a `datetime-local` input value (local wall-clock `YYYY-MM-DDTHH:mm`, seconds tolerated and
+ * dropped) back to an absolute epoch-millis timestamp. Returns null for an empty/invalid value.
  */
 export function dateTimeLocalToEpochMs(value: string | null | undefined, timeZone?: string | null): number | null {
+  // Some mobile pickers hand back seconds (and milliseconds) too; only minutes are edited here.
+  value = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(value ?? '')?.[1]
   if (!value) return null
   if (timeZone) {
     const naive = Date.parse(value + ":00Z")

@@ -70,7 +70,32 @@ export function chooseTimeTickInterval(durationMs: number, graphWidth: number): 
  * O2 Exposure deliberately gets no unit suffix — it mixes CNS (%) and OTU (unitless) on one
  * shared scale, so a single suffix would misrepresent one of the two.
  */
-export function formatAxisGroupTick(group: AxisUnitGroup, value: number): string {
+/** Unit shown once above an axis whose tick labels are compact (see formatAxisGroupTick). */
+export const AXIS_UNIT_CAPTIONS: Record<AxisUnitGroup, string> = {
+  depth: 'm',
+  temp: '°C',
+  ndl: 'min',
+  gf: 'GF %',
+  o2Exposure: 'CNS/OTU',
+  po2: 'bar',
+  gasFraction: '%',
+  rmv: 'l/min',
+}
+
+/** `compact`: the bare number (unit captioned once above the axis instead) - for narrow charts. */
+export function formatAxisGroupTick(group: AxisUnitGroup, value: number, compact = false): string {
+  if (compact) {
+    switch (group) {
+      case 'temp':
+        return `${value.toFixed(0)}°`
+      case 'po2':
+        return value.toFixed(2)
+      case 'rmv':
+        return value.toFixed(0)
+      default:
+        return `${value}`
+    }
+  }
   switch (group) {
     case 'depth':
       return `${value} m`

@@ -3,7 +3,7 @@
     <div
       class="w-full md:max-w-3xl bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4"
     >
-      <h1 class="text-2xl font-bold">
+      <h1 class="text-xl md:text-2xl font-bold">
         Backfill
         <span v-if="busy" class="ml-2 text-xs font-normal text-gray-400">
           <LoadingSpinner size="xs" /> working…

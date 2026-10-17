@@ -3,7 +3,7 @@
     <div
       class="w-full md:max-w-3xl bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4"
     >
-      <h1 class="text-2xl font-bold">My Tags</h1>
+      <h1 class="text-xl md:text-2xl font-bold">My Tags</h1>
       <p class="text-sm text-gray-500 dark:text-gray-400">
         Manage your personal tags. System tags (visible to everyone) cannot be deleted.
       </p>

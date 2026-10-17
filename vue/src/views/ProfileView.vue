@@ -1,10 +1,9 @@
 <template>
   <div
-    class="flex justify-center items-start pt-20 px-2 sm:px-6 md:mx-10"
-    :style="{ minHeight: 'calc(100dvh - 80px)' }"
+    class="min-h-full flex justify-center items-start pt-2 px-1 sm:px-6 md:pt-20 md:mx-10"
   >
     <main class="max-w-5xl w-full mx-auto p-2 sm:p-6">
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-8 space-y-8">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-8 space-y-4 md:space-y-8">
         <ProfileTabs :user="user" />
 
         <!-- Account Section -->

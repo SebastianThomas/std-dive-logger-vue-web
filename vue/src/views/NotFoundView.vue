@@ -1,12 +1,11 @@
 <template>
   <div
-    class="flex justify-center items-start pt-20 px-6 md:mx-10"
-    :style="{ minHeight: 'calc(100dvh - 80px)' }"
+    class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-20 md:px-6 md:mx-10"
   >
-    <main class="max-w-xl w-full mx-auto p-6">
-      <div class="bg-white rounded-xl shadow-lg p-8 space-y-4">
+    <main class="max-w-xl w-full mx-auto md:p-6">
+      <div class="bg-white rounded-xl shadow-lg p-4 md:p-8 space-y-4">
         <p class="text-5xl" aria-hidden="true">🤿</p>
-        <h1 class="text-2xl font-bold text-gray-800">Page not found</h1>
+        <h1 class="text-xl md:text-2xl font-bold text-gray-800">Page not found</h1>
         <p class="text-sm text-gray-600">
           There's nothing at this address — it may have moved, or the link may be wrong.
         </p>

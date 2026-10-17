@@ -7,6 +7,11 @@
    the fallback would add ~27 KB to the precached CSS. */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
+/* Wide *and* tall enough for a modal-style card with its own inner scroll area. A phone in
+   landscape is md-wide but only ~375px tall, where an inner scroller (plus anything sticky in
+   it) leaves no room for the content itself - those layouts scroll the page instead. */
+@custom-variant roomy (@media (min-width: 768px) and (min-height: 640px));
+
 /* Safety net: nothing on any page should ever be able to push the viewport wider than the
    screen - a single oversized descendant (e.g. a chart before it's measured its container)
    should scroll within its own box, not force the whole page to scroll horizontally. */

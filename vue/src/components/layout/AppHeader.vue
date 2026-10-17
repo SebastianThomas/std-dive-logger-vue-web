@@ -1,13 +1,26 @@
 <template>
   <header
-    class="col-span-2 header-bg shadow-md px-4 sm:px-8 flex items-center justify-between z-20 grid-header"
+    class="col-span-2 header-bg shadow-md px-3 sm:px-8 flex items-center justify-between gap-2 z-20 grid-header"
   >
-    <div class="flex items-center">
+    <div class="flex items-center gap-2">
+      <button
+        v-if="showMenuButton"
+        type="button"
+        class="theme-button w-10 h-10 rounded-full flex items-center justify-center"
+        :aria-expanded="menuOpen"
+        aria-controls="app-sidebar"
+        :title="menuOpen ? 'Close menu' : 'Menu'"
+        :aria-label="menuOpen ? 'Close menu' : 'Menu'"
+        @click="emit('toggleMenu')"
+      >
+        <i :class="menuOpen ? 'fas fa-xmark' : 'fas fa-bars'" class="text-lg"></i>
+      </button>
       <router-link :to="{ name: 'Home' }" class="flex items-center">
         <img
           src="/images/logo_with_name.webp"
           alt="Logo"
-          class="h-16 w-16 transition-all duration-300"
+          class="transition-all duration-300"
+          :class="compact ? 'h-12 w-12' : 'h-16 w-16'"
         />
         <h1 v-if="showTitle" class="text-lg sm:text-xl font-bold text-white ml-4">
           STD Dive Log {{ pageName }}
@@ -41,10 +54,13 @@
       </button>
       <button
         v-if="authStore.hasSession"
-        class="bg-red-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-red-600 transition-colors"
+        class="bg-red-500 text-white h-10 w-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base hover:bg-red-600 transition-colors"
+        title="Log out"
+        aria-label="Log out"
         @click="handleLogout"
       >
-        Log Out
+        <i class="fas fa-right-from-bracket sm:hidden"></i>
+        <span class="hidden sm:inline">Log Out</span>
       </button>
       <template v-else>
         <router-link :to="{ name: 'AuthSignup' }">
@@ -75,9 +91,20 @@ import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 interface Props {
   showTitle: boolean
   pageName: string
+  /** Phones: opens the sidebar drawer (there's no icon rail there). */
+  showMenuButton?: boolean
+  menuOpen?: boolean
+  /** 64px-tall header (phones, short landscape screens) instead of 80px. */
+  compact?: boolean
 }
 
-const { pageName, showTitle } = defineProps<Props>()
+const {
+  pageName,
+  showTitle,
+  showMenuButton = false,
+  menuOpen = false,
+  compact = false,
+} = defineProps<Props>()
 
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
@@ -94,6 +121,7 @@ const themeLabel = computed(() => {
 const emit = defineEmits<{
   logout: []
   openCommandPalette: []
+  toggleMenu: []
 }>()
 
 const handleLogout = () => {

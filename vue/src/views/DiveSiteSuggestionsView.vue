@@ -1,9 +1,9 @@
 <template>
-  <div class="min-h-full flex justify-center items-start pt-10 px-4 md:px-8">
+  <div class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-10 md:px-8">
     <div class="w-full max-w-2xl space-y-4">
-      <div class="bg-white rounded-xl shadow-md p-6">
+      <div class="bg-white rounded-xl shadow-md p-4 md:p-6">
         <div class="flex items-center justify-between gap-4 mb-1">
-          <h1 class="text-2xl font-bold">Suggest a Dive Site</h1>
+          <h1 class="text-xl md:text-2xl font-bold">Suggest a Dive Site</h1>
           <button
             v-if="!loading"
             type="button"
@@ -47,13 +47,13 @@
 
       <LoadingProgress v-if="loading" :messages="loadingMessages" icon="compass" />
 
-      <div v-else-if="error" class="suggestion-error rounded-xl border p-6">
+      <div v-else-if="error" class="suggestion-error rounded-xl border p-4 md:p-6">
         {{ error }}
       </div>
 
       <p
         v-else-if="!suggestions.length"
-        class="bg-white rounded-xl shadow-md p-8 text-center text-sm text-gray-400 italic"
+        class="bg-white rounded-xl shadow-md p-4 md:p-8 text-center text-sm text-gray-400 italic"
       >
         No suggestions yet - log a few more dives, or check back once other divers have logged some
         near you.

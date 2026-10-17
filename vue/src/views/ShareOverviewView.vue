@@ -1,12 +1,12 @@
 <template>
   <div class="h-full">
-    <div class="flex justify-center pt-10">
-      <main class="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-2xl w-full flex flex-col gap-4">
-        <div class="flex justify-between">
-          <h3 class="text-3xl font-semibold pb-8">Your groups</h3>
-          <div v-if="!readOnly" class="flex gap-4 items-center pb-8">
+    <div class="flex justify-center pt-4 px-2 sm:px-4 md:pt-10">
+      <main class="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 max-w-2xl w-full flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pb-2 md:pb-8">
+          <h3 class="text-2xl md:text-3xl font-semibold whitespace-nowrap">Your groups</h3>
+          <div v-if="!readOnly" class="flex gap-2 md:gap-4 items-center">
             <button
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+              class="whitespace-nowrap px-3 md:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
               @click="anchorElAdd = !anchorElAdd"
             >
               ➕ New group
@@ -21,7 +21,7 @@
             />
 
             <button
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+              class="whitespace-nowrap px-3 md:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
               @click="anchorElJoin = !anchorElJoin"
             >
               🔗 Join group

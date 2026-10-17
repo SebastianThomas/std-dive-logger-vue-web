@@ -1,14 +1,14 @@
 <template>
-  <div class="min-h-full flex justify-center items-start pt-10 px-4 md:px-8">
-    <div class="w-full max-w-3xl space-y-6">
+  <div class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-10 md:px-8">
+    <div class="w-full max-w-3xl space-y-4 md:space-y-6">
       <div v-if="loading" class="text-center text-gray-400 py-8">
         <i class="fas fa-spinner fa-spin text-2xl"></i>
       </div>
 
       <template v-else-if="trip">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-3">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 space-y-3">
           <div class="flex items-center justify-between">
-            <h1 class="text-2xl font-bold">
+            <h1 class="text-xl md:text-2xl font-bold">
               {{ trip.name }}
               <span
                 v-if="detailsSaving || savingTeam"
@@ -68,7 +68,7 @@
 
         <!-- Contents: the dives and/or sub-trips directly under this trip - "Members" used to
              read too much like people, when this list is never divers. -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 space-y-4">
           <h2 class="text-lg font-semibold">Contents</h2>
 
           <ul v-if="members.length" class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -190,7 +190,7 @@
         <!-- Default team roster - auto-saves the whole roster on any field's blur/Enter/change,
              and immediately on removing an entry (adding a blank entry doesn't save until it's
              actually given a name). -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-3">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 space-y-3">
           <h2 class="text-lg font-semibold">Default Team Roster</h2>
           <p class="text-xs text-gray-400">
             A prefill template - copied onto a dive's named buddies when it's added to this trip
@@ -234,7 +234,7 @@
         </div>
 
         <!-- All dives transitively -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
           <h2 class="text-lg font-semibold mb-3">
             All dives ({{ transitiveDivesTotal }} across this trip and its sub-trips)
           </h2>

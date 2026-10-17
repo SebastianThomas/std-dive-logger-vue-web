@@ -1,16 +1,16 @@
-import { useRouter } from 'vue-router'
+import { useRouter, type RouteLocationRaw } from 'vue-router'
 
 export function useNavigation() {
   const router = useRouter()
 
-  const safeBack = () => {
+  /** `fallback`: where to go when the page was opened directly (no in-app history). */
+  const safeBack = (fallback: RouteLocationRaw = { name: 'Home' }) => {
     // Check if there's a back history within the app
     // window.history.state.back will be null if there's no back history
     if (window.history.state?.back) {
       router.back()
     } else {
-      // No in-app history, go to home instead
-      router.push({ name: 'Home' })
+      router.push(fallback)
     }
   }
 

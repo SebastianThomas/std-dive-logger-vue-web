@@ -1,9 +1,9 @@
 <template>
-  <div class="min-h-full flex justify-center items-start pt-10 px-4 md:px-8">
-    <div class="w-full max-w-2xl space-y-6">
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+  <div class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-10 md:px-8">
+    <div class="w-full max-w-2xl space-y-4 md:space-y-6">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
         <div class="flex items-center justify-between mb-4">
-          <h1 class="text-2xl font-bold">Dive Trips & Courses</h1>
+          <h1 class="text-xl md:text-2xl font-bold">Dive Trips & Courses</h1>
         </div>
 
         <form class="flex flex-wrap gap-2 mb-4" @submit.prevent="create">

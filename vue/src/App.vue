@@ -33,20 +33,29 @@
     class="grid app-grid min-h-dvh w-full transition-all duration-300"
     :style="{
       gridTemplateRows: `${headerHeight}px calc(100dvh - ${headerHeight}px)`,
-      gridTemplateColumns: `${sidebarWidth}px calc(100vw - ${sidebarWidth}px)`,
+      // minmax(0, 1fr), not calc(100vw - …): 100vw also counts a classic scrollbar, which made
+      // the page a few pixels too wide and grew a horizontal scrollbar.
+      gridTemplateColumns: `${sidebarWidth}px minmax(0, 1fr)`,
     }"
   >
     <AppHeader
       :show-title="showTitle"
       :page-name="pageName"
+      :show-menu-button="isPhone && authStore.hasSession"
+      :compact="compactHeader"
+      :menu-open="drawerOpen"
       @logout="handleLogout"
       @open-command-palette="showCommandPalette = true"
+      @toggle-menu="drawerOpen = !drawerOpen"
     />
 
     <AppSidebar
-      :is-visible="isVisible"
+      :is-visible="isPhone || isVisible"
       :sidebar-width="sidebarWidth"
-      @toggle-sidebar="toggleSidebar"
+      :drawer="isPhone"
+      :drawer-open="drawerOpen"
+      :top-offset="headerHeight"
+      @toggle-sidebar="isPhone ? (drawerOpen = false) : toggleSidebar()"
     />
 
     <!-- Main content -->
@@ -93,7 +102,6 @@ import VimFieldIndicator from './components/vim/VimFieldIndicator.vue'
 import VimFieldHelp from './components/vim/VimFieldHelp.vue'
 
 // Constants
-const headerHeight = 80 as const
 const expandedWidth = 130 as const
 const collapsedWidth = 50 as const
 const SM_BREAKPOINT = 640 as const
@@ -161,6 +169,18 @@ const windowWidth = ref(window.innerWidth)
 const isVisible = ref(getInitialSidebarState())
 const sidebarWidth = ref<0 | 50 | 130>(0)
 const showTitle = computed(() => windowWidth.value >= SM_BREAKPOINT)
+// Phones: no permanent icon rail (it took ~15% of a portrait screen) - the header's menu button
+// opens the sidebar as a drawer over the page instead, closed again on every navigation.
+const isPhone = computed(() => windowWidth.value < SM_BREAKPOINT)
+const drawerOpen = ref(false)
+// Phones, and any short (landscape-phone) screen, get the slimmer header.
+const windowHeight = ref(window.innerHeight)
+const compactHeader = computed(() => isPhone.value || windowHeight.value < 500)
+const headerHeight = computed(() => (compactHeader.value ? 64 : 80))
+watch(() => route.fullPath, () => (drawerOpen.value = false))
+watch(isPhone, (phone) => {
+  if (!phone) drawerOpen.value = false
+})
 // Seeded synchronously from localStorage so the correct background shows on first paint,
 // before the API request below confirms it (or replaces it, if it's since changed).
 const customBackgroundUrl = ref<string | null>(getCachedBackgroundUrl())
@@ -202,6 +222,7 @@ const toggleSidebar = () => {
 
 const handleResize = () => {
   windowWidth.value = window.innerWidth
+  windowHeight.value = window.innerHeight
 }
 
 watch(windowWidth, (newWidth) => {
@@ -213,9 +234,9 @@ watch(windowWidth, (newWidth) => {
 })
 
 watch(
-  [isVisible, () => authStore.hasSession],
+  [isVisible, isPhone, () => authStore.hasSession],
   () => {
-    if (authStore.hasSession) {
+    if (authStore.hasSession && !isPhone.value) {
       sidebarWidth.value = isVisible.value ? expandedWidth : collapsedWidth
     } else {
       sidebarWidth.value = 0

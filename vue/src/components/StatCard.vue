@@ -1,5 +1,5 @@
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" v-if="stats">
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4" v-if="stats">
     <StatItem label="Dives" :value="stats.diveCount.toString()" icon="water" />
     <StatItem label="Newest Dive #" :value="stats.maxDiveNr.toString()" icon="hashtag" />
     <StatItem label="Max Depth" :value="`${stats.maxDepth.toFixed(1)} m`" icon="arrow-down" />

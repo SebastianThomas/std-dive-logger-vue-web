@@ -282,5 +282,15 @@ describe('timeUtils', () => {
       expect(dateTimeLocalToEpochMs(null)).toBeNull()
       expect(dateTimeLocalToEpochMs('not-a-date')).toBeNull()
     })
+
+    it('accepts a picker value with seconds, in a site timezone too', () => {
+      const minutes = dateTimeLocalToEpochMs('2026-08-22T10:13', 'Africa/Cairo')
+      expect(minutes).toBe(Date.parse('2026-08-22T07:13:00Z'))
+      expect(dateTimeLocalToEpochMs('2026-08-22T10:13:00', 'Africa/Cairo')).toBe(minutes)
+      expect(dateTimeLocalToEpochMs('2026-08-22T10:13:00.000', 'Africa/Cairo')).toBe(minutes)
+      expect(dateTimeLocalToEpochMs('2026-08-22T10:13:00')).toBe(
+        dateTimeLocalToEpochMs('2026-08-22T10:13'),
+      )
+    })
   })
 })

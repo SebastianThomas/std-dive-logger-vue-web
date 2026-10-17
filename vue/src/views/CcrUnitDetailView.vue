@@ -1,17 +1,17 @@
 <template>
-  <div class="min-h-full flex justify-center items-start pt-10 px-4 md:px-8">
+  <div class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-10 md:px-8">
     <div class="w-full max-w-2xl">
-      <div v-if="loading" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 text-center">
+      <div v-if="loading" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-8 text-center">
         <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
       </div>
       <div
         v-else-if="error"
-        class="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-xl p-6"
+        class="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-xl p-4 md:p-6"
       >
         <p class="text-red-700 dark:text-red-300">{{ error }}</p>
       </div>
-      <div v-else-if="unit" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 space-y-4">
-        <h1 class="text-2xl font-bold">{{ unit.name }}</h1>
+      <div v-else-if="unit" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 space-y-4">
+        <h1 class="text-xl md:text-2xl font-bold">{{ unit.name }}</h1>
         <p v-if="unit.mountPosition" class="text-sm text-gray-500 dark:text-gray-400">
           {{ CCR_MOUNT_POSITION_LABELS[unit.mountPosition] }}
         </p>

@@ -61,7 +61,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { select, scaleLinear, area, axisLeft, curveMonotoneX, bisector } from 'd3'
+import { select, scaleLinear, area, axisLeft, curveMonotoneX, bisector, pointer } from 'd3'
 import type { Area } from 'd3'
 import type { DiveProfile, DiveProfileRatesResponse } from '@/lib/types/dive'
 import {
@@ -241,9 +241,9 @@ let clearHoverDisplay: (() => void) | null = null
 
 function updateSize() {
   if (!container.value) return
-  const rect = container.value.getBoundingClientRect()
-  width.value = Math.max(200, Math.floor(rect.width))
-  height.value = Math.max(60, Math.floor(rect.height))
+  // Layout size: the fullscreen view may be CSS-rotated (see DiveGraph's updateSize).
+  width.value = Math.max(200, Math.floor(container.value.clientWidth))
+  height.value = Math.max(60, Math.floor(container.value.clientHeight))
 }
 
 function render() {
@@ -458,18 +458,20 @@ function render() {
     .attr('height', innerHeight.value)
     .attr('fill', 'transparent')
 
-  const clientXOf = (event: MouseEvent | TouchEvent): number | null =>
-    'touches' in event ? (event.touches[0]?.clientX ?? event.changedTouches[0]?.clientX ?? null) : event.clientX
+  // Plot-group coordinates via the SVG matrix - right even when the fullscreen view is rotated.
+  const pointerX = (event: MouseEvent | TouchEvent): number | null => {
+    const point = 'touches' in event ? (event.touches[0] ?? event.changedTouches[0]) : event
+    const node = g.node()
+    return point && node ? pointer(point, node)[0] : null
+  }
 
   hoverRect
     .on('mousemove touchmove', (event: MouseEvent | TouchEvent) => {
       isLocalHover = true
-      const clientX = clientXOf(event)
-      if (clientX === null || !container.value) return
-      const rect = container.value.getBoundingClientRect()
-      const mx = clientX - rect.left - margin.left
+      const mx = pointerX(event)
+      if (mx === null || !container.value) return
       const tVal = toReal(xScale.invert(mx))
-      showAtTime?.(tVal, clientX - rect.left)
+      showAtTime?.(tVal, mx + margin.left)
       emit('hoverTimeChange', tVal)
     })
     .on('mouseleave touchend', () => {

@@ -1811,7 +1811,12 @@ const manualStartLocal = computed<string>({
   get: () => epochMsToDateTimeLocal(props.modelValue.startTime ?? props.diveStart, props.modelValue.diveSite?.zoneId ?? 'UTC'),
   set: (value: string) => {
     const instant = dateTimeLocalToEpochMs(value, props.modelValue.diveSite?.zoneId ?? 'UTC')
-    localTimeError.value = instant == null ? 'This local time is invalid or occurs twice during a clock change. Choose an unambiguous time.' : ''
+    localTimeError.value =
+      instant != null
+        ? ''
+        : value
+          ? 'This local time is invalid or occurs twice during a clock change. Choose an unambiguous time.'
+          : 'Pick a date and time - the dive keeps its current start until you do.'
     if (instant != null) updateField('startTime', instant)
   },
 })

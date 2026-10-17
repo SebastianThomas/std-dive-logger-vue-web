@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-full flex justify-center items-start pt-10 px-4 md:px-8">
-    <div class="w-full max-w-3xl bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-      <h1 class="text-2xl font-bold mb-4">
+  <div class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-10 md:px-8">
+    <div class="w-full max-w-3xl bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow">
+      <h1 class="text-xl md:text-2xl font-bold mb-4">
         {{ attachToDiveId ? 'Add another profile' : 'Upload Dive Files' }}
       </h1>
       <p
@@ -50,7 +50,7 @@
             <button
               type="button"
               :disabled="readOnly"
-              class="border-2 border-dashed border-sky-300 bg-sky-50 dark:bg-sky-900 dark:border-sky-600 rounded-xl p-6 text-center cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-800 hover:border-sky-400 dark:hover:border-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="border-2 border-dashed border-sky-300 bg-sky-50 dark:bg-sky-900 dark:border-sky-600 rounded-xl p-4 md:p-6 text-center cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-800 hover:border-sky-400 dark:hover:border-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
               @click="fileInputRef?.click()"
               @dragover.prevent
               @drop.prevent="handleDrop"
@@ -100,7 +100,7 @@
             <button
               :disabled="loading"
               class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              @click="safeBack"
+              @click="safeBack()"
             >
               Cancel
             </button>
@@ -170,7 +170,7 @@
             <button
               :disabled="loading"
               class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              @click="safeBack"
+              @click="safeBack()"
             >
               Cancel
             </button>

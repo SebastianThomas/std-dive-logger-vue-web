@@ -1,10 +1,35 @@
 <template>
+  <!-- Phones: a drawer over the page (opened from the header's menu button), dimming the rest. -->
+  <Transition name="fade">
+    <div
+      v-if="authStore.hasSession && drawer && drawerOpen"
+      class="fixed inset-x-0 bottom-0 z-45 bg-black/50"
+      :style="{ top: `${topOffset}px` }"
+      aria-hidden="true"
+      @click="toggleSidebar"
+    ></div>
+  </Transition>
   <aside
     v-if="authStore.hasSession"
-    class="sidebar-bg flex flex-col transition-all duration-300 grid-sidebar"
-    :style="{ width: `${sidebarWidth}px` }"
+    id="app-sidebar"
+    class="sidebar-bg flex flex-col grid-sidebar"
+    :class="
+      drawer
+        ? [
+            'fixed left-0 bottom-0 z-46 w-56 overflow-y-auto shadow-2xl transition-transform duration-200',
+            drawerOpen ? 'translate-x-0' : '-translate-x-full',
+          ]
+        : 'transition-all duration-300'
+    "
+    :style="drawer ? { top: `${topOffset}px` } : { width: `${sidebarWidth}px` }"
+    :inert="drawer && !drawerOpen"
   >
-    <MenuItem icon="bars" text="Collapse" :is-visible="isVisible" @action="toggleSidebar" />
+    <MenuItem
+      :icon="drawer ? 'xmark' : 'bars'"
+      :text="drawer ? 'Close' : 'Collapse'"
+      :is-visible="isVisible"
+      @action="toggleSidebar"
+    />
     <router-link :to="{ name: 'Home' }">
       <MenuItem icon="home" text="Home" :is-visible="isVisible" />
     </router-link>
@@ -57,6 +82,7 @@
 </template>
 
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import MenuItem from './menu/MenuItem.vue'
@@ -64,9 +90,14 @@ import MenuItem from './menu/MenuItem.vue'
 interface Props {
   isVisible: boolean
   sidebarWidth: number
+  /** Phone layout: rendered as an overlay drawer instead of a grid column. */
+  drawer?: boolean
+  drawerOpen?: boolean
+  /** Header height the drawer and its backdrop start below. */
+  topOffset?: number
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { drawer: false, drawerOpen: false, topOffset: 0 })
 
 const authStore = useAuthStore()
 const { readOnly } = useReadOnlyMode()
@@ -78,6 +109,12 @@ const emit = defineEmits<{
 const toggleSidebar = () => {
   emit('toggleSidebar')
 }
+
+const onKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && props.drawer && props.drawerOpen) toggleSidebar()
+}
+onMounted(() => window.addEventListener('keydown', onKeyDown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown))
 </script>
 
 <style scoped>

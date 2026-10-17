@@ -1,11 +1,16 @@
 <template>
   <div v-if="fullscreen" class="graph-modal-overlay">
-    <div class="graph-modal-card fullscreen">
+    <!-- A portrait screen gets the card turned sideways: a dive profile only reads as a wide
+         chart, and rotation lock / iOS (no orientation.lock()) would otherwise keep it tall. -->
+    <div class="graph-modal-card fullscreen" :class="{ rotated: rotateToLandscape }">
       <div class="w-full h-full flex flex-col overflow-hidden">
         <!-- Header with responsive layout -->
-        <div class="px-3 pt-3 pb-0 shrink-0">
+        <div class="px-3 pb-0 shrink-0" :class="shortScreen ? 'pt-2' : 'pt-3'">
           <!-- Controls row - always visible -->
-          <div class="flex justify-center mb-3">
+          <div
+            class="flex flex-wrap items-center justify-center gap-3"
+            :class="shortScreen ? 'mb-1' : 'mb-3'"
+          >
             <FullscreenGraphControls
               :profiles="profiles"
               :visible-profiles="visibleProfiles"
@@ -13,10 +18,29 @@
               @close="handleClose"
               @toggle-profile="toggleProfile"
             />
+            <button
+              v-if="shortScreen"
+              type="button"
+              class="px-3 py-1.5 text-xs rounded-full border bg-white/80 dark:bg-gray-800/80"
+              :aria-expanded="showShortScreenMetrics"
+              @click="showShortScreenMetrics = !showShortScreenMetrics"
+            >
+              <i class="fa-solid fa-sliders mr-1"></i>Metrics
+            </button>
           </div>
 
-          <!-- Grid layout for larger screens, single column for small -->
-          <div class="grid grid-cols-1 xl:grid-cols-[minmax(200px,1fr)_auto_1fr] gap-4">
+          <!-- Grid layout for larger screens, single column for small. A short (phone landscape)
+               screen keeps it behind the Metrics button, floating over the chart, so the chart
+               gets the height. -->
+          <div
+            v-show="!shortScreen || showShortScreenMetrics"
+            class="grid grid-cols-1 xl:grid-cols-[minmax(200px,1fr)_auto_1fr] gap-4"
+            :class="
+              shortScreen
+                ? 'absolute z-30 left-3 right-3 top-12 max-h-[75%] overflow-y-auto rounded-lg shadow-2xl'
+                : ''
+            "
+          >
             <!-- Left column: Empty spacer (hidden on small screens) -->
             <div class="hidden xl:block"></div>
 
@@ -60,6 +84,8 @@
                 :disable-gas-he="!combinedMetricsAvailability.hasGasHe"
                 :disable-deco-zone="!combinedMetricsAvailability.hasDeco"
                 :show-segments-toggle="true"
+                :start-expanded="shortScreen"
+                :class="{ 'mb-0!': shortScreen }"
                 v-model:left-axis-metric="leftAxisMetric"
                 v-model:right-axis-metric="rightAxisMetric"
               />
@@ -80,7 +106,9 @@
           </div>
         </div>
 
-        <div class="graph-area flex-1 relative p-3">
+        <!-- min-h-0: a flex item won't shrink below its content, so without it the SVG's
+             previous height kept the chart from ever getting shorter (rotation, smaller window). -->
+        <div class="graph-area flex-1 min-h-0 overflow-hidden relative p-3">
           <DiveGraph
             :profiles="profiles"
             :visible-profiles="visibleProfiles"
@@ -145,7 +173,8 @@
 
   <!-- Embedded view -->
   <div v-else class="w-full">
-    <div v-if="!minimal" class="flex justify-end px-4 mb-2 gap-2">
+    <!-- flex-wrap: a justify-end row that can't wrap overflows off the *left* edge on a phone. -->
+    <div v-if="!minimal" class="flex flex-wrap items-center justify-end px-2 sm:px-4 mb-2 gap-2">
       <ProfileSelector
         v-if="profiles.length > 1"
         :profiles="profiles"
@@ -158,7 +187,7 @@
         v-if="!readOnly"
         type="button"
         :disabled="trimProfileId !== null"
-        class="px-3 py-1 text-xs rounded-full border disabled:opacity-50 disabled:cursor-not-allowed"
+        class="px-3 py-1 text-xs rounded-full border whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
         :style="{ borderColor: 'rgba(209,213,219,0.8)' }"
         @click="startTrimming"
       >
@@ -167,7 +196,7 @@
     </div>
     <MetricsControlPanel
       v-if="!minimal"
-      class="px-4 mb-2"
+      class="px-3 sm:px-4 mb-2"
       v-model:selected-profiles="selectedProfiles"
       :profiles-count="profiles.length"
       :visible-profiles="visibleProfiles"
@@ -689,25 +718,21 @@ const unlockOrientation = async () => {
   }
 }
 
-const requestLandscape = async () => {
-  const locked = await lockLandscape()
-  if (!locked) {
-    toast.info('Rotate for a wider view', {
-      duration: 5000,
-      position: 'top-center',
-    })
-  }
-}
-
-const updateRotateTip = () => {
-  if (typeof window === 'undefined') return
-  const isPortrait = window.innerHeight > window.innerWidth
-  if (isPortrait) {
-    toast.info('Rotate for a wider view', {
-      duration: 5000,
-      position: 'top-center',
-    })
-  }
+// Portrait viewport while fullscreen: rendered rotated instead (see the template). Where the
+// landscape lock works (Android, in fullscreen) the viewport itself turns and this goes false.
+// Set at setup, not on mount: the children (MetricsControlPanel's start-expanded) read them first.
+const viewport = () =>
+  typeof window === 'undefined' ? { w: 1024, h: 768 } : { w: window.innerWidth, h: window.innerHeight }
+const isPortraitViewport = ref(viewport().h > viewport().w)
+const rotateToLandscape = computed(() => props.fullscreen && isPortraitViewport.value)
+// The card's own height (a rotated card's is the screen's width): below 500px the metrics panel
+// moves behind a button - see the template.
+const shortScreen = ref(Math.min(viewport().w, viewport().h) < 500)
+const showShortScreenMetrics = ref(false)
+const updateOrientation = () => {
+  const { w, h } = viewport()
+  isPortraitViewport.value = h > w
+  shortScreen.value = Math.min(w, h) < 500
 }
 
 onMounted(() => {
@@ -720,8 +745,8 @@ onMounted(() => {
   if (props.fullscreen) {
     window.addEventListener('keydown', onKeyDown)
     document.addEventListener('fullscreenchange', onFullscreenChange)
-    window.addEventListener('orientationchange', updateRotateTip)
-    window.addEventListener('resize', updateRotateTip)
+    window.addEventListener('orientationchange', updateOrientation)
+    window.addEventListener('resize', updateOrientation)
     window.addEventListener('popstate', onPopState)
     if (typeof window !== 'undefined') {
       window.history.pushState({ fullscreen: true }, '')
@@ -730,9 +755,9 @@ onMounted(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.classList.add('hide-header')
     }
-    updateRotateTip()
+    updateOrientation()
     enterFullscreen()
-    requestLandscape()
+    lockLandscape()
   }
 })
 
@@ -740,8 +765,8 @@ onBeforeUnmount(() => {
   if (props.fullscreen) {
     window.removeEventListener('keydown', onKeyDown)
     document.removeEventListener('fullscreenchange', onFullscreenChange)
-    window.removeEventListener('orientationchange', updateRotateTip)
-    window.removeEventListener('resize', updateRotateTip)
+    window.removeEventListener('orientationchange', updateOrientation)
+    window.removeEventListener('resize', updateOrientation)
     window.removeEventListener('popstate', onPopState)
     if (typeof document !== 'undefined') {
       document.documentElement.classList.remove('hide-header')
@@ -801,6 +826,17 @@ defineExpose({ startTrimmingProfile, selectTooltipProfile })
 
 .close-btn:hover {
   background: #b91c1c;
+}
+
+/* Long side along the screen's height, then turned a quarter clockwise into place. */
+.graph-modal-card.rotated {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100dvh;
+  height: 100vw;
+  transform-origin: top left;
+  transform: translateX(100vw) rotate(90deg);
 }
 
 [data-theme='dark'] .graph-modal-card {

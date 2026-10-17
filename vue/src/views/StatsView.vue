@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-full flex justify-center items-start pt-10 px-4 md:px-8">
+  <div class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-10 md:px-8">
     <div class="w-full max-w-4xl">
       <!-- Stat Type Selector -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
-        <div class="flex items-center justify-between flex-wrap gap-2 mb-6">
-          <h1 class="text-2xl font-bold">Dive Statistics</h1>
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6 mb-4 md:mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-4 md:mb-6">
+          <h1 class="text-xl md:text-2xl font-bold">Dive Statistics</h1>
           <RouterLink
             :to="{ name: 'StatsTimeline' }"
             class="text-sm text-blue-600 hover:underline flex items-center gap-1"
@@ -12,165 +12,169 @@
             <i class="fa fa-chart-area"></i> View trends over time →
           </RouterLink>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Phones: two compact columns, titles only, so the chosen stats start on the first screen. -->
+        <div class="grid grid-cols-2 gap-2 md:gap-4">
           <button
             :class="[
-              'p-4 rounded-lg border-2 transition-all',
+              'p-2.5 md:p-4 rounded-lg border-2 transition-all',
               selectedStat === 'overall'
                 ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-blue-400',
             ]"
             @click="selectStat('overall')"
           >
-            <div class="flex items-center gap-3">
-              <i class="fas fa-chart-line text-2xl text-blue-600"></i>
+            <div class="flex items-center gap-2 md:gap-3">
+              <i class="fas fa-chart-line text-lg md:text-2xl text-blue-600"></i>
               <div class="text-left">
-                <h3 class="font-semibold">Overall Stats</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Total dives and achievements</p>
+                <h3 class="font-semibold text-sm md:text-base">Overall Stats</h3>
+                <p class="hidden sm:block text-sm text-gray-600 dark:text-gray-400">Total dives and achievements</p>
               </div>
             </div>
           </button>
 
           <button
             :class="[
-              'p-4 rounded-lg border-2 transition-all',
+              'p-2.5 md:p-4 rounded-lg border-2 transition-all',
               selectedStat === 'year'
                 ? 'border-green-600 bg-green-50 dark:bg-green-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-green-400',
             ]"
             @click="selectStat('year')"
           >
-            <div class="flex items-center gap-3">
-              <i class="fas fa-calendar text-2xl text-green-600"></i>
+            <div class="flex items-center gap-2 md:gap-3">
+              <i class="fas fa-calendar text-lg md:text-2xl text-green-600"></i>
               <div class="text-left">
-                <h3 class="font-semibold">By Year</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Stats broken down by year</p>
+                <h3 class="font-semibold text-sm md:text-base">By Year</h3>
+                <p class="hidden sm:block text-sm text-gray-600 dark:text-gray-400">Stats broken down by year</p>
               </div>
             </div>
           </button>
 
           <button
             :class="[
-              'p-4 rounded-lg border-2 transition-all',
+              'p-2.5 md:p-4 rounded-lg border-2 transition-all',
               selectedStat === 'site'
                 ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-purple-400',
             ]"
             @click="selectStat('site')"
           >
-            <div class="flex items-center gap-3">
-              <i class="fas fa-map-pin text-2xl text-purple-600"></i>
+            <div class="flex items-center gap-2 md:gap-3">
+              <i class="fas fa-map-pin text-lg md:text-2xl text-purple-600"></i>
               <div class="text-left">
-                <h3 class="font-semibold">By Dive Site</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Stats per location</p>
+                <h3 class="font-semibold text-sm md:text-base">By Dive Site</h3>
+                <p class="hidden sm:block text-sm text-gray-600 dark:text-gray-400">Stats per location</p>
               </div>
             </div>
           </button>
 
           <button
             :class="[
-              'p-4 rounded-lg border-2 transition-all',
+              'p-2.5 md:p-4 rounded-lg border-2 transition-all',
               selectedStat === 'site-type'
                 ? 'border-teal-600 bg-teal-50 dark:bg-teal-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-teal-400',
             ]"
             @click="selectStat('site-type')"
           >
-            <div class="flex items-center gap-3">
-              <i class="fas fa-water text-2xl text-teal-600"></i>
+            <div class="flex items-center gap-2 md:gap-3">
+              <i class="fas fa-water text-lg md:text-2xl text-teal-600"></i>
               <div class="text-left">
-                <h3 class="font-semibold">By Site Type</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Wreck, reef, wall, ...</p>
+                <h3 class="font-semibold text-sm md:text-base">By Site Type</h3>
+                <p class="hidden sm:block text-sm text-gray-600 dark:text-gray-400">Wreck, reef, wall, ...</p>
               </div>
             </div>
           </button>
 
           <button
             :class="[
-              'p-4 rounded-lg border-2 transition-all',
+              'p-2.5 md:p-4 rounded-lg border-2 transition-all',
               selectedStat === 'water-type'
                 ? 'border-cyan-600 bg-cyan-50 dark:bg-cyan-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-cyan-400',
             ]"
             @click="selectStat('water-type')"
           >
-            <div class="flex items-center gap-3">
-              <i class="fas fa-droplet text-2xl text-cyan-600"></i>
+            <div class="flex items-center gap-2 md:gap-3">
+              <i class="fas fa-droplet text-lg md:text-2xl text-cyan-600"></i>
               <div class="text-left">
-                <h3 class="font-semibold">By Water Type</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Salt, fresh, brackish</p>
+                <h3 class="font-semibold text-sm md:text-base">By Water Type</h3>
+                <p class="hidden sm:block text-sm text-gray-600 dark:text-gray-400">Salt, fresh, brackish</p>
               </div>
             </div>
           </button>
 
           <button
             :class="[
-              'p-4 rounded-lg border-2 transition-all',
+              'p-2.5 md:p-4 rounded-lg border-2 transition-all',
               selectedStat === 'buddy'
                 ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-orange-400',
             ]"
             @click="selectStat('buddy')"
           >
-            <div class="flex items-center gap-3">
-              <i class="fas fa-people-group text-2xl text-orange-600"></i>
+            <div class="flex items-center gap-2 md:gap-3">
+              <i class="fas fa-people-group text-lg md:text-2xl text-orange-600"></i>
               <div class="text-left">
-                <h3 class="font-semibold">By Buddy</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Stats per dive buddy</p>
+                <h3 class="font-semibold text-sm md:text-base">By Buddy</h3>
+                <p class="hidden sm:block text-sm text-gray-600 dark:text-gray-400">Stats per dive buddy</p>
               </div>
             </div>
           </button>
 
           <button
             :class="[
-              'p-4 rounded-lg border-2 transition-all',
+              'p-2.5 md:p-4 rounded-lg border-2 transition-all',
               selectedStat === 'buddy-roles'
                 ? 'border-rose-600 bg-rose-50 dark:bg-rose-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-rose-400',
             ]"
             @click="selectStat('buddy-roles')"
           >
-            <div class="flex items-center gap-3">
-              <i class="fas fa-user-shield text-2xl text-rose-600"></i>
+            <div class="flex items-center gap-2 md:gap-3">
+              <i class="fas fa-user-shield text-lg md:text-2xl text-rose-600"></i>
               <div class="text-left">
-                <h3 class="font-semibold">By Buddy Role</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">How often each role was set</p>
+                <h3 class="font-semibold text-sm md:text-base">By Buddy Role</h3>
+                <p class="hidden sm:block text-sm text-gray-600 dark:text-gray-400">How often each role was set</p>
               </div>
             </div>
           </button>
 
           <button
             :class="[
-              'p-4 rounded-lg border-2 transition-all',
+              'p-2.5 md:p-4 rounded-lg border-2 transition-all',
               selectedStat === 'base'
                 ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400',
             ]"
             @click="selectStat('base')"
           >
-            <div class="flex items-center gap-3">
-              <i class="fas fa-gears text-2xl text-indigo-600"></i>
+            <div class="flex items-center gap-2 md:gap-3">
+              <i class="fas fa-gears text-lg md:text-2xl text-indigo-600"></i>
               <div class="text-left">
-                <h3 class="font-semibold">By Base Configuration</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Stats per Configuration</p>
+                <h3 class="font-semibold text-sm md:text-base">
+                  By Base <span class="sm:hidden">Config</span
+                  ><span class="hidden sm:inline">Configuration</span>
+                </h3>
+                <p class="hidden sm:block text-sm text-gray-600 dark:text-gray-400">Stats per Configuration</p>
               </div>
             </div>
           </button>
 
           <button
             :class="[
-              'p-4 rounded-lg border-2 transition-all',
+              'p-2.5 md:p-4 rounded-lg border-2 transition-all',
               selectedStat === 'tag'
                 ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-purple-400',
             ]"
             @click="selectStat('tag')"
           >
-            <div class="flex items-center gap-3">
-              <i class="fas fa-tags text-2xl text-purple-600"></i>
+            <div class="flex items-center gap-2 md:gap-3">
+              <i class="fas fa-tags text-lg md:text-2xl text-purple-600"></i>
               <div class="text-left">
-                <h3 class="font-semibold">By Tag</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Stats per tag or combination</p>
+                <h3 class="font-semibold text-sm md:text-base">By Tag</h3>
+                <p class="hidden sm:block text-sm text-gray-600 dark:text-gray-400">Stats per tag or combination</p>
               </div>
             </div>
           </button>
@@ -178,7 +182,7 @@
       </div>
 
       <!-- Stats Display -->
-      <div v-if="loading" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 text-center">
+      <div v-if="loading" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-8 text-center">
         <div class="flex justify-center mb-4">
           <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
         </div>
@@ -191,23 +195,23 @@
       />
       <div
         v-else-if="error"
-        class="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-xl p-6"
+        class="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-xl p-4 md:p-6"
       >
         <h3 class="font-semibold text-red-800 dark:text-red-200 mb-2">Error Loading Stats</h3>
         <p class="text-red-700 dark:text-red-300">{{ error }}</p>
       </div>
 
       <!-- Overall Stats -->
-      <div v-else-if="selectedStat === 'overall' && overallStats" class="space-y-6">
+      <div v-else-if="selectedStat === 'overall' && overallStats" class="space-y-4 md:space-y-6">
         <StatCard :stats="overallStats" />
       </div>
 
       <!-- Year Stats -->
-      <div v-else-if="selectedStat === 'year'" class="space-y-6">
+      <div v-else-if="selectedStat === 'year'" class="space-y-4 md:space-y-6">
         <div
           v-for="[year, item] of Object.entries(yearStats)"
           :key="year"
-          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
         >
           <h2 class="text-xl font-bold mb-4">{{ year }}</h2>
           <StatCard :stats="item" />
@@ -215,11 +219,11 @@
       </div>
 
       <!-- Site Stats -->
-      <div v-else-if="selectedStat === 'site'" class="space-y-6">
+      <div v-else-if="selectedStat === 'site'" class="space-y-4 md:space-y-6">
         <div
           v-for="item in siteStats"
           :key="item.key.id"
-          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
         >
           <h2 class="text-xl font-bold mb-2">
             <i class="fas fa-map-pin mr-2 text-purple-600"></i>{{ item.key.name }}
@@ -229,11 +233,11 @@
       </div>
 
       <!-- Site Type Stats -->
-      <div v-else-if="selectedStat === 'site-type'" class="space-y-6">
+      <div v-else-if="selectedStat === 'site-type'" class="space-y-4 md:space-y-6">
         <div
           v-for="item in siteTypeStats"
           :key="item.key"
-          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
         >
           <h2 class="text-xl font-bold mb-4">
             <i class="fas fa-water mr-2 text-teal-600"></i
@@ -244,11 +248,11 @@
       </div>
 
       <!-- Water Type Stats -->
-      <div v-else-if="selectedStat === 'water-type'" class="space-y-6">
+      <div v-else-if="selectedStat === 'water-type'" class="space-y-4 md:space-y-6">
         <div
           v-for="item in waterTypeStats"
           :key="item.key"
-          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
         >
           <h2 class="text-xl font-bold mb-4">
             <i class="fas fa-droplet mr-2 text-cyan-600"></i>{{ waterTypeLabel(item.key) }}
@@ -264,11 +268,11 @@
       </div>
 
       <!-- Buddy Stats -->
-      <div v-else-if="selectedStat === 'buddy'" class="space-y-6">
+      <div v-else-if="selectedStat === 'buddy'" class="space-y-4 md:space-y-6">
         <div
           v-for="item in buddyStats"
           :key="item.key"
-          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
         >
           <h2 class="text-xl font-bold mb-4">
             <i class="fas fa-user mr-2 text-orange-600"></i>{{ item.key || 'Unknown' }}
@@ -278,15 +282,15 @@
       </div>
 
       <!-- Buddy Role Stats -->
-      <div v-else-if="selectedStat === 'buddy-roles' && buddyRoleStats" class="space-y-6">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+      <div v-else-if="selectedStat === 'buddy-roles' && buddyRoleStats" class="space-y-4 md:space-y-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
           <h2 class="text-xl font-bold mb-4">
             <i class="fas fa-user-shield mr-2 text-rose-600"></i>Overall
           </h2>
           <BuddyRoleCountList :counts="buddyRoleStats.overall" />
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
           <h2 class="text-lg font-semibold mb-3">By Buddy</h2>
           <div class="space-y-3">
             <div v-for="b in buddyRoleStats.byBuddy" :key="b.group">
@@ -296,7 +300,7 @@
           </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
           <h2 class="text-lg font-semibold mb-3">By Site</h2>
           <div class="space-y-3">
             <div v-for="b in buddyRoleStats.bySite" :key="b.group">
@@ -306,7 +310,7 @@
           </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
           <h2 class="text-lg font-semibold mb-3">By Year</h2>
           <div class="space-y-3">
             <div v-for="b in buddyRoleStats.byYear" :key="b.group">
@@ -316,7 +320,7 @@
           </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
           <h2 class="text-lg font-semibold mb-3">By Month</h2>
           <div class="space-y-3">
             <div v-for="b in buddyRoleStats.byMonth" :key="b.group">
@@ -328,11 +332,11 @@
       </div>
 
       <!-- Base Configuration Stats -->
-      <div v-else-if="selectedStat === 'base'" class="space-y-6">
+      <div v-else-if="selectedStat === 'base'" class="space-y-4 md:space-y-6">
         <div
           v-for="item in baseStats"
           :key="item.key ?? 'unspecified'"
-          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
         >
           <h2 class="text-xl font-bold mb-4">
             <i class="fas fa-gear mr-2 text-indigo-600"></i>{{ baseConfigLabel(item.key) }}
@@ -342,9 +346,9 @@
       </div>
 
       <!-- Tag Stats -->
-      <div v-else-if="selectedStat === 'tag'" class="space-y-6">
+      <div v-else-if="selectedStat === 'tag'" class="space-y-4 md:space-y-6">
         <!-- Tag combination picker -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
           <h2 class="text-lg font-semibold mb-3">Filter by tag combination</h2>
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
             Select multiple tags to see stats for dives that have <strong>all</strong> of them.
@@ -409,7 +413,7 @@
           <div
             v-for="item in tagStats"
             :key="item.key.id"
-            class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6"
           >
             <h2 class="text-xl font-bold mb-1">
               <span

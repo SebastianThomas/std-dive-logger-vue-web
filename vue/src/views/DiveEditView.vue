@@ -1,10 +1,12 @@
 <template>
-  <div class="h-full p-4 flex justify-center items-center">
+  <!-- Phones (and short landscape screens) scroll the page itself; only a "roomy" screen gets the
+       centred card with its own inner scroll area (see the roomy variant in global.css). -->
+  <div class="min-h-full p-2 sm:p-4 flex justify-center items-start roomy:h-full roomy:items-center">
     <div
-      class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-3xl w-full max-h-[90dvh] flex flex-col"
+      class="dive-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-3 sm:p-6 max-w-3xl w-full roomy:max-h-[90dvh] flex flex-col"
     >
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">Edit Dive #{{ formData.diveNumber }}</h1>
+      <div class="flex justify-between items-center mb-4 sm:mb-6">
+        <h1 class="text-xl md:text-2xl font-bold">Edit Dive #{{ formData.diveNumber }}</h1>
         <button
           @click="requestClose"
           class="text-xl font-bold hover:text-gray-600"
@@ -26,7 +28,7 @@
            without it a child's stray sub-pixel width (e.g. a sticky panel's border) produced a
            few-pixel horizontal scrollbar. Wide children (formulas, tables) scroll inside their
            own container. -->
-      <div v-else class="flex-1 overflow-y-auto overflow-x-hidden space-y-6">
+      <div v-else class="roomy:flex-1 roomy:overflow-y-auto overflow-x-hidden space-y-4 md:space-y-6">
         <BackfillBanner
           v-if="showBackfillBanner"
           :outstanding="liveOutstanding"
@@ -37,10 +39,12 @@
         />
 
         <!-- Read-only dive profile, pinned to the top of the scroll area so pressures / times can
-             be read off it while filling in the cylinder + gas fields below. -->
+             be read off it while filling in the cylinder + gas fields below. Not pinned on a
+             small screen: there it covered the whole visible form, so no field below it (e.g.
+             Date & time) could be tapped. -->
         <div
           v-if="loadedDive && loadedDive.profiles.length && !isManualDive"
-          class="sticky top-0 z-20 rounded-lg border border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95"
+          class="roomy:sticky roomy:top-0 z-20 rounded-lg border border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95"
         >
           <button
             type="button"
@@ -108,10 +112,15 @@
         </EditDiveForm>
       </div>
 
-      <div class="mt-6 pt-4 border-t flex flex-wrap justify-end gap-3">
+      <!-- Pinned to the bottom of the screen while the page scrolls (small screens), so Save is
+           always one tap away; one row there, so it doesn't eat the form's space. -->
+      <div
+        style="background-color: var(--card-bg)"
+        class="sticky bottom-0 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2 sm:pt-4 sm:pb-0 mt-4 sm:mt-6 border-t flex flex-wrap justify-end gap-2 sm:gap-3 roomy:static roomy:mx-0 roomy:px-0"
+      >
         <button
           @click="requestClose"
-          class="px-6 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600"
+          class="px-4 sm:px-6 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600"
         >
           Cancel
         </button>
@@ -119,17 +128,21 @@
           v-if="canOfferDismiss"
           @click="handleSubmit(true)"
           :disabled="submitting"
-          class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+          class="px-3 sm:px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
           title="Save, then take this dive off the backfill list - nothing more to add"
         >
-          {{ submitting ? 'Saving...' : 'Save & dismiss (no more info)' }}
+          <template v-if="submitting">Saving...</template>
+          <template v-else
+            >Save &amp; dismiss<span class="hidden sm:inline"> (no more info)</span></template
+          >
         </button>
         <button
           @click="handleSubmit(false)"
           :disabled="submitting"
-          class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+          class="px-4 sm:px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
         >
-          {{ submitting ? 'Saving...' : 'Save Changes' }}
+          <template v-if="submitting">Saving...</template>
+          <template v-else>Save<span class="hidden sm:inline"> Changes</span></template>
         </button>
       </div>
     </div>
@@ -152,6 +165,7 @@ import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useNavigation } from '@/composables/useNavigation'
 import DeletionConfirmation from '@/components/DeletionConfirmation.vue'
 import { isTypingTarget } from '@/lib/shortcuts/typingTarget'
+import { withRawMeasurements } from '@/lib/dive/rawMeasurements'
 import { useReadOnlyMode } from '@/composables/useReadOnlyMode'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import EditDiveForm from '@/components/dive/edit/EditDiveForm.vue'
@@ -183,6 +197,8 @@ import TagBadge from '@/components/dive/TagBadge.vue'
 const route = useRoute()
 const router = useRouter()
 const { safeBack } = useNavigation()
+// Opened directly (a link, a reopened app): closing lands on the dive itself, not Home.
+const closeEditor = () => safeBack({ name: 'DiveView', params: { diveId: diveId.value } })
 const { getWithToken, putWithToken, postWithToken } = useApi()
 const { readOnly } = useReadOnlyMode()
 
@@ -285,7 +301,7 @@ const fetchDive = async () => {
     // POST /refresh-tags: refreshes auto-detected tags server-side and returns the
     // up-to-date dive in one round-trip, so the edit page always starts with current tags.
     const res = await postWithToken<Dive>(`/v1/dives/${diveId.value}/refresh-tags`, {})
-    const dive = res.data
+    const dive = withRawMeasurements(res.data)
 
     // Editing isn't yours to do here - either this dive belongs to someone else (the backend
     // itself would reject any actual save, but bouncing back immediately is much clearer than an
@@ -373,13 +389,13 @@ const requestClose = () => {
   if (isDirty.value) {
     showDiscardConfirm.value = true
   } else {
-    safeBack()
+    closeEditor()
   }
 }
 const discardAndClose = () => {
   showDiscardConfirm.value = false
   savedSnapshot.value = null
-  safeBack()
+  closeEditor()
 }
 
 /** A modal / picker is open over the form - its own Esc handling wins. */
@@ -727,7 +743,7 @@ const handleSubmit = async (markDismissed = false) => {
     } else {
       toast.success('Dive updated successfully!')
     }
-    safeBack()
+    closeEditor()
   } catch (err) {
     console.error(err)
     toast.error(`Failed to update dive: ${extractErrorDetail(err)}`, { duration: 10000 })

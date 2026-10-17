@@ -1,5 +1,98 @@
 <template>
-  <div class="overflow-x-auto border rounded-lg">
+  <!-- Phones: one compact card per dive - the full table needs ~56rem and showed little more
+       than the number and name without sideways scrolling. -->
+  <div class="sm:hidden">
+    <div class="flex flex-wrap items-center gap-2 mb-2 text-xs">
+      <StyledCheckbox
+        :model-value="selectedIds.length === dives.length && dives.length > 0"
+        title="Select all"
+        @update:model-value="$emit('toggle-all')"
+      />
+      <span class="text-gray-500 dark:text-gray-400">Sort</span>
+      <button
+        v-for="col in sortableColumns"
+        :key="col.label"
+        type="button"
+        :disabled="!!searchQuery.trim()"
+        :class="[
+          'px-2.5 py-1 rounded-full border disabled:opacity-50',
+          sortColumn === col.serverCol
+            ? 'bg-sky-600 text-white border-sky-600'
+            : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200',
+        ]"
+        @click="$emit('sort', col.serverCol)"
+      >
+        {{ col.label === '#' ? 'Number' : col.label }}
+        <template v-if="sortColumn === col.serverCol && !searchQuery.trim()">
+          {{ sortDirection === 'ASCENDING' ? '▲' : '▼' }}
+        </template>
+      </button>
+    </div>
+    <ul
+      class="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-white divide-y divide-gray-200 dark:divide-gray-700"
+    >
+      <li
+        v-for="dive in dives"
+        :key="dive.id"
+        :class="[
+          'flex items-center gap-2.5 px-2 py-2 min-h-14 cursor-pointer border-l-4',
+          selectedIds.includes(dive.id)
+            ? 'bg-sky-100 dark:bg-sky-900 border-l-sky-500 dark:border-l-sky-400'
+            : dive.user.id !== myUserId
+              ? 'bg-gray-50 dark:bg-gray-800 border-l-transparent'
+              : 'border-l-transparent',
+          dive.id === focusedId ? 'ring-2 ring-inset ring-blue-500 dark:ring-blue-400' : '',
+        ]"
+        @click="handleRowClick($event, dive.id)"
+      >
+        <div class="shrink-0" @click.stop>
+          <StyledCheckbox
+            :model-value="selectedIds.includes(dive.id)"
+            @update:model-value="$emit('toggle-row', dive.id)"
+          />
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400"
+              >#{{ dive.number }}</span
+            >
+            <i
+              v-if="dive.highlighted"
+              class="fa-solid fa-star shrink-0 text-amber-500 text-xs leading-none"
+            ></i>
+            <span class="font-medium truncate">{{ dive.customIdentifier || '—' }}</span>
+          </div>
+          <div class="text-xs text-gray-600 dark:text-gray-300 truncate">
+            {{ formatDate(dive.summary.start, dive.site?.zoneId) }} ·
+            {{ dive.site?.name || 'Unknown' }}
+          </div>
+          <div
+            v-if="(dive.tags ?? []).length"
+            class="mt-0.5 flex flex-wrap gap-1 overflow-hidden max-h-[1.15rem]"
+          >
+            <TagBadge
+              v-for="tag in dive.tags ?? []"
+              :key="tag.id"
+              :name="tag.name"
+              :auto-detected="!!tag.autoDetectRule"
+              compact
+            />
+          </div>
+        </div>
+        <div class="shrink-0 text-right tabular-nums">
+          <div class="text-sm font-medium">{{ dive.summary.maxDepth.toFixed(1) }} m</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            {{ formatDurationToTime(dive.summary.bottomTime) }}
+          </div>
+        </div>
+      </li>
+      <li v-if="!dives.length && !isLoading" class="px-3 py-4 text-center text-gray-500">
+        {{ status || 'No dives found' }}
+      </li>
+      <li v-if="isLoading" class="px-3 py-4 text-center text-gray-500">Loading...</li>
+    </ul>
+  </div>
+  <div class="hidden sm:block overflow-x-auto border rounded-lg">
     <!-- table-fixed: column widths come from the header cells, so the Name column takes all the
          leftover space and every other column stays predictably narrow (content truncates). -->
     <table class="w-full min-w-[56rem] table-fixed border-collapse text-sm">
@@ -154,6 +247,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import DiveSitePreview from '@/components/DiveSitePreview.vue'
 import StyledCheckbox from '@/components/ui/StyledCheckbox.vue'
@@ -187,7 +281,7 @@ interface ColumnDef {
   width?: string
 }
 
-defineProps<{
+const props = defineProps<{
   dives: DiveWithoutProfiles[]
   selectedIds: number[]
   myUserId: number | null
@@ -209,6 +303,8 @@ const emit = defineEmits<{
   sort: [serverCol: SortColumn | null]
   'preview-regenerated': [dive: DiveWithoutProfiles]
 }>()
+
+const sortableColumns = computed(() => props.columns.filter((c) => c.sortable && c.serverCol))
 
 const handlePreviewRegenerated = (dive: DiveWithoutProfiles) => {
   emit('preview-regenerated', dive)

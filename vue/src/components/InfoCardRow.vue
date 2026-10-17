@@ -1,5 +1,5 @@
 <template>
-  <section class="flex flex-wrap justify-center gap-4 md:gap-6">
+  <section class="flex flex-wrap justify-center gap-2 sm:gap-4 md:gap-6">
     <slot />
   </section>
 </template>

@@ -2,7 +2,8 @@
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div class="text-sm text-gray-600 dark:text-gray-400">
       Page {{ currentPage }} of {{ totalPages }}
-      <span v-if="pageSize && totalPages"> (~{{ totalPages * pageSize }} total dives)</span>
+      <span v-if="totalElements != null"> ({{ totalElements }} total dives)</span>
+      <span v-else-if="pageSize && totalPages"> (~{{ totalPages * pageSize }} total dives)</span>
     </div>
 
     <div class="flex items-center gap-2">
@@ -43,6 +44,8 @@ interface Props {
   currentPage: number
   totalPages: number
   pageSize?: number
+  /** Exact count when known - otherwise pages x page size is shown as an estimate. */
+  totalElements?: number
 }
 
 const props = defineProps<Props>()

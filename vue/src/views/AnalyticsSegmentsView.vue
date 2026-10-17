@@ -1,11 +1,10 @@
 <template>
   <div
-    class="flex justify-center items-start pt-20 px-6 md:mx-10"
-    :style="{ minHeight: 'calc(100dvh - 80px)' }"
+    class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-20 md:px-6 md:mx-10"
   >
-    <main class="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-4xl w-full">
-      <h1 class="text-3xl font-bold mb-2">Analytics - Dive Segments</h1>
-      <p class="text-gray-600 dark:text-gray-400 mb-6">
+    <main class="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 max-w-4xl w-full">
+      <h1 class="text-2xl md:text-3xl font-bold mb-2">Analytics - Dive Segments</h1>
+      <p class="text-gray-600 dark:text-gray-400 mb-4 md:mb-6">
         Analytics for dive:
         <span class="font-semibold">{{ dive?.customIdentifier || diveId }}</span>
       </p>

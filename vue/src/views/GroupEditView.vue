@@ -1,10 +1,9 @@
 <template>
   <div
-    class="flex justify-center items-start pt-20 px-6 md:mx-10"
-    :style="{ minHeight: 'calc(100dvh - 80px)' }"
+    class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-20 md:px-6 md:mx-10"
   >
-    <main class="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-3xl w-full flex flex-col gap-4">
-      <h1 class="text-2xl font-bold">Edit Group</h1>
+    <main class="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 max-w-3xl w-full flex flex-col gap-4">
+      <h1 class="text-xl md:text-2xl font-bold">Edit Group</h1>
       <p class="text-gray-600 dark:text-gray-400">Group ID: {{ groupId }}</p>
 
       <section>
@@ -90,7 +89,7 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
         @click.self="showLeaveConfirm = false"
       >
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 md:p-6 max-w-sm">
           <h2 class="text-lg font-bold mb-2">Leave Group?</h2>
           <p class="text-gray-600 dark:text-gray-400 mb-4">
             Are you sure you want to leave this group? You can rejoin later if invited.

@@ -1,9 +1,9 @@
 <template>
-  <div class="min-h-full flex justify-center items-start pt-10 px-4 md:px-8 pb-10">
-    <div class="w-full max-w-6xl space-y-6">
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+  <div class="min-h-full flex justify-center items-start pt-4 px-2 sm:px-4 md:pt-10 md:px-8 pb-10">
+    <div class="w-full max-w-6xl space-y-4 md:space-y-6">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
         <div class="flex items-center justify-between flex-wrap gap-2">
-          <h1 class="text-2xl font-bold">Stats Over Time</h1>
+          <h1 class="text-xl md:text-2xl font-bold">Stats Over Time</h1>
           <RouterLink :to="{ name: 'Stats' }" class="text-sm text-blue-600 hover:underline">
             ← Back to overview stats
           </RouterLink>
@@ -20,7 +20,7 @@
         v-model="filters"
       />
 
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 md:p-6">
         <div class="flex flex-wrap gap-4 items-start justify-between mb-4">
           <div class="space-y-2">
             <div class="flex items-center gap-3">

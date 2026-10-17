@@ -284,6 +284,8 @@ const props = defineProps<{
   disableGasHe?: boolean
   disableDecoZone?: boolean
   showSegmentsToggle?: boolean
+  /** Open both sections regardless of screen size (the panel is already behind a button). */
+  startExpanded?: boolean
   leftAxisMetric?: AxisUnitGroup
   rightAxisMetric?: AxisUnitGroup
 }>()
@@ -312,8 +314,12 @@ const emit = defineEmits<{
   'update:rightAxisMetric': [value: AxisUnitGroup]
 }>()
 
-const showMetrics = ref(true)
-const showAxes = ref(true)
+// Start collapsed on a phone (portrait, or landscape's short height) so the chart itself is on
+// screen first - the two expanded sections are taller than the chart there.
+const compactScreen =
+  typeof window !== 'undefined' && (window.innerWidth < 640 || window.innerHeight < 500)
+const showMetrics = ref(props.startExpanded || !compactScreen)
+const showAxes = ref(props.startExpanded || !compactScreen)
 
 type ToggleKey = Exclude<MetricType, 'depth'>
 
