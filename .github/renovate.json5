@@ -1,0 +1,56 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    ':dependencyDashboard',
+    ':semanticCommitsDisabled',
+  ],
+
+  // Same rhythm as the homelab repos: batch the noise, auto-merge only the safe stuff.
+  timezone: 'Europe/Zurich',
+  schedule: ['before 6am on monday'],
+  prConcurrentLimit: 5,
+  labels: ['dependencies'],
+
+  // Every PR lands in my assigned and review-requested lists, auto-merged ones included.
+  assignees: ['SebastianThomas'],
+  reviewers: ['SebastianThomas'],
+  assignAutomerge: true,
+
+  packageRules: [
+    // Tooling: only needs the PR checks (type-check, lint, tests, build) to stay green.
+    {
+      matchManagers: ['npm'],
+      matchDepTypes: ['devDependencies'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'dev dependencies',
+      automerge: true,
+    },
+    // What ships to the browser: grouped, but a person looks at it. It has no browser test in CI.
+    {
+      matchManagers: ['npm'],
+      matchDepTypes: ['dependencies'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'runtime dependencies',
+    },
+    // GitHub Actions: group, auto-merge minor/patch.
+    {
+      matchManagers: ['github-actions'],
+      matchUpdateTypes: ['minor', 'patch', 'digest'],
+      groupName: 'github-actions',
+      automerge: true,
+    },
+    // Node runs the build image and CI: never auto-merged, and all places move together.
+    {
+      matchPackageNames: ['node'],
+      groupName: 'node',
+      automerge: false,
+    },
+    // TypeScript 7 has no JS compiler to load: vue-tsc cannot run on it, and typescript-eslint
+    // supports below 6.1. Allow it once both do.
+    {
+      matchPackageNames: ['typescript'],
+      allowedVersions: '<7',
+    },
+  ],
+}
