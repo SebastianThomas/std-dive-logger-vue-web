@@ -6,7 +6,9 @@
 # the CARTO console.
 
 # ---------- builder ----------
-FROM node:25-slim AS builder
+FROM node:26-slim AS builder
+# Node images no longer ship Yarn; the project stays on Yarn 1 (yarn.lock).
+RUN npm install --global yarn@1.22.22
 WORKDIR /app
 
 ARG BUILD_MODE=production
@@ -20,6 +22,8 @@ RUN yarn install
 COPY ./vue ./
 # Vite reads VITE_-prefixed vars from the environment and they win over any .env file value.
 RUN VITE_CARTO_API_KEY="$CARTO_API_KEY" yarn build --mode $BUILD_MODE
+# A wrong copy path still "works": nginx's SPA fallback would answer the fonts with index.html.
+RUN test -s dist/webfonts/fa-solid-900.woff2
 
 # ---------- runner ----------
 FROM nginx:alpine

@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, reactive } from 'vue'
+import { onMounted, onUnmounted, shallowReactive } from 'vue'
 import { useVimModeStore } from '@/stores/vimMode'
 import {
   getAdjacentField,
@@ -32,7 +32,7 @@ interface VimFieldRuntime {
   goalColumn: number | null
 }
 
-const runtime = reactive<VimFieldRuntime>({
+const runtime = shallowReactive<VimFieldRuntime>({
   subMode: 'insert',
   activeField: null,
   activeRect: null,

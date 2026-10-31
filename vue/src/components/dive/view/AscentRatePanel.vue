@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { select, scaleLinear, area, axisLeft, curveMonotoneX, bisector, pointer } from 'd3'
 import type { Area } from 'd3'
 import type { DiveProfile, DiveProfileRatesResponse } from '@/lib/types/dive'
@@ -132,7 +132,7 @@ onMounted(fetchRates)
 watch(() => props.diveId, fetchRates)
 
 const expanded = ref(false)
-const container = ref<HTMLElement | null>(null)
+const container = shallowRef<HTMLElement | null>(null)
 const width = ref(600)
 const height = ref(110)
 // Left/right match DiveGraph.vue's margin exactly so this panel's plot area lines up on the

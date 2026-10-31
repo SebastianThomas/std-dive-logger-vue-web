@@ -44,7 +44,7 @@ div {
 </style>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import {
   select,
   line,
@@ -87,7 +87,7 @@ const emit = defineEmits<{
   rangeSelect: [startMs: number, endMs: number]
 }>()
 
-const container = ref<HTMLElement | null>(null)
+const container = shallowRef<HTMLElement | null>(null)
 const width = ref(600)
 const height = ref(320)
 const margin = { top: 10, right: 46, bottom: 28, left: 46 }

@@ -157,7 +157,7 @@ div {
 </style>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onBeforeUnmount, nextTick, toRef } from 'vue'
+import { ref, shallowRef, watch, computed, onMounted, onBeforeUnmount, nextTick, toRef } from 'vue'
 import {
   pointer,
   select,
@@ -322,7 +322,7 @@ const profilesRef = toRef(props, 'profiles')
 const { getProfileMetricAvailability, getCombinedMetricAvailability } =
   useDiveGraphMetrics(profilesRef)
 
-const container = ref<HTMLElement | null>(null)
+const container = shallowRef<HTMLElement | null>(null)
 const tooltipRef = ref<InstanceType<typeof DiveGraphTooltip> | null>(null)
 const width = ref(600)
 const height = ref(300)

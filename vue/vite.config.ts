@@ -21,6 +21,7 @@ export default defineConfig(() => {
           {
             src: 'node_modules/@fortawesome/fontawesome-free/webfonts/*',
             dest: 'webfonts',
+            rename: { stripBase: true },
           },
         ],
       }),
