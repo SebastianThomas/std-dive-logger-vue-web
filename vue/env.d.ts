@@ -6,6 +6,7 @@ interface ImportMetaEnv {
   readonly VITE_AUTOCOMPLETE_URL: string
   readonly VITE_IMPORTER_URL: string
   readonly VITE_CARTO_API_KEY?: string
+  readonly VITE_SIGNUP_RETURN_ORIGINS?: string
   readonly BASE_URL?: string
 }
 

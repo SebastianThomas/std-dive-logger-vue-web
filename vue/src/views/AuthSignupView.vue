@@ -67,6 +67,7 @@ import { toast } from 'vue-sonner'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { resolveUrl } from '@/lib/globals/url/resolveUrl'
+import { safeReturnTo } from '@/lib/utils/returnTo'
 
 const router = useRouter()
 const route = useRoute()
@@ -76,11 +77,17 @@ const username = ref('')
 const email = ref('')
 const password = ref('')
 const isLoading = ref(false)
+// Another app sharing these accounts (the gas tracker) sends people here and wants them back.
+const returnTo = safeReturnTo(route.query.returnTo, import.meta.env.VITE_SIGNUP_RETURN_ORIGINS)
 
 // If already logged in, redirect back to 'from' or home and warn
 onMounted(() => {
   const maybeRedirect = () => {
     if (!authStore.isRefreshing && authStore.isLoggedIn) {
+      if (returnTo) {
+        window.location.assign(returnTo)
+        return
+      }
       const from = (route.query.from as string) || '/'
       toast.warning('You are already signed in.')
       router.replace(from)
@@ -111,6 +118,10 @@ const handleSubmitSignup = async () => {
       name: username.value,
     })
     if (data.id) {
+      if (returnTo) {
+        window.location.assign(returnTo)
+        return
+      }
       router.push({ name: 'AuthLogin' })
       return
     }
