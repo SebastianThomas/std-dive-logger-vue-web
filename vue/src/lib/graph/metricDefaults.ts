@@ -7,15 +7,12 @@ import type {
 /** Every metric whose default on/off state is worth deriving from this dive's actual data - excludes
  * `depth` (always on, not user-toggleable), the gas-fraction family (O2/N2/He), which always
  * defaults off regardless of data (see DiveGraphContainer.vue's own handling of those three), and
- * the PO2 family (measured/calculated/setpoint), which gets its own single-best-source selection
- * via {@link selectBestPo2Source} instead of this generic per-metric logic - see its doc comment
- * for why. */
+ * the PO2 family, which gets per-profile measured lines and a preferred calculated source. */
 export const DATA_DRIVEN_METRICS = ['temp', 'ndl', 'tts', 'gf', 'cns', 'otu', 'rmv', 'deco'] as const
 
 export type DataDrivenMetric = (typeof DATA_DRIVEN_METRICS)[number]
 
-/** Which single profile+metric combination is the dive's one most-accurate PO2 source, if any -
- * `null` when no profile has usable PO2 data at all. */
+/** Preferred calculated PO2 source. Measured PO2 is intentionally kept per profile. */
 export type Po2Selection = { profileIdx: number; metric: 'po2Measured' | 'po2Calculated' } | null
 
 /**
@@ -106,7 +103,14 @@ export function computeSensibleMetricDefaults(
   }
 
   const po2Selection = selectBestPo2Source(profileCounts)
-  if (po2Selection && po2Selection.profileIdx !== 0) {
+  profileCounts.forEach((counts, idx) => {
+    if (idx === 0 || counts.po2Measured <= 1) return
+    extraProfileMetrics[idx] = {
+      ...extraProfileMetrics[idx],
+      po2Measured: true,
+    }
+  })
+  if (po2Selection && po2Selection.metric === 'po2Calculated' && po2Selection.profileIdx !== 0) {
     extraProfileMetrics[po2Selection.profileIdx] = {
       ...extraProfileMetrics[po2Selection.profileIdx],
       [po2Selection.metric]: true,
@@ -147,8 +151,8 @@ type SecondaryMetric = keyof ProfileMetricVisibility[number]
 
 /**
  * Applies the diver's remembered choices on top of the data-driven defaults, only where they make
- * sense for this dive: a metric comes back on only on a profile that has data for it, and a PO2
- * line only on the dive's selected best PO2 source (see {@link selectBestPo2Source}).
+ * sense for this dive. Measured PO2 remains independently selectable for every profile; only
+ * calculated PO2 is limited to the preferred source.
  *
  * @param hasData per profile (index 0 = primary), whether it has data for a metric
  */
@@ -160,14 +164,17 @@ export function applyMetricPreferences(
   const po2 = defaults.po2Selection
   const applicable = (idx: number, metric: RememberedMetric) =>
     (hasData[idx]?.(metric) ?? false) &&
-    (!PO2_METRICS.has(metric) || (po2?.profileIdx === idx && po2.metric === metric))
+    (metric === 'po2Measured' || metric === 'po2Setpoint' ||
+      !PO2_METRICS.has(metric) || (po2?.profileIdx === idx && po2.metric === metric))
 
   const show = {} as Record<RememberedMetric, boolean>
   for (const metric of REMEMBERED_METRICS) {
     const fallback = (DATA_DRIVEN_METRICS as readonly string[]).includes(metric)
       ? defaults.show[metric as DataDrivenMetric]
       : PO2_METRICS.has(metric)
-        ? po2?.profileIdx === 0 && po2.metric === metric
+        ? metric === 'po2Measured'
+          ? hasData[0]?.(metric) ?? false
+          : po2?.profileIdx === 0 && po2.metric === metric
         : false // setpoint + gas fractions default off
     const wanted = prefs.primary[metric]
     show[metric] = wanted === undefined ? fallback : wanted && applicable(0, metric)

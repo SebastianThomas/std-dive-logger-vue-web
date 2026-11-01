@@ -417,12 +417,8 @@ const handleProfilesAligned = (updatedDive: Dive) => {
   emit('profiles-aligned', updatedDive)
 }
 
-// The dive's single selected best PO2 source (measured beats calculated; richest profile wins
-// within a tier) - see selectBestPo2Source's own doc comment. Every profile/metric combination
-// other than this one is deliberately kept unavailable below: redundant handsets/backup computers
-// report the same PO2 the loop is already showing, so letting them be toggled on independently
-// just adds clutter, not information. Set once per dive by applySensibleMetricDefaults, not
-// recomputed on every profile-visibility toggle - same reasoning as extraProfileMetrics.
+// The preferred calculated PO2 source. Measured PO2 is intentionally independent per profile:
+// a dive may contain two CCRs, each with its own sensor stream.
 const po2Selection = ref<Po2Selection>(null)
 
 const combinedMetricsAvailability = computed(() => {
@@ -438,7 +434,7 @@ const combinedMetricsAvailability = computed(() => {
   // so they're only worth enabling when profile 0 itself is the dive's selected best PO2 source.
   return {
     ...base,
-    hasPo2Measured: sel?.profileIdx === 0 && sel.metric === 'po2Measured' ? base.hasPo2Measured : false,
+    hasPo2Measured: base.hasPo2Measured,
     hasPo2Calculated:
       sel?.profileIdx === 0 && sel.metric === 'po2Calculated' ? base.hasPo2Calculated : false,
     hasPo2Setpoint: sel?.profileIdx === 0 ? base.hasPo2Setpoint : false,
@@ -459,8 +455,7 @@ const perProfileAvailability = computed(() =>
     // since it reports the same PO2 the loop is already showing.
     return {
       ...availability,
-      hasPo2Measured:
-        sel?.profileIdx === idx && sel.metric === 'po2Measured' ? availability.hasPo2Measured : false,
+      hasPo2Measured: availability.hasPo2Measured,
       hasPo2Calculated:
         sel?.profileIdx === idx && sel.metric === 'po2Calculated'
           ? availability.hasPo2Calculated

@@ -102,6 +102,20 @@ describe('computeSensibleMetricDefaults', () => {
     expect(result.extraProfileMetrics).toEqual({ 1: { po2Measured: true } })
   })
 
+  it('enables measured PO2 independently for every profile', () => {
+    const result = computeSensibleMetricDefaults([
+      counts({ po2Measured: 200 }),
+      counts({ po2Measured: 150 }),
+      counts({ po2Measured: 300 }),
+    ])
+
+    expect(result.show).not.toHaveProperty('po2Measured')
+    expect(result.extraProfileMetrics).toEqual({
+      1: { po2Measured: true },
+      2: { po2Measured: true },
+    })
+  })
+
   it('picks only the winning PO2 metric, not every metric a profile happens to have', () => {
     const result = computeSensibleMetricDefaults([
       counts({}),
