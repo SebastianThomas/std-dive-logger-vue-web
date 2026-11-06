@@ -6,11 +6,7 @@
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-8 space-y-4 md:space-y-8">
         <ProfileTabs :user="user" />
 
-        <!-- Account Section -->
-        <section class="space-y-2" v-if="!user">
-          <h2 class="text-lg font-medium">Account</h2>
-          <p>Loading...</p>
-        </section>
+        <ProfileAccountDetails :read-only="readOnly" @name-changed="user = $event" />
 
         <ProfileNotifications v-if="!readOnly" />
 
@@ -69,6 +65,7 @@ import { useApi } from '@/composables/useApi'
 import { extractErrorDetail } from '@/lib/utils/apiErrors'
 import { type User } from '@/lib/types/user'
 import ProfileTabs from '@/components/ProfileTabs.vue'
+import ProfileAccountDetails from '@/components/ProfileAccountDetails.vue'
 import ProfileNotifications from '@/components/ProfileNotifications.vue'
 import ProfileSecurity from '@/components/ProfileSecurity.vue'
 import ProfileImportFiles from '@/components/ProfileImportFiles.vue'

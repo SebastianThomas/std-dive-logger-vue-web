@@ -5,6 +5,16 @@ export type User = {
   customBackgroundUrl?: string | null
 }
 
+/** The signed-in account's own details (backend `AccountSettings`); `createdAt` is epoch millis. */
+export type AccountSettings = {
+  id: number
+  name: string
+  email: string
+  emailVerified: boolean
+  createdAt: number
+  pendingEmail?: string | null
+}
+
 export type Group = { id: number; name: string }
 
 export type GroupMember = {

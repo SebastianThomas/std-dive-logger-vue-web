@@ -151,6 +151,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/user/email/change',
+      name: 'EmailChangeConfirm',
+      component: () => import('../views/EmailChangeConfirmView.vue'),
+      meta: { requiresAuth: false },
+    },
+    {
       path: '/user/email',
       name: 'UserEmail',
       component: () => import('../views/UserEmailView.vue'),
