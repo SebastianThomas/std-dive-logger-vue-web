@@ -176,7 +176,7 @@ describe('EditDiveForm - dive leader', () => {
     expect(options).toContain('newnamed:Alex')
 
     await leaderSelect(wrapper).setValue('newnamed:Alex')
-    const emits = wrapper.emitted('update:modelValue') as Record<string, unknown>[][]
+    const emits = wrapper.emitted('update:modelValue')!
     expect(emits[emits.length - 1]![0]).toMatchObject({
       leaderNamedBuddyName: 'Alex',
       leaderNamedBuddyId: null,
@@ -204,7 +204,7 @@ describe('EditDiveForm - dive leader', () => {
     })
     const removeBtn = wrapper.findAll('button').find((b) => b.text() === '×')!
     await removeBtn.trigger('click')
-    const emits = wrapper.emitted('update:modelValue') as Record<string, unknown>[][]
+    const emits = wrapper.emitted('update:modelValue')!
     expect(emits[emits.length - 1]![0]).toMatchObject({ leaderNamedBuddyName: null })
   })
 })
@@ -230,8 +230,8 @@ describe('EditDiveForm - date & time', () => {
   it('emits the picked start time as epoch millis on modelValue', async () => {
     const wrapper = mountForm(baseModel([]), { manualEntry: false, profiles: [profile] })
     await wrapper.get('#manual-start').setValue('2026-03-10T08:15')
-    const emits = wrapper.emitted('update:modelValue') as Record<string, unknown>[][]
-    const startTime = emits[emits.length - 1]![0]!.startTime as number
+    const emits = wrapper.emitted('update:modelValue')!
+    const startTime = emits[emits.length - 1]![0].startTime as number
     expect(startTime).toBe(Date.parse('2026-03-10T08:15:00Z'))
   })
 })
